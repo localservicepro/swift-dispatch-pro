@@ -10,6 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 
 interface AdminSidebarProps {
@@ -54,8 +55,13 @@ export function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarProps) {
   return (
     <Sidebar className="border-r border-slate-200">
       <SidebarHeader className="p-6">
-        <h1 className="text-2xl font-bold text-slate-800">Admin Panel</h1>
-        <p className="text-sm text-slate-600">Business Management Hub</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Admin Panel</h1>
+            <p className="text-sm text-slate-600">Business Management Hub</p>
+          </div>
+          <SidebarTrigger />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

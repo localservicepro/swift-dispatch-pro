@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { MobileHeader } from "@/components/MobileHeader";
 import { DashboardOverview } from "@/components/DashboardOverview";
 import { OrderManagement } from "@/components/OrderManagement";
 import { ProductManagement } from "@/components/ProductManagement";
@@ -34,12 +36,26 @@ const Index = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
-        <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-        <main className="flex-1 overflow-hidden">
-          <div className="p-6 h-full overflow-y-auto">
-            {renderContent()}
-          </div>
-        </main>
+        {/* Desktop Sidebar */}
+        <div className="hidden md:block">
+          <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        </div>
+        
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Mobile Header */}
+          <MobileHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+          
+          {/* Content */}
+          <main className="flex-1 overflow-y-auto">
+            <div className="p-4 md:p-6 pb-20 md:pb-6">
+              {renderContent()}
+            </div>
+          </main>
+        </div>
+        
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
       </div>
     </SidebarProvider>
   );
