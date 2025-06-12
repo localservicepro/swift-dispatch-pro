@@ -9,16 +9,212 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      delivery_photos: {
+        Row: {
+          driver_id: string
+          id: string
+          order_id: string
+          photo_type: string | null
+          photo_url: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          driver_id: string
+          id?: string
+          order_id: string
+          photo_type?: string | null
+          photo_url: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          driver_id?: string
+          id?: string
+          order_id?: string
+          photo_type?: string | null
+          photo_url?: string
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_photos_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_photos_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_status_updates: {
+        Row: {
+          created_at: string | null
+          driver_id: string
+          id: string
+          location: Json | null
+          new_status: Database["public"]["Enums"]["order_status"]
+          notes: string | null
+          old_status: Database["public"]["Enums"]["order_status"] | null
+          order_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          driver_id: string
+          id?: string
+          location?: Json | null
+          new_status: Database["public"]["Enums"]["order_status"]
+          notes?: string | null
+          old_status?: Database["public"]["Enums"]["order_status"] | null
+          order_id: string
+        }
+        Update: {
+          created_at?: string | null
+          driver_id?: string
+          id?: string
+          location?: Json | null
+          new_status?: Database["public"]["Enums"]["order_status"]
+          notes?: string | null
+          old_status?: Database["public"]["Enums"]["order_status"] | null
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_status_updates_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_status_updates_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          admin_id: string | null
+          created_at: string | null
+          customer_address: string
+          customer_name: string
+          customer_phone: string | null
+          driver_id: string | null
+          id: string
+          order_number: string
+          products: Json
+          special_instructions: string | null
+          status: Database["public"]["Enums"]["order_status"]
+          total_amount: number
+          updated_at: string | null
+        }
+        Insert: {
+          admin_id?: string | null
+          created_at?: string | null
+          customer_address: string
+          customer_name: string
+          customer_phone?: string | null
+          driver_id?: string | null
+          id?: string
+          order_number: string
+          products: Json
+          special_instructions?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          total_amount: number
+          updated_at?: string | null
+        }
+        Update: {
+          admin_id?: string | null
+          created_at?: string | null
+          customer_address?: string
+          customer_name?: string
+          customer_phone?: string | null
+          driver_id?: string | null
+          id?: string
+          order_number?: string
+          products?: Json
+          special_instructions?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          total_amount?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_order_status: {
+        Args: {
+          order_id: string
+          new_status: Database["public"]["Enums"]["order_status"]
+          notes?: string
+          location?: Json
+        }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      order_status:
+        | "preparing"
+        | "loading"
+        | "en_route"
+        | "delivered"
+        | "cancelled"
+      user_role: "admin" | "driver"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +329,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      order_status: [
+        "preparing",
+        "loading",
+        "en_route",
+        "delivered",
+        "cancelled",
+      ],
+      user_role: ["admin", "driver"],
+    },
   },
 } as const

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Order {
   id: string;
@@ -18,7 +18,7 @@ interface Order {
   date: string;
 }
 
-const mockOrders: Order[] = [
+const mockOrders = [
   { id: "ORD-001", customer: "John Doe", products: ["Coffee", "Pastry"], total: 25.50, status: "Delivered", driver: "Mike Johnson", date: "2024-01-15" },
   { id: "ORD-002", customer: "Jane Smith", products: ["Tea", "Sandwich"], total: 18.75, status: "In Transit", driver: "Sarah Wilson", date: "2024-01-15" },
   { id: "ORD-003", customer: "Bob Brown", products: ["Juice", "Salad"], total: 22.00, status: "Preparing", driver: "Not Assigned", date: "2024-01-15" },
@@ -36,7 +36,7 @@ export function OrderManagement() {
   });
   const { toast } = useToast();
 
-  const handleCreateOrder = () => {
+  const handleCreateOrder = async () => {
     if (!newOrder.customer || !newOrder.products || !newOrder.total) {
       toast({
         title: "Error",
@@ -46,24 +46,93 @@ export function OrderManagement() {
       return;
     }
 
-    const order: Order = {
-      id: `ORD-${String(orders.length + 1).padStart(3, '0')}`,
-      customer: newOrder.customer,
-      products: newOrder.products.split(',').map(p => p.trim()),
-      total: parseFloat(newOrder.total),
-      status: "Preparing",
-      driver: newOrder.driver || "Not Assigned",
-      date: new Date().toISOString().split('T')[0]
-    };
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to create orders",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    setOrders([...orders, order]);
-    setNewOrder({ customer: "", products: "", total: "", driver: "", customerType: "regular" });
-    setIsCreating(false);
-    
-    toast({
-      title: "Success",
-      description: "Order created successfully!",
-    });
+      // Get admin profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile || profile.role !== 'admin') {
+        toast({
+          title: "Error",
+          description: "Only admins can create orders",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get driver ID if assigned
+      let driverId = null;
+      if (newOrder.driver && newOrder.driver !== "Not Assigned") {
+        const { data: driverProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('full_name', newOrder.driver)
+          .eq('role', 'driver')
+          .single();
+        
+        if (driverProfile) {
+          driverId = driverProfile.id;
+        }
+      }
+
+      const orderData = {
+        order_number: `ORD-${String(orders.length + 1).padStart(3, '0')}`,
+        customer_name: newOrder.customer,
+        customer_address: "123 Main St", // You might want to add an address field
+        products: newOrder.products.split(',').map(p => p.trim()),
+        total_amount: parseFloat(newOrder.total),
+        driver_id: driverId,
+        admin_id: user.id,
+        status: 'preparing'
+      };
+
+      const { data, error } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add to local state for immediate UI update
+      const newOrderLocal = {
+        id: data.order_number,
+        customer: data.customer_name,
+        products: Array.isArray(data.products) ? data.products : [data.products],
+        total: data.total_amount,
+        status: data.status === 'preparing' ? 'Preparing' : data.status,
+        driver: newOrder.driver || "Not Assigned",
+        date: new Date().toISOString().split('T')[0]
+      };
+
+      setOrders([...orders, newOrderLocal]);
+      setNewOrder({ customer: "", products: "", total: "", driver: "", customerType: "regular" });
+      setIsCreating(false);
+      
+      toast({
+        title: "Success",
+        description: "Order created successfully!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create order",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusColor = (status: string) => {
