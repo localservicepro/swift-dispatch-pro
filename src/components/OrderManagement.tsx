@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
+
+type OrderStatus = Database["public"]["Enums"]["order_status"];
 
 interface Order {
   id: string;
@@ -18,7 +22,7 @@ interface Order {
   date: string;
 }
 
-const mockOrders = [
+const mockOrders: Order[] = [
   { id: "ORD-001", customer: "John Doe", products: ["Coffee", "Pastry"], total: 25.50, status: "Delivered", driver: "Mike Johnson", date: "2024-01-15" },
   { id: "ORD-002", customer: "Jane Smith", products: ["Tea", "Sandwich"], total: 18.75, status: "In Transit", driver: "Sarah Wilson", date: "2024-01-15" },
   { id: "ORD-003", customer: "Bob Brown", products: ["Juice", "Salad"], total: 22.00, status: "Preparing", driver: "Not Assigned", date: "2024-01-15" },
@@ -96,7 +100,7 @@ export function OrderManagement() {
         total_amount: parseFloat(newOrder.total),
         driver_id: driverId,
         admin_id: user.id,
-        status: 'preparing'
+        status: 'preparing' as OrderStatus
       };
 
       const { data, error } = await supabase
@@ -108,10 +112,12 @@ export function OrderManagement() {
       if (error) throw error;
 
       // Add to local state for immediate UI update
-      const newOrderLocal = {
+      const newOrderLocal: Order = {
         id: data.order_number,
         customer: data.customer_name,
-        products: Array.isArray(data.products) ? data.products : [data.products],
+        products: Array.isArray(data.products) ? 
+          data.products.map(p => typeof p === 'string' ? p : String(p)) : 
+          [String(data.products)],
         total: data.total_amount,
         status: data.status === 'preparing' ? 'Preparing' : data.status,
         driver: newOrder.driver || "Not Assigned",

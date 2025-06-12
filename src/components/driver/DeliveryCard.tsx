@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { PhotoUpload } from "./PhotoUpload";
+import { Database } from "@/integrations/supabase/types";
 import { 
   MapPin, 
   Phone, 
@@ -16,6 +17,8 @@ import {
   CheckCircle,
   AlertCircle
 } from "lucide-react";
+
+type OrderStatus = Database["public"]["Enums"]["order_status"];
 
 interface DeliveryCardProps {
   order: any;
@@ -47,7 +50,7 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
     }
   };
 
-  const getNextStatus = (currentStatus: string) => {
+  const getNextStatus = (currentStatus: string): OrderStatus | null => {
     switch (currentStatus) {
       case 'preparing': return 'loading';
       case 'loading': return 'en_route';
@@ -65,7 +68,7 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
     }
   };
 
-  const updateStatus = async (newStatus: string) => {
+  const updateStatus = async (newStatus: OrderStatus) => {
     if (newStatus === 'delivered') {
       setShowPhotoUpload(true);
       return;
@@ -99,7 +102,7 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
 
   const handlePhotoUploaded = async () => {
     setShowPhotoUpload(false);
-    await updateStatus('delivered');
+    await updateStatus('delivered' as OrderStatus);
   };
 
   const products = Array.isArray(order.products) ? order.products : [];
