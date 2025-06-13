@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Phone, AlertCircle, Loader2 } from "lucide-react";
+import { User, Mail, Phone, AlertCircle, Loader2, RefreshCw } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -22,6 +23,7 @@ interface Profile {
 export function DriverManagement() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newUser, setNewUser] = useState({
@@ -34,31 +36,75 @@ export function DriverManagement() {
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('DriverManagement component mounted, loading profiles...');
     loadProfiles();
   }, []);
 
   const loadProfiles = async () => {
     try {
+      console.log('Starting loadProfiles function...');
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // First, let's check if we're authenticated
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log('Current authenticated user:', user?.id, user?.email);
+      if (authError) {
+        console.error('Auth error:', authError);
+      }
+
+      // Try to fetch profiles with detailed logging
+      console.log('Fetching profiles from database...');
+      const { data, error, count } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      console.log('Raw database response:', {
+        data,
+        error,
+        count,
+        dataLength: data?.length
+      });
+
+      if (error) {
+        console.error('Database error when fetching profiles:', error);
+        throw error;
+      }
       
-      console.log('Loaded profiles:', data);
+      console.log('Successfully loaded profiles:', {
+        totalProfiles: data?.length || 0,
+        profiles: data?.map(p => ({ id: p.id, email: p.email, role: p.role, full_name: p.full_name }))
+      });
+      
       setProfiles(data || []);
+      
+      // Log filtered counts
+      const drivers = (data || []).filter(p => p.role === 'driver');
+      const admins = (data || []).filter(p => p.role === 'admin');
+      console.log('Profile breakdown:', {
+        totalProfiles: data?.length || 0,
+        drivers: drivers.length,
+        driversList: drivers.map(d => ({ email: d.email, name: d.full_name })),
+        admins: admins.length
+      });
+
     } catch (error: any) {
-      console.error('Error loading profiles:', error);
+      console.error('Error in loadProfiles:', error);
       toast({
         title: "Error",
-        description: "Failed to load user profiles",
+        description: `Failed to load user profiles: ${error.message}`,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    console.log('Manual refresh triggered...');
+    setRefreshing(true);
+    await loadProfiles();
   };
 
   const handleAddUser = async () => {
@@ -73,6 +119,7 @@ export function DriverManagement() {
 
     try {
       setCreating(true);
+      console.log('Creating new user:', { email: newUser.email, role: newUser.role, full_name: newUser.full_name });
       
       // Call the Edge Function to create user
       const { data, error } = await supabase.functions.invoke('create-user', {
@@ -85,6 +132,8 @@ export function DriverManagement() {
         }
       });
 
+      console.log('Create user response:', { data, error });
+
       if (error) throw error;
 
       if (!data.success) {
@@ -93,7 +142,12 @@ export function DriverManagement() {
 
       setNewUser({ email: "", password: "", full_name: "", phone: "", role: "driver" });
       setIsAdding(false);
-      loadProfiles(); // Refresh the list
+      
+      // Wait a moment then reload profiles
+      setTimeout(() => {
+        console.log('Reloading profiles after user creation...');
+        loadProfiles();
+      }, 1000);
       
       toast({
         title: "Success",
@@ -113,6 +167,7 @@ export function DriverManagement() {
 
   const updateUserRole = async (userId: string, newRole: 'admin' | 'driver') => {
     try {
+      console.log(`Updating user ${userId} role to ${newRole}`);
       const { error } = await supabase
         .from('profiles')
         .update({ role: newRole })
@@ -142,6 +197,7 @@ export function DriverManagement() {
     }
 
     try {
+      console.log(`Deleting user ${userId}`);
       const { error } = await supabase.auth.admin.deleteUser(userId);
       if (error) throw error;
 
@@ -163,6 +219,13 @@ export function DriverManagement() {
   const driverProfiles = profiles.filter(p => p.role === 'driver');
   const adminProfiles = profiles.filter(p => p.role === 'admin');
 
+  console.log('Current state:', {
+    totalProfiles: profiles.length,
+    driverProfiles: driverProfiles.length,
+    adminProfiles: adminProfiles.length,
+    loading
+  });
+
   const getStatusColor = (role: string) => {
     return role === "driver" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800";
   };
@@ -183,13 +246,49 @@ export function DriverManagement() {
           <h2 className="text-3xl font-bold text-slate-800">User Management</h2>
           <p className="text-slate-600 mt-1">Manage users and assign driver roles</p>
         </div>
-        <Button 
-          onClick={() => setIsAdding(true)} 
-          className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
-        >
-          Add New User
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button 
+            onClick={() => setIsAdding(true)} 
+            className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
+          >
+            Add New User
+          </Button>
+        </div>
       </div>
+
+      {/* Debug Info Card */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-blue-700">Debug Information</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm">
+          <div className="space-y-1">
+            <p><strong>Total Profiles Loaded:</strong> {profiles.length}</p>
+            <p><strong>Driver Profiles:</strong> {driverProfiles.length}</p>
+            <p><strong>Admin Profiles:</strong> {adminProfiles.length}</p>
+            {driverProfiles.length > 0 && (
+              <div>
+                <strong>Drivers:</strong>
+                <ul className="ml-4 mt-1">
+                  {driverProfiles.map(driver => (
+                    <li key={driver.id}>
+                      {driver.full_name || 'No name'} ({driver.email})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -239,6 +338,9 @@ export function DriverManagement() {
                 <h3 className="font-semibold text-yellow-800">No Drivers Available</h3>
                 <p className="text-yellow-700 text-sm">
                   You don't have any users with the "driver" role. Create some driver accounts or update existing user roles to enable driver assignment in orders.
+                </p>
+                <p className="text-yellow-700 text-sm mt-2">
+                  <strong>Debug:</strong> Loaded {profiles.length} total profiles from database.
                 </p>
               </div>
             </div>
@@ -351,67 +453,82 @@ export function DriverManagement() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {profiles.map((profile) => (
-              <div key={profile.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <User className="w-5 h-5 text-gray-500" />
-                    <h3 className="font-semibold text-slate-800">{profile.full_name || 'No name'}</h3>
-                    <Badge className={getStatusColor(profile.role)}>
-                      {profile.role}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Select 
-                      value={profile.role} 
-                      onValueChange={(value: 'admin' | 'driver') => updateUserRole(profile.id, value)}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="driver">Driver</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-gray-400" />
-                    <div>
-                      <p className="text-slate-500">Email</p>
-                      <p className="font-medium">{profile.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    <div>
-                      <p className="text-slate-500">Phone</p>
-                      <p className="font-medium">{profile.phone || 'Not provided'}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Created</p>
-                    <p className="font-medium">{new Date(profile.created_at).toLocaleDateString()}</p>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2 mt-4">
-                  <Button size="sm" variant="outline">Edit Profile</Button>
-                  <Button size="sm" variant="outline">View Activity</Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="text-red-600 border-red-200 hover:bg-red-50"
-                    onClick={() => deleteUser(profile.id)}
-                  >
-                    Delete User
-                  </Button>
-                </div>
+            {profiles.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No users found in the database.</p>
+                <Button 
+                  variant="outline" 
+                  onClick={handleRefresh}
+                  className="mt-2"
+                  disabled={refreshing}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                  Refresh Data
+                </Button>
               </div>
-            ))}
+            ) : (
+              profiles.map((profile) => (
+                <div key={profile.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <User className="w-5 h-5 text-gray-500" />
+                      <h3 className="font-semibold text-slate-800">{profile.full_name || 'No name'}</h3>
+                      <Badge className={getStatusColor(profile.role)}>
+                        {profile.role}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select 
+                        value={profile.role} 
+                        onValueChange={(value: 'admin' | 'driver') => updateUserRole(profile.id, value)}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="driver">Driver</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-gray-400" />
+                      <div>
+                        <p className="text-slate-500">Email</p>
+                        <p className="font-medium">{profile.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-gray-400" />
+                      <div>
+                        <p className="text-slate-500">Phone</p>
+                        <p className="font-medium">{profile.phone || 'Not provided'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Created</p>
+                      <p className="font-medium">{new Date(profile.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 mt-4">
+                    <Button size="sm" variant="outline">Edit Profile</Button>
+                    <Button size="sm" variant="outline">View Activity</Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => deleteUser(profile.id)}
+                    >
+                      Delete User
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
