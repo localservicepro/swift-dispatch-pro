@@ -51,7 +51,7 @@ export function ProductSelectionStep({
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [loading, setLoading] = useState(false);
   const [adjustmentType, setAdjustmentType] = useState<"percentage" | "fixed">("percentage");
   const [adjustmentValue, setAdjustmentValue] = useState<string>("");
@@ -93,7 +93,7 @@ export function ProductSelectionStep({
       query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%`);
     }
 
-    if (selectedCategory) {
+    if (selectedCategory && selectedCategory !== "all") {
       query = query.eq('category_id', selectedCategory);
     }
 
@@ -188,7 +188,7 @@ export function ProductSelectionStep({
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
