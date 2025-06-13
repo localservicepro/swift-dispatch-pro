@@ -9,6 +9,59 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      customers: {
+        Row: {
+          billing_preferences: Json | null
+          created_at: string
+          customer_type: string
+          email: string
+          first_name: string
+          full_address: string
+          id: string
+          is_active: boolean
+          last_name: string
+          phone: string | null
+          suburb_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_preferences?: Json | null
+          created_at?: string
+          customer_type: string
+          email: string
+          first_name: string
+          full_address: string
+          id?: string
+          is_active?: boolean
+          last_name: string
+          phone?: string | null
+          suburb_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_preferences?: Json | null
+          created_at?: string
+          customer_type?: string
+          email?: string
+          first_name?: string
+          full_address?: string
+          id?: string
+          is_active?: boolean
+          last_name?: string
+          phone?: string | null
+          suburb_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_suburb_id_fkey"
+            columns: ["suburb_id"]
+            isOneToOne: false
+            referencedRelation: "suburbs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_photos: {
         Row: {
           driver_id: string
@@ -99,50 +152,119 @@ export type Database = {
           },
         ]
       }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string | null
+          price_adjustment: number | null
+          product_id: string | null
+          quantity: number
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          price_adjustment?: number | null
+          product_id?: string | null
+          quantity: number
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          price_adjustment?: number | null
+          product_id?: string | null
+          quantity?: number
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
+          adjustments: number | null
           admin_id: string | null
           created_at: string | null
           customer_address: string
+          customer_id: string | null
           customer_name: string
           customer_phone: string | null
+          delivery_date: string | null
+          delivery_fee: number | null
+          delivery_time: string | null
           driver_id: string | null
           id: string
           order_number: string
           products: Json
           special_instructions: string | null
           status: Database["public"]["Enums"]["order_status"]
+          subtotal: number | null
           total_amount: number
+          truck_type: Database["public"]["Enums"]["truck_type"] | null
           updated_at: string | null
         }
         Insert: {
+          adjustments?: number | null
           admin_id?: string | null
           created_at?: string | null
           customer_address: string
+          customer_id?: string | null
           customer_name: string
           customer_phone?: string | null
+          delivery_date?: string | null
+          delivery_fee?: number | null
+          delivery_time?: string | null
           driver_id?: string | null
           id?: string
           order_number: string
           products: Json
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"]
+          subtotal?: number | null
           total_amount: number
+          truck_type?: Database["public"]["Enums"]["truck_type"] | null
           updated_at?: string | null
         }
         Update: {
+          adjustments?: number | null
           admin_id?: string | null
           created_at?: string | null
           customer_address?: string
+          customer_id?: string | null
           customer_name?: string
           customer_phone?: string | null
+          delivery_date?: string | null
+          delivery_fee?: number | null
+          delivery_time?: string | null
           driver_id?: string | null
           id?: string
           order_number?: string
           products?: Json
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"]
+          subtotal?: number | null
           total_amount?: number
+          truck_type?: Database["public"]["Enums"]["truck_type"] | null
           updated_at?: string | null
         }
         Relationships: [
@@ -154,10 +276,108 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_driver_id_fkey"
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          parent_category_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          parent_category_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          parent_category_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_categories_parent_category_id_fkey"
+            columns: ["parent_category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          barcode: string | null
+          category_id: string | null
+          created_at: string
+          description: string | null
+          dimensions: string | null
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          sku: string | null
+          stock_quantity: number
+          updated_at: string
+          weight: number | null
+        }
+        Insert: {
+          barcode?: string | null
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          dimensions?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price: number
+          sku?: string | null
+          stock_quantity?: number
+          updated_at?: string
+          weight?: number | null
+        }
+        Update: {
+          barcode?: string | null
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          dimensions?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          sku?: string | null
+          stock_quantity?: number
+          updated_at?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
             referencedColumns: ["id"]
           },
         ]
@@ -192,6 +412,39 @@ export type Database = {
         }
         Relationships: []
       }
+      suburbs: {
+        Row: {
+          created_at: string
+          delivery_rate: number
+          id: string
+          is_active: boolean
+          name: string
+          postcode: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_rate?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          postcode: string
+          state: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivery_rate?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          postcode?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -214,6 +467,7 @@ export type Database = {
         | "en_route"
         | "delivered"
         | "cancelled"
+      truck_type: "small" | "medium" | "large" | "refrigerated"
       user_role: "admin" | "driver"
     }
     CompositeTypes: {
@@ -337,6 +591,7 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
+      truck_type: ["small", "medium", "large", "refrigerated"],
       user_role: ["admin", "driver"],
     },
   },
