@@ -3,9 +3,17 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
+interface Profile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: 'admin' | 'driver';
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
@@ -17,7 +25,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      setProfile(profile);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      setProfile(null);
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener
@@ -26,32 +51,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Create admin profile for new users
-        if (event === 'SIGNED_IN' && session?.user) {
-          setTimeout(async () => {
-            try {
-              // Check if profile exists
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('id', session.user.id)
-                .single();
-
-              // Create profile if it doesn't exist
-              if (!profile) {
-                await supabase
-                  .from('profiles')
-                  .insert({
-                    id: session.user.id,
-                    email: session.user.email || '',
-                    full_name: session.user.user_metadata?.full_name || '',
-                    role: 'admin'
-                  });
-              }
-            } catch (error) {
-              console.error('Error creating profile:', error);
-            }
+        if (session?.user) {
+          // Fetch user profile to get role information
+          setTimeout(() => {
+            fetchProfile(session.user.id);
           }, 0);
+
+          // Create admin profile for new users if needed
+          if (event === 'SIGNED_IN') {
+            setTimeout(async () => {
+              try {
+                // Check if profile exists
+                const { data: existingProfile } = await supabase
+                  .from('profiles')
+                  .select('id')
+                  .eq('id', session.user.id)
+                  .single();
+
+                // Create profile if it doesn't exist
+                if (!existingProfile) {
+                  await supabase
+                    .from('profiles')
+                    .insert({
+                      id: session.user.id,
+                      email: session.user.email || '',
+                      full_name: session.user.user_metadata?.full_name || '',
+                      role: 'admin'
+                    });
+                }
+              } catch (error) {
+                console.error('Error creating profile:', error);
+              }
+            }, 0);
+          }
+        } else {
+          setProfile(null);
         }
         
         setLoading(false);
@@ -62,7 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      } else {
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -99,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = {
     user,
     session,
+    profile,
     loading,
     signIn,
     signUp,

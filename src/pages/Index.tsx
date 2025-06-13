@@ -16,7 +16,7 @@ import { LogOut } from "lucide-react";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const { signOut, user } = useAuth();
+  const { signOut, profile } = useAuth();
 
   const renderContent = () => {
     switch (activeTab) {
@@ -56,7 +56,7 @@ const Index = () => {
           <div className="hidden md:flex justify-between items-center p-4 bg-white border-b">
             <h1 className="text-xl font-semibold">Order Management System</h1>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">{user?.email}</span>
+              <span className="text-sm text-gray-600">{profile?.email}</span>
               <Button 
                 variant="outline" 
                 size="sm" 
