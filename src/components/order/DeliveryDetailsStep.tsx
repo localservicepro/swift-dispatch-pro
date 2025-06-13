@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, Clock, Truck, User, AlertCircle } from "lucide-react";
+import { Calendar, Clock, Truck, User, AlertCircle, RefreshCw } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -62,53 +63,49 @@ export function DeliveryDetailsStep({
       setLoadingDrivers(true);
       setDriversError(null);
 
-      // First try to get users with driver role
-      let { data: driverUsers, error: driverError } = await supabase
+      // Load all profiles at once, ordered by role (drivers first) then by name
+      const { data: allUsers, error } = await supabase
         .from('profiles')
         .select('id, full_name, email, role')
-        .eq('role', 'driver')
-        .order('full_name');
+        .order('role', { ascending: true }) // This will put 'admin' before 'driver' alphabetically
+        .order('full_name', { ascending: true });
 
-      if (driverError) {
-        console.error('Error loading drivers:', driverError);
-        throw driverError;
+      if (error) {
+        console.error('Error loading users:', error);
+        throw error;
       }
 
-      // If no drivers found, also include admin users as potential drivers
-      if (!driverUsers || driverUsers.length === 0) {
-        console.log('No dedicated drivers found, including admin users as potential drivers');
-        const { data: adminUsers, error: adminError } = await supabase
-          .from('profiles')
-          .select('id, full_name, email, role')
-          .eq('role', 'admin')
-          .order('full_name');
-
-        if (adminError) {
-          console.error('Error loading admin users:', adminError);
-          throw adminError;
-        }
-
-        driverUsers = adminUsers || [];
-      }
-
-      console.log('Loaded drivers/users:', driverUsers);
-      setDrivers(driverUsers || []);
-
-      if (!driverUsers || driverUsers.length === 0) {
+      if (!allUsers || allUsers.length === 0) {
         setDriversError('No users available for driver assignment. Please create some user accounts first.');
+        setDrivers([]);
+        return;
       }
+
+      // Sort so drivers come first, then admins
+      const sortedUsers = allUsers.sort((a, b) => {
+        if (a.role === 'driver' && b.role === 'admin') return -1;
+        if (a.role === 'admin' && b.role === 'driver') return 1;
+        return (a.full_name || a.email).localeCompare(b.full_name || b.email);
+      });
+
+      console.log('Loaded and sorted users:', sortedUsers);
+      setDrivers(sortedUsers);
 
     } catch (error: any) {
-      console.error('Failed to load drivers:', error);
-      setDriversError('Failed to load available drivers. Please try again.');
+      console.error('Failed to load users:', error);
+      setDriversError('Failed to load available users. Please try again.');
       toast({
         title: "Error",
-        description: "Failed to load available drivers",
+        description: "Failed to load available users",
         variant: "destructive",
       });
     } finally {
       setLoadingDrivers(false);
     }
+  };
+
+  const handleRefreshDrivers = () => {
+    loadDrivers();
   };
 
   // Generate time slots (8 AM to 6 PM)
@@ -213,6 +210,16 @@ export function DeliveryDetailsStep({
           <Label htmlFor="driver" className="flex items-center gap-2">
             <User className="w-4 h-4" />
             Assign Driver
+            {!loadingDrivers && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRefreshDrivers}
+                className="ml-auto h-6 w-6 p-0"
+              >
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+            )}
           </Label>
           
           {driversError && (
@@ -224,7 +231,7 @@ export function DeliveryDetailsStep({
 
           <Select value={driverId} onValueChange={onDriverChange} disabled={loadingDrivers}>
             <SelectTrigger>
-              <SelectValue placeholder={loadingDrivers ? "Loading drivers..." : "Select driver (optional)"} />
+              <SelectValue placeholder={loadingDrivers ? "Loading users..." : "Select driver (optional)"} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="unassigned">No driver assigned</SelectItem>
@@ -232,16 +239,22 @@ export function DeliveryDetailsStep({
                 <SelectItem key={driver.id} value={driver.id}>
                   <div className="flex items-center gap-2">
                     <span>{driver.full_name || driver.email}</span>
-                    <span className="text-xs text-gray-500 capitalize">({driver.role})</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      driver.role === 'driver' 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-purple-100 text-purple-800'
+                    }`}>
+                      {driver.role}
+                    </span>
                   </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          {!loadingDrivers && drivers.length === 0 && (
+          {!loadingDrivers && drivers.length > 0 && (
             <p className="text-sm text-gray-600">
-              No drivers available. Orders will be created without driver assignment.
+              Found {drivers.filter(d => d.role === 'driver').length} driver(s) and {drivers.filter(d => d.role === 'admin').length} admin(s) available for assignment.
             </p>
           )}
         </div>
