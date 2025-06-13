@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,7 @@ export function DriverManagement() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [newUser, setNewUser] = useState({
     email: "",
     password: "",
@@ -72,34 +72,23 @@ export function DriverManagement() {
     }
 
     try {
-      // Create user with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: newUser.email,
-        password: newUser.password,
-        user_metadata: {
+      setCreating(true);
+      
+      // Call the Edge Function to create user
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: newUser.email,
+          password: newUser.password,
           full_name: newUser.full_name,
+          phone: newUser.phone,
           role: newUser.role
-        },
-        email_confirm: true
+        }
       });
 
-      if (authError) throw authError;
+      if (error) throw error;
 
-      // Update the profile with additional info
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            full_name: newUser.full_name,
-            phone: newUser.phone || null,
-            role: newUser.role
-          })
-          .eq('id', authData.user.id);
-
-        if (profileError) {
-          console.error('Profile update error:', profileError);
-          // Don't throw here as the user was created successfully
-        }
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to create user');
       }
 
       setNewUser({ email: "", password: "", full_name: "", phone: "", role: "driver" });
@@ -108,7 +97,7 @@ export function DriverManagement() {
       
       toast({
         title: "Success",
-        description: `${newUser.role === 'driver' ? 'Driver' : 'Admin'} added successfully!`,
+        description: data.message || `${newUser.role === 'driver' ? 'Driver' : 'Admin'} added successfully!`,
       });
     } catch (error: any) {
       console.error('Error creating user:', error);
@@ -117,6 +106,8 @@ export function DriverManagement() {
         description: error.message || "Failed to create user",
         variant: "destructive",
       });
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -270,6 +261,7 @@ export function DriverManagement() {
                   value={newUser.email}
                   onChange={(e) => setNewUser({...newUser, email: e.target.value})}
                   placeholder="Enter email address"
+                  disabled={creating}
                 />
               </div>
               <div>
@@ -280,6 +272,7 @@ export function DriverManagement() {
                   value={newUser.password}
                   onChange={(e) => setNewUser({...newUser, password: e.target.value})}
                   placeholder="Enter password"
+                  disabled={creating}
                 />
               </div>
             </div>
@@ -292,6 +285,7 @@ export function DriverManagement() {
                   value={newUser.full_name}
                   onChange={(e) => setNewUser({...newUser, full_name: e.target.value})}
                   placeholder="Enter full name"
+                  disabled={creating}
                 />
               </div>
               <div>
@@ -301,13 +295,18 @@ export function DriverManagement() {
                   value={newUser.phone}
                   onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
                   placeholder="Enter phone number"
+                  disabled={creating}
                 />
               </div>
             </div>
 
             <div>
               <Label htmlFor="userRole">Role *</Label>
-              <Select value={newUser.role} onValueChange={(value: 'admin' | 'driver') => setNewUser({...newUser, role: value})}>
+              <Select 
+                value={newUser.role} 
+                onValueChange={(value: 'admin' | 'driver') => setNewUser({...newUser, role: value})}
+                disabled={creating}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
@@ -319,10 +318,25 @@ export function DriverManagement() {
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button onClick={handleAddUser} className="bg-indigo-600 hover:bg-indigo-700">
-                Add User
+              <Button 
+                onClick={handleAddUser} 
+                className="bg-indigo-600 hover:bg-indigo-700"
+                disabled={creating}
+              >
+                {creating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Creating...
+                  </>
+                ) : (
+                  'Add User'
+                )}
               </Button>
-              <Button variant="outline" onClick={() => setIsAdding(false)}>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsAdding(false)}
+                disabled={creating}
+              >
                 Cancel
               </Button>
             </div>
