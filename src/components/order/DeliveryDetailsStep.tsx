@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, Clock, Truck, User } from "lucide-react";
+import { Calendar, Clock, Truck, User, AlertCircle } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
+import { useToast } from "@/hooks/use-toast";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
 
@@ -15,6 +16,7 @@ interface Driver {
   id: string;
   full_name: string | null;
   email: string;
+  role: string;
 }
 
 interface DeliveryDetailsStepProps {
@@ -47,20 +49,65 @@ export function DeliveryDetailsStep({
   onNext
 }: DeliveryDetailsStepProps) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [loadingDrivers, setLoadingDrivers] = useState(true);
+  const [driversError, setDriversError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadDrivers();
   }, []);
 
   const loadDrivers = async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, email')
-      .eq('role', 'driver')
-      .order('full_name');
+    try {
+      setLoadingDrivers(true);
+      setDriversError(null);
 
-    if (!error && data) {
-      setDrivers(data);
+      // First try to get users with driver role
+      let { data: driverUsers, error: driverError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role')
+        .eq('role', 'driver')
+        .order('full_name');
+
+      if (driverError) {
+        console.error('Error loading drivers:', driverError);
+        throw driverError;
+      }
+
+      // If no drivers found, also include admin users as potential drivers
+      if (!driverUsers || driverUsers.length === 0) {
+        console.log('No dedicated drivers found, including admin users as potential drivers');
+        const { data: adminUsers, error: adminError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, role')
+          .eq('role', 'admin')
+          .order('full_name');
+
+        if (adminError) {
+          console.error('Error loading admin users:', adminError);
+          throw adminError;
+        }
+
+        driverUsers = adminUsers || [];
+      }
+
+      console.log('Loaded drivers/users:', driverUsers);
+      setDrivers(driverUsers || []);
+
+      if (!driverUsers || driverUsers.length === 0) {
+        setDriversError('No users available for driver assignment. Please create some user accounts first.');
+      }
+
+    } catch (error: any) {
+      console.error('Failed to load drivers:', error);
+      setDriversError('Failed to load available drivers. Please try again.');
+      toast({
+        title: "Error",
+        description: "Failed to load available drivers",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingDrivers(false);
     }
   };
 
@@ -167,19 +214,36 @@ export function DeliveryDetailsStep({
             <User className="w-4 h-4" />
             Assign Driver
           </Label>
-          <Select value={driverId} onValueChange={onDriverChange}>
+          
+          {driversError && (
+            <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-yellow-600" />
+              <p className="text-sm text-yellow-800">{driversError}</p>
+            </div>
+          )}
+
+          <Select value={driverId} onValueChange={onDriverChange} disabled={loadingDrivers}>
             <SelectTrigger>
-              <SelectValue placeholder="Select driver (optional)" />
+              <SelectValue placeholder={loadingDrivers ? "Loading drivers..." : "Select driver (optional)"} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="unassigned">No driver assigned</SelectItem>
               {drivers.map((driver) => (
                 <SelectItem key={driver.id} value={driver.id}>
-                  {driver.full_name || driver.email}
+                  <div className="flex items-center gap-2">
+                    <span>{driver.full_name || driver.email}</span>
+                    <span className="text-xs text-gray-500 capitalize">({driver.role})</span>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          {!loadingDrivers && drivers.length === 0 && (
+            <p className="text-sm text-gray-600">
+              No drivers available. Orders will be created without driver assignment.
+            </p>
+          )}
         </div>
 
         {/* Special Instructions */}

@@ -1,42 +1,68 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { User, Mail, Phone, AlertCircle, Loader2 } from "lucide-react";
 
-interface Driver {
+interface Profile {
   id: string;
-  name: string;
+  full_name: string | null;
   email: string;
-  phone: string;
-  status: "active" | "inactive";
-  currentDeliveries: number;
-  totalDeliveries: number;
-  rating: number;
+  phone: string | null;
+  role: 'admin' | 'driver';
+  created_at: string;
 }
 
-const mockDrivers: Driver[] = [
-  { id: "DRV-001", name: "Mike Johnson", email: "mike@company.com", phone: "+1234567890", status: "active", currentDeliveries: 3, totalDeliveries: 245, rating: 4.8 },
-  { id: "DRV-002", name: "Sarah Wilson", email: "sarah@company.com", phone: "+1234567891", status: "active", currentDeliveries: 2, totalDeliveries: 189, rating: 4.9 },
-  { id: "DRV-003", name: "Tom Davis", email: "tom@company.com", phone: "+1234567892", status: "inactive", currentDeliveries: 0, totalDeliveries: 156, rating: 4.6 },
-];
-
 export function DriverManagement() {
-  const [drivers, setDrivers] = useState<Driver[]>(mockDrivers);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
-  const [newDriver, setNewDriver] = useState({
-    name: "",
+  const [newUser, setNewUser] = useState({
     email: "",
-    phone: ""
+    password: "",
+    full_name: "",
+    phone: "",
+    role: "driver" as 'admin' | 'driver'
   });
   const { toast } = useToast();
 
-  const handleAddDriver = () => {
-    if (!newDriver.name || !newDriver.email || !newDriver.phone) {
+  useEffect(() => {
+    loadProfiles();
+  }, []);
+
+  const loadProfiles = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      console.log('Loaded profiles:', data);
+      setProfiles(data || []);
+    } catch (error: any) {
+      console.error('Error loading profiles:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load user profiles",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddUser = async () => {
+    if (!newUser.email || !newUser.password || !newUser.full_name) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -45,166 +71,256 @@ export function DriverManagement() {
       return;
     }
 
-    const driver: Driver = {
-      id: `DRV-${String(drivers.length + 1).padStart(3, '0')}`,
-      name: newDriver.name,
-      email: newDriver.email,
-      phone: newDriver.phone,
-      status: "active",
-      currentDeliveries: 0,
-      totalDeliveries: 0,
-      rating: 5.0
-    };
+    try {
+      // Create user with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: newUser.email,
+        password: newUser.password,
+        user_metadata: {
+          full_name: newUser.full_name,
+          role: newUser.role
+        },
+        email_confirm: true
+      });
 
-    setDrivers([...drivers, driver]);
-    setNewDriver({ name: "", email: "", phone: "" });
-    setIsAdding(false);
-    
-    toast({
-      title: "Success",
-      description: "Driver added successfully!",
-    });
+      if (authError) throw authError;
+
+      // Update the profile with additional info
+      if (authData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            full_name: newUser.full_name,
+            phone: newUser.phone || null,
+            role: newUser.role
+          })
+          .eq('id', authData.user.id);
+
+        if (profileError) {
+          console.error('Profile update error:', profileError);
+          // Don't throw here as the user was created successfully
+        }
+      }
+
+      setNewUser({ email: "", password: "", full_name: "", phone: "", role: "driver" });
+      setIsAdding(false);
+      loadProfiles(); // Refresh the list
+      
+      toast({
+        title: "Success",
+        description: `${newUser.role === 'driver' ? 'Driver' : 'Admin'} added successfully!`,
+      });
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create user",
+        variant: "destructive",
+      });
+    }
   };
 
-  const toggleDriverStatus = (driverId: string) => {
-    setDrivers(drivers.map(driver => 
-      driver.id === driverId 
-        ? { ...driver, status: driver.status === "active" ? "inactive" : "active" as const }
-        : driver
-    ));
-    
-    toast({
-      title: "Driver Status Updated",
-      description: "Driver status has been changed successfully",
-    });
+  const updateUserRole = async (userId: string, newRole: 'admin' | 'driver') => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      loadProfiles(); // Refresh the list
+      
+      toast({
+        title: "Success",
+        description: `User role updated to ${newRole}`,
+      });
+    } catch (error: any) {
+      console.error('Error updating role:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update user role",
+        variant: "destructive",
+      });
+    }
   };
 
-  const deleteDriver = (driverId: string) => {
-    setDrivers(drivers.filter(driver => driver.id !== driverId));
-    toast({
-      title: "Driver Removed",
-      description: "Driver has been removed from the system",
-    });
+  const deleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      if (error) throw error;
+
+      loadProfiles(); // Refresh the list
+      toast({
+        title: "User Deleted",
+        description: "User has been removed from the system",
+      });
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      });
+    }
   };
 
-  const assignDelivery = (driverId: string) => {
-    setDrivers(drivers.map(driver => 
-      driver.id === driverId 
-        ? { ...driver, currentDeliveries: driver.currentDeliveries + 1 }
-        : driver
-    ));
-    
-    toast({
-      title: "Delivery Assigned",
-      description: "New delivery has been assigned to the driver",
-    });
+  const driverProfiles = profiles.filter(p => p.role === 'driver');
+  const adminProfiles = profiles.filter(p => p.role === 'admin');
+
+  const getStatusColor = (role: string) => {
+    return role === "driver" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800";
   };
 
-  const getStatusColor = (status: string) => {
-    return status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800";
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading users...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-slate-800">Driver Management</h2>
-          <p className="text-slate-600 mt-1">Manage your delivery team and assignments</p>
+          <h2 className="text-3xl font-bold text-slate-800">User Management</h2>
+          <p className="text-slate-600 mt-1">Manage users and assign driver roles</p>
         </div>
         <Button 
           onClick={() => setIsAdding(true)} 
           className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
         >
-          Add New Driver
+          Add New User
         </Button>
       </div>
 
-      {/* Driver Statistics */}
+      {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700">Total Drivers</CardTitle>
+            <CardTitle className="text-sm font-medium text-blue-700">Total Users</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-900">{drivers.length}</div>
+            <div className="text-2xl font-bold text-blue-900">{profiles.length}</div>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-700">Active Drivers</CardTitle>
+            <CardTitle className="text-sm font-medium text-green-700">Drivers</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-900">
-              {drivers.filter(d => d.status === "active").length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-orange-700">Current Deliveries</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-900">
-              {drivers.reduce((sum, d) => sum + d.currentDeliveries, 0)}
-            </div>
+            <div className="text-2xl font-bold text-green-900">{driverProfiles.length}</div>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700">Avg Rating</CardTitle>
+            <CardTitle className="text-sm font-medium text-purple-700">Admins</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-900">
-              {(drivers.reduce((sum, d) => sum + d.rating, 0) / drivers.length).toFixed(1)}
-            </div>
+            <div className="text-2xl font-bold text-purple-900">{adminProfiles.length}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-orange-700">Available Drivers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-900">{driverProfiles.length}</div>
           </CardContent>
         </Card>
       </div>
 
+      {driverProfiles.length === 0 && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-yellow-600" />
+              <div>
+                <h3 className="font-semibold text-yellow-800">No Drivers Available</h3>
+                <p className="text-yellow-700 text-sm">
+                  You don't have any users with the "driver" role. Create some driver accounts or update existing user roles to enable driver assignment in orders.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {isAdding && (
         <Card className="border-indigo-200 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-100">
-            <CardTitle className="text-indigo-800">Add New Driver</CardTitle>
+            <CardTitle className="text-indigo-800">Add New User</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="driverName">Driver Name *</Label>
+                <Label htmlFor="userEmail">Email *</Label>
                 <Input
-                  id="driverName"
-                  value={newDriver.name}
-                  onChange={(e) => setNewDriver({...newDriver, name: e.target.value})}
-                  placeholder="Enter driver name"
+                  id="userEmail"
+                  type="email"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                  placeholder="Enter email address"
                 />
               </div>
               <div>
-                <Label htmlFor="driverEmail">Email *</Label>
+                <Label htmlFor="userPassword">Password *</Label>
                 <Input
-                  id="driverEmail"
-                  type="email"
-                  value={newDriver.email}
-                  onChange={(e) => setNewDriver({...newDriver, email: e.target.value})}
-                  placeholder="Enter email address"
+                  id="userPassword"
+                  type="password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                  placeholder="Enter password"
                 />
               </div>
             </div>
             
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="userFullName">Full Name *</Label>
+                <Input
+                  id="userFullName"
+                  value={newUser.full_name}
+                  onChange={(e) => setNewUser({...newUser, full_name: e.target.value})}
+                  placeholder="Enter full name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="userPhone">Phone Number</Label>
+                <Input
+                  id="userPhone"
+                  value={newUser.phone}
+                  onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
+                  placeholder="Enter phone number"
+                />
+              </div>
+            </div>
+
             <div>
-              <Label htmlFor="driverPhone">Phone Number *</Label>
-              <Input
-                id="driverPhone"
-                value={newDriver.phone}
-                onChange={(e) => setNewDriver({...newDriver, phone: e.target.value})}
-                placeholder="Enter phone number"
-              />
+              <Label htmlFor="userRole">Role *</Label>
+              <Select value={newUser.role} onValueChange={(value: 'admin' | 'driver') => setNewUser({...newUser, role: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="driver">Driver</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button onClick={handleAddDriver} className="bg-indigo-600 hover:bg-indigo-700">
-                Add Driver
+              <Button onClick={handleAddUser} className="bg-indigo-600 hover:bg-indigo-700">
+                Add User
               </Button>
               <Button variant="outline" onClick={() => setIsAdding(false)}>
                 Cancel
@@ -214,69 +330,70 @@ export function DriverManagement() {
         </Card>
       )}
 
-      {/* Driver List */}
+      {/* User List */}
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-slate-800">Driver Directory</CardTitle>
+          <CardTitle className="text-lg font-semibold text-slate-800">User Directory</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {drivers.map((driver) => (
-              <div key={driver.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
+            {profiles.map((profile) => (
+              <div key={profile.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <h3 className="font-semibold text-slate-800">{driver.name}</h3>
-                    <Badge className={getStatusColor(driver.status)}>
-                      {driver.status === "active" ? "Active" : "Inactive"}
+                    <User className="w-5 h-5 text-gray-500" />
+                    <h3 className="font-semibold text-slate-800">{profile.full_name || 'No name'}</h3>
+                    <Badge className={getStatusColor(profile.role)}>
+                      {profile.role}
                     </Badge>
-                    <span className="text-sm text-slate-500">Rating: {driver.rating}/5</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-600">Active:</span>
-                    <Switch
-                      checked={driver.status === "active"}
-                      onCheckedChange={() => toggleDriverStatus(driver.id)}
-                    />
+                    <Select 
+                      value={profile.role} 
+                      onValueChange={(value: 'admin' | 'driver') => updateUserRole(profile.id, value)}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="driver">Driver</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-slate-500">Email</p>
-                    <p className="font-medium">{driver.email}</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    <div>
+                      <p className="text-slate-500">Email</p>
+                      <p className="font-medium">{profile.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    <div>
+                      <p className="text-slate-500">Phone</p>
+                      <p className="font-medium">{profile.phone || 'Not provided'}</p>
+                    </div>
                   </div>
                   <div>
-                    <p className="text-slate-500">Phone</p>
-                    <p className="font-medium">{driver.phone}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Current Deliveries</p>
-                    <p className="font-medium">{driver.currentDeliveries}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Total Deliveries</p>
-                    <p className="font-medium">{driver.totalDeliveries}</p>
+                    <p className="text-slate-500">Created</p>
+                    <p className="font-medium">{new Date(profile.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
                 
                 <div className="flex gap-2 mt-4">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => assignDelivery(driver.id)}
-                    disabled={driver.status === "inactive"}
-                  >
-                    Assign Delivery
-                  </Button>
-                  <Button size="sm" variant="outline">Edit</Button>
-                  <Button size="sm" variant="outline">View History</Button>
+                  <Button size="sm" variant="outline">Edit Profile</Button>
+                  <Button size="sm" variant="outline">View Activity</Button>
                   <Button 
                     size="sm" 
                     variant="outline" 
                     className="text-red-600 border-red-200 hover:bg-red-50"
-                    onClick={() => deleteDriver(driver.id)}
+                    onClick={() => deleteUser(profile.id)}
                   >
-                    Remove
+                    Delete User
                   </Button>
                 </div>
               </div>
