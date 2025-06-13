@@ -450,6 +450,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_driver: {
+        Args: { driver_id: string; driver_name: string; driver_license: string }
+        Returns: undefined
+      }
       update_order_status: {
         Args: {
           order_id: string
