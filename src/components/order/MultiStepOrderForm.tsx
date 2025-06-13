@@ -26,12 +26,20 @@ interface Customer {
   };
 }
 
-interface CartItem {
-  product: {
-    id: string;
+interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  stock_quantity: number;
+  sku: string | null;
+  category?: {
     name: string;
-    price: number;
   };
+}
+
+interface CartItem {
+  product: Product;
   quantity: number;
   unit_price: number;
   total_price: number;
