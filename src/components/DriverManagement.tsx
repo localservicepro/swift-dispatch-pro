@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -36,60 +35,43 @@ export function DriverManagement() {
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log('DriverManagement component mounted, loading profiles...');
     loadProfiles();
   }, []);
 
   const loadProfiles = async () => {
     try {
-      console.log('Starting loadProfiles function...');
       setLoading(true);
       
-      // First, let's check if we're authenticated
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      console.log('Current authenticated user:', user?.id, user?.email);
-      if (authError) {
-        console.error('Auth error:', authError);
-      }
-
-      // Try to fetch profiles with detailed logging
-      console.log('Fetching profiles from database...');
-      const { data, error, count } = await supabase
+      // Force a fresh query by adding a timestamp to bypass any caching
+      const timestamp = Date.now();
+      console.log(`Loading profiles at ${timestamp}...`);
+      
+      const { data, error } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact' })
+        .select('*')
         .order('created_at', { ascending: false });
 
-      console.log('Raw database response:', {
-        data,
-        error,
-        count,
-        dataLength: data?.length
-      });
+      console.log('Profiles query result:', { data, error, count: data?.length });
 
       if (error) {
-        console.error('Database error when fetching profiles:', error);
+        console.error('Database error:', error);
         throw error;
       }
       
-      console.log('Successfully loaded profiles:', {
-        totalProfiles: data?.length || 0,
-        profiles: data?.map(p => ({ id: p.id, email: p.email, role: p.role, full_name: p.full_name }))
-      });
-      
       setProfiles(data || []);
       
-      // Log filtered counts
+      // Log profile breakdown
       const drivers = (data || []).filter(p => p.role === 'driver');
       const admins = (data || []).filter(p => p.role === 'admin');
       console.log('Profile breakdown:', {
-        totalProfiles: data?.length || 0,
+        total: data?.length || 0,
         drivers: drivers.length,
-        driversList: drivers.map(d => ({ email: d.email, name: d.full_name })),
-        admins: admins.length
+        admins: admins.length,
+        driversList: drivers.map(d => ({ email: d.email, name: d.full_name, role: d.role }))
       });
 
     } catch (error: any) {
-      console.error('Error in loadProfiles:', error);
+      console.error('Error loading profiles:', error);
       toast({
         title: "Error",
         description: `Failed to load user profiles: ${error.message}`,
@@ -102,7 +84,6 @@ export function DriverManagement() {
   };
 
   const handleRefresh = async () => {
-    console.log('Manual refresh triggered...');
     setRefreshing(true);
     await loadProfiles();
   };
@@ -143,11 +124,11 @@ export function DriverManagement() {
       setNewUser({ email: "", password: "", full_name: "", phone: "", role: "driver" });
       setIsAdding(false);
       
-      // Wait a moment then reload profiles
-      setTimeout(() => {
-        console.log('Reloading profiles after user creation...');
-        loadProfiles();
-      }, 1000);
+      // Force a complete refresh after user creation
+      setTimeout(async () => {
+        console.log('Force refreshing profiles after user creation...');
+        await loadProfiles();
+      }, 2000);
       
       toast({
         title: "Success",
@@ -219,13 +200,6 @@ export function DriverManagement() {
   const driverProfiles = profiles.filter(p => p.role === 'driver');
   const adminProfiles = profiles.filter(p => p.role === 'admin');
 
-  console.log('Current state:', {
-    totalProfiles: profiles.length,
-    driverProfiles: driverProfiles.length,
-    adminProfiles: adminProfiles.length,
-    loading
-  });
-
   const getStatusColor = (role: string) => {
     return role === "driver" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800";
   };
@@ -263,32 +237,6 @@ export function DriverManagement() {
           </Button>
         </div>
       </div>
-
-      {/* Debug Info Card */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-blue-700">Debug Information</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm">
-          <div className="space-y-1">
-            <p><strong>Total Profiles Loaded:</strong> {profiles.length}</p>
-            <p><strong>Driver Profiles:</strong> {driverProfiles.length}</p>
-            <p><strong>Admin Profiles:</strong> {adminProfiles.length}</p>
-            {driverProfiles.length > 0 && (
-              <div>
-                <strong>Drivers:</strong>
-                <ul className="ml-4 mt-1">
-                  {driverProfiles.map(driver => (
-                    <li key={driver.id}>
-                      {driver.full_name || 'No name'} ({driver.email})
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -338,9 +286,6 @@ export function DriverManagement() {
                 <h3 className="font-semibold text-yellow-800">No Drivers Available</h3>
                 <p className="text-yellow-700 text-sm">
                   You don't have any users with the "driver" role. Create some driver accounts or update existing user roles to enable driver assignment in orders.
-                </p>
-                <p className="text-yellow-700 text-sm mt-2">
-                  <strong>Debug:</strong> Loaded {profiles.length} total profiles from database.
                 </p>
               </div>
             </div>

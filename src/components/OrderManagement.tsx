@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { MultiStepOrderForm } from "./order/MultiStepOrderForm";
-import { DriverAssignmentDebug } from "./DriverAssignmentDebug";
 import { Database } from "@/integrations/supabase/types";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -64,9 +63,6 @@ export function OrderManagement() {
           Create New Order
         </Button>
       </div>
-
-      {/* Debug Component */}
-      <DriverAssignmentDebug />
 
       {isCreating && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
