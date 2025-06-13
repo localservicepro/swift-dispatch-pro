@@ -10,9 +10,13 @@ import { ProductManagement } from "@/components/ProductManagement";
 import { PaymentManagement } from "@/components/PaymentManagement";
 import { DriverManagement } from "@/components/DriverManagement";
 import { Settings } from "@/components/Settings";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { LogOut } from "lucide-react";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const { signOut, user } = useAuth();
 
   const renderContent = () => {
     switch (activeTab) {
@@ -43,8 +47,27 @@ const Index = () => {
         
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Mobile Header */}
-          <MobileHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+          {/* Mobile Header with user info */}
+          <div className="md:hidden">
+            <MobileHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+          </div>
+          
+          {/* Desktop header with user info */}
+          <div className="hidden md:flex justify-between items-center p-4 bg-white border-b">
+            <h1 className="text-xl font-semibold">Order Management System</h1>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">{user?.email}</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={signOut}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </Button>
+            </div>
+          </div>
           
           {/* Content */}
           <main className="flex-1 overflow-y-auto">
