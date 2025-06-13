@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -173,7 +172,7 @@ export function DeliveryDetailsStep({
               <SelectValue placeholder="Select driver (optional)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No driver assigned</SelectItem>
+              <SelectItem value="unassigned">No driver assigned</SelectItem>
               {drivers.map((driver) => (
                 <SelectItem key={driver.id} value={driver.id}>
                   {driver.full_name || driver.email}
