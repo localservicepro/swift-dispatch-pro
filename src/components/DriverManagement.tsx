@@ -74,7 +74,7 @@ export function DriverManagement() {
       console.error('Error loading profiles:', error);
       toast({
         title: "Error",
-        description: `Failed to load user profiles: ${error.message}`,
+        description: `Failed to load staff profiles: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -100,7 +100,7 @@ export function DriverManagement() {
 
     try {
       setCreating(true);
-      console.log('Creating new user:', { email: newUser.email, role: newUser.role, full_name: newUser.full_name });
+      console.log('Creating new staff member:', { email: newUser.email, role: newUser.role, full_name: newUser.full_name });
       
       // Call the Edge Function to create user
       const { data, error } = await supabase.functions.invoke('create-user', {
@@ -118,7 +118,7 @@ export function DriverManagement() {
       if (error) throw error;
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to create user');
+        throw new Error(data.error || 'Failed to create staff member');
       }
 
       setNewUser({ email: "", password: "", full_name: "", phone: "", role: "driver" });
@@ -135,10 +135,10 @@ export function DriverManagement() {
         description: data.message || `${newUser.role === 'driver' ? 'Driver' : 'Admin'} added successfully!`,
       });
     } catch (error: any) {
-      console.error('Error creating user:', error);
+      console.error('Error creating staff member:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create user",
+        description: error.message || "Failed to create staff member",
         variant: "destructive",
       });
     } finally {
@@ -217,8 +217,8 @@ export function DriverManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-slate-800">User Management</h2>
-          <p className="text-slate-600 mt-1">Manage users and assign driver roles</p>
+          <h2 className="text-3xl font-bold text-slate-800">Staff Management</h2>
+          <p className="text-slate-600 mt-1">Manage staff members and assign roles</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -233,7 +233,7 @@ export function DriverManagement() {
             onClick={() => setIsAdding(true)} 
             className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
           >
-            Add New User
+            Add New Staff Member
           </Button>
         </div>
       </div>
@@ -242,7 +242,7 @@ export function DriverManagement() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700">Total Users</CardTitle>
+            <CardTitle className="text-sm font-medium text-blue-700">Total Staff</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-900">{profiles.length}</div>
@@ -285,7 +285,7 @@ export function DriverManagement() {
               <div>
                 <h3 className="font-semibold text-yellow-800">No Drivers Available</h3>
                 <p className="text-yellow-700 text-sm">
-                  You don't have any users with the "driver" role. Create some driver accounts or update existing user roles to enable driver assignment in orders.
+                  You don't have any staff members with the "driver" role. Create some driver accounts or update existing staff roles to enable driver assignment in orders.
                 </p>
               </div>
             </div>
@@ -296,7 +296,7 @@ export function DriverManagement() {
       {isAdding && (
         <Card className="border-indigo-200 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-100">
-            <CardTitle className="text-indigo-800">Add New User</CardTitle>
+            <CardTitle className="text-indigo-800">Add New Staff Member</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -376,7 +376,7 @@ export function DriverManagement() {
                     Creating...
                   </>
                 ) : (
-                  'Add User'
+                  'Add Staff Member'
                 )}
               </Button>
               <Button 
@@ -394,13 +394,13 @@ export function DriverManagement() {
       {/* User List */}
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-slate-800">User Directory</CardTitle>
+          <CardTitle className="text-lg font-semibold text-slate-800">Staff Directory</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {profiles.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                <p>No users found in the database.</p>
+                <p>No staff members found in the database.</p>
                 <Button 
                   variant="outline" 
                   onClick={handleRefresh}

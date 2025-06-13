@@ -1,5 +1,4 @@
-
-import { Calendar, Settings, User, FileText, ChartBar } from "lucide-react";
+import { Calendar, Settings, Users, FileText, ChartBar } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -40,8 +39,8 @@ const menuItems = [
     key: "payments",
   },
   {
-    title: "Drivers",
-    icon: User,
+    title: "Staffs",
+    icon: Users,
     key: "drivers",
   },
   {
