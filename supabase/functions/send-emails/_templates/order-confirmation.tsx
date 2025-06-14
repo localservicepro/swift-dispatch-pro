@@ -52,7 +52,7 @@ export const OrderConfirmationEmail = ({
         
         <Section style={orderDetails}>
           <Heading style={h2}>Order Details</Heading>
-          <Text style={orderNumberStyle}>Order Number: <strong>{orderNumber}</strong></Text>
+          <Text style={orderNumber}>Order Number: <strong>{orderNumber}</strong></Text>
           
           {orderItems.map((item, index) => (
             <Row key={index} style={itemRow}>
@@ -64,7 +64,7 @@ export const OrderConfirmationEmail = ({
           
           <Row style={totalRow}>
             <Column style={totalLabel}>Total Amount:</Column>
-            <Column style={totalAmountStyle}><strong>${totalAmount.toFixed(2)}</strong></Column>
+            <Column style={totalAmount}><strong>${totalAmount.toFixed(2)}</strong></Column>
           </Row>
         </Section>
 
@@ -131,11 +131,9 @@ const orderDetails = {
   margin: '20px 0',
 }
 
-const orderNumberStyle = {
-  color: '#333',
+const orderNumber = {
+  ...text,
   fontSize: '16px',
-  lineHeight: '24px',
-  margin: '16px 0',
   marginBottom: '20px',
 }
 
@@ -145,24 +143,18 @@ const itemRow = {
 }
 
 const itemName = {
-  color: '#333',
-  fontSize: '14px',
-  lineHeight: '24px',
+  ...text,
   margin: '0',
 }
 
 const itemQuantity = {
-  color: '#333',
-  fontSize: '14px',
-  lineHeight: '24px',
+  ...text,
   margin: '0',
   textAlign: 'center' as const,
 }
 
 const itemPrice = {
-  color: '#333',
-  fontSize: '14px',
-  lineHeight: '24px',
+  ...text,
   margin: '0',
   textAlign: 'right' as const,
 }
@@ -174,19 +166,16 @@ const totalRow = {
 }
 
 const totalLabel = {
-  color: '#333',
-  fontSize: '14px',
-  lineHeight: '24px',
+  ...text,
   margin: '0',
   fontWeight: 'bold',
 }
 
-const totalAmountStyle = {
-  color: '#333',
-  fontSize: '16px',
-  lineHeight: '24px',
+const totalAmount = {
+  ...text,
   margin: '0',
   textAlign: 'right' as const,
+  fontSize: '16px',
   fontWeight: 'bold',
 }
 

@@ -140,10 +140,9 @@ const statusSection = {
 }
 
 const statusText = {
-  color: '#2563eb',
+  ...text,
   fontSize: '16px',
-  lineHeight: '24px',
-  margin: '16px 0',
+  color: '#2563eb',
   marginBottom: '15px',
 }
 
