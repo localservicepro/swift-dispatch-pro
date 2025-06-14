@@ -242,7 +242,7 @@ export function PaymentManagement() {
         <div className="flex gap-3">
           <Button onClick={sendBatchInvoices} variant="outline" disabled={selectedPayments.length === 0 || selectedPayments.some(id => sendingInvoices.includes(id))} className="flex items-center gap-2">
             {selectedPayments.some(id => sendingInvoices.includes(id)) && <Loader2 className="w-4 h-4 animate-spin" />}
-            Send Batch Invoices ({selectedPayments.length})
+            Batch Invoice ({selectedPayments.length})
           </Button>
           <Button onClick={() => refetch()} className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800">
             Refresh Data
