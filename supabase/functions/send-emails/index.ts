@@ -33,7 +33,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log('Environment check:')
     console.log('- RESEND_API_KEY exists:', !!resendApiKey)
-    console.log('- RESEND_API_KEY starts with re_:', resendApiKey?.startsWith('re_') || false)
+    console.log('- RESEND_API_KEY format valid:', resendApiKey?.startsWith('re_') || false)
     console.log('- SUPABASE_URL exists:', !!supabaseUrl)
     console.log('- SUPABASE_SERVICE_ROLE_KEY exists:', !!supabaseServiceKey)
 
@@ -52,7 +52,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!resendApiKey.startsWith('re_')) {
-      console.error('❌ RESEND_API_KEY format invalid - should start with re_')
+      console.error('❌ RESEND_API_KEY format invalid')
       return new Response(
         JSON.stringify({ 
           error: 'Invalid RESEND_API_KEY format',
@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Initialize services
-    console.log('Initializing Resend...')
+    console.log('Initializing Resend with API key...')
     const resend = new Resend(resendApiKey)
     
     console.log('Initializing Supabase...')
@@ -77,7 +77,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { type, data }: EmailRequest = requestBody
 
     console.log('Email type:', type)
-    console.log('Data keys:', Object.keys(data || {}))
+    console.log('Email data:', JSON.stringify(data, null, 2))
 
     // Validate request
     if (!type || !data) {
@@ -97,6 +97,7 @@ const handler = async (req: Request): Promise<Response> => {
           throw new Error('Missing required fields: customerName, orderNumber, customerEmail')
         }
         
+        console.log('Rendering order confirmation email...')
         emailHtml = await renderAsync(
           React.createElement(OrderConfirmationEmail, {
             customerName: data.customerName,
@@ -118,6 +119,7 @@ const handler = async (req: Request): Promise<Response> => {
           throw new Error('Missing required fields: customerName, orderNumber, customerEmail, newStatus')
         }
         
+        console.log('Rendering delivery status update email...')
         emailHtml = await renderAsync(
           React.createElement(DeliveryStatusUpdateEmail, {
             customerName: data.customerName,
@@ -138,6 +140,7 @@ const handler = async (req: Request): Promise<Response> => {
           throw new Error('Missing required fields: customerName, orderNumber, invoiceNumber, customerEmail')
         }
         
+        console.log('Rendering invoice email...')
         emailHtml = await renderAsync(
           React.createElement(InvoiceEmail, {
             customerName: data.customerName,
@@ -160,77 +163,30 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error(`Unknown email type: ${type}`)
     }
     
-    console.log('✅ Email template rendered')
+    console.log('✅ Email template rendered successfully')
     console.log('Subject:', subject)
     console.log('To:', toEmail)
+    console.log('HTML length:', emailHtml.length)
 
     // Send email via Resend
     console.log('=== SENDING EMAIL VIA RESEND ===')
 
-    try {
-      const { data: emailResult, error } = await resend.emails.send({
-        from: 'Order Management <onboarding@resend.dev>',
-        to: [toEmail],
-        subject,
-        html: emailHtml,
-      })
+    const emailPayload = {
+      from: 'Order Management <onboarding@resend.dev>',
+      to: [toEmail],
+      subject,
+      html: emailHtml,
+    }
 
-      if (error) {
-        console.error('❌ Resend API error:', error)
-        
-        // Log failed email
-        await supabase
-          .from('email_logs')
-          .insert({
-            email_type: type,
-            recipient_email: toEmail,
-            subject,
-            status: 'failed',
-            error_message: `Resend API Error: ${error.message || JSON.stringify(error)}`,
-            sent_at: new Date().toISOString(),
-          })
+    console.log('Sending email with payload:', JSON.stringify({
+      ...emailPayload,
+      html: '[HTML content]' // Don't log full HTML for brevity
+    }))
 
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to send email via Resend',
-            details: error.message || 'Unknown Resend error',
-            resendError: error
-          }),
-          {
-            status: 500,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          }
-        )
-      }
+    const { data: emailResult, error: resendError } = await resend.emails.send(emailPayload)
 
-      console.log('✅ Email sent successfully!')
-      console.log('Email ID:', emailResult?.id)
-
-      // Log successful email
-      await supabase
-        .from('email_logs')
-        .insert({
-          email_type: type,
-          recipient_email: toEmail,
-          subject,
-          status: 'sent',
-          external_id: emailResult?.id,
-          sent_at: new Date().toISOString(),
-        })
-
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          emailId: emailResult?.id,
-          message: 'Email sent successfully'
-        }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        }
-      )
-    } catch (sendError: any) {
-      console.error('❌ Email sending failed:', sendError)
+    if (resendError) {
+      console.error('❌ Resend API error:', resendError)
       
       // Log failed email
       await supabase
@@ -240,16 +196,54 @@ const handler = async (req: Request): Promise<Response> => {
           recipient_email: toEmail,
           subject,
           status: 'failed',
-          error_message: `Send Error: ${sendError.message}`,
+          error_message: `Resend API Error: ${resendError.message || JSON.stringify(resendError)}`,
           sent_at: new Date().toISOString(),
         })
 
-      throw sendError
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to send email via Resend',
+          details: resendError.message || 'Unknown Resend error',
+          resendError: resendError
+        }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      )
     }
+
+    console.log('✅ Email sent successfully!')
+    console.log('Email ID:', emailResult?.id)
+
+    // Log successful email
+    await supabase
+      .from('email_logs')
+      .insert({
+        email_type: type,
+        recipient_email: toEmail,
+        subject,
+        status: 'sent',
+        external_id: emailResult?.id,
+        sent_at: new Date().toISOString(),
+      })
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        emailId: emailResult?.id,
+        message: 'Email sent successfully'
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      }
+    )
 
   } catch (error: any) {
     console.error('=== EMAIL FUNCTION ERROR ===')
-    console.error('Error:', error.message)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
     
     return new Response(
       JSON.stringify({ 
