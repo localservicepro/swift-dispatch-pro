@@ -8,6 +8,10 @@ import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import { AuthPage } from "@/components/auth/AuthPage";
 import Index from "./pages/Index";
 import DriverPortal from "./pages/DriverPortal";
+import CustomerPortal from "./pages/CustomerPortal";
+import Shop from "./pages/Shop";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +42,8 @@ function AuthenticatedApp() {
           element={
             profile?.role === 'driver' ? (
               <Navigate to="/driver" replace />
+            ) : profile?.role === 'customer' ? (
+              <Navigate to="/shop" replace />
             ) : (
               <Index />
             )
@@ -53,6 +59,28 @@ function AuthenticatedApp() {
             )
           } 
         />
+        <Route 
+          path="/customer/*" 
+          element={
+            profile?.role === 'customer' ? (
+              <CustomerPortal />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+        <Route 
+          path="/shop" 
+          element={
+            profile?.role === 'customer' ? (
+              <Shop />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-cancelled" element={<PaymentCancelled />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
