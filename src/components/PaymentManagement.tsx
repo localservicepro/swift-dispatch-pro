@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-
 interface PaymentOrder {
   id: string;
   order_number: string;
@@ -27,22 +25,28 @@ interface PaymentOrder {
   delivery_fee?: number;
   subtotal?: number;
 }
-
 export function PaymentManagement() {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [sendingInvoices, setSendingInvoices] = useState<string[]>([]);
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch real orders with customer data for payment management
-  const { data: payments = [], isLoading, error, refetch } = useQuery({
+  const {
+    data: payments = [],
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
     queryKey: ['payment-orders'],
     queryFn: async (): Promise<PaymentOrder[]> => {
       console.log('Fetching payment orders from database...');
-      
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
+      const {
+        data,
+        error
+      } = await supabase.from('orders').select(`
           id,
           order_number,
           customer_id,
@@ -57,27 +61,23 @@ export function PaymentManagement() {
           delivery_fee,
           subtotal,
           customers!orders_customer_id_fkey(email)
-        `)
-        .order('created_at', { ascending: false });
-
+        `).order('created_at', {
+        ascending: false
+      });
       if (error) {
         console.error('Error fetching payment orders:', error);
         throw error;
       }
-
       return data.map(order => ({
         ...order,
         customer_email: order.customers?.email || `${order.customer_name.toLowerCase().replace(' ', '.')}@example.com`,
         payment_status: order.payment_status || 'pending'
       }));
-    },
+    }
   });
-
   const sendInvoice = async (orderId: string) => {
     if (sendingInvoices.includes(orderId)) return;
-    
     setSendingInvoices(prev => [...prev, orderId]);
-    
     try {
       const order = payments.find(p => p.id === orderId);
       if (!order) throw new Error('Order not found');
@@ -105,8 +105,9 @@ export function PaymentManagement() {
           price: order.subtotal || order.total_amount - (order.delivery_fee || 0)
         }];
       }
-
-      const { error } = await supabase.functions.invoke('send-emails', {
+      const {
+        error
+      } = await supabase.functions.invoke('send-emails', {
         body: {
           type: 'invoice',
           data: {
@@ -119,48 +120,42 @@ export function PaymentManagement() {
             deliveryFee: order.delivery_fee || 0,
             totalAmount: order.total_amount,
             dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-            paymentStatus: order.payment_status,
+            paymentStatus: order.payment_status
           }
         }
       });
-
       if (error) throw error;
-
       toast({
         title: "Invoice Sent",
-        description: `Invoice for ${order.order_number} has been sent to ${order.customer_name}`,
+        description: `Invoice for ${order.order_number} has been sent to ${order.customer_name}`
       });
     } catch (error: any) {
       console.error('Error sending invoice:', error);
       toast({
         title: "Error",
         description: "Failed to send invoice. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setSendingInvoices(prev => prev.filter(id => id !== orderId));
     }
   };
-
   const sendBatchInvoices = async () => {
     if (selectedPayments.length === 0) {
       toast({
         title: "No Selection",
         description: "Please select orders to send batch invoices",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     setSendingInvoices(prev => [...prev, ...selectedPayments]);
-
     try {
       const promises = selectedPayments.map(orderId => sendInvoice(orderId));
       await Promise.all(promises);
-
       toast({
         title: "Batch Invoices Sent",
-        description: `${selectedPayments.length} invoices have been sent`,
+        description: `${selectedPayments.length} invoices have been sent`
       });
       setSelectedPayments([]);
     } catch (error: any) {
@@ -168,67 +163,59 @@ export function PaymentManagement() {
       toast({
         title: "Error",
         description: "Some invoices failed to send. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setSendingInvoices(prev => prev.filter(id => !selectedPayments.includes(id)));
     }
   };
-
   const updatePaymentStatus = async (orderId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          payment_status: newStatus,
-          payment_date: newStatus === 'paid' ? new Date().toISOString() : null
-        })
-        .eq('id', orderId);
-
+      const {
+        error
+      } = await supabase.from('orders').update({
+        payment_status: newStatus,
+        payment_date: newStatus === 'paid' ? new Date().toISOString() : null
+      }).eq('id', orderId);
       if (error) throw error;
-
       toast({
         title: "Payment Status Updated",
-        description: `Payment status changed to ${newStatus}`,
+        description: `Payment status changed to ${newStatus}`
       });
-      
       refetch();
     } catch (error: any) {
       console.error('Error updating payment status:', error);
       toast({
         title: "Error",
         description: "Failed to update payment status",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "paid": return "bg-green-100 text-green-800";
-      case "pending": return "bg-yellow-100 text-yellow-800";
-      case "overdue": return "bg-red-100 text-red-800";
-      case "cancelled": return "bg-gray-100 text-gray-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "paid":
+        return "bg-green-100 text-green-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "overdue":
+        return "bg-red-100 text-red-800";
+      case "cancelled":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
-
   const togglePaymentSelection = (paymentId: string) => {
-    setSelectedPayments(prev => 
-      prev.includes(paymentId) 
-        ? prev.filter(id => id !== paymentId)
-        : [...prev, paymentId]
-    );
+    setSelectedPayments(prev => prev.includes(paymentId) ? prev.filter(id => id !== paymentId) : [...prev, paymentId]);
   };
 
   // Calculate statistics from real data
   const totalReceived = payments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total_amount, 0);
   const pendingPayments = payments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total_amount, 0);
   const overduePayments = payments.filter(p => p.payment_status === 'overdue').reduce((sum, p) => sum + p.total_amount, 0);
-
   if (error) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold text-slate-800">Payment Management</h2>
@@ -244,40 +231,27 @@ export function PaymentManagement() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-slate-800">Payment Management</h2>
           <p className="text-slate-600 mt-1">Track payments and manage invoicing • Real-time order data</p>
         </div>
         <div className="flex gap-3">
-          <Button 
-            onClick={sendBatchInvoices}
-            variant="outline"
-            disabled={selectedPayments.length === 0 || selectedPayments.some(id => sendingInvoices.includes(id))}
-            className="flex items-center gap-2"
-          >
-            {selectedPayments.some(id => sendingInvoices.includes(id)) && (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            )}
+          <Button onClick={sendBatchInvoices} variant="outline" disabled={selectedPayments.length === 0 || selectedPayments.some(id => sendingInvoices.includes(id))} className="flex items-center gap-2">
+            {selectedPayments.some(id => sendingInvoices.includes(id)) && <Loader2 className="w-4 h-4 animate-spin" />}
             Send Batch Invoices ({selectedPayments.length})
           </Button>
-          <Button 
-            onClick={() => refetch()}
-            className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
-          >
+          <Button onClick={() => refetch()} className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800">
             Refresh Data
           </Button>
         </div>
       </div>
 
       {/* Payment Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-green-700">Total Received</CardTitle>
@@ -317,27 +291,16 @@ export function PaymentManagement() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">
+          {isLoading ? <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               <p className="mt-2 text-slate-600">Loading payment records...</p>
-            </div>
-          ) : payments.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
+            </div> : payments.length === 0 ? <div className="text-center py-8 text-slate-500">
               <p>No payment records found.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {payments.map((payment) => (
-                <div key={payment.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
+            </div> : <div className="space-y-4">
+              {payments.map(payment => <div key={payment.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedPayments.includes(payment.id)}
-                        onChange={() => togglePaymentSelection(payment.id)}
-                        className="w-4 h-4 text-blue-600 rounded"
-                      />
+                      <input type="checkbox" checked={selectedPayments.includes(payment.id)} onChange={() => togglePaymentSelection(payment.id)} className="w-4 h-4 text-blue-600 rounded" />
                       <h3 className="font-semibold text-slate-800">{payment.order_number}</h3>
                       <Badge className={getStatusColor(payment.payment_status)}>
                         {payment.payment_status}
@@ -350,9 +313,7 @@ export function PaymentManagement() {
                     <div>
                       <p className="text-slate-500">Customer</p>
                       <p className="font-medium">{payment.customer_name}</p>
-                      {payment.customer_phone && (
-                        <p className="text-xs text-slate-400">{payment.customer_phone}</p>
-                      )}
+                      {payment.customer_phone && <p className="text-xs text-slate-400">{payment.customer_phone}</p>}
                     </div>
                     <div>
                       <p className="text-slate-500">Email</p>
@@ -369,19 +330,11 @@ export function PaymentManagement() {
                   </div>
                   
                   <div className="flex gap-2 mt-4">
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => sendInvoice(payment.id)}
-                      disabled={sendingInvoices.includes(payment.id)}
-                      className="flex items-center gap-2"
-                    >
-                      {sendingInvoices.includes(payment.id) && (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      )}
+                    <Button size="sm" variant="outline" onClick={() => sendInvoice(payment.id)} disabled={sendingInvoices.includes(payment.id)} className="flex items-center gap-2">
+                      {sendingInvoices.includes(payment.id) && <Loader2 className="w-4 h-4 animate-spin" />}
                       {sendingInvoices.includes(payment.id) ? "Sending..." : "Send Invoice"}
                     </Button>
-                    <Select onValueChange={(value) => updatePaymentStatus(payment.id, value)}>
+                    <Select onValueChange={value => updatePaymentStatus(payment.id, value)}>
                       <SelectTrigger className="w-32">
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
@@ -393,12 +346,9 @@ export function PaymentManagement() {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                </div>)}
+            </div>}
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
