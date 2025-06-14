@@ -186,6 +186,9 @@ export function PaymentManagement() {
           variant: "destructive"
         });
       } else {
+        // Update payment status to "invoiced" when email is sent successfully
+        await updatePaymentStatus(orderId, 'invoiced');
+        
         toast({
           title: "Invoice Generated & Sent",
           description: `Invoice ${invoiceNumber} sent to ${order.customer_name} with payment link`
@@ -257,6 +260,10 @@ export function PaymentManagement() {
         }
       });
       if (error) throw error;
+      
+      // Update payment status to "invoiced" when simple invoice is sent successfully
+      await updatePaymentStatus(orderId, 'invoiced');
+      
       toast({
         title: "Invoice Sent",
         description: `Invoice for ${order.order_number} has been sent to ${order.customer_name}`
@@ -272,6 +279,7 @@ export function PaymentManagement() {
       setSendingInvoices(prev => prev.filter(id => id !== orderId));
     }
   };
+  
   const sendBatchInvoices = async () => {
     if (selectedPayments.length === 0) {
       toast({
@@ -301,6 +309,7 @@ export function PaymentManagement() {
       setSendingInvoices(prev => prev.filter(id => !selectedPayments.includes(id)));
     }
   };
+  
   const updatePaymentStatus = async (orderId: string, newStatus: string) => {
     try {
       const {
@@ -324,12 +333,15 @@ export function PaymentManagement() {
       });
     }
   };
+  
   const getStatusColor = (status: string) => {
     switch (status) {
       case "paid":
         return "bg-green-100 text-green-800";
       case "pending":
         return "bg-yellow-100 text-yellow-800";
+      case "invoiced":
+        return "bg-blue-100 text-blue-800";
       case "overdue":
         return "bg-red-100 text-red-800";
       case "cancelled":
@@ -338,14 +350,17 @@ export function PaymentManagement() {
         return "bg-gray-100 text-gray-800";
     }
   };
+  
   const togglePaymentSelection = (paymentId: string) => {
     setSelectedPayments(prev => prev.includes(paymentId) ? prev.filter(id => id !== paymentId) : [...prev, paymentId]);
   };
 
-  // Calculate statistics from real data
+  // Calculate statistics from real data including invoiced status
   const totalReceived = payments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total_amount, 0);
   const pendingPayments = payments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total_amount, 0);
+  const invoicedPayments = payments.filter(p => p.payment_status === 'invoiced').reduce((sum, p) => sum + p.total_amount, 0);
   const overduePayments = payments.filter(p => p.payment_status === 'overdue').reduce((sum, p) => sum + p.total_amount, 0);
+  
   if (error) {
     return <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -382,8 +397,8 @@ export function PaymentManagement() {
         </div>
       </div>
 
-      {/* Payment Statistics */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+      {/* Payment Statistics - Updated to include invoiced */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-green-700">Total Received</CardTitle>
@@ -394,13 +409,23 @@ export function PaymentManagement() {
           </CardContent>
         </Card>
 
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-blue-700">Invoiced</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-900">${invoicedPayments.toFixed(2)}</div>
+            <p className="text-xs text-blue-600 mt-1">Invoices sent</p>
+          </CardContent>
+        </Card>
+
         <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-yellow-700">Pending Payments</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-900">${pendingPayments.toFixed(2)}</div>
-            <p className="text-xs text-yellow-600 mt-1">Awaiting collection</p>
+            <p className="text-xs text-yellow-600 mt-1">Awaiting invoice</p>
           </CardContent>
         </Card>
 
@@ -497,6 +522,7 @@ export function PaymentManagement() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="invoiced">Invoiced</SelectItem>
                         <SelectItem value="paid">Paid</SelectItem>
                         <SelectItem value="overdue">Overdue</SelectItem>
                         <SelectItem value="cancelled">Cancelled</SelectItem>
