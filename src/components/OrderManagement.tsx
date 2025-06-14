@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { MultiStepOrderForm } from "./order/MultiStepOrderForm";
+import { OrderEditDialog } from "./order/OrderEditDialog";
 import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -28,6 +29,7 @@ interface Order {
 
 export function OrderManagement() {
   const [isCreating, setIsCreating] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -127,6 +129,16 @@ export function OrderManagement() {
     });
   };
 
+  const handleOrderUpdated = () => {
+    // Refresh orders list from database
+    refetch();
+    setEditingOrder(null);
+    toast({
+      title: "Success",
+      description: "Order updated successfully!",
+    });
+  };
+
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
       case "delivered": return "bg-green-100 text-green-800";
@@ -223,6 +235,14 @@ export function OrderManagement() {
         </div>
       )}
 
+      {editingOrder && (
+        <OrderEditDialog
+          order={editingOrder}
+          onOrderUpdated={handleOrderUpdated}
+          onClose={() => setEditingOrder(null)}
+        />
+      )}
+
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-slate-800">
@@ -282,8 +302,13 @@ export function OrderManagement() {
                   </div>
                   
                   <div className="flex gap-2 mt-4">
-                    <Button size="sm" variant="outline">Edit</Button>
-                    <Button size="sm" variant="outline">Track</Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setEditingOrder(order)}
+                    >
+                      Edit
+                    </Button>
                     <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
                       Cancel
                     </Button>
