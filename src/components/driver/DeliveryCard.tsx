@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { PhotoUpload } from "./PhotoUpload";
 import { Database } from "@/integrations/supabase/types";
+import { emailService } from "@/utils/emailService";
 import { 
   MapPin, 
   Phone, 
@@ -76,6 +77,15 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
 
     setUpdating(true);
     try {
+      // Get current order details for email notification
+      const { data: currentOrder } = await supabase
+        .from('orders')
+        .select('status')
+        .eq('id', order.id)
+        .single();
+
+      const oldStatus = currentOrder?.status;
+
       const { error } = await supabase.rpc('update_order_status', {
         order_id: order.id,
         new_status: newStatus

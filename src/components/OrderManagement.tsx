@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { OrderEditDialog } from "./order/OrderEditDialog";
 import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Filter, X } from "lucide-react";
+import { emailService } from "@/utils/emailService";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -117,7 +117,7 @@ export function OrderManagement() {
   // Check if any filters are active
   const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all";
 
-  // Set up real-time subscription for order updates
+  // Set up real-time subscription for order updates with email notifications
   useEffect(() => {
     console.log('Setting up real-time subscription for orders...');
     
@@ -130,13 +130,13 @@ export function OrderManagement() {
           schema: 'public',
           table: 'orders'
         },
-        (payload) => {
+        async (payload) => {
           console.log('Real-time order update received:', payload);
           
           // Invalidate and refetch orders when any change occurs
           queryClient.invalidateQueries({ queryKey: ['orders'] });
           
-          // Show toast notification for status updates
+          // Handle status updates with email notifications
           if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
             const oldStatus = payload.old.status;
             const newStatus = payload.new.status;
@@ -146,6 +146,30 @@ export function OrderManagement() {
                 title: "Order Status Updated",
                 description: `Order ${payload.new.order_number} changed from ${oldStatus} to ${newStatus}`,
               });
+
+              // Send email notification to customer
+              try {
+                // Get driver name if driver_id exists
+                let driverName;
+                if (payload.new.driver_id) {
+                  const { data: driver } = await supabase
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', payload.new.driver_id)
+                    .single();
+                  driverName = driver?.full_name;
+                }
+
+                await emailService.sendOrderStatusUpdate(
+                  payload.new.id,
+                  oldStatus,
+                  newStatus,
+                  driverName
+                );
+              } catch (error) {
+                console.error('Failed to send status update email:', error);
+                // Don't show error toast to admin as email is background process
+              }
             }
           }
           
@@ -213,6 +237,35 @@ export function OrderManagement() {
       return products.map(p => p.name || p).join(', ');
     }
     return 'Products listed';
+  };
+
+  // Quick status update function for admin
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Status Updated",
+        description: `Order ${currentOrder.order_number} status updated to ${newStatus.replace('_', ' ')}`,
+      });
+
+      // Refresh orders
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to update order status",
+        variant: "destructive",
+      });
+    }
   };
 
   if (error) {
@@ -416,6 +469,41 @@ export function OrderManagement() {
                     >
                       Edit
                     </Button>
+                    
+                    {/* Quick status update buttons for admin */}
+                    {order.status === 'preparing' && (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => updateOrderStatus(order.id, 'loading', order)}
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        Mark Loading
+                      </Button>
+                    )}
+                    
+                    {order.status === 'loading' && (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => updateOrderStatus(order.id, 'en_route', order)}
+                        className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                      >
+                        Mark En Route
+                      </Button>
+                    )}
+                    
+                    {order.status === 'en_route' && (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => updateOrderStatus(order.id, 'delivered', order)}
+                        className="text-green-600 border-green-200 hover:bg-green-50"
+                      >
+                        Mark Delivered
+                      </Button>
+                    )}
+                    
                     <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
                       Cancel
                     </Button>

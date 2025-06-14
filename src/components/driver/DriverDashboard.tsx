@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { DeliveryCard } from "./DeliveryCard";
 import { Truck, Package, Clock, CheckCircle, LogOut, User, Loader2 } from "lucide-react";
+import { emailService } from "@/utils/emailService";
 
 interface DriverDashboardProps {
   user: any;
@@ -35,11 +35,11 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
           table: 'orders',
           filter: `driver_id=eq.${user.id}`
         }, 
-        (payload) => {
+        async (payload) => {
           console.log('Real-time driver order update received:', payload);
           fetchOrders();
           
-          // Show toast notification for order assignments
+          // Show toast notification for order assignments and status changes
           if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
             const wasAssigned = !payload.old.driver_id && payload.new.driver_id === user.id;
             const statusChanged = payload.old.status !== payload.new.status;
@@ -54,6 +54,19 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
                 title: "Order Status Updated",
                 description: `Order ${payload.new.order_number} status changed to ${payload.new.status}`,
               });
+
+              // Send email notification to customer when driver updates status
+              try {
+                await emailService.sendOrderStatusUpdate(
+                  payload.new.id,
+                  payload.old.status,
+                  payload.new.status,
+                  profile?.full_name
+                );
+              } catch (error) {
+                console.error('Failed to send status update email:', error);
+                // Don't show error toast to driver as email is background process
+              }
             }
           }
         }
@@ -64,7 +77,7 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
       console.log('Cleaning up driver real-time subscription...');
       subscription.unsubscribe();
     };
-  }, [user.id, toast]);
+  }, [user.id, toast, profile?.full_name]);
 
   const fetchOrders = async () => {
     try {
