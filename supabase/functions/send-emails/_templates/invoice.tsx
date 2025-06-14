@@ -41,103 +41,98 @@ export const InvoiceEmail = ({
   dueDate,
   paymentStatus,
   paymentUrl,
-}: InvoiceEmailProps) => (
-  <Html>
-    <Head />
-    <Preview>Invoice {invoiceNumber} for order {orderNumber}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>Invoice</Heading>
-        <Text style={text}>Dear {customerName},</Text>
-        <Text style={text}>
-          Please find your invoice for order {orderNumber} below.
-        </Text>
-        
-        <Section style={invoiceHeader}>
-          <Row>
-            <Column>
-              <Text style={invoiceNumber}>Invoice #: <strong>{invoiceNumber}</strong></Text>
-              <Text style={text}>Order #: {orderNumber}</Text>
-            </Column>
-            <Column style={dueDateColumn}>
-              <Text style={text}>Due Date: <strong>{dueDate}</strong></Text>
-              <Text style={text}>Status: <strong style={getStatusColor(paymentStatus)}>{paymentStatus}</strong></Text>
-            </Column>
-          </Row>
-        </Section>
+}: InvoiceEmailProps) => {
+  // Calculate status color inline to avoid function call issues
+  const statusColor = paymentStatus === 'Paid' ? '#16a34a' : 
+                     paymentStatus === 'Pending' ? '#ea580c' : 
+                     paymentStatus === 'Overdue' ? '#dc2626' : '#333';
 
-        {paymentStatus === 'Pending' && paymentUrl && (
-          <Section style={paymentButtonSection}>
-            <Button href={paymentUrl} style={paymentButton}>
-              Pay Invoice Now - ${totalAmount.toFixed(2)}
-            </Button>
-            <Text style={paymentNote}>
-              Click the button above to securely pay your invoice using our payment system.
-            </Text>
-          </Section>
-        )}
-
-        <Section style={itemsSection}>
-          <Heading style={h2}>Order Items</Heading>
-          <Row style={headerRow}>
-            <Column style={itemHeaderName}>Item</Column>
-            <Column style={itemHeaderQuantity}>Qty</Column>
-            <Column style={itemHeaderPrice}>Price</Column>
-          </Row>
+  return (
+    <Html>
+      <Head />
+      <Preview>Invoice {invoiceNumber} for order {orderNumber}</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Heading style={h1}>Invoice</Heading>
+          <Text style={text}>Dear {customerName},</Text>
+          <Text style={text}>
+            Please find your invoice for order {orderNumber} below.
+          </Text>
           
-          {orderItems.map((item, index) => (
-            <Row key={index} style={itemRow}>
-              <Column style={itemName}>{item.name}</Column>
-              <Column style={itemQuantity}>{item.quantity}</Column>
-              <Column style={itemPrice}>${item.price.toFixed(2)}</Column>
+          <Section style={invoiceHeader}>
+            <Row>
+              <Column>
+                <Text style={invoiceNumber}>Invoice #: <strong>{invoiceNumber}</strong></Text>
+                <Text style={text}>Order #: {orderNumber}</Text>
+              </Column>
+              <Column style={dueDateColumn}>
+                <Text style={text}>Due Date: <strong>{dueDate}</strong></Text>
+                <Text style={text}>Status: <strong style={{ color: statusColor }}>{paymentStatus}</strong></Text>
+              </Column>
             </Row>
-          ))}
-          
-          <Row style={subtotalRow}>
-            <Column style={totalLabel}>Subtotal:</Column>
-            <Column style={totalAmount}>${subtotal.toFixed(2)}</Column>
-          </Row>
-          
-          <Row style={deliveryRow}>
-            <Column style={totalLabel}>Delivery Fee:</Column>
-            <Column style={totalAmount}>${deliveryFee.toFixed(2)}</Column>
-          </Row>
-          
-          <Row style={totalRow}>
-            <Column style={totalLabel}>Total Amount:</Column>
-            <Column style={totalAmount}><strong>${totalAmount.toFixed(2)}</strong></Column>
-          </Row>
-        </Section>
-
-        {paymentStatus === 'Pending' && (
-          <Section style={paymentSection}>
-            <Text style={text}>
-              <strong>Payment is due by {dueDate}.</strong> Please click the "Pay Invoice Now" button above to complete your payment securely.
-            </Text>
           </Section>
-        )}
 
-        <Text style={footer}>
-          Thank you for your business! If you have any questions about this invoice, please contact us.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+          {paymentStatus === 'Pending' && paymentUrl && (
+            <Section style={paymentButtonSection}>
+              <Button href={paymentUrl} style={paymentButton}>
+                Pay Invoice Now - ${totalAmount.toFixed(2)}
+              </Button>
+              <Text style={paymentNote}>
+                Click the button above to securely pay your invoice using our payment system.
+              </Text>
+            </Section>
+          )}
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'Paid':
-      return { color: '#16a34a' }
-    case 'Pending':
-      return { color: '#ea580c' }
-    case 'Overdue':
-      return { color: '#dc2626' }
-    default:
-      return { color: '#333' }
-  }
+          <Section style={itemsSection}>
+            <Heading style={h2}>Order Items</Heading>
+            <Row style={headerRow}>
+              <Column style={itemHeaderName}>Item</Column>
+              <Column style={itemHeaderQuantity}>Qty</Column>
+              <Column style={itemHeaderPrice}>Price</Column>
+            </Row>
+            
+            {orderItems.map((item, index) => (
+              <Row key={index} style={itemRow}>
+                <Column style={itemName}>{item.name}</Column>
+                <Column style={itemQuantity}>{item.quantity}</Column>
+                <Column style={itemPrice}>${item.price.toFixed(2)}</Column>
+              </Row>
+            ))}
+            
+            <Row style={subtotalRow}>
+              <Column style={totalLabel}>Subtotal:</Column>
+              <Column style={totalAmount}>${subtotal.toFixed(2)}</Column>
+            </Row>
+            
+            <Row style={deliveryRow}>
+              <Column style={totalLabel}>Delivery Fee:</Column>
+              <Column style={totalAmount}>${deliveryFee.toFixed(2)}</Column>
+            </Row>
+            
+            <Row style={totalRow}>
+              <Column style={totalLabel}>Total Amount:</Column>
+              <Column style={totalAmount}><strong>${totalAmount.toFixed(2)}</strong></Column>
+            </Row>
+          </Section>
+
+          {paymentStatus === 'Pending' && (
+            <Section style={paymentSection}>
+              <Text style={text}>
+                <strong>Payment is due by {dueDate}.</strong> Please click the "Pay Invoice Now" button above to complete your payment securely.
+              </Text>
+            </Section>
+          )}
+
+          <Text style={footer}>
+            Thank you for your business! If you have any questions about this invoice, please contact us.
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  )
 }
 
+// ... keep existing code (all style constants remain the same)
 const main = {
   backgroundColor: '#ffffff',
   fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',

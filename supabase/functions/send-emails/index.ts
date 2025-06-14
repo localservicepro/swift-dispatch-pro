@@ -67,67 +67,96 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const { type, data }: EmailRequest = await req.json()
-    console.log('Email type:', type, 'Data:', data)
+    console.log('Email type:', type, 'Data keys:', Object.keys(data))
 
     let emailHtml: string
     let subject: string
     let toEmail: string
 
-    switch (type) {
-      case 'order-confirmation':
-        emailHtml = await renderAsync(
-          React.createElement(OrderConfirmationEmail, {
-            customerName: data.customerName,
-            orderNumber: data.orderNumber,
-            orderItems: data.orderItems || [],
-            totalAmount: data.totalAmount,
-            deliveryAddress: data.deliveryAddress,
-            deliveryDate: data.deliveryDate,
-            deliveryTime: data.deliveryTime,
-            specialInstructions: data.specialInstructions,
-          })
-        )
-        subject = `Order Confirmation - ${data.orderNumber}`
-        toEmail = data.customerEmail
-        break
+    // Add more detailed error handling for template rendering
+    try {
+      switch (type) {
+        case 'order-confirmation':
+          console.log('Rendering order confirmation email...')
+          emailHtml = await renderAsync(
+            React.createElement(OrderConfirmationEmail, {
+              customerName: data.customerName,
+              orderNumber: data.orderNumber,
+              orderItems: data.orderItems || [],
+              totalAmount: data.totalAmount,
+              deliveryAddress: data.deliveryAddress,
+              deliveryDate: data.deliveryDate,
+              deliveryTime: data.deliveryTime,
+              specialInstructions: data.specialInstructions,
+            })
+          )
+          subject = `Order Confirmation - ${data.orderNumber}`
+          toEmail = data.customerEmail
+          break
 
-      case 'delivery-status-update':
-        emailHtml = await renderAsync(
-          React.createElement(DeliveryStatusUpdateEmail, {
-            customerName: data.customerName,
-            orderNumber: data.orderNumber,
-            oldStatus: data.oldStatus,
-            newStatus: data.newStatus,
-            driverName: data.driverName,
-            notes: data.notes,
-            estimatedDeliveryTime: data.estimatedDeliveryTime,
-          })
-        )
-        subject = `Delivery Update - ${data.orderNumber}`
-        toEmail = data.customerEmail
-        break
+        case 'delivery-status-update':
+          console.log('Rendering delivery status update email...')
+          emailHtml = await renderAsync(
+            React.createElement(DeliveryStatusUpdateEmail, {
+              customerName: data.customerName,
+              orderNumber: data.orderNumber,
+              oldStatus: data.oldStatus,
+              newStatus: data.newStatus,
+              driverName: data.driverName,
+              notes: data.notes,
+              estimatedDeliveryTime: data.estimatedDeliveryTime,
+            })
+          )
+          subject = `Delivery Update - ${data.orderNumber}`
+          toEmail = data.customerEmail
+          break
 
-      case 'invoice':
-        emailHtml = await renderAsync(
-          React.createElement(InvoiceEmail, {
+        case 'invoice':
+          console.log('Rendering invoice email with data:', {
             customerName: data.customerName,
             orderNumber: data.orderNumber,
             invoiceNumber: data.invoiceNumber,
-            orderItems: data.orderItems || [],
-            subtotal: data.subtotal,
-            deliveryFee: data.deliveryFee,
+            itemCount: data.orderItems?.length || 0,
             totalAmount: data.totalAmount,
-            dueDate: data.dueDate,
-            paymentStatus: data.paymentStatus,
-            paymentUrl: data.paymentUrl, // Include payment URL
+            hasPaymentUrl: !!data.paymentUrl
           })
-        )
-        subject = `Invoice ${data.invoiceNumber} - ${data.orderNumber}`
-        toEmail = data.customerEmail
-        break
+          
+          emailHtml = await renderAsync(
+            React.createElement(InvoiceEmail, {
+              customerName: data.customerName,
+              orderNumber: data.orderNumber,
+              invoiceNumber: data.invoiceNumber,
+              orderItems: data.orderItems || [],
+              subtotal: data.subtotal || 0,
+              deliveryFee: data.deliveryFee || 0,
+              totalAmount: data.totalAmount,
+              dueDate: data.dueDate,
+              paymentStatus: data.paymentStatus,
+              paymentUrl: data.paymentUrl,
+            })
+          )
+          subject = `Invoice ${data.invoiceNumber} - ${data.orderNumber}`
+          toEmail = data.customerEmail
+          break
 
-      default:
-        throw new Error(`Unknown email type: ${type}`)
+        default:
+          throw new Error(`Unknown email type: ${type}`)
+      }
+      console.log('Email template rendered successfully')
+    } catch (renderError: any) {
+      console.error('Template rendering error:', renderError)
+      console.error('Error stack:', renderError.stack)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to render email template',
+          details: renderError.message,
+          type: renderError.name
+        }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      )
     }
 
     console.log('Sending email to:', toEmail, 'Subject:', subject)
@@ -192,10 +221,12 @@ const handler = async (req: Request): Promise<Response> => {
     )
   } catch (error: any) {
     console.error('Error in send-emails function:', error)
+    console.error('Error stack:', error.stack)
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Unknown error occurred',
-        details: error.name || 'UnknownError'
+        details: error.name || 'UnknownError',
+        stack: error.stack || 'No stack trace available'
       }),
       {
         status: 500,
