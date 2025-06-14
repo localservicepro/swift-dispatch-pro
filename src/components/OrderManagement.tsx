@@ -1,13 +1,17 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { MultiStepOrderForm } from "./order/MultiStepOrderForm";
 import { OrderEditDialog } from "./order/OrderEditDialog";
 import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search, Filter, X } from "lucide-react";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -34,6 +38,8 @@ interface Order {
 export function OrderManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -79,6 +85,37 @@ export function OrderManagement() {
       }));
     },
   });
+
+  // Filter orders based on search query and status
+  const filteredOrders = useMemo(() => {
+    let filtered = orders;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(order => 
+        order.order_number.toLowerCase().includes(query) ||
+        order.customer_name.toLowerCase().includes(query) ||
+        (order.customer_phone && order.customer_phone.toLowerCase().includes(query))
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(order => order.status === statusFilter);
+    }
+
+    return filtered;
+  }, [orders, searchQuery, statusFilter]);
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all";
 
   // Set up real-time subscription for order updates
   useEffect(() => {
@@ -254,9 +291,57 @@ export function OrderManagement() {
 
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-slate-800">
-            Recent Orders {isLoading && <span className="text-sm font-normal text-slate-500">(Loading...)</span>}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-slate-800">
+              Recent Orders 
+              {isLoading && <span className="text-sm font-normal text-slate-500">(Loading...)</span>}
+              {!isLoading && (
+                <span className="text-sm font-normal text-slate-500">
+                  ({filteredOrders.length} of {orders.length} orders)
+                </span>
+              )}
+            </CardTitle>
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearFilters}
+                className="flex items-center gap-2"
+              >
+                <X className="h-4 w-4" />
+                Clear Filters
+              </Button>
+            )}
+          </div>
+          
+          {/* Search and Filter Controls */}
+          <div className="flex flex-col sm:flex-row gap-4 mt-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search by order number, customer name, or phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2 sm:w-48">
+              <Filter className="h-4 w-4 text-slate-400" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="preparing">Preparing</SelectItem>
+                  <SelectItem value="loading">Loading</SelectItem>
+                  <SelectItem value="en_route">En Route</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -264,13 +349,26 @@ export function OrderManagement() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               <p className="mt-2 text-slate-600">Loading orders...</p>
             </div>
-          ) : orders.length === 0 ? (
+          ) : filteredOrders.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
-              <p>No orders found. Create your first order to get started!</p>
+              {hasActiveFilters ? (
+                <div>
+                  <p>No orders match your current filters.</p>
+                  <Button
+                    variant="outline"
+                    onClick={clearFilters}
+                    className="mt-2"
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              ) : (
+                <p>No orders found. Create your first order to get started!</p>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
-              {orders.map((order) => (
+              {filteredOrders.map((order) => (
                 <div key={order.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
