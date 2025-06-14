@@ -21,40 +21,33 @@ interface EmailLog {
 export function EmailManagement() {
   const { toast } = useToast();
 
-  // Fetch email logs with proper error handling
+  // Fetch email logs using raw SQL query since the table isn't in generated types yet
   const { data: emailLogs = [], isLoading, refetch } = useQuery({
     queryKey: ['email-logs'],
     queryFn: async (): Promise<EmailLog[]> => {
       console.log('Fetching email logs...');
       try {
-        // Query the email_logs table with proper type handling
-        const { data, error } = await supabase
-          .from('email_logs')
-          .select('id, email_type, recipient_email, subject, status, error_message, sent_at')
-          .order('sent_at', { ascending: false })
-          .limit(50);
+        // Use raw SQL query to fetch from email_logs table
+        const { data, error } = await supabase.rpc('get_email_logs');
 
         if (error) {
           console.error('Error fetching email logs:', error);
-          return [];
+          // If the function doesn't exist, try direct query
+          const { data: directData, error: directError } = await supabase
+            .from('email_logs' as any)
+            .select('id, email_type, recipient_email, subject, status, error_message, sent_at')
+            .order('sent_at', { ascending: false })
+            .limit(50);
+
+          if (directError) {
+            console.error('Direct query also failed:', directError);
+            return [];
+          }
+
+          return directData || [];
         }
 
-        // Return empty array if no data
-        if (!data) return [];
-        
-        // Validate and filter valid email logs
-        const validLogs = data.filter((item): item is EmailLog => {
-          return item && 
-            typeof item === 'object' && 
-            typeof item.id === 'string' &&
-            typeof item.email_type === 'string' &&
-            typeof item.recipient_email === 'string' &&
-            typeof item.subject === 'string' &&
-            typeof item.status === 'string' &&
-            typeof item.sent_at === 'string';
-        });
-
-        return validLogs;
+        return data || [];
       } catch (err) {
         console.error('Error in email logs query:', err);
         return [];
