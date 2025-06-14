@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +21,8 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
   useEffect(() => {
     fetchOrders();
     
-    // Subscribe to real-time updates
+    // Subscribe to real-time updates for driver-specific orders
+    console.log('Setting up real-time subscription for driver orders...');
     const subscription = supabase
       .channel('driver-orders')
       .on('postgres_changes', 
@@ -32,16 +32,36 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
           table: 'orders',
           filter: `driver_id=eq.${user.id}`
         }, 
-        () => {
+        (payload) => {
+          console.log('Real-time driver order update received:', payload);
           fetchOrders();
+          
+          // Show toast notification for order assignments
+          if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
+            const wasAssigned = !payload.old.driver_id && payload.new.driver_id === user.id;
+            const statusChanged = payload.old.status !== payload.new.status;
+            
+            if (wasAssigned) {
+              toast({
+                title: "New Order Assigned",
+                description: `Order ${payload.new.order_number} has been assigned to you`,
+              });
+            } else if (statusChanged) {
+              toast({
+                title: "Order Status Updated",
+                description: `Order ${payload.new.order_number} status changed to ${payload.new.status}`,
+              });
+            }
+          }
         }
       )
       .subscribe();
 
     return () => {
+      console.log('Cleaning up driver real-time subscription...');
       subscription.unsubscribe();
     };
-  }, [user.id]);
+  }, [user.id, toast]);
 
   const fetchOrders = async () => {
     try {
@@ -99,7 +119,7 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
               <h1 className="font-semibold text-slate-800">
                 {profile.full_name || 'Driver'}
               </h1>
-              <p className="text-sm text-slate-600">Active Deliveries</p>
+              <p className="text-sm text-slate-600">Active Deliveries • Real-time</p>
             </div>
           </div>
           <Button

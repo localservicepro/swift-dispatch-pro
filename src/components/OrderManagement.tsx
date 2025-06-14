@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { MultiStepOrderForm } from "./order/MultiStepOrderForm";
 import { Database } from "@/integrations/supabase/types";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -30,6 +29,7 @@ interface Order {
 export function OrderManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch orders from database
   const { data: orders = [], isLoading, error, refetch } = useQuery({
@@ -68,6 +68,55 @@ export function OrderManagement() {
       }));
     },
   });
+
+  // Set up real-time subscription for order updates
+  useEffect(() => {
+    console.log('Setting up real-time subscription for orders...');
+    
+    const channel = supabase
+      .channel('orders-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders'
+        },
+        (payload) => {
+          console.log('Real-time order update received:', payload);
+          
+          // Invalidate and refetch orders when any change occurs
+          queryClient.invalidateQueries({ queryKey: ['orders'] });
+          
+          // Show toast notification for status updates
+          if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
+            const oldStatus = payload.old.status;
+            const newStatus = payload.new.status;
+            
+            if (oldStatus !== newStatus) {
+              toast({
+                title: "Order Status Updated",
+                description: `Order ${payload.new.order_number} changed from ${oldStatus} to ${newStatus}`,
+              });
+            }
+          }
+          
+          // Show toast for new orders
+          if (payload.eventType === 'INSERT' && payload.new) {
+            toast({
+              title: "New Order Created",
+              description: `Order ${payload.new.order_number} has been created`,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up real-time subscription...');
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, toast]);
 
   const handleOrderCreated = () => {
     // Refresh orders list from database
@@ -142,7 +191,7 @@ export function OrderManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-slate-800">Order Management</h2>
-          <p className="text-slate-600 mt-1">Create and manage customer orders</p>
+          <p className="text-slate-600 mt-1">Create and manage customer orders • Real-time updates enabled</p>
         </div>
         <Button 
           onClick={() => setIsCreating(true)} 
