@@ -218,7 +218,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email using Resend
     const { data: emailResult, error } = await resend.emails.send({
-      from: 'Order Management <onboarding@resend.dev>',
+      from: 'SwiftDispatch Pro <updates@leadtocrm.com>', // UPDATED SENDER ADDRESS
       to: [toEmail],
       subject,
       html: emailHtml,
