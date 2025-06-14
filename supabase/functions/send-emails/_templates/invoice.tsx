@@ -1,3 +1,4 @@
+
 import {
   Body,
   Container,
@@ -42,7 +43,6 @@ export const InvoiceEmail = ({
   paymentStatus,
   paymentUrl,
 }: InvoiceEmailProps) => {
-  // Calculate status color inline to avoid function call issues
   const statusColor = paymentStatus === 'Paid' ? '#16a34a' : 
                      paymentStatus === 'Pending' ? '#ea580c' : 
                      paymentStatus === 'Overdue' ? '#dc2626' : '#333';
@@ -65,9 +65,9 @@ export const InvoiceEmail = ({
                 <Text style={invoiceNumber}>Invoice #: <strong>{invoiceNumber}</strong></Text>
                 <Text style={text}>Order #: {orderNumber}</Text>
               </Column>
-              <Column style={dueDateColumn}>
+              <Column>
                 <Text style={text}>Due Date: <strong>{dueDate}</strong></Text>
-                <Text style={text}>Status: <strong style={{ color: statusColor }}>{paymentStatus}</strong></Text>
+                <Text style={text}>Status: <span style={{color: statusColor}}><strong>{paymentStatus}</strong></span></Text>
               </Column>
             </Row>
           </Section>
@@ -132,7 +132,6 @@ export const InvoiceEmail = ({
   )
 }
 
-// ... keep existing code (all style constants remain the same)
 const main = {
   backgroundColor: '#ffffff',
   fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
@@ -174,13 +173,11 @@ const invoiceHeader = {
 }
 
 const invoiceNumber = {
-  ...text,
+  color: '#333',
   fontSize: '16px',
+  lineHeight: '24px',
+  margin: '16px 0',
   marginBottom: '10px',
-}
-
-const dueDateColumn = {
-  textAlign: 'right' as const,
 }
 
 const itemsSection = {
@@ -197,20 +194,26 @@ const headerRow = {
 }
 
 const itemHeaderName = {
-  ...text,
+  color: '#333',
+  fontSize: '14px',
+  lineHeight: '24px',
   margin: '0',
   fontWeight: 'bold',
 }
 
 const itemHeaderQuantity = {
-  ...text,
+  color: '#333',
+  fontSize: '14px',
+  lineHeight: '24px',
   margin: '0',
   textAlign: 'center' as const,
   fontWeight: 'bold',
 }
 
 const itemHeaderPrice = {
-  ...text,
+  color: '#333',
+  fontSize: '14px',
+  lineHeight: '24px',
   margin: '0',
   textAlign: 'right' as const,
   fontWeight: 'bold',
@@ -222,18 +225,24 @@ const itemRow = {
 }
 
 const itemName = {
-  ...text,
+  color: '#333',
+  fontSize: '14px',
+  lineHeight: '24px',
   margin: '0',
 }
 
 const itemQuantity = {
-  ...text,
+  color: '#333',
+  fontSize: '14px',
+  lineHeight: '24px',
   margin: '0',
   textAlign: 'center' as const,
 }
 
 const itemPrice = {
-  ...text,
+  color: '#333',
+  fontSize: '14px',
+  lineHeight: '24px',
   margin: '0',
   textAlign: 'right' as const,
 }
@@ -254,16 +263,19 @@ const totalRow = {
 }
 
 const totalLabel = {
-  ...text,
+  color: '#333',
+  fontSize: '14px',
+  lineHeight: '24px',
   margin: '0',
   fontWeight: 'bold',
 }
 
 const totalAmount = {
-  ...text,
+  color: '#333',
+  fontSize: '16px',
+  lineHeight: '24px',
   margin: '0',
   textAlign: 'right' as const,
-  fontSize: '16px',
 }
 
 const paymentSection = {
