@@ -21,35 +21,25 @@ interface EmailLog {
 export function EmailManagement() {
   const { toast } = useToast();
 
-  // Fetch email logs with proper error handling for missing table
+  // Fetch email logs with simplified approach
   const { data: emailLogs = [], isLoading, refetch } = useQuery({
     queryKey: ['email-logs'],
-    queryFn: async () => {
+    queryFn: async (): Promise<EmailLog[]> => {
       console.log('Fetching email logs...');
       try {
-        // Use raw SQL query since the table might not be in types yet
+        // Try to fetch from email_logs table directly
         const { data, error } = await supabase
-          .rpc('get_email_logs')
+          .from('email_logs' as any)
+          .select('id, email_type, recipient_email, subject, status, error_message, sent_at')
+          .order('sent_at', { ascending: false })
           .limit(50);
 
         if (error) {
-          // If the function doesn't exist, try direct table access
-          const { data: directData, error: directError } = await supabase
-            .from('email_logs' as any)
-            .select('*')
-            .order('sent_at', { ascending: false })
-            .limit(50);
-
-          if (directError) {
-            console.error('Error fetching email logs:', directError);
-            // Return empty array instead of throwing to prevent app crash
-            return [];
-          }
-
-          return directData as EmailLog[];
+          console.error('Error fetching email logs:', error);
+          return [];
         }
 
-        return data as EmailLog[];
+        return (data || []) as EmailLog[];
       } catch (err) {
         console.error('Error in email logs query:', err);
         return [];
