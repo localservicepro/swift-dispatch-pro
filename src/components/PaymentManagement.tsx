@@ -120,7 +120,6 @@ export function PaymentManagement() {
             totalAmount: order.total_amount,
             dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
             paymentStatus: order.payment_status,
-            orderId: order.id, // Add orderId for payment link
           }
         }
       });

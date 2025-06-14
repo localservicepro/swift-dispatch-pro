@@ -10,7 +10,6 @@ import {
   Text,
   Row,
   Column,
-  Button,
 } from 'npm:@react-email/components@0.0.22'
 import * as React from 'npm:react@18.3.1'
 
@@ -28,7 +27,6 @@ interface InvoiceEmailProps {
   totalAmount: number
   dueDate: string
   paymentStatus: string
-  orderId?: string
 }
 
 export const InvoiceEmail = ({
@@ -41,7 +39,6 @@ export const InvoiceEmail = ({
   totalAmount,
   dueDate,
   paymentStatus,
-  orderId,
 }: InvoiceEmailProps) => (
   <Html>
     <Head />
@@ -66,20 +63,6 @@ export const InvoiceEmail = ({
             </Column>
           </Row>
         </Section>
-
-        {paymentStatus === 'pending' && orderId && (
-          <Section style={paymentButtonSection}>
-            <Button
-              href={`https://wntcxbxitsanbyrtfhwv.supabase.co/functions/v1/create-invoice-payment?order_id=${orderId}`}
-              style={paymentButton}
-            >
-              Pay Invoice Now - ${totalAmount.toFixed(2)}
-            </Button>
-            <Text style={paymentText}>
-              Click the button above to pay your invoice securely with Stripe
-            </Text>
-          </Section>
-        )}
 
         <Section style={itemsSection}>
           <Heading style={h2}>Order Items</Heading>
@@ -113,10 +96,10 @@ export const InvoiceEmail = ({
           </Row>
         </Section>
 
-        {paymentStatus === 'pending' && (
+        {paymentStatus === 'Pending' && (
           <Section style={paymentSection}>
             <Text style={text}>
-              <strong>Payment is due by {dueDate}.</strong> Please click the "Pay Invoice Now" button above to pay securely online, or ensure payment is made to avoid any delays in future orders.
+              <strong>Payment is due by {dueDate}.</strong> Please ensure payment is made to avoid any delays in future orders.
             </Text>
           </Section>
         )}
@@ -131,11 +114,11 @@ export const InvoiceEmail = ({
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'paid':
+    case 'Paid':
       return { color: '#16a34a' }
-    case 'pending':
+    case 'Pending':
       return { color: '#ea580c' }
-    case 'overdue':
+    case 'Overdue':
       return { color: '#dc2626' }
     default:
       return { color: '#333' }
@@ -190,37 +173,6 @@ const invoiceNumber = {
 
 const dueDateColumn = {
   textAlign: 'right' as const,
-}
-
-const paymentButtonSection = {
-  textAlign: 'center' as const,
-  margin: '30px 0',
-  padding: '20px',
-  backgroundColor: '#f8f9ff',
-  border: '1px solid #e0e7ff',
-  borderRadius: '8px',
-}
-
-const paymentButton = {
-  backgroundColor: '#4f46e5',
-  borderRadius: '6px',
-  color: '#ffffff',
-  fontSize: '16px',
-  fontWeight: 'bold',
-  textDecoration: 'none',
-  textAlign: 'center' as const,
-  display: 'inline-block',
-  padding: '14px 28px',
-  margin: '10px 0',
-  cursor: 'pointer',
-}
-
-const paymentText = {
-  ...text,
-  fontSize: '12px',
-  color: '#6b7280',
-  textAlign: 'center' as const,
-  margin: '10px 0 0 0',
 }
 
 const itemsSection = {
