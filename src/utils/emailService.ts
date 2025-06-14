@@ -49,51 +49,53 @@ interface InvoiceData {
 export const emailService = {
   async sendOrderConfirmation(data: OrderConfirmationData) {
     console.log('=== EMAIL SERVICE: Order Confirmation ===');
-    console.log('Sending data:', data);
+    console.log('Input data:', JSON.stringify(data, null, 2));
     
-    // Validate required fields
-    if (!data.customerName?.trim()) {
-      throw new Error('Customer name is required');
+    // Enhanced validation with detailed logging
+    const validationErrors: string[] = [];
+    
+    if (!data.customerName || data.customerName.trim() === '') {
+      validationErrors.push('customerName is required and cannot be empty');
     }
-    if (!data.customerEmail?.trim()) {
-      throw new Error('Customer email is required');
+    
+    if (!data.customerEmail || data.customerEmail.trim() === '') {
+      validationErrors.push('customerEmail is required and cannot be empty');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.customerEmail)) {
+      validationErrors.push('customerEmail must be a valid email address');
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.customerEmail)) {
-      throw new Error('Valid customer email is required');
+    
+    if (!data.orderNumber || data.orderNumber.trim() === '') {
+      validationErrors.push('orderNumber is required and cannot be empty');
     }
-    if (!data.orderNumber?.trim()) {
-      throw new Error('Order number is required');
+    
+    if (validationErrors.length > 0) {
+      console.error('❌ Validation failed:', validationErrors);
+      throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
     }
+    
+    console.log('✅ Client-side validation passed');
     
     try {
+      console.log('Calling send-emails function...');
       const { data: result, error } = await supabase.functions.invoke('send-emails', {
         body: {
           type: 'order-confirmation',
           data: {
-            customerName: data.customerName.trim(),
-            customerEmail: data.customerEmail.trim(),
-            orderNumber: data.orderNumber.trim(),
+            ...data,
+            // Ensure all required fields are present with defaults
             orderItems: data.orderItems || [],
             totalAmount: data.totalAmount || 0,
-            deliveryAddress: data.deliveryAddress || '',
-            deliveryDate: data.deliveryDate,
-            deliveryTime: data.deliveryTime,
-            specialInstructions: data.specialInstructions,
+            deliveryAddress: data.deliveryAddress || 'No address provided'
           }
         }
       });
       
       if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error(`Email service error: ${error.message}`);
+        console.error('❌ Supabase function error:', error);
+        throw error;
       }
       
-      if (!result?.success) {
-        console.error('Email function returned error:', result);
-        throw new Error(result?.error || 'Failed to send email');
-      }
-      
-      console.log('✅ Order confirmation email sent successfully:', result);
+      console.log('✅ Email function returned:', result);
       return result;
     } catch (error: any) {
       console.error('❌ Email service error:', error);
@@ -103,53 +105,53 @@ export const emailService = {
 
   async sendDeliveryStatusUpdate(data: DeliveryStatusUpdateData) {
     console.log('=== EMAIL SERVICE: Delivery Status Update ===');
-    console.log('Sending data:', data);
+    console.log('Input data:', JSON.stringify(data, null, 2));
     
-    // Validate required fields
+    // Enhanced validation
+    const validationErrors: string[] = [];
+    
     if (!data.customerName?.trim()) {
-      throw new Error('Customer name is required');
+      validationErrors.push('customerName is required');
     }
+    
     if (!data.customerEmail?.trim()) {
-      throw new Error('Customer email is required');
+      validationErrors.push('customerEmail is required');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.customerEmail)) {
+      validationErrors.push('customerEmail must be valid');
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.customerEmail)) {
-      throw new Error('Valid customer email is required');
-    }
+    
     if (!data.orderNumber?.trim()) {
-      throw new Error('Order number is required');
+      validationErrors.push('orderNumber is required');
     }
+    
     if (!data.newStatus?.trim()) {
-      throw new Error('New status is required');
+      validationErrors.push('newStatus is required');
     }
+    
+    if (validationErrors.length > 0) {
+      console.error('❌ Validation failed:', validationErrors);
+      throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
+    }
+    
+    console.log('✅ Client-side validation passed');
     
     try {
       const { data: result, error } = await supabase.functions.invoke('send-emails', {
         body: {
           type: 'delivery-status-update',
           data: {
-            customerName: data.customerName.trim(),
-            customerEmail: data.customerEmail.trim(),
-            orderNumber: data.orderNumber.trim(),
-            oldStatus: data.oldStatus || '',
-            newStatus: data.newStatus.trim(),
-            driverName: data.driverName,
-            notes: data.notes,
-            estimatedDeliveryTime: data.estimatedDeliveryTime,
+            ...data,
+            oldStatus: data.oldStatus || 'Unknown'
           }
         }
       });
       
       if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error(`Email service error: ${error.message}`);
+        console.error('❌ Supabase function error:', error);
+        throw error;
       }
       
-      if (!result?.success) {
-        console.error('Email function returned error:', result);
-        throw new Error(result?.error || 'Failed to send email');
-      }
-      
-      console.log('✅ Delivery status update email sent successfully:', result);
+      console.log('✅ Email function returned:', result);
       return result;
     } catch (error: any) {
       console.error('❌ Email service error:', error);
@@ -159,56 +161,59 @@ export const emailService = {
 
   async sendInvoice(data: InvoiceData) {
     console.log('=== EMAIL SERVICE: Invoice ===');
-    console.log('Sending data:', data);
+    console.log('Input data:', JSON.stringify(data, null, 2));
     
-    // Validate required fields
+    // Enhanced validation
+    const validationErrors: string[] = [];
+    
     if (!data.customerName?.trim()) {
-      throw new Error('Customer name is required');
+      validationErrors.push('customerName is required');
     }
+    
     if (!data.customerEmail?.trim()) {
-      throw new Error('Customer email is required');
+      validationErrors.push('customerEmail is required');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.customerEmail)) {
+      validationErrors.push('customerEmail must be valid');
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.customerEmail)) {
-      throw new Error('Valid customer email is required');
-    }
+    
     if (!data.orderNumber?.trim()) {
-      throw new Error('Order number is required');
+      validationErrors.push('orderNumber is required');
     }
+    
     if (!data.invoiceNumber?.trim()) {
-      throw new Error('Invoice number is required');
+      validationErrors.push('invoiceNumber is required');
     }
+    
+    if (validationErrors.length > 0) {
+      console.error('❌ Validation failed:', validationErrors);
+      throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
+    }
+    
+    console.log('✅ Client-side validation passed');
     
     try {
       const { data: result, error } = await supabase.functions.invoke('send-emails', {
         body: {
           type: 'invoice',
           data: {
-            customerName: data.customerName.trim(),
-            customerEmail: data.customerEmail.trim(),
-            orderNumber: data.orderNumber.trim(),
-            invoiceNumber: data.invoiceNumber.trim(),
+            ...data,
+            // Ensure required numeric fields have defaults
             orderItems: data.orderItems || [],
             subtotal: data.subtotal || 0,
             deliveryFee: data.deliveryFee || 0,
             totalAmount: data.totalAmount || 0,
             dueDate: data.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            paymentStatus: data.paymentStatus || 'Pending',
-            paymentUrl: data.paymentUrl,
+            paymentStatus: data.paymentStatus || 'Pending'
           }
         }
       });
       
       if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error(`Email service error: ${error.message}`);
+        console.error('❌ Supabase function error:', error);
+        throw error;
       }
       
-      if (!result?.success) {
-        console.error('Email function returned error:', result);
-        throw new Error(result?.error || 'Failed to send email');
-      }
-      
-      console.log('✅ Invoice email sent successfully:', result);
+      console.log('✅ Email function returned:', result);
       return result;
     } catch (error: any) {
       console.error('❌ Email service error:', error);
