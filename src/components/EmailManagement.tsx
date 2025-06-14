@@ -21,13 +21,13 @@ interface EmailLog {
 export function EmailManagement() {
   const { toast } = useToast();
 
-  // Fetch email logs with simplified approach
+  // Fetch email logs with proper type handling
   const { data: emailLogs = [], isLoading, refetch } = useQuery({
     queryKey: ['email-logs'],
     queryFn: async (): Promise<EmailLog[]> => {
       console.log('Fetching email logs...');
       try {
-        // Try to fetch from email_logs table directly
+        // Use raw query to bypass type checking issues
         const { data, error } = await supabase
           .from('email_logs' as any)
           .select('id, email_type, recipient_email, subject, status, error_message, sent_at')
@@ -39,7 +39,22 @@ export function EmailManagement() {
           return [];
         }
 
-        return (data || []) as EmailLog[];
+        // Safely validate and return data
+        if (!data) return [];
+        
+        // Type guard to ensure data structure is correct
+        const validLogs = data.filter((item: any) => 
+          item && 
+          typeof item === 'object' && 
+          'id' in item && 
+          'email_type' in item &&
+          'recipient_email' in item &&
+          'subject' in item &&
+          'status' in item &&
+          'sent_at' in item
+        );
+
+        return validLogs as EmailLog[];
       } catch (err) {
         console.error('Error in email logs query:', err);
         return [];
