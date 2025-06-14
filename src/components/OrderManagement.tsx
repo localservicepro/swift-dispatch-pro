@@ -25,6 +25,10 @@ interface Order {
   delivery_date?: string;
   delivery_time?: string;
   special_instructions?: string;
+  customer_id?: string;
+  suburb_id?: string;
+  delivery_fee?: number;
+  subtotal?: number;
 }
 
 export function OrderManagement() {
@@ -54,6 +58,10 @@ export function OrderManagement() {
           delivery_date,
           delivery_time,
           special_instructions,
+          customer_id,
+          delivery_fee,
+          subtotal,
+          customers!orders_customer_id_fkey(suburb_id),
           profiles!orders_driver_id_fkey(full_name)
         `)
         .order('created_at', { ascending: false });
@@ -66,6 +74,7 @@ export function OrderManagement() {
       console.log('Fetched orders:', data);
       return data.map(order => ({
         ...order,
+        suburb_id: order.customers?.suburb_id || null,
         driver_name: order.profiles?.full_name || 'Not Assigned'
       }));
     },

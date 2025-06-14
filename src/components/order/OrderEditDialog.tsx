@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { DriverSelector } from "./DriverSelector";
+import { SuburbSelector } from "./SuburbSelector";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -27,6 +28,10 @@ interface Order {
   delivery_date?: string;
   delivery_time?: string;
   special_instructions?: string;
+  customer_id?: string;
+  suburb_id?: string;
+  delivery_fee?: number;
+  subtotal?: number;
 }
 
 interface OrderEditDialogProps {
@@ -47,6 +52,9 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     delivery_time: order.delivery_time || '',
     special_instructions: order.special_instructions || '',
     driver_id: order.driver_id || 'unassigned',
+    suburb_id: order.suburb_id || '',
+    delivery_fee: order.delivery_fee || 0,
+    subtotal: order.subtotal || (order.total_amount - (order.delivery_fee || 0)),
   });
   const { toast } = useToast();
 
@@ -55,7 +63,8 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     setIsUpdating(true);
 
     try {
-      const { error } = await supabase
+      // Update the order
+      const { error: orderError } = await supabase
         .from('orders')
         .update({
           customer_name: formData.customer_name,
@@ -67,11 +76,29 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
           delivery_time: formData.delivery_time || null,
           special_instructions: formData.special_instructions || null,
           driver_id: formData.driver_id === 'unassigned' ? null : formData.driver_id,
+          delivery_fee: formData.delivery_fee,
+          subtotal: formData.subtotal,
           updated_at: new Date().toISOString(),
         })
         .eq('id', order.id);
 
-      if (error) throw error;
+      if (orderError) throw orderError;
+
+      // Update the customer's suburb if customer_id exists and suburb changed
+      if (order.customer_id && formData.suburb_id && formData.suburb_id !== order.suburb_id) {
+        const { error: customerError } = await supabase
+          .from('customers')
+          .update({
+            suburb_id: formData.suburb_id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', order.customer_id);
+
+        if (customerError) {
+          console.error('Error updating customer suburb:', customerError);
+          // Don't throw here as the order update was successful
+        }
+      }
 
       onOrderUpdated();
     } catch (error: any) {
@@ -97,6 +124,19 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     setFormData(prev => ({
       ...prev,
       driver_id: driverId
+    }));
+  };
+
+  const handleSuburbChange = (suburbId: string, deliveryRate: number) => {
+    const newSubtotal = parseFloat(formData.total_amount) - formData.delivery_fee;
+    const newTotalAmount = newSubtotal + deliveryRate;
+    
+    setFormData(prev => ({
+      ...prev,
+      suburb_id: suburbId,
+      delivery_fee: deliveryRate,
+      total_amount: newTotalAmount.toString(),
+      subtotal: newSubtotal,
     }));
   };
 
@@ -138,7 +178,36 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div>
+            <SuburbSelector
+              selectedSuburbId={formData.suburb_id}
+              onSuburbChange={handleSuburbChange}
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="subtotal">Subtotal</Label>
+              <Input
+                id="subtotal"
+                type="number"
+                step="0.01"
+                value={formData.subtotal.toString()}
+                onChange={(e) => handleInputChange('subtotal', e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="delivery_fee">Delivery Fee</Label>
+              <Input
+                id="delivery_fee"
+                type="number"
+                step="0.01"
+                value={formData.delivery_fee.toString()}
+                readOnly
+                className="bg-gray-100"
+              />
+            </div>
             <div>
               <Label htmlFor="total_amount">Total Amount</Label>
               <Input
@@ -146,25 +215,26 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
                 type="number"
                 step="0.01"
                 value={formData.total_amount}
-                onChange={(e) => handleInputChange('total_amount', e.target.value)}
-                required
+                readOnly
+                className="bg-gray-100"
               />
             </div>
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="preparing">Preparing</SelectItem>
-                  <SelectItem value="loading">Loading</SelectItem>
-                  <SelectItem value="en_route">En Route</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="status">Status</Label>
+            <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="preparing">Preparing</SelectItem>
+                <SelectItem value="loading">Loading</SelectItem>
+                <SelectItem value="en_route">En Route</SelectItem>
+                <SelectItem value="delivered">Delivered</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
