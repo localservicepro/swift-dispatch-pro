@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { DriverSelector } from "./DriverSelector";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -45,6 +46,7 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     delivery_date: order.delivery_date || '',
     delivery_time: order.delivery_time || '',
     special_instructions: order.special_instructions || '',
+    driver_id: order.driver_id || 'unassigned',
   });
   const { toast } = useToast();
 
@@ -64,6 +66,7 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
           delivery_date: formData.delivery_date || null,
           delivery_time: formData.delivery_time || null,
           special_instructions: formData.special_instructions || null,
+          driver_id: formData.driver_id === 'unassigned' ? null : formData.driver_id,
           updated_at: new Date().toISOString(),
         })
         .eq('id', order.id);
@@ -87,6 +90,13 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleDriverChange = (driverId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      driver_id: driverId
     }));
   };
 
@@ -155,6 +165,13 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div>
+            <DriverSelector
+              selectedDriverId={formData.driver_id}
+              onDriverChange={handleDriverChange}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
