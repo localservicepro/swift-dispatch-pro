@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
 import { Resend } from 'npm:resend@4.0.0'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
@@ -119,6 +118,7 @@ const handler = async (req: Request): Promise<Response> => {
             totalAmount: data.totalAmount,
             dueDate: data.dueDate,
             paymentStatus: data.paymentStatus,
+            orderId: data.orderId,
           })
         )
         subject = `Invoice ${data.invoiceNumber} - ${data.orderNumber}`

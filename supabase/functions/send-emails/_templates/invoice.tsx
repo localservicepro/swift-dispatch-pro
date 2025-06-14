@@ -1,4 +1,3 @@
-
 import {
   Body,
   Container,
@@ -42,92 +41,96 @@ export const InvoiceEmail = ({
   dueDate,
   paymentStatus,
   orderId,
-}: InvoiceEmailProps) => (
-  <Html>
-    <Head />
-    <Preview>Invoice {invoiceNumber} for order {orderNumber}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>Invoice</Heading>
-        <Text style={text}>Dear {customerName},</Text>
-        <Text style={text}>
-          Please find your invoice for order {orderNumber} below.
-        </Text>
-        
-        <Section style={invoiceHeader}>
-          <Row>
-            <Column>
-              <Text style={invoiceNumber}>Invoice #: <strong>{invoiceNumber}</strong></Text>
-              <Text style={text}>Order #: {orderNumber}</Text>
-            </Column>
-            <Column style={dueDateColumn}>
-              <Text style={text}>Due Date: <strong>{dueDate}</strong></Text>
-              <Text style={text}>Status: <strong style={getStatusColor(paymentStatus)}>{paymentStatus}</strong></Text>
-            </Column>
-          </Row>
-        </Section>
-
-        {paymentStatus === 'pending' && orderId && (
-          <Section style={paymentButtonSection}>
-            <Button
-              href={`https://wntcxbxitsanbyrtfhwv.supabase.co/functions/v1/create-invoice-payment?order_id=${orderId}`}
-              style={paymentButton}
-            >
-              Pay Invoice Now - ${totalAmount.toFixed(2)}
-            </Button>
-            <Text style={paymentText}>
-              Click the button above to pay your invoice securely with Stripe
-            </Text>
-          </Section>
-        )}
-
-        <Section style={itemsSection}>
-          <Heading style={h2}>Order Items</Heading>
-          <Row style={headerRow}>
-            <Column style={itemHeaderName}>Item</Column>
-            <Column style={itemHeaderQuantity}>Qty</Column>
-            <Column style={itemHeaderPrice}>Price</Column>
-          </Row>
+}: InvoiceEmailProps) => {
+  const statusColor = getStatusColor(paymentStatus);
+  
+  return (
+    <Html>
+      <Head />
+      <Preview>Invoice {invoiceNumber} for order {orderNumber}</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Heading style={h1}>Invoice</Heading>
+          <Text style={text}>Dear {customerName},</Text>
+          <Text style={text}>
+            Please find your invoice for order {orderNumber} below.
+          </Text>
           
-          {orderItems.map((item, index) => (
-            <Row key={index} style={itemRow}>
-              <Column style={itemName}>{item.name}</Column>
-              <Column style={itemQuantity}>{item.quantity}</Column>
-              <Column style={itemPrice}>${item.price.toFixed(2)}</Column>
+          <Section style={invoiceHeader}>
+            <Row>
+              <Column>
+                <Text style={invoiceNumber}>Invoice #: <strong>{invoiceNumber}</strong></Text>
+                <Text style={text}>Order #: {orderNumber}</Text>
+              </Column>
+              <Column style={dueDateColumn}>
+                <Text style={text}>Due Date: <strong>{dueDate}</strong></Text>
+                <Text style={text}>Status: <strong style={statusColor}>{paymentStatus}</strong></Text>
+              </Column>
             </Row>
-          ))}
-          
-          <Row style={subtotalRow}>
-            <Column style={totalLabel}>Subtotal:</Column>
-            <Column style={totalAmount}>${subtotal.toFixed(2)}</Column>
-          </Row>
-          
-          <Row style={deliveryRow}>
-            <Column style={totalLabel}>Delivery Fee:</Column>
-            <Column style={totalAmount}>${deliveryFee.toFixed(2)}</Column>
-          </Row>
-          
-          <Row style={totalRow}>
-            <Column style={totalLabel}>Total Amount:</Column>
-            <Column style={totalAmount}><strong>${totalAmount.toFixed(2)}</strong></Column>
-          </Row>
-        </Section>
-
-        {paymentStatus === 'pending' && (
-          <Section style={paymentSection}>
-            <Text style={text}>
-              <strong>Payment is due by {dueDate}.</strong> Please click the "Pay Invoice Now" button above to pay securely online, or ensure payment is made to avoid any delays in future orders.
-            </Text>
           </Section>
-        )}
 
-        <Text style={footer}>
-          Thank you for your business! If you have any questions about this invoice, please contact us.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+          {paymentStatus === 'pending' && orderId && (
+            <Section style={paymentButtonSection}>
+              <Button
+                href={`${Deno.env.get('SUPABASE_URL')?.replace('/functions/v1', '')}/pay-invoice/${orderId}`}
+                style={paymentButton}
+              >
+                Pay Invoice Now - ${totalAmount.toFixed(2)}
+              </Button>
+              <Text style={paymentText}>
+                Click the button above to pay your invoice securely with Stripe
+              </Text>
+            </Section>
+          )}
+
+          <Section style={itemsSection}>
+            <Heading style={h2}>Order Items</Heading>
+            <Row style={headerRow}>
+              <Column style={itemHeaderName}>Item</Column>
+              <Column style={itemHeaderQuantity}>Qty</Column>
+              <Column style={itemHeaderPrice}>Price</Column>
+            </Row>
+            
+            {orderItems.map((item, index) => (
+              <Row key={index} style={itemRow}>
+                <Column style={itemName}>{item.name}</Column>
+                <Column style={itemQuantity}>{item.quantity}</Column>
+                <Column style={itemPrice}>${item.price.toFixed(2)}</Column>
+              </Row>
+            ))}
+            
+            <Row style={subtotalRow}>
+              <Column style={totalLabel}>Subtotal:</Column>
+              <Column style={totalAmount}>${subtotal.toFixed(2)}</Column>
+            </Row>
+            
+            <Row style={deliveryRow}>
+              <Column style={totalLabel}>Delivery Fee:</Column>
+              <Column style={totalAmount}>${deliveryFee.toFixed(2)}</Column>
+            </Row>
+            
+            <Row style={totalRow}>
+              <Column style={totalLabel}>Total Amount:</Column>
+              <Column style={totalAmount}><strong>${totalAmount.toFixed(2)}</strong></Column>
+            </Row>
+          </Section>
+
+          {paymentStatus === 'pending' && (
+            <Section style={paymentSection}>
+              <Text style={text}>
+                <strong>Payment is due by {dueDate}.</strong> Please click the "Pay Invoice Now" button above to pay securely online, or ensure payment is made to avoid any delays in future orders.
+              </Text>
+            </Section>
+          )}
+
+          <Text style={footer}>
+            Thank you for your business! If you have any questions about this invoice, please contact us.
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 const getStatusColor = (status: string) => {
   switch (status) {
