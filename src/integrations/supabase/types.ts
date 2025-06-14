@@ -454,6 +454,10 @@ export type Database = {
         Args: { driver_id: string; driver_name: string; driver_license: string }
         Returns: undefined
       }
+      is_current_user_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       update_order_status: {
         Args: {
           order_id: string
