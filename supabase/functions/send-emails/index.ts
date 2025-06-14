@@ -66,7 +66,70 @@ const handler = async (req: Request): Promise<Response> => {
     const resend = new Resend(resendApiKey)
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { type, data }: EmailRequest = await req.json()
+    // Parse and validate request body
+    let requestBody: any
+    try {
+      const rawBody = await req.text()
+      console.log('Raw request body:', rawBody)
+      
+      if (!rawBody || rawBody.trim() === '') {
+        throw new Error('Request body is empty')
+      }
+      
+      requestBody = JSON.parse(rawBody)
+      console.log('Parsed request body keys:', Object.keys(requestBody || {}))
+    } catch (parseError: any) {
+      console.error('JSON parsing error:', parseError)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid JSON in request body',
+          details: parseError.message 
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      )
+    }
+
+    // Validate request structure
+    if (!requestBody || typeof requestBody !== 'object') {
+      console.error('Invalid request body structure:', requestBody)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Request body must be a valid JSON object' 
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      )
+    }
+
+    const { type, data }: EmailRequest = requestBody
+
+    if (!type) {
+      console.error('Missing email type in request')
+      return new Response(
+        JSON.stringify({ error: 'Email type is required' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      )
+    }
+
+    if (!data || typeof data !== 'object') {
+      console.error('Invalid or missing data in request:', data)
+      return new Response(
+        JSON.stringify({ error: 'Data object is required and must be valid' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      )
+    }
+
     console.log('Email type:', type, 'Data keys:', Object.keys(data))
 
     let emailHtml: string
@@ -78,6 +141,12 @@ const handler = async (req: Request): Promise<Response> => {
       switch (type) {
         case 'order-confirmation':
           console.log('Rendering order confirmation email...')
+          
+          // Validate required fields
+          if (!data.customerName || !data.orderNumber || !data.customerEmail) {
+            throw new Error('Missing required fields for order confirmation email')
+          }
+          
           emailHtml = await renderAsync(
             React.createElement(OrderConfirmationEmail, {
               customerName: data.customerName,
@@ -96,6 +165,12 @@ const handler = async (req: Request): Promise<Response> => {
 
         case 'delivery-status-update':
           console.log('Rendering delivery status update email...')
+          
+          // Validate required fields
+          if (!data.customerName || !data.orderNumber || !data.customerEmail || !data.newStatus) {
+            throw new Error('Missing required fields for delivery status update email')
+          }
+          
           emailHtml = await renderAsync(
             React.createElement(DeliveryStatusUpdateEmail, {
               customerName: data.customerName,
@@ -120,6 +195,11 @@ const handler = async (req: Request): Promise<Response> => {
             totalAmount: data.totalAmount,
             hasPaymentUrl: !!data.paymentUrl
           })
+          
+          // Validate required fields
+          if (!data.customerName || !data.orderNumber || !data.invoiceNumber || !data.customerEmail) {
+            throw new Error('Missing required fields for invoice email')
+          }
           
           emailHtml = await renderAsync(
             React.createElement(InvoiceEmail, {

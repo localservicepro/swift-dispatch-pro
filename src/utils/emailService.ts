@@ -43,11 +43,18 @@ interface InvoiceData {
   totalAmount: number;
   dueDate: string;
   paymentStatus: string;
+  paymentUrl?: string;
 }
 
 export const emailService = {
   async sendOrderConfirmation(data: OrderConfirmationData) {
     console.log('Sending order confirmation email:', data);
+    
+    // Validate required fields before sending
+    if (!data.customerName || !data.customerEmail || !data.orderNumber) {
+      throw new Error('Missing required fields for order confirmation email');
+    }
+    
     const { error } = await supabase.functions.invoke('send-emails', {
       body: {
         type: 'order-confirmation',
@@ -63,6 +70,12 @@ export const emailService = {
 
   async sendDeliveryStatusUpdate(data: DeliveryStatusUpdateData) {
     console.log('Sending delivery status update email:', data);
+    
+    // Validate required fields before sending
+    if (!data.customerName || !data.customerEmail || !data.orderNumber || !data.newStatus) {
+      throw new Error('Missing required fields for delivery status update email');
+    }
+    
     const { error } = await supabase.functions.invoke('send-emails', {
       body: {
         type: 'delivery-status-update',
@@ -78,6 +91,12 @@ export const emailService = {
 
   async sendInvoice(data: InvoiceData) {
     console.log('Sending invoice email:', data);
+    
+    // Validate required fields before sending
+    if (!data.customerName || !data.customerEmail || !data.orderNumber || !data.invoiceNumber) {
+      throw new Error('Missing required fields for invoice email');
+    }
+    
     const { error } = await supabase.functions.invoke('send-emails', {
       body: {
         type: 'invoice',
