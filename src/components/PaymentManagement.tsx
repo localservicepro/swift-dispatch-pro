@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,59 +8,118 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
-interface Payment {
+interface PaymentOrder {
   id: string;
-  orderId: string;
-  customer: string;
-  amount: number;
-  status: string;
-  method: string;
-  date: string;
+  order_number: string;
+  customer_id?: string;
+  customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  total_amount: number;
+  payment_status: string;
+  payment_method?: string;
+  payment_date?: string;
+  created_at: string;
+  products: any;
+  delivery_fee?: number;
+  subtotal?: number;
 }
 
-const mockPayments: Payment[] = [
-  { id: "PAY-001", orderId: "ORD-001", customer: "John Doe", amount: 25.50, status: "Paid", method: "Credit Card", date: "2024-01-15" },
-  { id: "PAY-002", orderId: "ORD-002", customer: "Jane Smith", amount: 18.75, status: "Pending", method: "Bank Transfer", date: "2024-01-15" },
-  { id: "PAY-003", orderId: "ORD-003", customer: "Bob Brown", amount: 22.00, status: "Overdue", method: "Cash", date: "2024-01-10" },
-];
-
 export function PaymentManagement() {
-  const [payments, setPayments] = useState<Payment[]>(mockPayments);
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [sendingInvoices, setSendingInvoices] = useState<string[]>([]);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const sendInvoice = async (paymentId: string) => {
-    if (sendingInvoices.includes(paymentId)) return;
+  // Fetch real orders with customer data for payment management
+  const { data: payments = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['payment-orders'],
+    queryFn: async (): Promise<PaymentOrder[]> => {
+      console.log('Fetching payment orders from database...');
+      
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          order_number,
+          customer_id,
+          customer_name,
+          customer_phone,
+          total_amount,
+          payment_status,
+          payment_method,
+          payment_date,
+          created_at,
+          products,
+          delivery_fee,
+          subtotal,
+          customers!orders_customer_id_fkey(email)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching payment orders:', error);
+        throw error;
+      }
+
+      return data.map(order => ({
+        ...order,
+        customer_email: order.customers?.email || `${order.customer_name.toLowerCase().replace(' ', '.')}@example.com`,
+        payment_status: order.payment_status || 'pending'
+      }));
+    },
+  });
+
+  const sendInvoice = async (orderId: string) => {
+    if (sendingInvoices.includes(orderId)) return;
     
-    setSendingInvoices(prev => [...prev, paymentId]);
+    setSendingInvoices(prev => [...prev, orderId]);
     
     try {
-      const payment = payments.find(p => p.id === paymentId);
-      if (!payment) throw new Error('Payment not found');
+      const order = payments.find(p => p.id === orderId);
+      if (!order) throw new Error('Order not found');
 
-      // Mock order items for demo - in real app, fetch from database
-      const mockOrderItems = [
-        { name: "Product A", quantity: 2, price: payment.amount / 2 },
-        { name: "Product B", quantity: 1, price: payment.amount / 2 }
-      ];
+      // Parse products from the order
+      let orderItems = [];
+      if (Array.isArray(order.products)) {
+        orderItems = order.products.map(item => ({
+          name: item.name || item.product_name || 'Product',
+          quantity: item.quantity || 1,
+          price: item.price || item.unit_price || 0
+        }));
+      } else if (order.products && typeof order.products === 'object') {
+        // Handle single product object
+        orderItems = [{
+          name: order.products.name || 'Product',
+          quantity: order.products.quantity || 1,
+          price: order.products.price || order.total_amount
+        }];
+      } else {
+        // Fallback for orders without detailed product info
+        orderItems = [{
+          name: 'Order Items',
+          quantity: 1,
+          price: order.subtotal || order.total_amount - (order.delivery_fee || 0)
+        }];
+      }
 
       const { error } = await supabase.functions.invoke('send-emails', {
         body: {
           type: 'invoice',
           data: {
-            customerName: payment.customer,
-            customerEmail: `${payment.customer.toLowerCase().replace(' ', '.')}@example.com`,
-            orderNumber: payment.orderId,
-            invoiceNumber: paymentId,
-            orderItems: mockOrderItems,
-            subtotal: payment.amount - 5,
-            deliveryFee: 5,
-            totalAmount: payment.amount,
+            customerName: order.customer_name,
+            customerEmail: order.customer_email,
+            orderNumber: order.order_number,
+            invoiceNumber: `INV-${order.order_number}`,
+            orderItems: orderItems,
+            subtotal: order.subtotal || order.total_amount - (order.delivery_fee || 0),
+            deliveryFee: order.delivery_fee || 0,
+            totalAmount: order.total_amount,
             dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-            paymentStatus: payment.status,
+            paymentStatus: order.payment_status,
           }
         }
       });
@@ -68,7 +128,7 @@ export function PaymentManagement() {
 
       toast({
         title: "Invoice Sent",
-        description: `Invoice for ${paymentId} has been sent to ${payment.customer}`,
+        description: `Invoice for ${order.order_number} has been sent to ${order.customer_name}`,
       });
     } catch (error: any) {
       console.error('Error sending invoice:', error);
@@ -78,7 +138,7 @@ export function PaymentManagement() {
         variant: "destructive",
       });
     } finally {
-      setSendingInvoices(prev => prev.filter(id => id !== paymentId));
+      setSendingInvoices(prev => prev.filter(id => id !== orderId));
     }
   };
 
@@ -86,7 +146,7 @@ export function PaymentManagement() {
     if (selectedPayments.length === 0) {
       toast({
         title: "No Selection",
-        description: "Please select payments to send batch invoices",
+        description: "Please select orders to send batch invoices",
         variant: "destructive",
       });
       return;
@@ -95,35 +155,7 @@ export function PaymentManagement() {
     setSendingInvoices(prev => [...prev, ...selectedPayments]);
 
     try {
-      // Send all invoices in parallel
-      const promises = selectedPayments.map(paymentId => {
-        const payment = payments.find(p => p.id === paymentId);
-        if (!payment) return Promise.resolve();
-
-        const mockOrderItems = [
-          { name: "Product A", quantity: 2, price: payment.amount / 2 },
-          { name: "Product B", quantity: 1, price: payment.amount / 2 }
-        ];
-
-        return supabase.functions.invoke('send-emails', {
-          body: {
-            type: 'invoice',
-            data: {
-              customerName: payment.customer,
-              customerEmail: `${payment.customer.toLowerCase().replace(' ', '.')}@example.com`,
-              orderNumber: payment.orderId,
-              invoiceNumber: payment.id,
-              orderItems: mockOrderItems,
-              subtotal: payment.amount - 5,
-              deliveryFee: 5,
-              totalAmount: payment.amount,
-              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-              paymentStatus: payment.status,
-            }
-          }
-        });
-      });
-
+      const promises = selectedPayments.map(orderId => sendInvoice(orderId));
       await Promise.all(promises);
 
       toast({
@@ -143,11 +175,40 @@ export function PaymentManagement() {
     }
   };
 
+  const updatePaymentStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          payment_status: newStatus,
+          payment_date: newStatus === 'paid' ? new Date().toISOString() : null
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Payment Status Updated",
+        description: `Payment status changed to ${newStatus}`,
+      });
+      
+      refetch();
+    } catch (error: any) {
+      console.error('Error updating payment status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update payment status",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Paid": return "bg-green-100 text-green-800";
-      case "Pending": return "bg-yellow-100 text-yellow-800";
-      case "Overdue": return "bg-red-100 text-red-800";
+      case "paid": return "bg-green-100 text-green-800";
+      case "pending": return "bg-yellow-100 text-yellow-800";
+      case "overdue": return "bg-red-100 text-red-800";
+      case "cancelled": return "bg-gray-100 text-gray-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
@@ -160,12 +221,39 @@ export function PaymentManagement() {
     );
   };
 
+  // Calculate statistics from real data
+  const totalReceived = payments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total_amount, 0);
+  const pendingPayments = payments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total_amount, 0);
+  const overduePayments = payments.filter(p => p.payment_status === 'overdue').reduce((sum, p) => sum + p.total_amount, 0);
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-slate-800">Payment Management</h2>
+            <p className="text-slate-600 mt-1">Track payments and manage invoicing</p>
+          </div>
+        </div>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center text-red-600">
+              <p>Error loading payment data. Please try again.</p>
+              <Button onClick={() => refetch()} className="mt-2">Retry</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-slate-800">Payment Management</h2>
-          <p className="text-slate-600 mt-1">Track payments and manage invoicing</p>
+          <p className="text-slate-600 mt-1">Track payments and manage invoicing • Real-time order data</p>
         </div>
         <div className="flex gap-3">
           <Button 
@@ -179,8 +267,11 @@ export function PaymentManagement() {
             )}
             Send Batch Invoices ({selectedPayments.length})
           </Button>
-          <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800">
-            Month-End Billing
+          <Button 
+            onClick={() => refetch()}
+            className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+          >
+            Refresh Data
           </Button>
         </div>
       </div>
@@ -192,8 +283,8 @@ export function PaymentManagement() {
             <CardTitle className="text-sm font-medium text-green-700">Total Received</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-900">$2,456.50</div>
-            <p className="text-xs text-green-600 mt-1">This month</p>
+            <div className="text-2xl font-bold text-green-900">${totalReceived.toFixed(2)}</div>
+            <p className="text-xs text-green-600 mt-1">From paid orders</p>
           </CardContent>
         </Card>
 
@@ -202,7 +293,7 @@ export function PaymentManagement() {
             <CardTitle className="text-sm font-medium text-yellow-700">Pending Payments</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-900">$892.25</div>
+            <div className="text-2xl font-bold text-yellow-900">${pendingPayments.toFixed(2)}</div>
             <p className="text-xs text-yellow-600 mt-1">Awaiting collection</p>
           </CardContent>
         </Card>
@@ -212,117 +303,100 @@ export function PaymentManagement() {
             <CardTitle className="text-sm font-medium text-red-700">Overdue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-900">$156.00</div>
+            <div className="text-2xl font-bold text-red-900">${overduePayments.toFixed(2)}</div>
             <p className="text-xs text-red-600 mt-1">Requires follow-up</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
-        <CardHeader>
-          <CardTitle className="text-blue-800">Quick Payment Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="customer-search">Link Payment to Customer</Label>
-              <div className="flex gap-2">
-                <Input 
-                  id="customer-search"
-                  placeholder="Search customer..."
-                />
-                <Button size="sm" variant="outline">Link</Button>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="order-search">Link Payment to Order</Label>
-              <div className="flex gap-2">
-                <Input 
-                  id="order-search"
-                  placeholder="Enter order ID..."
-                />
-                <Button size="sm" variant="outline">Link</Button>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="payment-status">Update Payment Status</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="paid">Mark as Paid</SelectItem>
-                  <SelectItem value="pending">Mark as Pending</SelectItem>
-                  <SelectItem value="overdue">Mark as Overdue</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Payment Records */}
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-slate-800">Payment Records</CardTitle>
+          <CardTitle className="text-lg font-semibold text-slate-800">
+            Payment Records {isLoading && <span className="text-sm font-normal text-slate-500">(Loading...)</span>}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {payments.map((payment) => (
-              <div key={payment.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedPayments.includes(payment.id)}
-                      onChange={() => togglePaymentSelection(payment.id)}
-                      className="w-4 h-4 text-blue-600 rounded"
-                    />
-                    <h3 className="font-semibold text-slate-800">{payment.id}</h3>
-                    <Badge className={getStatusColor(payment.status)}>{payment.status}</Badge>
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-2 text-slate-600">Loading payment records...</p>
+            </div>
+          ) : payments.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <p>No payment records found.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {payments.map((payment) => (
+                <div key={payment.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedPayments.includes(payment.id)}
+                        onChange={() => togglePaymentSelection(payment.id)}
+                        className="w-4 h-4 text-blue-600 rounded"
+                      />
+                      <h3 className="font-semibold text-slate-800">{payment.order_number}</h3>
+                      <Badge className={getStatusColor(payment.payment_status)}>
+                        {payment.payment_status}
+                      </Badge>
+                    </div>
+                    <span className="text-lg font-bold text-green-600">${payment.total_amount.toFixed(2)}</span>
                   </div>
-                  <span className="text-lg font-bold text-green-600">${payment.amount.toFixed(2)}</span>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p className="text-slate-500">Customer</p>
+                      <p className="font-medium">{payment.customer_name}</p>
+                      {payment.customer_phone && (
+                        <p className="text-xs text-slate-400">{payment.customer_phone}</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Email</p>
+                      <p className="font-medium text-xs">{payment.customer_email}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Payment Method</p>
+                      <p className="font-medium">{payment.payment_method || 'Not Set'}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Order Date</p>
+                      <p className="font-medium">{new Date(payment.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 mt-4">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => sendInvoice(payment.id)}
+                      disabled={sendingInvoices.includes(payment.id)}
+                      className="flex items-center gap-2"
+                    >
+                      {sendingInvoices.includes(payment.id) && (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      )}
+                      {sendingInvoices.includes(payment.id) ? "Sending..." : "Send Invoice"}
+                    </Button>
+                    <Select onValueChange={(value) => updatePaymentStatus(payment.id, value)}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="overdue">Overdue</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-slate-500">Customer</p>
-                    <p className="font-medium">{payment.customer}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Order ID</p>
-                    <p className="font-medium">{payment.orderId}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Payment Method</p>
-                    <p className="font-medium">{payment.method}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Date</p>
-                    <p className="font-medium">{payment.date}</p>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2 mt-4">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => sendInvoice(payment.id)}
-                    disabled={sendingInvoices.includes(payment.id)}
-                    className="flex items-center gap-2"
-                  >
-                    {sendingInvoices.includes(payment.id) && (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    )}
-                    {sendingInvoices.includes(payment.id) ? "Sending..." : "Send Invoice"}
-                  </Button>
-                  <Button size="sm" variant="outline">Edit</Button>
-                  <Button size="sm" variant="outline">View Details</Button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

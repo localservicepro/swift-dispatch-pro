@@ -251,6 +251,9 @@ export type Database = {
           driver_id: string | null
           id: string
           order_number: string
+          payment_date: string | null
+          payment_method: string | null
+          payment_status: string | null
           products: Json
           special_instructions: string | null
           status: Database["public"]["Enums"]["order_status"]
@@ -273,6 +276,9 @@ export type Database = {
           driver_id?: string | null
           id?: string
           order_number: string
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
           products: Json
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -295,6 +301,9 @@ export type Database = {
           driver_id?: string | null
           id?: string
           order_number?: string
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
           products?: Json
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"]
