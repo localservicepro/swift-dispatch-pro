@@ -8,11 +8,6 @@ import { OrderConfirmationEmail } from './_templates/order-confirmation.tsx'
 import { DeliveryStatusUpdateEmail } from './_templates/delivery-status-update.tsx'
 import { InvoiceEmail } from './_templates/invoice.tsx'
 
-const resend = new Resend(Deno.env.get('RESEND_API_KEY') as string)
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -30,6 +25,47 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     console.log('Email function called')
+    
+    // Check for required environment variables
+    const resendApiKey = Deno.env.get('RESEND_API_KEY') || Deno.env.get('Resend API Key')
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    console.log('Environment check:', {
+      hasResendKey: !!resendApiKey,
+      hasSupabaseUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey,
+      resendKeyPrefix: resendApiKey ? resendApiKey.substring(0, 3) : 'none'
+    })
+
+    if (!resendApiKey) {
+      console.error('RESEND_API_KEY not found in environment variables')
+      return new Response(
+        JSON.stringify({ 
+          error: 'RESEND_API_KEY not configured. Please add your Resend API key to the edge function secrets.' 
+        }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      )
+    }
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase configuration')
+      return new Response(
+        JSON.stringify({ error: 'Supabase configuration missing' }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      )
+    }
+
+    // Initialize Resend with the API key
+    const resend = new Resend(resendApiKey)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
     const { type, data }: EmailRequest = await req.json()
     console.log('Email type:', type, 'Data:', data)
 
@@ -95,8 +131,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Sending email to:', toEmail, 'Subject:', subject)
 
+    // Use the default Resend domain for now - user can update this later
     const { data: emailResult, error } = await resend.emails.send({
-      from: 'Order Management <orders@yourdomain.com>',
+      from: 'Order Management <onboarding@resend.dev>',
       to: [toEmail],
       subject,
       html: emailHtml,
@@ -104,12 +141,29 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (error) {
       console.error('Resend error:', error)
+      
+      // Log the failed email attempt to database
+      const { error: logError } = await supabase
+        .from('email_logs')
+        .insert({
+          email_type: type,
+          recipient_email: toEmail,
+          subject,
+          status: 'failed',
+          error_message: error.message || 'Unknown error occurred',
+          sent_at: new Date().toISOString(),
+        })
+
+      if (logError) {
+        console.error('Error logging failed email:', logError)
+      }
+
       throw error
     }
 
     console.log('Email sent successfully:', emailResult)
 
-    // Log email sent to database
+    // Log successful email to database
     const { error: logError } = await supabase
       .from('email_logs')
       .insert({
@@ -138,7 +192,10 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error('Error in send-emails function:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || 'Unknown error occurred',
+        details: error.name || 'UnknownError'
+      }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },

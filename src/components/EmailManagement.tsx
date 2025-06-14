@@ -21,15 +21,15 @@ interface EmailLog {
 export function EmailManagement() {
   const { toast } = useToast();
 
-  // Fetch email logs with proper type handling
+  // Fetch email logs with proper error handling
   const { data: emailLogs = [], isLoading, refetch } = useQuery({
     queryKey: ['email-logs'],
     queryFn: async (): Promise<EmailLog[]> => {
       console.log('Fetching email logs...');
       try {
-        // Use raw query to bypass type checking issues
+        // Query the email_logs table with proper type handling
         const { data, error } = await supabase
-          .from('email_logs' as any)
+          .from('email_logs')
           .select('id, email_type, recipient_email, subject, status, error_message, sent_at')
           .order('sent_at', { ascending: false })
           .limit(50);
@@ -39,22 +39,22 @@ export function EmailManagement() {
           return [];
         }
 
-        // Safely validate and return data
+        // Return empty array if no data
         if (!data) return [];
         
-        // Type guard to ensure data structure is correct
-        const validLogs = data.filter((item: any) => 
-          item && 
-          typeof item === 'object' && 
-          'id' in item && 
-          'email_type' in item &&
-          'recipient_email' in item &&
-          'subject' in item &&
-          'status' in item &&
-          'sent_at' in item
-        );
+        // Validate and filter valid email logs
+        const validLogs = data.filter((item): item is EmailLog => {
+          return item && 
+            typeof item === 'object' && 
+            typeof item.id === 'string' &&
+            typeof item.email_type === 'string' &&
+            typeof item.recipient_email === 'string' &&
+            typeof item.subject === 'string' &&
+            typeof item.status === 'string' &&
+            typeof item.sent_at === 'string';
+        });
 
-        return validLogs as EmailLog[];
+        return validLogs;
       } catch (err) {
         console.error('Error in email logs query:', err);
         return [];
