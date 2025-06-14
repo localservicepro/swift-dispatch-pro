@@ -1,11 +1,13 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { DeliveryCard } from "./DeliveryCard";
-import { Truck, Package, Clock, CheckCircle, LogOut, User } from "lucide-react";
+import { Truck, Package, Clock, CheckCircle, LogOut, User, Loader2 } from "lucide-react";
 
 interface DriverDashboardProps {
   user: any;
@@ -17,6 +19,7 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { signOut, signingOut } = useAuth();
 
   useEffect(() => {
     fetchOrders();
@@ -85,6 +88,25 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
     }
   };
 
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    
+    if (error) {
+      toast({
+        title: "Sign Out Failed",
+        description: "There was an error signing out. Please try again.",
+        variant: "destructive",
+      });
+    } else {
+      // Call the onLogout callback to update parent component state
+      onLogout();
+      toast({
+        title: "Signed Out",
+        description: "You have been successfully signed out.",
+      });
+    }
+  };
+
   const getStatusStats = () => {
     const preparing = orders.filter(o => o.status === 'preparing').length;
     const loading = orders.filter(o => o.status === 'loading').length;
@@ -125,10 +147,15 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
           <Button
             variant="ghost"
             size="icon"
-            onClick={onLogout}
+            onClick={handleSignOut}
+            disabled={signingOut}
             className="text-slate-600"
           >
-            <LogOut className="w-5 h-5" />
+            {signingOut ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <LogOut className="w-5 h-5" />
+            )}
           </Button>
         </div>
       </div>

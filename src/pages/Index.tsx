@@ -12,11 +12,30 @@ import { DriverManagement } from "@/components/DriverManagement";
 import { Settings } from "@/components/Settings";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { LogOut } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { LogOut, Loader2 } from "lucide-react";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, signingOut } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    
+    if (error) {
+      toast({
+        title: "Sign Out Failed",
+        description: "There was an error signing out. Please try again.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Signed Out",
+        description: "You have been successfully signed out.",
+      });
+    }
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -60,11 +79,16 @@ const Index = () => {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={signOut}
+                onClick={handleSignOut}
+                disabled={signingOut}
                 className="flex items-center gap-2"
               >
-                <LogOut className="w-4 h-4" />
-                Sign Out
+                {signingOut ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <LogOut className="w-4 h-4" />
+                )}
+                {signingOut ? "Signing Out..." : "Sign Out"}
               </Button>
             </div>
           </div>
