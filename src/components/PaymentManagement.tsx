@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Receipt } from "lucide-react";
+import { emailService } from "@/utils/emailService";
 
 interface PaymentOrder {
   id: string;
@@ -82,17 +83,27 @@ export function PaymentManagement() {
     if (generatingInvoices.includes(orderId)) return;
     setGeneratingInvoices(prev => [...prev, orderId]);
 
+    console.log('=== GENERATE AND SEND INVOICE START ===');
+    console.log('Order ID:', orderId);
+
     try {
       const order = payments.find(p => p.id === orderId);
-      if (!order) throw new Error('Order not found');
+      if (!order) {
+        console.error('Order not found for ID:', orderId);
+        throw new Error('Order not found');
+      }
 
-      console.log('Starting invoice generation for order:', order.order_number);
+      console.log('Found order:', order.order_number);
+      console.log('Customer email:', order.customer_email);
 
       // Generate unique invoice number
       const invoiceNumber = `INV-${order.order_number}-${Date.now()}`;
       const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
+      console.log('Generated invoice number:', invoiceNumber);
+
       // Create invoice record first
+      console.log('Creating invoice record...');
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
         .insert({
@@ -112,28 +123,27 @@ export function PaymentManagement() {
         throw new Error(`Failed to create invoice: ${invoiceError.message}`);
       }
 
-      console.log('Invoice created:', invoice.id);
+      console.log('Invoice created successfully:', invoice.id);
 
       // Create payment session
+      console.log('Creating payment session...');
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-invoice-payment', {
         body: { invoiceId: invoice.id }
       });
 
       if (paymentError) {
         console.error('Payment session error:', paymentError);
-        // Clean up the invoice if payment session creation fails
         await supabase.from('invoices').delete().eq('id', invoice.id);
         throw new Error(`Failed to create payment session: ${paymentError.message}`);
       }
 
       if (!paymentData.success) {
         console.error('Payment session failed:', paymentData);
-        // Clean up the invoice if payment session creation fails
         await supabase.from('invoices').delete().eq('id', invoice.id);
         throw new Error(paymentData.error || 'Failed to create payment session');
       }
 
-      console.log('Payment session created:', paymentData.sessionId);
+      console.log('Payment session created successfully');
 
       // Parse products for email
       let orderItems = [];
@@ -157,52 +167,50 @@ export function PaymentManagement() {
         }];
       }
 
-      // Send invoice email with payment link
-      const { error: emailError } = await supabase.functions.invoke('send-emails', {
-        body: {
-          type: 'invoice',
-          data: {
-            customerName: order.customer_name,
-            customerEmail: order.customer_email,
-            orderNumber: order.order_number,
-            invoiceNumber: invoiceNumber,
-            orderItems: orderItems,
-            subtotal: order.subtotal || order.total_amount - (order.delivery_fee || 0),
-            deliveryFee: order.delivery_fee || 0,
-            totalAmount: order.total_amount,
-            dueDate: new Date(dueDate).toLocaleDateString(),
-            paymentStatus: 'Pending',
-            paymentUrl: paymentData.paymentUrl
-          }
-        }
-      });
+      console.log('Parsed order items:', orderItems);
 
-      if (emailError) {
-        console.error('Email sending error:', emailError);
-        // Don't delete the invoice if email fails, just warn
-        toast({
-          title: "Invoice Created",
-          description: `Invoice ${invoiceNumber} was created but email failed to send. Payment link is available in the system.`,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Invoice Generated & Sent",
-          description: `Invoice ${invoiceNumber} sent to ${order.customer_name} with payment link`
-        });
-      }
+      // Send invoice email using emailService
+      console.log('Sending invoice email via emailService...');
+      
+      const invoiceData = {
+        customerName: order.customer_name,
+        customerEmail: order.customer_email!,
+        orderNumber: order.order_number,
+        invoiceNumber: invoiceNumber,
+        orderItems: orderItems,
+        subtotal: order.subtotal || order.total_amount - (order.delivery_fee || 0),
+        deliveryFee: order.delivery_fee || 0,
+        totalAmount: order.total_amount,
+        dueDate: new Date(dueDate).toLocaleDateString(),
+        paymentStatus: 'Pending',
+        paymentUrl: paymentData.paymentUrl
+      };
+
+      console.log('Invoice email data:', invoiceData);
+
+      await emailService.sendInvoice(invoiceData);
+
+      console.log('✅ Invoice email sent successfully via emailService');
+
+      toast({
+        title: "Invoice Generated & Sent",
+        description: `Invoice ${invoiceNumber} sent to ${order.customer_name} with payment link`
+      });
 
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
       
     } catch (error: any) {
-      console.error('Error generating invoice:', error);
+      console.error('❌ Error in generateAndSendInvoice:', error);
+      console.error('Error stack:', error.stack);
+      
       toast({
         title: "Error",
         description: error.message || "Failed to generate and send invoice. Please try again.",
         variant: "destructive"
       });
     } finally {
+      console.log('=== GENERATE AND SEND INVOICE END ===');
       setGeneratingInvoices(prev => prev.filter(id => id !== orderId));
     }
   };
@@ -210,9 +218,19 @@ export function PaymentManagement() {
   const sendInvoice = async (orderId: string) => {
     if (sendingInvoices.includes(orderId)) return;
     setSendingInvoices(prev => [...prev, orderId]);
+    
+    console.log('=== SEND SIMPLE INVOICE START ===');
+    console.log('Order ID:', orderId);
+    
     try {
       const order = payments.find(p => p.id === orderId);
-      if (!order) throw new Error('Order not found');
+      if (!order) {
+        console.error('Order not found for ID:', orderId);
+        throw new Error('Order not found');
+      }
+
+      console.log('Found order:', order.order_number);
+      console.log('Customer email:', order.customer_email);
 
       // Parse products from the order
       let orderItems = [];
@@ -223,55 +241,60 @@ export function PaymentManagement() {
           price: item.price || item.unit_price || 0
         }));
       } else if (order.products && typeof order.products === 'object') {
-        // Handle single product object
         orderItems = [{
           name: order.products.name || 'Product',
           quantity: order.products.quantity || 1,
           price: order.products.price || order.total_amount
         }];
       } else {
-        // Fallback for orders without detailed product info
         orderItems = [{
           name: 'Order Items',
           quantity: 1,
           price: order.subtotal || order.total_amount - (order.delivery_fee || 0)
         }];
       }
-      const {
-        error
-      } = await supabase.functions.invoke('send-emails', {
-        body: {
-          type: 'invoice',
-          data: {
-            customerName: order.customer_name,
-            customerEmail: order.customer_email,
-            orderNumber: order.order_number,
-            invoiceNumber: `INV-${order.order_number}`,
-            orderItems: orderItems,
-            subtotal: order.subtotal || order.total_amount - (order.delivery_fee || 0),
-            deliveryFee: order.delivery_fee || 0,
-            totalAmount: order.total_amount,
-            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-            paymentStatus: order.payment_status
-          }
-        }
-      });
-      if (error) throw error;
+
+      console.log('Parsed order items:', orderItems);
+
+      const invoiceData = {
+        customerName: order.customer_name,
+        customerEmail: order.customer_email!,
+        orderNumber: order.order_number,
+        invoiceNumber: `INV-${order.order_number}`,
+        orderItems: orderItems,
+        subtotal: order.subtotal || order.total_amount - (order.delivery_fee || 0),
+        deliveryFee: order.delivery_fee || 0,
+        totalAmount: order.total_amount,
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+        paymentStatus: order.payment_status
+      };
+
+      console.log('Simple invoice data:', invoiceData);
+      console.log('Sending via emailService...');
+
+      await emailService.sendInvoice(invoiceData);
+
+      console.log('✅ Simple invoice sent successfully via emailService');
+      
       toast({
         title: "Invoice Sent",
         description: `Invoice for ${order.order_number} has been sent to ${order.customer_name}`
       });
     } catch (error: any) {
-      console.error('Error sending invoice:', error);
+      console.error('❌ Error in sendInvoice:', error);
+      console.error('Error stack:', error.stack);
+      
       toast({
         title: "Error",
-        description: "Failed to send invoice. Please try again.",
+        description: error.message || "Failed to send invoice. Please try again.",
         variant: "destructive"
       });
     } finally {
+      console.log('=== SEND SIMPLE INVOICE END ===');
       setSendingInvoices(prev => prev.filter(id => id !== orderId));
     }
   };
+
   const sendBatchInvoices = async () => {
     if (selectedPayments.length === 0) {
       toast({

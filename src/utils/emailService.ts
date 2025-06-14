@@ -179,6 +179,7 @@ export const emailService = {
     }
     
     try {
+      console.log('Calling Supabase edge function...');
       const { data: result, error } = await supabase.functions.invoke('send-emails', {
         body: {
           type: 'invoice',
@@ -198,6 +199,9 @@ export const emailService = {
         }
       });
       
+      console.log('Supabase function response:', result);
+      console.log('Supabase function error:', error);
+      
       if (error) {
         console.error('Supabase function error:', error);
         throw new Error(`Email service error: ${error.message}`);
@@ -213,6 +217,37 @@ export const emailService = {
     } catch (error: any) {
       console.error('❌ Email service error:', error);
       throw new Error(`Failed to send invoice email: ${error.message}`);
+    }
+  },
+
+  // Add a test function to verify the edge function works
+  async testEmailFunction() {
+    console.log('=== TESTING EMAIL FUNCTION ===');
+    
+    const testData = {
+      customerName: 'Test Customer',
+      customerEmail: 'test@example.com',
+      orderNumber: 'TEST-ORDER-001',
+      invoiceNumber: 'INV-TEST-001',
+      orderItems: [{
+        name: 'Test Product',
+        quantity: 1,
+        price: 10.00
+      }],
+      subtotal: 10.00,
+      deliveryFee: 5.00,
+      totalAmount: 15.00,
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+      paymentStatus: 'Pending'
+    };
+
+    try {
+      const result = await this.sendInvoice(testData);
+      console.log('✅ Test email successful:', result);
+      return { success: true, result };
+    } catch (error: any) {
+      console.error('❌ Test email failed:', error);
+      return { success: false, error: error.message };
     }
   }
 };
