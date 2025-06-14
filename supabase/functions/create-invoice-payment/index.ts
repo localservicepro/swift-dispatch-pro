@@ -45,6 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
       .select(`
         *,
         orders!inner(
+          id,
           order_number,
           customer_name,
           customer_address,
@@ -64,8 +65,9 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log('Creating Stripe checkout session for invoice:', invoice.invoice_number)
+    console.log('Order ID to include in metadata:', invoice.order_id)
 
-    // Create Stripe checkout session
+    // Create Stripe checkout session with proper metadata
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -88,17 +90,21 @@ const handler = async (req: Request): Promise<Response> => {
       metadata: {
         invoice_id: invoice.id,
         order_id: invoice.order_id,
+        invoice_number: invoice.invoice_number,
       },
     })
 
-    console.log('Stripe session created:', session.id)
+    console.log('Stripe session created with metadata:', {
+      sessionId: session.id,
+      metadata: session.metadata
+    })
 
-    // Update invoice with payment URL and payment intent ID
+    // Update invoice with payment URL and session ID (renamed for clarity)
     const { error: updateError } = await supabase
       .from('invoices')
       .update({ 
         payment_url: session.url,
-        stripe_payment_intent_id: session.payment_intent as string || session.id
+        stripe_payment_intent_id: session.id // This stores the session ID for now
       })
       .eq('id', invoiceId)
 
@@ -107,7 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Failed to update invoice with payment information')
     }
 
-    console.log('Payment session created successfully:', session.id)
+    console.log('Payment session created successfully with order_id in metadata:', session.id)
 
     return new Response(
       JSON.stringify({ 

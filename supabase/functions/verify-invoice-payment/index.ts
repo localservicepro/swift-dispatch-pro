@@ -19,7 +19,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('Verifying invoice payment...')
+    console.log('=== VERIFY INVOICE PAYMENT STARTED ===')
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -37,8 +37,15 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Retrieve the checkout session from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId)
+    console.log('Stripe session retrieved:', {
+      id: session.id,
+      payment_status: session.payment_status,
+      metadata: session.metadata
+    })
     
     if (session.payment_status === 'paid') {
+      console.log('Payment confirmed as paid, updating database...')
+
       // Update invoice status to paid
       const { error: invoiceUpdateError } = await supabase
         .from('invoices')
@@ -49,30 +56,61 @@ const handler = async (req: Request): Promise<Response> => {
         .eq('id', invoiceId)
 
       if (invoiceUpdateError) {
+        console.error('Error updating invoice status:', invoiceUpdateError)
         throw new Error('Failed to update invoice status')
       }
+      console.log('Invoice status updated to paid for invoice:', invoiceId)
 
-      // Update order payment status
-      const { error: orderUpdateError } = await supabase
-        .from('orders')
-        .update({ 
-          payment_status: 'paid',
-          payment_date: new Date().toISOString(),
-          payment_method: 'stripe'
-        })
-        .eq('id', session.metadata?.order_id)
+      // Get order ID from session metadata or invoice record
+      let orderId = session.metadata?.order_id
+      console.log('Order ID from session metadata:', orderId)
 
-      if (orderUpdateError) {
-        console.error('Error updating order payment status:', orderUpdateError)
+      if (!orderId) {
+        console.log('No order ID in metadata, fetching from invoice record...')
+        const { data: invoiceData, error: invoiceError } = await supabase
+          .from('invoices')
+          .select('order_id')
+          .eq('id', invoiceId)
+          .single()
+
+        if (invoiceError) {
+          console.error('Error fetching invoice for order ID:', invoiceError)
+          throw new Error('Failed to get order ID from invoice')
+        }
+
+        orderId = invoiceData?.order_id
+        console.log('Order ID from invoice record:', orderId)
       }
 
-      console.log('Payment verified and statuses updated successfully')
+      if (orderId) {
+        // Update order payment status
+        const { error: orderUpdateError } = await supabase
+          .from('orders')
+          .update({ 
+            payment_status: 'paid',
+            payment_date: new Date().toISOString(),
+            payment_method: 'stripe'
+          })
+          .eq('id', orderId)
+
+        if (orderUpdateError) {
+          console.error('Error updating order payment status:', orderUpdateError)
+          // Don't throw error, just log it - invoice update was successful
+        } else {
+          console.log('Order payment status updated to paid for order:', orderId)
+        }
+      } else {
+        console.warn('No order ID found to update order payment status')
+      }
+
+      console.log('=== PAYMENT VERIFICATION COMPLETED SUCCESSFULLY ===')
 
       return new Response(
         JSON.stringify({ 
           success: true, 
           status: 'paid',
-          message: 'Payment verified successfully'
+          message: 'Payment verified and statuses updated successfully',
+          orderId: orderId || null
         }),
         {
           status: 200,
@@ -83,6 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
       )
     } else {
+      console.log('Payment not completed, status:', session.payment_status)
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -99,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
       )
     }
   } catch (error: any) {
-    console.error('Error verifying invoice payment:', error)
+    console.error('=== ERROR in verify-invoice-payment ===', error)
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Failed to verify payment',
