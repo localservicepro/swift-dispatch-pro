@@ -119,6 +119,7 @@ const handler = async (req: Request): Promise<Response> => {
             totalAmount: data.totalAmount,
             dueDate: data.dueDate,
             paymentStatus: data.paymentStatus,
+            paymentUrl: data.paymentUrl, // Include payment URL
           })
         )
         subject = `Invoice ${data.invoiceNumber} - ${data.orderNumber}`

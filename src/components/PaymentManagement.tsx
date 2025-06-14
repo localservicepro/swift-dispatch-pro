@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Receipt } from "lucide-react";
+
 interface PaymentOrder {
   id: string;
   order_number: string;
@@ -25,9 +26,11 @@ interface PaymentOrder {
   delivery_fee?: number;
   subtotal?: number;
 }
+
 export function PaymentManagement() {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [sendingInvoices, setSendingInvoices] = useState<string[]>([]);
+  const [generatingInvoices, setGeneratingInvoices] = useState<string[]>([]);
   const {
     toast
   } = useToast();
@@ -75,6 +78,108 @@ export function PaymentManagement() {
       }));
     }
   });
+
+  // Generate and send invoice with payment link
+  const generateAndSendInvoice = async (orderId: string) => {
+    if (generatingInvoices.includes(orderId)) return;
+    setGeneratingInvoices(prev => [...prev, orderId]);
+
+    try {
+      const order = payments.find(p => p.id === orderId);
+      if (!order) throw new Error('Order not found');
+
+      // Generate unique invoice number
+      const invoiceNumber = `INV-${order.order_number}-${Date.now()}`;
+      const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      // Create invoice record
+      const { data: invoice, error: invoiceError } = await supabase
+        .from('invoices')
+        .insert({
+          invoice_number: invoiceNumber,
+          order_id: orderId,
+          customer_email: order.customer_email,
+          amount: order.total_amount,
+          currency: 'USD',
+          status: 'pending',
+          due_date: dueDate
+        })
+        .select()
+        .single();
+
+      if (invoiceError) throw invoiceError;
+
+      // Create payment session
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-invoice-payment', {
+        body: { invoiceId: invoice.id }
+      });
+
+      if (paymentError) throw paymentError;
+
+      // Parse products for email
+      let orderItems = [];
+      if (Array.isArray(order.products)) {
+        orderItems = order.products.map(item => ({
+          name: item.name || item.product_name || 'Product',
+          quantity: item.quantity || 1,
+          price: item.price || item.unit_price || 0
+        }));
+      } else if (order.products && typeof order.products === 'object') {
+        orderItems = [{
+          name: order.products.name || 'Product',
+          quantity: order.products.quantity || 1,
+          price: order.products.price || order.total_amount
+        }];
+      } else {
+        orderItems = [{
+          name: 'Order Items',
+          quantity: 1,
+          price: order.subtotal || order.total_amount - (order.delivery_fee || 0)
+        }];
+      }
+
+      // Send invoice email with payment link
+      const { error: emailError } = await supabase.functions.invoke('send-emails', {
+        body: {
+          type: 'invoice',
+          data: {
+            customerName: order.customer_name,
+            customerEmail: order.customer_email,
+            orderNumber: order.order_number,
+            invoiceNumber: invoiceNumber,
+            orderItems: orderItems,
+            subtotal: order.subtotal || order.total_amount - (order.delivery_fee || 0),
+            deliveryFee: order.delivery_fee || 0,
+            totalAmount: order.total_amount,
+            dueDate: new Date(dueDate).toLocaleDateString(),
+            paymentStatus: 'Pending',
+            paymentUrl: paymentData.paymentUrl
+          }
+        }
+      });
+
+      if (emailError) throw emailError;
+
+      toast({
+        title: "Invoice Generated & Sent",
+        description: `Invoice ${invoiceNumber} sent to ${order.customer_name} with payment link`
+      });
+
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
+      
+    } catch (error: any) {
+      console.error('Error generating invoice:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate and send invoice. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingInvoices(prev => prev.filter(id => id !== orderId));
+    }
+  };
+
   const sendInvoice = async (orderId: string) => {
     if (sendingInvoices.includes(orderId)) return;
     setSendingInvoices(prev => [...prev, orderId]);
@@ -300,7 +405,12 @@ export function PaymentManagement() {
               {payments.map(payment => <div key={payment.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <input type="checkbox" checked={selectedPayments.includes(payment.id)} onChange={() => togglePaymentSelection(payment.id)} className="w-4 h-4 text-blue-600 rounded" />
+                      <input 
+                        type="checkbox" 
+                        checked={selectedPayments.includes(payment.id)} 
+                        onChange={() => togglePaymentSelection(payment.id)} 
+                        className="w-4 h-4 text-blue-600 rounded" 
+                      />
                       <h3 className="font-semibold text-slate-800">{payment.order_number}</h3>
                       <Badge className={getStatusColor(payment.payment_status)}>
                         {payment.payment_status}
@@ -330,9 +440,29 @@ export function PaymentManagement() {
                   </div>
                   
                   <div className="flex gap-2 mt-4">
-                    <Button size="sm" variant="outline" onClick={() => sendInvoice(payment.id)} disabled={sendingInvoices.includes(payment.id)} className="flex items-center gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => generateAndSendInvoice(payment.id)}
+                      disabled={generatingInvoices.includes(payment.id)}
+                      className="flex items-center gap-2"
+                    >
+                      {generatingInvoices.includes(payment.id) ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Receipt className="w-4 h-4" />
+                      )}
+                      {generatingInvoices.includes(payment.id) ? "Generating..." : "Generate Invoice"}
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => sendInvoice(payment.id)} 
+                      disabled={sendingInvoices.includes(payment.id)} 
+                      className="flex items-center gap-2"
+                    >
                       {sendingInvoices.includes(payment.id) && <Loader2 className="w-4 h-4 animate-spin" />}
-                      {sendingInvoices.includes(payment.id) ? "Sending..." : "Send Invoice"}
+                      {sendingInvoices.includes(payment.id) ? "Sending..." : "Send Simple Invoice"}
                     </Button>
                     <Select onValueChange={value => updatePaymentStatus(payment.id, value)}>
                       <SelectTrigger className="w-32">

@@ -188,6 +188,59 @@ export type Database = {
         }
         Relationships: []
       }
+      invoices: {
+        Row: {
+          amount: number
+          created_at: string | null
+          currency: string | null
+          customer_email: string
+          due_date: string
+          id: string
+          invoice_number: string
+          order_id: string | null
+          paid_at: string | null
+          payment_url: string | null
+          status: string | null
+          stripe_payment_intent_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          currency?: string | null
+          customer_email: string
+          due_date: string
+          id?: string
+          invoice_number: string
+          order_id?: string | null
+          paid_at?: string | null
+          payment_url?: string | null
+          status?: string | null
+          stripe_payment_intent_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          currency?: string | null
+          customer_email?: string
+          due_date?: string
+          id?: string
+          invoice_number?: string
+          order_id?: string | null
+          paid_at?: string | null
+          payment_url?: string | null
+          status?: string | null
+          stripe_payment_intent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
