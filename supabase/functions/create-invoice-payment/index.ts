@@ -25,7 +25,12 @@ const handler = async (req: Request): Promise<Response> => {
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')
 
     if (!supabaseUrl || !supabaseServiceKey || !stripeSecretKey) {
-      throw new Error('Missing environment variables')
+      console.error('Missing environment variables:', {
+        hasSupabaseUrl: !!supabaseUrl,
+        hasServiceKey: !!supabaseServiceKey,
+        hasStripeKey: !!stripeSecretKey
+      })
+      throw new Error('Missing required environment variables')
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -34,7 +39,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { invoiceId }: InvoicePaymentRequest = await req.json()
     console.log('Processing payment for invoice:', invoiceId)
 
-    // Get invoice details
+    // Get invoice details with order information
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select(`
@@ -50,12 +55,15 @@ const handler = async (req: Request): Promise<Response> => {
       .single()
 
     if (invoiceError || !invoice) {
+      console.error('Invoice fetch error:', invoiceError)
       throw new Error('Invoice not found')
     }
 
     if (invoice.status !== 'pending') {
       throw new Error('Invoice is not available for payment')
     }
+
+    console.log('Creating Stripe checkout session for invoice:', invoice.invoice_number)
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -83,17 +91,20 @@ const handler = async (req: Request): Promise<Response> => {
       },
     })
 
-    // Update invoice with payment URL
+    console.log('Stripe session created:', session.id)
+
+    // Update invoice with payment URL and payment intent ID
     const { error: updateError } = await supabase
       .from('invoices')
       .update({ 
         payment_url: session.url,
-        stripe_payment_intent_id: session.payment_intent as string
+        stripe_payment_intent_id: session.payment_intent as string || session.id
       })
       .eq('id', invoiceId)
 
     if (updateError) {
-      console.error('Error updating invoice:', updateError)
+      console.error('Error updating invoice with payment details:', updateError)
+      throw new Error('Failed to update invoice with payment information')
     }
 
     console.log('Payment session created successfully:', session.id)

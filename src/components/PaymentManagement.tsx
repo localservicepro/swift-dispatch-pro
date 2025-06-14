@@ -31,9 +31,7 @@ export function PaymentManagement() {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [sendingInvoices, setSendingInvoices] = useState<string[]>([]);
   const [generatingInvoices, setGeneratingInvoices] = useState<string[]>([]);
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch real orders with customer data for payment management
@@ -88,11 +86,13 @@ export function PaymentManagement() {
       const order = payments.find(p => p.id === orderId);
       if (!order) throw new Error('Order not found');
 
+      console.log('Starting invoice generation for order:', order.order_number);
+
       // Generate unique invoice number
       const invoiceNumber = `INV-${order.order_number}-${Date.now()}`;
       const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      // Create invoice record
+      // Create invoice record first
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
         .insert({
@@ -107,14 +107,33 @@ export function PaymentManagement() {
         .select()
         .single();
 
-      if (invoiceError) throw invoiceError;
+      if (invoiceError) {
+        console.error('Invoice creation error:', invoiceError);
+        throw new Error(`Failed to create invoice: ${invoiceError.message}`);
+      }
+
+      console.log('Invoice created:', invoice.id);
 
       // Create payment session
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-invoice-payment', {
         body: { invoiceId: invoice.id }
       });
 
-      if (paymentError) throw paymentError;
+      if (paymentError) {
+        console.error('Payment session error:', paymentError);
+        // Clean up the invoice if payment session creation fails
+        await supabase.from('invoices').delete().eq('id', invoice.id);
+        throw new Error(`Failed to create payment session: ${paymentError.message}`);
+      }
+
+      if (!paymentData.success) {
+        console.error('Payment session failed:', paymentData);
+        // Clean up the invoice if payment session creation fails
+        await supabase.from('invoices').delete().eq('id', invoice.id);
+        throw new Error(paymentData.error || 'Failed to create payment session');
+      }
+
+      console.log('Payment session created:', paymentData.sessionId);
 
       // Parse products for email
       let orderItems = [];
@@ -158,12 +177,20 @@ export function PaymentManagement() {
         }
       });
 
-      if (emailError) throw emailError;
-
-      toast({
-        title: "Invoice Generated & Sent",
-        description: `Invoice ${invoiceNumber} sent to ${order.customer_name} with payment link`
-      });
+      if (emailError) {
+        console.error('Email sending error:', emailError);
+        // Don't delete the invoice if email fails, just warn
+        toast({
+          title: "Invoice Created",
+          description: `Invoice ${invoiceNumber} was created but email failed to send. Payment link is available in the system.`,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Invoice Generated & Sent",
+          description: `Invoice ${invoiceNumber} sent to ${order.customer_name} with payment link`
+        });
+      }
 
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
@@ -172,7 +199,7 @@ export function PaymentManagement() {
       console.error('Error generating invoice:', error);
       toast({
         title: "Error",
-        description: "Failed to generate and send invoice. Please try again.",
+        description: error.message || "Failed to generate and send invoice. Please try again.",
         variant: "destructive"
       });
     } finally {
