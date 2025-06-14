@@ -24,25 +24,25 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('=== EMAIL FUNCTION START ===')
+    console.log('Email function called')
     
-    // Get environment variables
-    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+    // Check for required environment variables
+    const resendApiKey = Deno.env.get('RESEND_API_KEY') || Deno.env.get('Resend API Key')
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     
-    console.log('Environment check:')
-    console.log('- RESEND_API_KEY exists:', !!resendApiKey)
-    console.log('- RESEND_API_KEY starts with re_:', resendApiKey?.startsWith('re_'))
-    console.log('- SUPABASE_URL exists:', !!supabaseUrl)
-    console.log('- SUPABASE_SERVICE_ROLE_KEY exists:', !!supabaseServiceKey)
+    console.log('Environment check:', {
+      hasResendKey: !!resendApiKey,
+      hasSupabaseUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey,
+      resendKeyPrefix: resendApiKey ? resendApiKey.substring(0, 3) : 'none'
+    })
 
-    if (!resendApiKey || !resendApiKey.startsWith('re_')) {
-      console.error('❌ Invalid RESEND_API_KEY')
+    if (!resendApiKey) {
+      console.error('RESEND_API_KEY not found in environment variables')
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid Resend API key. Please check your configuration.',
-          debug: 'RESEND_API_KEY is missing or invalid format'
+          error: 'RESEND_API_KEY not configured. Please add your Resend API key to the edge function secrets.' 
         }),
         {
           status: 500,
@@ -51,46 +51,40 @@ const handler = async (req: Request): Promise<Response> => {
       )
     }
 
-    // Initialize services
-    console.log('Initializing Resend...')
-    const resend = new Resend(resendApiKey)
-    
-    console.log('Initializing Supabase...')
-    const supabase = createClient(supabaseUrl!, supabaseServiceKey!)
-
-    // Parse request
-    const requestBody = await req.json()
-    const { type, data }: EmailRequest = requestBody
-
-    console.log('Request type:', type)
-    console.log('Request data keys:', Object.keys(data || {}))
-
-    if (!type || !data) {
-      throw new Error('Missing type or data in request')
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase configuration')
+      return new Response(
+        JSON.stringify({ error: 'Supabase configuration missing' }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      )
     }
 
-    // Prepare email based on type
+    // Initialize Resend with the API key
+    const resend = new Resend(resendApiKey)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    const { type, data }: EmailRequest = await req.json()
+    console.log('Email type:', type, 'Data keys:', Object.keys(data))
+
     let emailHtml: string
     let subject: string
     let toEmail: string
 
-    console.log('=== PREPARING EMAIL ===')
-
+    // Add more detailed error handling for template rendering
     try {
       switch (type) {
         case 'order-confirmation':
-          console.log('Preparing order confirmation email')
-          if (!data.customerName || !data.orderNumber || !data.customerEmail) {
-            throw new Error('Missing required fields for order confirmation')
-          }
-          
+          console.log('Rendering order confirmation email...')
           emailHtml = await renderAsync(
             React.createElement(OrderConfirmationEmail, {
               customerName: data.customerName,
               orderNumber: data.orderNumber,
               orderItems: data.orderItems || [],
-              totalAmount: data.totalAmount || 0,
-              deliveryAddress: data.deliveryAddress || '',
+              totalAmount: data.totalAmount,
+              deliveryAddress: data.deliveryAddress,
               deliveryDate: data.deliveryDate,
               deliveryTime: data.deliveryTime,
               specialInstructions: data.specialInstructions,
@@ -101,16 +95,12 @@ const handler = async (req: Request): Promise<Response> => {
           break
 
         case 'delivery-status-update':
-          console.log('Preparing delivery status update email')
-          if (!data.customerName || !data.orderNumber || !data.customerEmail || !data.newStatus) {
-            throw new Error('Missing required fields for delivery update')
-          }
-          
+          console.log('Rendering delivery status update email...')
           emailHtml = await renderAsync(
             React.createElement(DeliveryStatusUpdateEmail, {
               customerName: data.customerName,
               orderNumber: data.orderNumber,
-              oldStatus: data.oldStatus || '',
+              oldStatus: data.oldStatus,
               newStatus: data.newStatus,
               driverName: data.driverName,
               notes: data.notes,
@@ -122,10 +112,14 @@ const handler = async (req: Request): Promise<Response> => {
           break
 
         case 'invoice':
-          console.log('Preparing invoice email')
-          if (!data.customerName || !data.orderNumber || !data.invoiceNumber || !data.customerEmail) {
-            throw new Error('Missing required fields for invoice')
-          }
+          console.log('Rendering invoice email with data:', {
+            customerName: data.customerName,
+            orderNumber: data.orderNumber,
+            invoiceNumber: data.invoiceNumber,
+            itemCount: data.orderItems?.length || 0,
+            totalAmount: data.totalAmount,
+            hasPaymentUrl: !!data.paymentUrl
+          })
           
           emailHtml = await renderAsync(
             React.createElement(InvoiceEmail, {
@@ -135,9 +129,9 @@ const handler = async (req: Request): Promise<Response> => {
               orderItems: data.orderItems || [],
               subtotal: data.subtotal || 0,
               deliveryFee: data.deliveryFee || 0,
-              totalAmount: data.totalAmount || 0,
-              dueDate: data.dueDate || new Date().toISOString(),
-              paymentStatus: data.paymentStatus || 'Pending',
+              totalAmount: data.totalAmount,
+              dueDate: data.dueDate,
+              paymentStatus: data.paymentStatus,
               paymentUrl: data.paymentUrl,
             })
           )
@@ -148,96 +142,75 @@ const handler = async (req: Request): Promise<Response> => {
         default:
           throw new Error(`Unknown email type: ${type}`)
       }
-      
-      console.log('✅ Email template rendered successfully')
-      console.log('Subject:', subject)
-      console.log('To:', toEmail)
-      console.log('HTML length:', emailHtml.length)
-      
-    } catch (templateError: any) {
-      console.error('❌ Template rendering failed:', templateError.message)
-      
-      // Use simple fallback email
-      emailHtml = `
-        <html>
-          <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h1 style="color: #333;">Email Notification</h1>
-            <p>Dear ${data.customerName || 'Customer'},</p>
-            <p>This is a notification regarding your order ${data.orderNumber || 'N/A'}.</p>
-            <p><strong>Type:</strong> ${type}</p>
-            <p>We apologize for the simplified format. Please contact us if you need more details.</p>
-            <hr style="margin: 20px 0;">
-            <p style="color: #666; font-size: 12px;">This email was sent automatically. Please do not reply.</p>
-          </body>
-        </html>
-      `
-      subject = `Notification - ${data.orderNumber || 'Order'}`
-      toEmail = data.customerEmail
-      
-      if (!toEmail) {
-        throw new Error('No customer email available for fallback')
-      }
-      
-      console.log('Using fallback email template')
+      console.log('Email template rendered successfully')
+    } catch (renderError: any) {
+      console.error('Template rendering error:', renderError)
+      console.error('Error stack:', renderError.stack)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to render email template',
+          details: renderError.message,
+          type: renderError.name
+        }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      )
     }
 
-    // Send email via Resend
-    console.log('=== SENDING EMAIL VIA RESEND ===')
-    console.log('From: Order Management <onboarding@resend.dev>')
-    console.log('To:', toEmail)
-    console.log('Subject:', subject)
+    console.log('Sending email to:', toEmail, 'Subject:', subject)
 
-    const emailResult = await resend.emails.send({
+    // Use the default Resend domain for now - user can update this later
+    const { data: emailResult, error } = await resend.emails.send({
       from: 'Order Management <onboarding@resend.dev>',
       to: [toEmail],
       subject,
       html: emailHtml,
     })
 
-    console.log('Resend response:', emailResult)
-
-    if (emailResult.error) {
-      console.error('❌ Resend API error:', emailResult.error)
-      throw new Error(`Resend API error: ${emailResult.error.message || JSON.stringify(emailResult.error)}`)
-    }
-
-    if (!emailResult.data?.id) {
-      console.error('❌ No email ID returned from Resend')
-      throw new Error('Failed to get email ID from Resend')
-    }
-
-    console.log('✅ Email sent successfully!')
-    console.log('Email ID:', emailResult.data.id)
-
-    // Log successful email to database
-    try {
+    if (error) {
+      console.error('Resend error:', error)
+      
+      // Log the failed email attempt to database
       const { error: logError } = await supabase
         .from('email_logs')
         .insert({
           email_type: type,
           recipient_email: toEmail,
           subject,
-          status: 'sent',
-          external_id: emailResult.data.id,
+          status: 'failed',
+          error_message: error.message || 'Unknown error occurred',
           sent_at: new Date().toISOString(),
         })
 
       if (logError) {
-        console.error('⚠️ Error logging successful email:', logError)
-      } else {
-        console.log('✅ Successful email logged to database')
+        console.error('Error logging failed email:', logError)
       }
-    } catch (dbError) {
-      console.error('⚠️ Database logging failed:', dbError)
+
+      throw error
     }
 
-    console.log('=== EMAIL FUNCTION SUCCESS ===')
+    console.log('Email sent successfully:', emailResult)
+
+    // Log successful email to database
+    const { error: logError } = await supabase
+      .from('email_logs')
+      .insert({
+        email_type: type,
+        recipient_email: toEmail,
+        subject,
+        status: 'sent',
+        external_id: emailResult.id,
+        sent_at: new Date().toISOString(),
+      })
+
+    if (logError) {
+      console.error('Error logging email:', logError)
+    }
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        emailId: emailResult.data.id,
-        message: 'Email sent successfully'
-      }),
+      JSON.stringify({ success: true, emailId: emailResult.id }),
       {
         status: 200,
         headers: {
@@ -246,41 +219,14 @@ const handler = async (req: Request): Promise<Response> => {
         },
       }
     )
-
   } catch (error: any) {
-    console.error('=== EMAIL FUNCTION ERROR ===')
-    console.error('Error message:', error.message)
+    console.error('Error in send-emails function:', error)
     console.error('Error stack:', error.stack)
-    
-    // Try to log the failed email to database
-    try {
-      const supabase = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-      )
-      
-      const requestBody = await req.clone().json().catch(() => ({}))
-      const toEmail = requestBody?.data?.customerEmail || 'unknown'
-      const subject = `Failed Email - ${requestBody?.type || 'unknown'}`
-      
-      await supabase
-        .from('email_logs')
-        .insert({
-          email_type: requestBody?.type || 'unknown',
-          recipient_email: toEmail,
-          subject: subject,
-          status: 'failed',
-          error_message: error.message,
-          sent_at: new Date().toISOString(),
-        })
-    } catch (dbError) {
-      console.error('Failed to log error to database:', dbError)
-    }
-    
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Unknown error occurred',
-        details: 'Check function logs for more information'
+        details: error.name || 'UnknownError',
+        stack: error.stack || 'No stack trace available'
       }),
       {
         status: 500,
