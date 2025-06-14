@@ -43,10 +43,6 @@ export const InvoiceEmail = ({
   paymentStatus,
   paymentUrl,
 }: InvoiceEmailProps) => {
-  const statusColor = paymentStatus === 'Paid' ? '#16a34a' : 
-                     paymentStatus === 'Pending' ? '#ea580c' : 
-                     paymentStatus === 'Overdue' ? '#dc2626' : '#333';
-
   return (
     <Html>
       <Head />
@@ -60,16 +56,10 @@ export const InvoiceEmail = ({
           </Text>
           
           <Section style={invoiceHeader}>
-            <Row>
-              <Column>
-                <Text style={invoiceNumber}>Invoice #: <strong>{invoiceNumber}</strong></Text>
-                <Text style={text}>Order #: {orderNumber}</Text>
-              </Column>
-              <Column>
-                <Text style={text}>Due Date: <strong>{dueDate}</strong></Text>
-                <Text style={text}>Status: <span style={{color: statusColor}}><strong>{paymentStatus}</strong></span></Text>
-              </Column>
-            </Row>
+            <Text style={invoiceNumber}>Invoice #: <strong>{invoiceNumber}</strong></Text>
+            <Text style={text}>Order #: {orderNumber}</Text>
+            <Text style={text}>Due Date: <strong>{dueDate}</strong></Text>
+            <Text style={text}>Status: <strong>{paymentStatus}</strong></Text>
           </Section>
 
           {paymentStatus === 'Pending' && paymentUrl && (
@@ -85,40 +75,44 @@ export const InvoiceEmail = ({
 
           <Section style={itemsSection}>
             <Heading style={h2}>Order Items</Heading>
-            <Row style={headerRow}>
-              <Column style={itemHeaderName}>Item</Column>
-              <Column style={itemHeaderQuantity}>Qty</Column>
-              <Column style={itemHeaderPrice}>Price</Column>
-            </Row>
             
             {orderItems.map((item, index) => (
               <Row key={index} style={itemRow}>
-                <Column style={itemName}>{item.name}</Column>
-                <Column style={itemQuantity}>{item.quantity}</Column>
-                <Column style={itemPrice}>${item.price.toFixed(2)}</Column>
+                <Column>
+                  <Text style={itemText}>{item.name}</Text>
+                </Column>
+                <Column>
+                  <Text style={itemText}>Qty: {item.quantity}</Text>
+                </Column>
+                <Column>
+                  <Text style={itemText}>${item.price.toFixed(2)}</Text>
+                </Column>
               </Row>
             ))}
             
-            <Row style={subtotalRow}>
-              <Column style={totalLabel}>Subtotal:</Column>
-              <Column style={totalAmount}>${subtotal.toFixed(2)}</Column>
-            </Row>
-            
-            <Row style={deliveryRow}>
-              <Column style={totalLabel}>Delivery Fee:</Column>
-              <Column style={totalAmount}>${deliveryFee.toFixed(2)}</Column>
+            <Row style={totalRow}>
+              <Column>
+                <Text style={totalText}>Subtotal: ${subtotal.toFixed(2)}</Text>
+              </Column>
             </Row>
             
             <Row style={totalRow}>
-              <Column style={totalLabel}>Total Amount:</Column>
-              <Column style={totalAmount}><strong>${totalAmount.toFixed(2)}</strong></Column>
+              <Column>
+                <Text style={totalText}>Delivery Fee: ${deliveryFee.toFixed(2)}</Text>
+              </Column>
+            </Row>
+            
+            <Row style={totalRow}>
+              <Column>
+                <Text style={totalTextBold}>Total Amount: ${totalAmount.toFixed(2)}</Text>
+              </Column>
             </Row>
           </Section>
 
           {paymentStatus === 'Pending' && (
             <Section style={paymentSection}>
               <Text style={text}>
-                <strong>Payment is due by {dueDate}.</strong> Please click the "Pay Invoice Now" button above to complete your payment securely.
+                <strong>Payment is due by {dueDate}.</strong> Please use the payment button above to complete your payment securely.
               </Text>
             </Section>
           )}
@@ -187,82 +181,24 @@ const itemsSection = {
   margin: '20px 0',
 }
 
-const headerRow = {
-  borderBottom: '2px solid #333',
-  padding: '10px 0',
-  marginBottom: '10px',
-}
-
-const itemHeaderName = {
-  color: '#333',
-  fontSize: '14px',
-  lineHeight: '24px',
-  margin: '0',
-  fontWeight: 'bold',
-}
-
-const itemHeaderQuantity = {
-  color: '#333',
-  fontSize: '14px',
-  lineHeight: '24px',
-  margin: '0',
-  textAlign: 'center' as const,
-  fontWeight: 'bold',
-}
-
-const itemHeaderPrice = {
-  color: '#333',
-  fontSize: '14px',
-  lineHeight: '24px',
-  margin: '0',
-  textAlign: 'right' as const,
-  fontWeight: 'bold',
-}
-
 const itemRow = {
   borderBottom: '1px solid #eee',
   padding: '8px 0',
 }
 
-const itemName = {
+const itemText = {
   color: '#333',
   fontSize: '14px',
   lineHeight: '24px',
   margin: '0',
-}
-
-const itemQuantity = {
-  color: '#333',
-  fontSize: '14px',
-  lineHeight: '24px',
-  margin: '0',
-  textAlign: 'center' as const,
-}
-
-const itemPrice = {
-  color: '#333',
-  fontSize: '14px',
-  lineHeight: '24px',
-  margin: '0',
-  textAlign: 'right' as const,
-}
-
-const subtotalRow = {
-  padding: '8px 0',
-  marginTop: '10px',
-}
-
-const deliveryRow = {
-  padding: '8px 0',
 }
 
 const totalRow = {
-  borderTop: '2px solid #333',
-  padding: '10px 0',
+  padding: '8px 0',
   marginTop: '10px',
 }
 
-const totalLabel = {
+const totalText = {
   color: '#333',
   fontSize: '14px',
   lineHeight: '24px',
@@ -270,12 +206,12 @@ const totalLabel = {
   fontWeight: 'bold',
 }
 
-const totalAmount = {
+const totalTextBold = {
   color: '#333',
   fontSize: '16px',
   lineHeight: '24px',
   margin: '0',
-  textAlign: 'right' as const,
+  fontWeight: 'bold',
 }
 
 const paymentSection = {
@@ -313,7 +249,6 @@ const paymentButton = {
   display: 'inline-block',
   padding: '16px 32px',
   margin: '0 auto',
-  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
 }
 
 const paymentNote = {

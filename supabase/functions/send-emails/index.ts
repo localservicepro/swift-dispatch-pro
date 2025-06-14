@@ -27,7 +27,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('Email function called')
     
     // Check for required environment variables
-    const resendApiKey = Deno.env.get('RESEND_API_KEY') || Deno.env.get('Resend API Key')
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     
@@ -62,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
       )
     }
 
-    // Initialize Resend with the API key
+    // Initialize Resend and Supabase
     const resend = new Resend(resendApiKey)
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
@@ -73,7 +73,6 @@ const handler = async (req: Request): Promise<Response> => {
     let subject: string
     let toEmail: string
 
-    // Add more detailed error handling for template rendering
     try {
       switch (type) {
         case 'order-confirmation':
@@ -121,6 +120,11 @@ const handler = async (req: Request): Promise<Response> => {
             hasPaymentUrl: !!data.paymentUrl
           })
           
+          // Validate required invoice data
+          if (!data.customerName || !data.orderNumber || !data.invoiceNumber) {
+            throw new Error('Missing required invoice data')
+          }
+          
           emailHtml = await renderAsync(
             React.createElement(InvoiceEmail, {
               customerName: data.customerName,
@@ -142,26 +146,77 @@ const handler = async (req: Request): Promise<Response> => {
         default:
           throw new Error(`Unknown email type: ${type}`)
       }
-      console.log('Email template rendered successfully')
+      console.log('Email template rendered successfully, HTML length:', emailHtml.length)
     } catch (renderError: any) {
       console.error('Template rendering error:', renderError)
       console.error('Error stack:', renderError.stack)
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to render email template',
-          details: renderError.message,
-          type: renderError.name
-        }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        }
-      )
+      
+      // Create a simple HTML fallback for invoices
+      if (type === 'invoice') {
+        console.log('Creating fallback HTML for invoice')
+        emailHtml = `
+          <html>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+              <h1>Invoice ${data.invoiceNumber}</h1>
+              <p>Dear ${data.customerName},</p>
+              <p>Please find your invoice for order ${data.orderNumber} below.</p>
+              
+              <div style="background: #f9f9f9; padding: 20px; margin: 20px 0; border-radius: 5px;">
+                <p><strong>Invoice #:</strong> ${data.invoiceNumber}</p>
+                <p><strong>Order #:</strong> ${data.orderNumber}</p>
+                <p><strong>Due Date:</strong> ${data.dueDate}</p>
+                <p><strong>Status:</strong> ${data.paymentStatus}</p>
+              </div>
+              
+              ${data.paymentUrl ? `
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${data.paymentUrl}" style="background: #3b82f6; color: white; padding: 16px 32px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                    Pay Invoice Now - $${data.totalAmount.toFixed(2)}
+                  </a>
+                </div>
+              ` : ''}
+              
+              <div style="border: 1px solid #eee; padding: 20px; margin: 20px 0; border-radius: 5px;">
+                <h2>Order Items</h2>
+                ${(data.orderItems || []).map((item: any) => `
+                  <p>${item.name} - Qty: ${item.quantity} - $${item.price.toFixed(2)}</p>
+                `).join('')}
+                
+                <hr style="margin: 20px 0;">
+                <p><strong>Subtotal: $${(data.subtotal || 0).toFixed(2)}</strong></p>
+                <p><strong>Delivery Fee: $${(data.deliveryFee || 0).toFixed(2)}</strong></p>
+                <p><strong>Total Amount: $${data.totalAmount.toFixed(2)}</strong></p>
+              </div>
+              
+              <p>Thank you for your business!</p>
+            </body>
+          </html>
+        `
+        subject = `Invoice ${data.invoiceNumber} - ${data.orderNumber}`
+        toEmail = data.customerEmail
+        console.log('Fallback HTML created successfully')
+      } else {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to render email template',
+            details: renderError.message,
+            type: renderError.name
+          }),
+          {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          }
+        )
+      }
+    }
+
+    if (!toEmail || !subject || !emailHtml) {
+      throw new Error('Missing required email data after template rendering')
     }
 
     console.log('Sending email to:', toEmail, 'Subject:', subject)
 
-    // Use the default Resend domain for now - user can update this later
+    // Send email using Resend
     const { data: emailResult, error } = await resend.emails.send({
       from: 'Order Management <onboarding@resend.dev>',
       to: [toEmail],
@@ -173,19 +228,23 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Resend error:', error)
       
       // Log the failed email attempt to database
-      const { error: logError } = await supabase
-        .from('email_logs')
-        .insert({
-          email_type: type,
-          recipient_email: toEmail,
-          subject,
-          status: 'failed',
-          error_message: error.message || 'Unknown error occurred',
-          sent_at: new Date().toISOString(),
-        })
+      try {
+        const { error: logError } = await supabase
+          .from('email_logs')
+          .insert({
+            email_type: type,
+            recipient_email: toEmail,
+            subject,
+            status: 'failed',
+            error_message: error.message || 'Unknown Resend error',
+            sent_at: new Date().toISOString(),
+          })
 
-      if (logError) {
-        console.error('Error logging failed email:', logError)
+        if (logError) {
+          console.error('Error logging failed email:', logError)
+        }
+      } catch (dbError) {
+        console.error('Database logging error:', dbError)
       }
 
       throw error
@@ -194,19 +253,23 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('Email sent successfully:', emailResult)
 
     // Log successful email to database
-    const { error: logError } = await supabase
-      .from('email_logs')
-      .insert({
-        email_type: type,
-        recipient_email: toEmail,
-        subject,
-        status: 'sent',
-        external_id: emailResult.id,
-        sent_at: new Date().toISOString(),
-      })
+    try {
+      const { error: logError } = await supabase
+        .from('email_logs')
+        .insert({
+          email_type: type,
+          recipient_email: toEmail,
+          subject,
+          status: 'sent',
+          external_id: emailResult.id,
+          sent_at: new Date().toISOString(),
+        })
 
-    if (logError) {
-      console.error('Error logging email:', logError)
+      if (logError) {
+        console.error('Error logging email:', logError)
+      }
+    } catch (dbError) {
+      console.error('Database logging error:', dbError)
     }
 
     return new Response(
