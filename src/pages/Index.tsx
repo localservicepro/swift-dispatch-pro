@@ -9,6 +9,7 @@ import { OrderManagement } from "@/components/OrderManagement";
 import { ProductManagement } from "@/components/ProductManagement";
 import { PaymentManagement } from "@/components/PaymentManagement";
 import { DriverManagement } from "@/components/DriverManagement";
+import { EmailManagement } from "@/components/EmailManagement";
 import { Settings } from "@/components/Settings";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -49,6 +50,8 @@ const Index = () => {
         return <PaymentManagement />;
       case "drivers":
         return <DriverManagement />;
+      case "emails":
+        return <EmailManagement />;
       case "settings":
         return <Settings />;
       default:

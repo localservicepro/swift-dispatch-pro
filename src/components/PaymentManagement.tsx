@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
 interface Payment {
   id: string;
@@ -27,16 +28,61 @@ const mockPayments: Payment[] = [
 export function PaymentManagement() {
   const [payments, setPayments] = useState<Payment[]>(mockPayments);
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
+  const [sendingInvoices, setSendingInvoices] = useState<string[]>([]);
   const { toast } = useToast();
 
-  const sendInvoice = (paymentId: string) => {
-    toast({
-      title: "Invoice Sent",
-      description: `Invoice for ${paymentId} has been sent to the customer`,
-    });
+  const sendInvoice = async (paymentId: string) => {
+    if (sendingInvoices.includes(paymentId)) return;
+    
+    setSendingInvoices(prev => [...prev, paymentId]);
+    
+    try {
+      const payment = payments.find(p => p.id === paymentId);
+      if (!payment) throw new Error('Payment not found');
+
+      // Mock order items for demo - in real app, fetch from database
+      const mockOrderItems = [
+        { name: "Product A", quantity: 2, price: payment.amount / 2 },
+        { name: "Product B", quantity: 1, price: payment.amount / 2 }
+      ];
+
+      const { error } = await supabase.functions.invoke('send-emails', {
+        body: {
+          type: 'invoice',
+          data: {
+            customerName: payment.customer,
+            customerEmail: `${payment.customer.toLowerCase().replace(' ', '.')}@example.com`,
+            orderNumber: payment.orderId,
+            invoiceNumber: paymentId,
+            orderItems: mockOrderItems,
+            subtotal: payment.amount - 5,
+            deliveryFee: 5,
+            totalAmount: payment.amount,
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+            paymentStatus: payment.status,
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Invoice Sent",
+        description: `Invoice for ${paymentId} has been sent to ${payment.customer}`,
+      });
+    } catch (error: any) {
+      console.error('Error sending invoice:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send invoice. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingInvoices(prev => prev.filter(id => id !== paymentId));
+    }
   };
 
-  const sendBatchInvoices = () => {
+  const sendBatchInvoices = async () => {
     if (selectedPayments.length === 0) {
       toast({
         title: "No Selection",
@@ -46,11 +92,55 @@ export function PaymentManagement() {
       return;
     }
 
-    toast({
-      title: "Batch Invoices Sent",
-      description: `${selectedPayments.length} invoices have been sent`,
-    });
-    setSelectedPayments([]);
+    setSendingInvoices(prev => [...prev, ...selectedPayments]);
+
+    try {
+      // Send all invoices in parallel
+      const promises = selectedPayments.map(paymentId => {
+        const payment = payments.find(p => p.id === paymentId);
+        if (!payment) return Promise.resolve();
+
+        const mockOrderItems = [
+          { name: "Product A", quantity: 2, price: payment.amount / 2 },
+          { name: "Product B", quantity: 1, price: payment.amount / 2 }
+        ];
+
+        return supabase.functions.invoke('send-emails', {
+          body: {
+            type: 'invoice',
+            data: {
+              customerName: payment.customer,
+              customerEmail: `${payment.customer.toLowerCase().replace(' ', '.')}@example.com`,
+              orderNumber: payment.orderId,
+              invoiceNumber: payment.id,
+              orderItems: mockOrderItems,
+              subtotal: payment.amount - 5,
+              deliveryFee: 5,
+              totalAmount: payment.amount,
+              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+              paymentStatus: payment.status,
+            }
+          }
+        });
+      });
+
+      await Promise.all(promises);
+
+      toast({
+        title: "Batch Invoices Sent",
+        description: `${selectedPayments.length} invoices have been sent`,
+      });
+      setSelectedPayments([]);
+    } catch (error: any) {
+      console.error('Error sending batch invoices:', error);
+      toast({
+        title: "Error",
+        description: "Some invoices failed to send. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingInvoices(prev => prev.filter(id => !selectedPayments.includes(id)));
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -81,8 +171,12 @@ export function PaymentManagement() {
           <Button 
             onClick={sendBatchInvoices}
             variant="outline"
-            disabled={selectedPayments.length === 0}
+            disabled={selectedPayments.length === 0 || selectedPayments.some(id => sendingInvoices.includes(id))}
+            className="flex items-center gap-2"
           >
+            {selectedPayments.some(id => sendingInvoices.includes(id)) && (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            )}
             Send Batch Invoices ({selectedPayments.length})
           </Button>
           <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800">
@@ -215,8 +309,13 @@ export function PaymentManagement() {
                     size="sm" 
                     variant="outline"
                     onClick={() => sendInvoice(payment.id)}
+                    disabled={sendingInvoices.includes(payment.id)}
+                    className="flex items-center gap-2"
                   >
-                    Send Invoice
+                    {sendingInvoices.includes(payment.id) && (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    )}
+                    {sendingInvoices.includes(payment.id) ? "Sending..." : "Send Invoice"}
                   </Button>
                   <Button size="sm" variant="outline">Edit</Button>
                   <Button size="sm" variant="outline">View Details</Button>
