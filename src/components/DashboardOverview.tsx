@@ -1,29 +1,61 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
-
-const orderData = [
-  { name: "Mon", orders: 12, revenue: 2400 },
-  { name: "Tue", orders: 19, revenue: 3200 },
-  { name: "Wed", orders: 8, revenue: 1800 },
-  { name: "Thu", orders: 25, revenue: 4200 },
-  { name: "Fri", orders: 22, revenue: 3800 },
-  { name: "Sat", orders: 18, revenue: 3100 },
-  { name: "Sun", orders: 15, revenue: 2900 },
-];
-
-const deliveryData = [
-  { name: "Jan", delivered: 145, pending: 23 },
-  { name: "Feb", delivered: 189, pending: 31 },
-  { name: "Mar", delivered: 167, pending: 18 },
-  { name: "Apr", delivered: 203, pending: 27 },
-  { name: "May", delivered: 178, pending: 19 },
-  { name: "Jun", delivered: 221, pending: 15 },
-];
-
+const orderData = [{
+  name: "Mon",
+  orders: 12,
+  revenue: 2400
+}, {
+  name: "Tue",
+  orders: 19,
+  revenue: 3200
+}, {
+  name: "Wed",
+  orders: 8,
+  revenue: 1800
+}, {
+  name: "Thu",
+  orders: 25,
+  revenue: 4200
+}, {
+  name: "Fri",
+  orders: 22,
+  revenue: 3800
+}, {
+  name: "Sat",
+  orders: 18,
+  revenue: 3100
+}, {
+  name: "Sun",
+  orders: 15,
+  revenue: 2900
+}];
+const deliveryData = [{
+  name: "Jan",
+  delivered: 145,
+  pending: 23
+}, {
+  name: "Feb",
+  delivered: 189,
+  pending: 31
+}, {
+  name: "Mar",
+  delivered: 167,
+  pending: 18
+}, {
+  name: "Apr",
+  delivered: 203,
+  pending: 27
+}, {
+  name: "May",
+  delivered: 178,
+  pending: 19
+}, {
+  name: "Jun",
+  delivered: 221,
+  pending: 15
+}];
 export function DashboardOverview() {
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-slate-800">Dashboard Overview</h2>
@@ -36,7 +68,7 @@ export function DashboardOverview() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-blue-700">Total Orders</CardTitle>
@@ -123,26 +155,35 @@ export function DashboardOverview() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[
-              { action: "New order #1234 created", time: "2 minutes ago", status: "success" },
-              { action: "Payment received for order #1230", time: "15 minutes ago", status: "success" },
-              { action: "Driver John assigned to delivery", time: "1 hour ago", status: "info" },
-              { action: "Order #1225 marked as delivered", time: "2 hours ago", status: "success" },
-              { action: "New product 'Premium Coffee' added", time: "3 hours ago", status: "info" },
-            ].map((activity, index) => (
-              <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
+            {[{
+            action: "New order #1234 created",
+            time: "2 minutes ago",
+            status: "success"
+          }, {
+            action: "Payment received for order #1230",
+            time: "15 minutes ago",
+            status: "success"
+          }, {
+            action: "Driver John assigned to delivery",
+            time: "1 hour ago",
+            status: "info"
+          }, {
+            action: "Order #1225 marked as delivered",
+            time: "2 hours ago",
+            status: "success"
+          }, {
+            action: "New product 'Premium Coffee' added",
+            time: "3 hours ago",
+            status: "info"
+          }].map((activity, index) => <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
                 <div>
                   <p className="text-sm font-medium text-slate-700">{activity.action}</p>
                   <p className="text-xs text-slate-500">{activity.time}</p>
                 </div>
-                <div className={`w-2 h-2 rounded-full ${
-                  activity.status === 'success' ? 'bg-green-500' : 'bg-blue-500'
-                }`}></div>
-              </div>
-            ))}
+                <div className={`w-2 h-2 rounded-full ${activity.status === 'success' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+              </div>)}
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
