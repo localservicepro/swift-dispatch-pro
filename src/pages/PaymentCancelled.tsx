@@ -29,7 +29,7 @@ export default function PaymentCancelled() {
   const handleContactSupport = () => {
     toast({
       title: "Support Contact",
-      description: "Please contact support at support@company.com for assistance with your payment.",
+      description: "Please contact support at support@localservicepro.com.au for assistance with your payment.",
     });
   };
 

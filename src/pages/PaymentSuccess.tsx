@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -75,7 +74,7 @@ export default function PaymentSuccess() {
   const handleContactSupport = () => {
     toast({
       title: "Support Contact",
-      description: "Please contact support at support@company.com",
+      description: "Please contact support at support@localservicepro.com.au",
     });
   };
 

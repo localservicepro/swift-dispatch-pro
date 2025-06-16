@@ -55,7 +55,7 @@ const handler = async (req: Request): Promise<Response> => {
       )
     }
 
-    const from = 'SwiftDispatch Pro <updates@leadtocrm.com>'
+    const from = 'SwiftDispatch Pro <updates@localservicepro.com.au>'
     console.log('Sending email to:', toEmail, 'Subject:', subject)
     const { data: emailResult, error } = await sendEmail({
       from,
