@@ -17,13 +17,13 @@ export interface ConflictResult {
   message: string;
 }
 
-// Helper function to create time buffer (3 hours before and after for realistic delivery windows)
+// Helper function to create time buffer (reduced to 1 hour for less restrictive checking)
 const createTimeBuffer = (time: string): { start: string; end: string } => {
   const [hours, minutes] = time.split(':').map(Number);
   const timeInMinutes = hours * 60 + minutes;
   
-  const startMinutes = Math.max(0, timeInMinutes - 180); // 3 hours before
-  const endMinutes = Math.min(1439, timeInMinutes + 180); // 3 hours after, max 23:59
+  const startMinutes = Math.max(0, timeInMinutes - 60); // 1 hour before
+  const endMinutes = Math.min(1439, timeInMinutes + 60); // 1 hour after, max 23:59
   
   const formatTime = (mins: number) => {
     const h = Math.floor(mins / 60);
@@ -101,7 +101,7 @@ export const checkDriverConflicts = async (
       }
     }
 
-    // Determine conflict type and message based on actual conflicts
+    // Only treat exact conflicts as blocking
     if (exactConflicts.length > 0) {
       return {
         hasConflict: true,
@@ -111,10 +111,10 @@ export const checkDriverConflicts = async (
       };
     } else if (overlapConflicts.length > 0) {
       return {
-        hasConflict: true,
+        hasConflict: false, // Changed to false - treat as warning only
         conflictType: 'overlap',
         conflictingOrders: overlapConflicts,
-        message: `Driver has ${overlapConflicts.length} other delivery(ies) within 3 hours of this time`
+        message: `Driver has ${overlapConflicts.length} other delivery(ies) within 1 hour of this time`
       };
     } else if (sameDayOrders.length > 0) {
       return {
@@ -206,7 +206,7 @@ export const checkTruckConflicts = async (
       }
     }
 
-    // Determine conflict type and message based on actual conflicts
+    // Only treat exact conflicts as blocking
     if (exactConflicts.length > 0) {
       return {
         hasConflict: true,
@@ -216,10 +216,10 @@ export const checkTruckConflicts = async (
       };
     } else if (overlapConflicts.length > 0) {
       return {
-        hasConflict: true,
+        hasConflict: false, // Changed to false - treat as warning only
         conflictType: 'overlap',
         conflictingOrders: overlapConflicts,
-        message: `Truck has ${overlapConflicts.length} other delivery(ies) within 3 hours of this time`
+        message: `Truck has ${overlapConflicts.length} other delivery(ies) within 1 hour of this time`
       };
     } else if (sameDayOrders.length > 0) {
       return {
