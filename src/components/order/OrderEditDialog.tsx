@@ -13,7 +13,9 @@ import { OrderBasicInfoForm } from "./OrderBasicInfoForm";
 import { OrderPricingForm } from "./OrderPricingForm";
 import { OrderTruckSelectionForm } from "./OrderTruckSelectionForm";
 import { OrderDeliveryForm } from "./OrderDeliveryForm";
+import { ConflictWarning } from "./ConflictWarning";
 import { useOrderFormData, OrderFormData } from "./hooks/useOrderFormData";
+import { useConflictDetection } from "./hooks/useConflictDetection";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -57,6 +59,20 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     handleDriverChange,
     handleSuburbChange,
   } = useOrderFormData(order);
+
+  // Use conflict detection hook
+  const {
+    driverConflict,
+    truckConflict,
+    isChecking,
+    hasAnyConflict
+  } = useConflictDetection(
+    formData.delivery_date,
+    formData.delivery_time,
+    formData.driver_id,
+    formData.truck_id,
+    order.id
+  );
 
   // Reset truck selection when truck type changes
   useEffect(() => {
@@ -200,12 +216,31 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
             onInputChange={handleInputChange}
           />
 
+          {/* Conflict Warning Section */}
+          {(formData.delivery_date && formData.delivery_time) && (
+            <div className="space-y-2">
+              <ConflictWarning 
+                driverConflict={driverConflict}
+                truckConflict={truckConflict}
+              />
+              {isChecking && (
+                <div className="text-sm text-muted-foreground">
+                  Checking for conflicts...
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isUpdating}>
-              {isUpdating ? "Updating..." : "Update Order"}
+            <Button 
+              type="submit" 
+              disabled={isUpdating}
+              className={hasAnyConflict ? "bg-orange-600 hover:bg-orange-700" : ""}
+            >
+              {isUpdating ? "Updating..." : hasAnyConflict ? "Update Despite Conflicts" : "Update Order"}
             </Button>
           </div>
         </form>

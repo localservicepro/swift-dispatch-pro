@@ -9,6 +9,8 @@ import { TruckTypeSelector } from "./TruckTypeSelector";
 import { SpecificTruckSelector } from "./SpecificTruckSelector";
 import { DriverSelector } from "./DriverSelector";
 import { DeliveryScheduler } from "./DeliveryScheduler";
+import { ConflictWarning } from "./ConflictWarning";
+import { useConflictDetection } from "./hooks/useConflictDetection";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
 
@@ -65,6 +67,19 @@ export function DeliveryDetailsStep({
     }
   };
 
+  // Use conflict detection hook
+  const {
+    driverConflict,
+    truckConflict,
+    isChecking,
+    hasAnyConflict
+  } = useConflictDetection(
+    deliveryDate,
+    deliveryTime,
+    driverId,
+    truckId
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -97,6 +112,21 @@ export function DeliveryDetailsStep({
           onDriverChange={onDriverChange}
         />
 
+        {/* Conflict Warning Section */}
+        {(deliveryDate && deliveryTime) && (
+          <div className="space-y-2">
+            <ConflictWarning 
+              driverConflict={driverConflict}
+              truckConflict={truckConflict}
+            />
+            {isChecking && (
+              <div className="text-sm text-muted-foreground">
+                Checking for conflicts...
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Special Instructions */}
         <div className="space-y-2">
           <Label htmlFor="instructions">Special Delivery Instructions</Label>
@@ -116,9 +146,9 @@ export function DeliveryDetailsStep({
           <Button 
             onClick={onNext}
             disabled={!deliveryDate || !deliveryTime || !truckType || !truckId}
-            className="ml-auto"
+            className={`ml-auto ${hasAnyConflict ? "bg-orange-600 hover:bg-orange-700" : ""}`}
           >
-            Review Order
+            {hasAnyConflict ? "Continue Despite Conflicts" : "Review Order"}
           </Button>
         </div>
       </CardContent>
