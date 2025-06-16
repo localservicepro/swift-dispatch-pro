@@ -76,7 +76,7 @@ export function OrderDetailsCard({
 
       {/* Collapsible Details */}
       <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-sm font-medium text-slate-700 rounded bg-blue-500 hover:bg-blue-400">
+        <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-sm font-medium rounded text-gray-100 bg-cyan-800 hover:bg-cyan-700">
           <span>Order Details</span>
           <ChevronDown className={`w-4 h-4 transition-transform ${isDetailsOpen ? 'rotate-180' : ''}`} />
         </CollapsibleTrigger>
