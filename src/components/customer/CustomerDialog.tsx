@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { SuburbSelector } from "@/components/order/SuburbSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,7 +27,9 @@ export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSucces
     full_address: "",
     customer_type: "trade" as "trade" | "account",
     is_active: true,
+    suburb_id: "",
   });
+  const [deliveryRate, setDeliveryRate] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -40,6 +43,7 @@ export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSucces
         full_address: customer.full_address || "",
         customer_type: customer.customer_type || "trade",
         is_active: customer.is_active ?? true,
+        suburb_id: customer.suburb_id || "",
       });
     } else {
       setFormData({
@@ -50,9 +54,16 @@ export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSucces
         full_address: "",
         customer_type: "trade",
         is_active: true,
+        suburb_id: "",
       });
+      setDeliveryRate(0);
     }
   }, [customer, isEditMode, isOpen]);
+
+  const handleSuburbChange = (suburbId: string, rate: number) => {
+    setFormData({ ...formData, suburb_id: suburbId });
+    setDeliveryRate(rate);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +113,7 @@ export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSucces
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditMode ? "Edit Customer" : "Add New Customer"}
@@ -160,6 +171,17 @@ export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSucces
               required
             />
           </div>
+
+          <SuburbSelector
+            selectedSuburbId={formData.suburb_id}
+            onSuburbChange={handleSuburbChange}
+          />
+
+          {deliveryRate > 0 && (
+            <div className="text-sm text-gray-600">
+              Delivery Rate: ${deliveryRate.toFixed(2)}
+            </div>
+          )}
 
           <div>
             <Label htmlFor="customer_type">Customer Type</Label>

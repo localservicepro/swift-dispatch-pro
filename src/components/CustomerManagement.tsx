@@ -10,7 +10,7 @@ import { CustomerDialog } from "@/components/customer/CustomerDialog";
 import { CustomerOrders } from "@/components/customer/CustomerOrders";
 import { CustomerStats } from "@/components/customer/CustomerStats";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Search, Eye, Edit, Trash2 } from "lucide-react";
+import { UserPlus, Search, Eye, Edit, Trash2, MapPin } from "lucide-react";
 
 export function CustomerManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,7 +27,16 @@ export function CustomerManagement() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("*")
+        .select(`
+          *,
+          suburbs (
+            id,
+            name,
+            state,
+            postcode,
+            delivery_rate
+          )
+        `)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
@@ -38,7 +47,8 @@ export function CustomerManagement() {
   const filteredCustomers = customers?.filter((customer) => {
     const matchesSearch = customer.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          customer.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.email.toLowerCase().includes(searchTerm.toLowerCase());
+                         customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         customer.suburbs?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = customerTypeFilter === "all" || customer.customer_type === customerTypeFilter;
     return matchesSearch && matchesType;
   });
@@ -117,7 +127,7 @@ export function CustomerManagement() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                placeholder="Search customers..."
+                placeholder="Search customers by name, email, or suburb..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -173,6 +183,19 @@ export function CustomerManagement() {
                         <p>Email: {customer.email}</p>
                         {customer.phone && <p>Phone: {customer.phone}</p>}
                         <p>Address: {customer.full_address}</p>
+                        {customer.suburbs && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            <span>
+                              {customer.suburbs.name}, {customer.suburbs.state} {customer.suburbs.postcode}
+                              {customer.suburbs.delivery_rate > 0 && (
+                                <span className="ml-2 text-green-600 font-medium">
+                                  (Delivery: ${customer.suburbs.delivery_rate.toFixed(2)})
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-2">
