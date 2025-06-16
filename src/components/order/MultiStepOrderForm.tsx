@@ -152,8 +152,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         admin_id: user.id,
         special_instructions: specialInstructions || null,
         payment_method: paymentMethod,
-        status: 'requested' as const,
-        payment_status: paymentStatus as const
+        status: 'requested',
+        payment_status: paymentStatus
       };
 
       const { data: order, error: orderError } = await supabase
