@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Receipt } from "lucide-react";
+import { Loader2, Receipt, Bell, RefreshCw } from "lucide-react";
+import { useRealTimePayments } from "@/hooks/useRealTimePayments";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface PaymentOrder {
   id: string;
@@ -31,8 +30,17 @@ export function PaymentManagement() {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [sendingInvoices, setSendingInvoices] = useState<string[]>([]);
   const [generatingInvoices, setGeneratingInvoices] = useState<string[]>([]);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Set up real-time payment updates
+  useRealTimePayments((update) => {
+    console.log('Payment update received in PaymentManagement:', update);
+    setLastUpdateTime(new Date());
+    // Refresh the payment orders query when updates are received
+    queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
+  });
 
   // Fetch real orders with customer data for payment management
   const {
@@ -74,7 +82,8 @@ export function PaymentManagement() {
         customer_email: order.customers?.email || `${order.customer_name.toLowerCase().replace(' ', '.')}@example.com`,
         payment_status: order.payment_status || 'pending'
       }));
-    }
+    },
+    refetchInterval: 30000 // Auto-refresh every 30 seconds
   });
 
   // Generate and send invoice with payment link
@@ -191,7 +200,13 @@ export function PaymentManagement() {
         
         toast({
           title: "Invoice Generated & Sent",
-          description: `Invoice ${invoiceNumber} sent to ${order.customer_name} with payment link`
+          description: `Invoice ${invoiceNumber} sent to ${order.customer_name} with payment link`,
+          action: (
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Refresh
+            </Button>
+          )
         });
       }
 
@@ -380,18 +395,27 @@ export function PaymentManagement() {
         </Card>
       </div>;
   }
+  
   return <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-slate-800">Payment Management</h2>
-          <p className="text-slate-600 mt-1">Track payments and manage invoicing • Real-time order data</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-slate-600">Track payments and manage invoicing • Real-time updates enabled</p>
+            <Bell className="w-4 h-4 text-green-500" />
+            <span className="text-xs text-green-600">Live</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Last updated: {lastUpdateTime.toLocaleTimeString()}
+          </p>
         </div>
         <div className="flex gap-3">
           <Button onClick={sendBatchInvoices} variant="outline" disabled={selectedPayments.length === 0 || selectedPayments.some(id => sendingInvoices.includes(id))} className="flex items-center gap-2">
             {selectedPayments.some(id => sendingInvoices.includes(id)) && <Loader2 className="w-4 h-4 animate-spin" />}
             Batch Invoice ({selectedPayments.length})
           </Button>
-          <Button onClick={() => refetch()} className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800">
+          <Button onClick={() => refetch()} className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" />
             Refresh Data
           </Button>
         </div>
@@ -443,9 +467,16 @@ export function PaymentManagement() {
       {/* Payment Records */}
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-slate-800">
-            Payment Records {isLoading && <span className="text-sm font-normal text-slate-500">(Loading...)</span>}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+              Payment Records 
+              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              <Bell className="w-4 h-4 text-green-500" />
+            </CardTitle>
+            <Badge className="bg-green-100 text-green-800">
+              Real-time Updates Active
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? <div className="text-center py-8">
@@ -516,6 +547,7 @@ export function PaymentManagement() {
                       {sendingInvoices.includes(payment.id) && <Loader2 className="w-4 h-4 animate-spin" />}
                       {sendingInvoices.includes(payment.id) ? "Sending..." : "Send Simple Invoice"}
                     </Button>
+                    
                     <Select onValueChange={value => updatePaymentStatus(payment.id, value)}>
                       <SelectTrigger className="w-32">
                         <SelectValue placeholder="Status" />
