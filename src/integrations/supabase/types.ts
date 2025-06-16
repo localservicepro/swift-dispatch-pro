@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       customers: {
         Row: {
+          auth_user_id: string | null
           billing_preferences: Json | null
           created_at: string
           customer_type: string
@@ -25,6 +26,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auth_user_id?: string | null
           billing_preferences?: Json | null
           created_at?: string
           customer_type: string
@@ -39,6 +41,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auth_user_id?: string | null
           billing_preferences?: Json | null
           created_at?: string
           customer_type?: string
@@ -573,8 +576,8 @@ export type Database = {
         | "en_route"
         | "delivered"
         | "cancelled"
-      truck_type: "small" | "medium" | "large" | "refrigerated"
-      user_role: "admin" | "driver"
+      truck_type: "small" | "medium" | "large" | "crane"
+      user_role: "admin" | "driver" | "customer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -697,8 +700,8 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
-      truck_type: ["small", "medium", "large", "refrigerated"],
-      user_role: ["admin", "driver"],
+      truck_type: ["small", "medium", "large", "crane"],
+      user_role: ["admin", "driver", "customer"],
     },
   },
 } as const

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Package, Plus, Minus, ShoppingCart, DollarSign } from "lucide-react";
+import { Search, Package, Plus, Minus, ShoppingCart } from "lucide-react";
 
 interface Product {
   id: string;
@@ -17,6 +16,7 @@ interface Product {
   price: number;
   stock_quantity: number;
   sku: string | null;
+  images: string[];
   category?: {
     name: string;
   };
@@ -87,6 +87,7 @@ export function ProductSelectionStep({
         category:product_categories(name)
       `)
       .eq('is_active', true)
+      .gt('stock_quantity', 0)
       .order('name');
 
     if (searchQuery) {
@@ -203,6 +204,14 @@ export function ProductSelectionStep({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
               {products.map((product) => (
                 <div key={product.id} className="border rounded-lg p-4">
+                  {product.images && product.images.length > 0 && (
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="w-full h-32 object-cover rounded mb-3"
+                    />
+                  )}
+                  
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
                       <h4 className="font-medium text-sm">{product.name}</h4>
