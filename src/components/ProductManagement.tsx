@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit, Trash2, Package, Search } from "lucide-react";
+import { Plus, Edit, Trash2, Package, Search, ImageIcon } from "lucide-react";
 import { CategoryManagement } from "./CategoryManagement";
 import { ProductImageUpload } from "./ProductImageUpload";
 
@@ -109,6 +109,7 @@ export function ProductManagement() {
     const { data, error } = await query;
 
     if (error) {
+      console.error('Error loading products:', error);
       toast({
         title: "Error",
         description: "Failed to load products",
@@ -515,7 +516,7 @@ export function ProductManagement() {
           </Card>
         )}
 
-        {/* Products List - Updated to 3-column grid */}
+        {/* Products List - Enhanced image display */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -535,32 +536,54 @@ export function ProductManagement() {
                 {filteredProducts.map((product) => (
                   <div key={product.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
                     {/* Product Images */}
-                    {product.images && product.images.length > 0 && (
-                      <div className="mb-3">
-                        <img
-                          src={product.images[0]}
-                          alt={product.name}
-                          className="w-full h-32 object-cover rounded"
-                        />
-                        {product.images.length > 1 && (
-                          <div className="flex gap-1 mt-2">
-                            {product.images.slice(1, 4).map((image, index) => (
-                              <img
-                                key={index}
-                                src={image}
-                                alt={`${product.name} image ${index + 2}`}
-                                className="w-12 h-12 object-cover rounded"
-                              />
-                            ))}
-                            {product.images.length > 4 && (
-                              <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-500">
-                                +{product.images.length - 4}
-                              </div>
-                            )}
+                    <div className="mb-3">
+                      {product.images && product.images.length > 0 ? (
+                        <div>
+                          <img
+                            src={product.images[0]}
+                            alt={product.name}
+                            className="w-full h-32 object-cover rounded border"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="hidden w-full h-32 bg-gray-100 rounded border flex items-center justify-center">
+                            <div className="text-center text-gray-500">
+                              <ImageIcon className="w-8 h-8 mx-auto mb-2" />
+                              <p className="text-sm">Image not available</p>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    )}
+                          {product.images.length > 1 && (
+                            <div className="flex gap-1 mt-2">
+                              {product.images.slice(1, 4).map((image, index) => (
+                                <img
+                                  key={index}
+                                  src={image}
+                                  alt={`${product.name} image ${index + 2}`}
+                                  className="w-12 h-12 object-cover rounded border"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              ))}
+                              {product.images.length > 4 && (
+                                <div className="w-12 h-12 bg-gray-100 rounded border flex items-center justify-center text-xs text-gray-500">
+                                  +{product.images.length - 4}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="w-full h-32 bg-gray-100 rounded border flex items-center justify-center">
+                          <div className="text-center text-gray-500">
+                            <ImageIcon className="w-8 h-8 mx-auto mb-2" />
+                            <p className="text-sm">No image</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     
                     {/* Product Header */}
                     <div className="mb-3">
