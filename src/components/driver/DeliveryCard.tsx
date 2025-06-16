@@ -19,7 +19,7 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
   const [showMapView, setShowMapView] = useState(false);
   const { toast } = useToast();
 
-  const updateOrderStatus = async (newStatus: string) => {
+  const updateOrderStatus = async (newStatus: "preparing" | "loading" | "en_route" | "delivered" | "cancelled") => {
     try {
       setIsUpdating(true);
       
@@ -208,14 +208,14 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
       {showPhotoUpload && (
         <PhotoUpload
           orderId={order.id}
-          onClose={() => setShowPhotoUpload(false)}
-          onUploadComplete={() => {
+          onPhotoUploaded={() => {
             setShowPhotoUpload(false);
             toast({
               title: "Photo Uploaded",
               description: "Delivery photo has been uploaded successfully.",
             });
           }}
+          onCancel={() => setShowPhotoUpload(false)}
         />
       )}
     </>

@@ -76,8 +76,8 @@ export class MapboxService {
       const { error } = await supabase.from('delivery_routes').insert({
         order_id: orderId,
         driver_id: driverId,
-        route_data: routeData,
-        waypoints: routeData.waypoints,
+        route_data: routeData as any,
+        waypoints: routeData.waypoints as any,
         estimated_duration: routeData.routes[0]?.duration,
         estimated_distance: routeData.routes[0]?.distance,
         status: 'planned',
