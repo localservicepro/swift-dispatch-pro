@@ -6,45 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Split, Plus, Minus, Package, Truck, User, Calendar } from "lucide-react";
-import { Database } from "@/integrations/supabase/types";
-
-type TruckType = Database["public"]["Enums"]["truck_type"];
-
-interface Product {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  stock_quantity: number;
-  sku: string | null;
-  images: string[];
-  category?: {
-    name: string;
-  };
-}
-
-interface CartItem {
-  product: Product;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-}
-
-interface SplitConfig {
-  id: string;
-  name: string;
-  products: Array<{
-    productId: string;
-    quantity: number;
-  }>;
-  truckType: TruckType | "";
-  truckId: string;
-  driverId: string;
-  deliveryDate: string;
-  deliveryTime: string;
-  specialInstructions: string;
-}
+import { Split, Plus, Minus, Package } from "lucide-react";
+import { CartItem, SplitConfig, TruckType } from "./types";
 
 interface SplitOrderConfigurationStepProps {
   cart: CartItem[];
