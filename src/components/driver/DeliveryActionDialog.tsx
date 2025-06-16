@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -80,9 +79,16 @@ export function DeliveryActionDialog({
   const uploadPhoto = async (file: File) => {
     setUploading(true);
     try {
+      // Get current user
+      const currentUser = await supabase.auth.getUser();
+      if (!currentUser.data.user?.id) {
+        throw new Error('User not authenticated');
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${order.id}_${Date.now()}.${fileExt}`;
-      const filePath = `delivery-photos/${fileName}`;
+      // Updated path structure to include user ID for proper RLS handling
+      const filePath = `${currentUser.data.user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('delivery-photos')
@@ -90,14 +96,13 @@ export function DeliveryActionDialog({
 
       if (uploadError) throw uploadError;
 
-      // Save photo record to database - using correct column names
-      const currentUser = await supabase.auth.getUser();
+      // Save photo record to database
       const { error: dbError } = await supabase
         .from('delivery_photos')
         .insert({
           order_id: order.id,
           photo_url: filePath,
-          driver_id: currentUser.data.user?.id || ''
+          driver_id: currentUser.data.user.id
         });
 
       if (dbError) throw dbError;
