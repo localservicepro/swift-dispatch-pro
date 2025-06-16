@@ -5,9 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { PhotoUpload } from "./PhotoUpload";
+import { DeliveryActionDialog } from "./DeliveryActionDialog";
 import { Database } from "@/integrations/supabase/types";
-import { emailService } from "@/utils/emailService";
 import { 
   MapPin, 
   Phone, 
@@ -16,7 +15,8 @@ import {
   Clock,
   Truck,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  XCircle
 } from "lucide-react";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -28,7 +28,13 @@ interface DeliveryCardProps {
 
 export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
   const [updating, setUpdating] = useState(false);
-  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
+  const [actionDialog, setActionDialog] = useState<{
+    open: boolean;
+    action: "delivered" | "cancelled" | null;
+  }>({
+    open: false,
+    action: null
+  });
   const { toast } = useToast();
 
   const getStatusColor = (status: string) => {
@@ -37,6 +43,7 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
       case 'loading': return 'bg-blue-100 text-blue-800';
       case 'en_route': return 'bg-purple-100 text-purple-800';
       case 'delivered': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -47,6 +54,7 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
       case 'loading': return <Clock className="w-4 h-4" />;
       case 'en_route': return <Truck className="w-4 h-4" />;
       case 'delivered': return <CheckCircle className="w-4 h-4" />;
+      case 'cancelled': return <XCircle className="w-4 h-4" />;
       default: return <AlertCircle className="w-4 h-4" />;
     }
   };
@@ -55,7 +63,6 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
     switch (currentStatus) {
       case 'preparing': return 'loading';
       case 'loading': return 'en_route';
-      case 'en_route': return 'delivered';
       default: return null;
     }
   };
@@ -64,28 +71,13 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
     switch (status) {
       case 'preparing': return 'Start Loading';
       case 'loading': return 'Start Delivery';
-      case 'en_route': return 'Mark Delivered';
       default: return null;
     }
   };
 
   const updateStatus = async (newStatus: OrderStatus) => {
-    if (newStatus === 'delivered') {
-      setShowPhotoUpload(true);
-      return;
-    }
-
     setUpdating(true);
     try {
-      // Get current order details for email notification
-      const { data: currentOrder } = await supabase
-        .from('orders')
-        .select('status')
-        .eq('id', order.id)
-        .single();
-
-      const oldStatus = currentOrder?.status;
-
       const { error } = await supabase.rpc('update_order_status', {
         order_id: order.id,
         new_status: newStatus
@@ -110,9 +102,12 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
     }
   };
 
-  const handlePhotoUploaded = async () => {
-    setShowPhotoUpload(false);
-    await updateStatus('delivered' as OrderStatus);
+  const openActionDialog = (action: "delivered" | "cancelled") => {
+    setActionDialog({ open: true, action });
+  };
+
+  const closeActionDialog = () => {
+    setActionDialog({ open: false, action: null });
   };
 
   const products = Array.isArray(order.products) ? order.products : [];
@@ -194,28 +189,51 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
             </div>
           )}
 
-          {/* Action Button */}
-          {nextStatus && statusLabel && (
-            <Button
-              onClick={() => updateStatus(nextStatus)}
-              disabled={updating}
-              className="w-full"
-              variant={nextStatus === 'delivered' ? 'default' : 'outline'}
-            >
-              {updating ? 'Updating...' : statusLabel}
-            </Button>
-          )}
+          {/* Action Buttons */}
+          <div className="space-y-2">
+            {/* Regular status progression button */}
+            {nextStatus && statusLabel && (
+              <Button
+                onClick={() => updateStatus(nextStatus)}
+                disabled={updating}
+                className="w-full"
+                variant="outline"
+              >
+                {updating ? 'Updating...' : statusLabel}
+              </Button>
+            )}
+
+            {/* Delivery completion buttons (only show when en_route) */}
+            {order.status === 'en_route' && (
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  onClick={() => openActionDialog('delivered')}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Delivered
+                </Button>
+                <Button
+                  onClick={() => openActionDialog('cancelled')}
+                  variant="destructive"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Photo Upload Modal */}
-      {showPhotoUpload && (
-        <PhotoUpload
-          orderId={order.id}
-          onPhotoUploaded={handlePhotoUploaded}
-          onCancel={() => setShowPhotoUpload(false)}
-        />
-      )}
+      {/* Action Dialog */}
+      <DeliveryActionDialog
+        open={actionDialog.open}
+        onOpenChange={(open) => !open && closeActionDialog()}
+        order={order}
+        action={actionDialog.action!}
+        onStatusUpdate={onStatusUpdate}
+      />
     </>
   );
 }
