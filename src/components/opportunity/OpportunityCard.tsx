@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -181,10 +180,18 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
             </div>
           )}
 
-          {truckInfo && (
+          {/* Enhanced Truck Information */}
+          {(truckInfo || order.truck_registration) && (
             <div className="flex items-center gap-2">
               <Truck className="w-3 h-3" />
-              <span>{truckInfo.label}</span>
+              <div className="flex flex-col">
+                {truckInfo && (
+                  <span>{truckInfo.label}</span>
+                )}
+                {order.truck_registration && (
+                  <span className="font-medium text-slate-700">#{order.truck_registration}</span>
+                )}
+              </div>
             </div>
           )}
 
