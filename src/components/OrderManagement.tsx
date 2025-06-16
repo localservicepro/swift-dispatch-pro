@@ -10,10 +10,11 @@ import { MultiStepOrderForm } from "./order/MultiStepOrderForm";
 import { OrderEditDialog } from "./order/OrderEditDialog";
 import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Filter, X } from "lucide-react";
+import { Search, Filter, X, MapPin, Truck, FileText } from "lucide-react";
 import { emailService } from "@/utils/emailService";
 import { activityLogger } from "@/utils/activityLogger";
 import { useAuth } from "./auth/AuthProvider";
+import { getTruckInfo } from "@/utils/truckUtils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -46,7 +47,7 @@ export function OrderManagement() {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
 
-  // Fetch orders from database
+  // Fetch orders from database with additional relations
   const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
@@ -70,8 +71,11 @@ export function OrderManagement() {
           customer_id,
           delivery_fee,
           subtotal,
-          customers!orders_customer_id_fkey(suburb_id),
-          profiles!orders_driver_id_fkey(full_name)
+          truck_type,
+          truck_id,
+          customers!orders_customer_id_fkey(suburb_id, suburbs(name, state)),
+          profiles!orders_driver_id_fkey(full_name),
+          trucks!orders_truck_id_fkey(registration_number, truck_type)
         `)
         .order('created_at', { ascending: false });
 
@@ -84,7 +88,11 @@ export function OrderManagement() {
       return data.map(order => ({
         ...order,
         suburb_id: order.customers?.suburb_id || null,
-        driver_name: order.profiles?.full_name || 'Not Assigned'
+        suburb_name: order.customers?.suburbs?.name || null,
+        suburb_state: order.customers?.suburbs?.state || null,
+        driver_name: order.profiles?.full_name || 'Not Assigned',
+        truck_registration: order.trucks?.registration_number || null,
+        truck_type_from_truck: order.trucks?.truck_type || order.truck_type
       }));
     },
   });
@@ -447,100 +455,152 @@ export function OrderManagement() {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredOrders.map((order) => (
-                <div key={order.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-semibold text-slate-800">{order.order_number}</h3>
-                      <Badge className={getStatusColor(order.status)}>
-                        {getStatusLabel(order.status)}
-                      </Badge>
+              {filteredOrders.map((order) => {
+                const truckInfo = getTruckInfo(order.truck_type_from_truck || order.truck_type);
+                
+                return (
+                  <div key={order.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-semibold text-slate-800">{order.order_number}</h3>
+                        <Badge className={getStatusColor(order.status)}>
+                          {getStatusLabel(order.status)}
+                        </Badge>
+                      </div>
+                      <span className="text-lg font-bold text-green-600">
+                        ${order.total_amount.toFixed(2)}
+                      </span>
                     </div>
-                    <span className="text-lg font-bold text-green-600">
-                      ${order.total_amount.toFixed(2)}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="text-slate-500">Customer</p>
-                      <p className="font-medium">{order.customer_name}</p>
-                      {order.customer_phone && (
-                        <p className="text-xs text-slate-400">{order.customer_phone}</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-3">
+                      <div>
+                        <p className="text-slate-500">Customer</p>
+                        <p className="font-medium">{order.customer_name}</p>
+                        {order.customer_phone && (
+                          <p className="text-xs text-slate-400">{order.customer_phone}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-slate-500">Products</p>
+                        <p className="font-medium">{formatProducts(order.products)}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500">Driver</p>
+                        <p className="font-medium">{order.driver_name || 'Not Assigned'}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500 flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          Suburb
+                        </p>
+                        <p className="font-medium">
+                          {order.suburb_name ? `${order.suburb_name}, ${order.suburb_state}` : 'Not specified'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Truck Information */}
+                    {(order.truck_type || order.truck_registration) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
+                        <div>
+                          <p className="text-slate-500 flex items-center gap-1">
+                            <Truck className="w-3 h-3" />
+                            Truck Type
+                          </p>
+                          <div className="flex items-center gap-2">
+                            {truckInfo && (
+                              <>
+                                <truckInfo.icon className={`w-4 h-4 ${truckInfo.colorClass}`} />
+                                <span className="font-medium">{truckInfo.label}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {order.truck_registration && (
+                          <div>
+                            <p className="text-slate-500">Selected Truck</p>
+                            <p className="font-medium">{order.truck_registration}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Special Instructions */}
+                    {order.special_instructions && (
+                      <div className="mb-3">
+                        <p className="text-slate-500 flex items-center gap-1 mb-1">
+                          <FileText className="w-3 h-3" />
+                          Notes
+                        </p>
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                          <p className="text-sm text-yellow-800">{order.special_instructions}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-3 text-xs text-slate-400">
+                      <p>Address: {order.customer_address}</p>
+                      <p>Created: {new Date(order.created_at).toLocaleDateString()}</p>
+                      {order.delivery_date && (
+                        <p>Delivery: {order.delivery_date} {order.delivery_time && `at ${order.delivery_time}`}</p>
                       )}
                     </div>
-                    <div>
-                      <p className="text-slate-500">Products</p>
-                      <p className="font-medium">{formatProducts(order.products)}</p>
+                    
+                    <div className="flex gap-2 mt-4">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => setEditingOrder(order)}
+                      >
+                        Edit
+                      </Button>
+                      
+                      {/* Quick status update buttons for admin */}
+                      {order.status === 'preparing' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => updateOrderStatus(order.id, 'loading', order)}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        >
+                          Mark Loading
+                        </Button>
+                      )}
+                      
+                      {order.status === 'loading' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => updateOrderStatus(order.id, 'en_route', order)}
+                          className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                        >
+                          Mark En Route
+                        </Button>
+                      )}
+                      
+                      {order.status === 'en_route' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => updateOrderStatus(order.id, 'delivered', order)}
+                          className="text-green-600 border-green-200 hover:bg-green-50"
+                        >
+                          Mark Delivered
+                        </Button>
+                      )}
+                      
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => updateOrderStatus(order.id, 'cancelled', order)}
+                      >
+                        Cancel
+                      </Button>
                     </div>
-                    <div>
-                      <p className="text-slate-500">Driver</p>
-                      <p className="font-medium">{order.driver_name || 'Not Assigned'}</p>
-                    </div>
                   </div>
-
-                  <div className="mt-3 text-xs text-slate-400">
-                    <p>Address: {order.customer_address}</p>
-                    <p>Created: {new Date(order.created_at).toLocaleDateString()}</p>
-                    {order.delivery_date && (
-                      <p>Delivery: {order.delivery_date} {order.delivery_time && `at ${order.delivery_time}`}</p>
-                    )}
-                  </div>
-                  
-                  <div className="flex gap-2 mt-4">
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => setEditingOrder(order)}
-                    >
-                      Edit
-                    </Button>
-                    
-                    {/* Quick status update buttons for admin */}
-                    {order.status === 'preparing' && (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => updateOrderStatus(order.id, 'loading', order)}
-                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                      >
-                        Mark Loading
-                      </Button>
-                    )}
-                    
-                    {order.status === 'loading' && (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => updateOrderStatus(order.id, 'en_route', order)}
-                        className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                      >
-                        Mark En Route
-                      </Button>
-                    )}
-                    
-                    {order.status === 'en_route' && (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => updateOrderStatus(order.id, 'delivered', order)}
-                        className="text-green-600 border-green-200 hover:bg-green-50"
-                      >
-                        Mark Delivered
-                      </Button>
-                    )}
-                    
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="text-red-600 border-red-200 hover:bg-red-50"
-                      onClick={() => updateOrderStatus(order.id, 'cancelled', order)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
