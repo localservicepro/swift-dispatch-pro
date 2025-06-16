@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -152,13 +151,13 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         admin_id: user.id,
         special_instructions: specialInstructions || null,
         payment_method: paymentMethod,
-        status: 'requested',
+        status: 'requested' as Database["public"]["Enums"]["order_status"],
         payment_status: paymentStatus
       };
 
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert([orderData])
+        .insert(orderData)
         .select()
         .single();
 
