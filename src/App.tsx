@@ -33,31 +33,42 @@ function AuthenticatedApp() {
   }
 
   return (
+    <Routes>
+      <Route 
+        path="/" 
+        element={
+          profile?.role === 'driver' ? (
+            <Navigate to="/driver" replace />
+          ) : (
+            <Index />
+          )
+        } 
+      />
+      <Route 
+        path="/driver" 
+        element={
+          profile?.role === 'driver' ? (
+            <DriverPortal />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } 
+      />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
+function AppRoutes() {
+  return (
     <BrowserRouter>
       <Routes>
-        <Route 
-          path="/" 
-          element={
-            profile?.role === 'driver' ? (
-              <Navigate to="/driver" replace />
-            ) : (
-              <Index />
-            )
-          } 
-        />
-        <Route 
-          path="/driver" 
-          element={
-            profile?.role === 'driver' ? (
-              <DriverPortal />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
+        {/* Public payment routes - no authentication required */}
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
-        <Route path="*" element={<NotFound />} />
+        
+        {/* All other routes require authentication */}
+        <Route path="/*" element={<AuthenticatedApp />} />
       </Routes>
     </BrowserRouter>
   );
@@ -69,7 +80,7 @@ const App = () => (
       <AuthProvider>
         <Toaster />
         <Sonner />
-        <AuthenticatedApp />
+        <AppRoutes />
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
