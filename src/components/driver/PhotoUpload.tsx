@@ -1,9 +1,11 @@
+
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Camera, Upload, X, Check } from "lucide-react";
+import { CameraCapture } from "./CameraCapture";
 
 interface PhotoUploadProps {
   orderId: string;
@@ -15,6 +17,7 @@ export function PhotoUpload({ orderId, onPhotoUploaded, onCancel }: PhotoUploadP
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -31,10 +34,30 @@ export function PhotoUpload({ orderId, onPhotoUploaded, onCancel }: PhotoUploadP
   };
 
   const openCamera = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.setAttribute('capture', 'environment');
-      fileInputRef.current.click();
+    // Check if we can use the enhanced camera
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      setShowCamera(true);
+    } else {
+      // Fallback to file input with camera
+      if (fileInputRef.current) {
+        fileInputRef.current.setAttribute('capture', 'environment');
+        fileInputRef.current.click();
+      }
     }
+  };
+
+  const handleCameraCapture = (file: File) => {
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    setShowCamera(false);
+  };
+
+  const handleCameraCancel = () => {
+    setShowCamera(false);
   };
 
   const openGallery = () => {
@@ -96,6 +119,16 @@ export function PhotoUpload({ orderId, onPhotoUploaded, onCancel }: PhotoUploadP
       setUploading(false);
     }
   };
+
+  // Show camera interface
+  if (showCamera) {
+    return (
+      <CameraCapture
+        onPhotoCapture={handleCameraCapture}
+        onCancel={handleCameraCancel}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
