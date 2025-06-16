@@ -1,6 +1,6 @@
 
 import { Database } from "@/integrations/supabase/types";
-import { Truck, Package, Crane, TruckIcon } from "lucide-react";
+import { Truck, Package, Construction, TruckIcon } from "lucide-react";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
 
@@ -47,7 +47,7 @@ export const truckTypeInfo: Record<TruckType, TruckTypeInfo> = {
     label: 'Crane Truck',
     description: 'Heavy lifting',
     capacity: 'Specialized cargo',
-    icon: Crane,
+    icon: Construction,
     colorClass: 'text-purple-700',
     bgClass: 'bg-purple-100'
   }
