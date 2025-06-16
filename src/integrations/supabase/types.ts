@@ -494,6 +494,7 @@ export type Database = {
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number | null
           total_amount: number
+          truck_id: string | null
           truck_type: Database["public"]["Enums"]["truck_type"] | null
           updated_at: string | null
         }
@@ -519,6 +520,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number | null
           total_amount: number
+          truck_id?: string | null
           truck_type?: Database["public"]["Enums"]["truck_type"] | null
           updated_at?: string | null
         }
@@ -544,6 +546,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number | null
           total_amount?: number
+          truck_id?: string | null
           truck_type?: Database["public"]["Enums"]["truck_type"] | null
           updated_at?: string | null
         }
@@ -567,6 +570,13 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_truck_id_fkey"
+            columns: ["truck_id"]
+            isOneToOne: false
+            referencedRelation: "trucks"
             referencedColumns: ["id"]
           },
         ]
@@ -725,6 +735,54 @@ export type Database = {
           postcode?: string
           state?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      trucks: {
+        Row: {
+          capacity_tons: number | null
+          created_at: string
+          fuel_type: string | null
+          id: string
+          is_active: boolean
+          last_maintenance_date: string | null
+          next_maintenance_due: string | null
+          notes: string | null
+          registration_number: string
+          status: string
+          truck_type: Database["public"]["Enums"]["truck_type"]
+          updated_at: string
+          year_manufactured: number | null
+        }
+        Insert: {
+          capacity_tons?: number | null
+          created_at?: string
+          fuel_type?: string | null
+          id?: string
+          is_active?: boolean
+          last_maintenance_date?: string | null
+          next_maintenance_due?: string | null
+          notes?: string | null
+          registration_number: string
+          status?: string
+          truck_type: Database["public"]["Enums"]["truck_type"]
+          updated_at?: string
+          year_manufactured?: number | null
+        }
+        Update: {
+          capacity_tons?: number | null
+          created_at?: string
+          fuel_type?: string | null
+          id?: string
+          is_active?: boolean
+          last_maintenance_date?: string | null
+          next_maintenance_due?: string | null
+          notes?: string | null
+          registration_number?: string
+          status?: string
+          truck_type?: Database["public"]["Enums"]["truck_type"]
+          updated_at?: string
+          year_manufactured?: number | null
         }
         Relationships: []
       }

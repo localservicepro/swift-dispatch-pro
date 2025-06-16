@@ -1,18 +1,21 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { DriverSelector } from "./DriverSelector";
 import { SuburbSelector } from "./SuburbSelector";
+import { useQuery } from "@tanstack/react-query";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
+type TruckType = Database["public"]["Enums"]["truck_type"];
 
 interface Order {
   id: string;
@@ -32,6 +35,16 @@ interface Order {
   suburb_id?: string;
   delivery_fee?: number;
   subtotal?: number;
+  truck_type?: TruckType;
+  truck_id?: string;
+}
+
+interface Truck {
+  id: string;
+  registration_number: string;
+  truck_type: TruckType;
+  status: string;
+  capacity_tons: number | null;
 }
 
 interface OrderEditDialogProps {
@@ -55,14 +68,61 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     suburb_id: order.suburb_id || '',
     delivery_fee: order.delivery_fee || 0,
     subtotal: order.subtotal || (order.total_amount - (order.delivery_fee || 0)),
+    truck_type: order.truck_type || '',
+    truck_id: order.truck_id || '',
   });
   const { toast } = useToast();
+
+  // Fetch available trucks based on selected truck type
+  const { data: availableTrucks = [] } = useQuery({
+    queryKey: ['available-trucks', formData.truck_type],
+    queryFn: async () => {
+      if (!formData.truck_type) return [];
+      
+      const { data, error } = await supabase
+        .from('trucks')
+        .select('id, registration_number, truck_type, status, capacity_tons')
+        .eq('truck_type', formData.truck_type)
+        .eq('is_active', true)
+        .order('registration_number');
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!formData.truck_type,
+  });
+
+  // Reset truck selection when truck type changes
+  useEffect(() => {
+    if (formData.truck_type !== order.truck_type) {
+      setFormData(prev => ({ ...prev, truck_id: '' }));
+    }
+  }, [formData.truck_type, order.truck_type]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUpdating(true);
 
     try {
+      // If truck assignment changed, update the old truck status and new truck status
+      if (formData.truck_id !== order.truck_id) {
+        // Set old truck back to available if it was assigned
+        if (order.truck_id) {
+          await supabase
+            .from('trucks')
+            .update({ status: 'available' })
+            .eq('id', order.truck_id);
+        }
+
+        // Set new truck to assigned if one is selected
+        if (formData.truck_id) {
+          await supabase
+            .from('trucks')
+            .update({ status: 'assigned' })
+            .eq('id', formData.truck_id);
+        }
+      }
+
       // Update the order
       const { error: orderError } = await supabase
         .from('orders')
@@ -78,6 +138,8 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
           driver_id: formData.driver_id === 'unassigned' ? null : formData.driver_id,
           delivery_fee: formData.delivery_fee,
           subtotal: formData.subtotal,
+          truck_type: formData.truck_type || null,
+          truck_id: formData.truck_id || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', order.id);
@@ -140,9 +202,19 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     }));
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'available': return 'bg-green-100 text-green-800';
+      case 'assigned': return 'bg-yellow-100 text-yellow-800';
+      case 'maintenance': return 'bg-orange-100 text-orange-800';
+      case 'out_of_service': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Order {order.order_number}</DialogTitle>
         </DialogHeader>
@@ -235,6 +307,53 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Truck Selection */}
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="truck_type">Truck Type</Label>
+              <Select value={formData.truck_type} onValueChange={(value) => handleInputChange('truck_type', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select truck type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No truck assigned</SelectItem>
+                  <SelectItem value="small">Small Truck</SelectItem>
+                  <SelectItem value="medium">Medium Truck</SelectItem>
+                  <SelectItem value="large">Large Truck</SelectItem>
+                  <SelectItem value="crane">Crane Truck</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {formData.truck_type && (
+              <div>
+                <Label htmlFor="truck_id">Specific Truck</Label>
+                <Select value={formData.truck_id} onValueChange={(value) => handleInputChange('truck_id', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select specific truck" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No specific truck</SelectItem>
+                    {availableTrucks.map((truck) => (
+                      <SelectItem 
+                        key={truck.id} 
+                        value={truck.id}
+                        disabled={truck.status !== 'available' && truck.id !== order.truck_id}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span>{truck.registration_number}</span>
+                          <Badge className={`ml-2 ${getStatusColor(truck.status)}`}>
+                            {truck.status.replace('_', ' ').toUpperCase()}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div>

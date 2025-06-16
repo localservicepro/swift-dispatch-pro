@@ -2,6 +2,7 @@
 import { Label } from "@/components/ui/label";
 import { Truck } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
+import { getTruckInfo } from "@/utils/truckUtils";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
 
@@ -30,21 +31,32 @@ export function TruckTypeSelector({ selectedTruckType, onTruckTypeChange }: Truc
         <Truck className="w-4 h-4" />
         Truck Type *
       </Label>
+      <p className="text-sm text-gray-500 mb-3">First, select the type of truck you need</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {truckTypes.map((truck) => (
-          <div
-            key={truck.value}
-            className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-              selectedTruckType === truck.value 
-                ? 'border-blue-500 bg-blue-50' 
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
-            onClick={() => onTruckTypeChange(truck.value)}
-          >
-            <div className="font-medium">{truck.label}</div>
-            <div className="text-sm text-gray-600">{truck.description}</div>
-          </div>
-        ))}
+        {truckTypes.map((truck) => {
+          const truckInfo = getTruckInfo(truck.value);
+          const IconComponent = truckInfo?.icon || Truck;
+          
+          return (
+            <div
+              key={truck.value}
+              className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                selectedTruckType === truck.value 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              onClick={() => onTruckTypeChange(truck.value)}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`p-2 rounded-lg ${truckInfo?.bgClass || 'bg-gray-100'}`}>
+                  <IconComponent className={`w-5 h-5 ${truckInfo?.colorClass || 'text-gray-600'}`} />
+                </div>
+                <div className="font-medium">{truck.label}</div>
+              </div>
+              <div className="text-sm text-gray-600">{truck.description}</div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

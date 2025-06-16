@@ -46,6 +46,18 @@ interface CartItem {
   total_price: number;
 }
 
+interface Truck {
+  id: string;
+  registration_number: string;
+  truck_type: TruckType;
+  status: string;
+  capacity_tons: number | null;
+  fuel_type: string | null;
+  year_manufactured: number | null;
+  last_maintenance_date: string | null;
+  next_maintenance_due: string | null;
+}
+
 interface MultiStepOrderFormProps {
   onOrderCreated: () => void;
   onClose: () => void;
@@ -59,6 +71,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
   const [truckType, setTruckType] = useState<TruckType | "">("");
+  const [truckId, setTruckId] = useState("");
+  const [selectedTruck, setSelectedTruck] = useState<Truck | null>(null);
   const [driverId, setDriverId] = useState("");
   const [driverName, setDriverName] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
@@ -85,6 +99,11 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     }
   };
 
+  const handleTruckSelect = (newTruckId: string, truckDetails: Truck | null) => {
+    setTruckId(newTruckId);
+    setSelectedTruck(truckDetails);
+  };
+
   const createOrder = async () => {
     if (!selectedCustomer) return;
 
@@ -98,7 +117,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       // Generate order number
       const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
 
-      // Create order
+      // Create order with truck_id
       const orderData = {
         order_number: orderNumber,
         customer_id: selectedCustomer.id,
@@ -118,6 +137,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         delivery_date: deliveryDate,
         delivery_time: deliveryTime,
         truck_type: truckType as TruckType,
+        truck_id: truckId || null,
         driver_id: driverId || null,
         admin_id: user.id,
         special_instructions: specialInstructions || null,
@@ -147,6 +167,19 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
+
+      // Update truck status to assigned if a specific truck was selected
+      if (truckId) {
+        const { error: truckError } = await supabase
+          .from('trucks')
+          .update({ status: 'assigned' })
+          .eq('id', truckId);
+
+        if (truckError) {
+          console.error('Error updating truck status:', truckError);
+          // Don't throw here as the order was created successfully
+        }
+      }
 
       toast({
         title: "Success",
@@ -221,11 +254,13 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           deliveryDate={deliveryDate}
           deliveryTime={deliveryTime}
           truckType={truckType}
+          truckId={truckId}
           driverId={driverId}
           specialInstructions={specialInstructions}
           onDeliveryDateChange={setDeliveryDate}
           onDeliveryTimeChange={setDeliveryTime}
           onTruckTypeChange={setTruckType}
+          onTruckSelect={handleTruckSelect}
           onDriverChange={handleDriverChange}
           onSpecialInstructionsChange={setSpecialInstructions}
           onBack={prevStep}
@@ -245,6 +280,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           truckType={truckType as TruckType}
           driverName={driverName}
           specialInstructions={specialInstructions}
+          selectedTruck={selectedTruck}
           onBack={prevStep}
           onConfirm={createOrder}
           isCreating={isCreating}
