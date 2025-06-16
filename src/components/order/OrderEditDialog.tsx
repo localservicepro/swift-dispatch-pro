@@ -68,7 +68,7 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     suburb_id: order.suburb_id || '',
     delivery_fee: order.delivery_fee || 0,
     subtotal: order.subtotal || (order.total_amount - (order.delivery_fee || 0)),
-    truck_type: order.truck_type || '',
+    truck_type: order.truck_type || '' as TruckType | '',
     truck_id: order.truck_id || '',
   });
   const { toast } = useToast();
@@ -82,7 +82,7 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
       const { data, error } = await supabase
         .from('trucks')
         .select('id, registration_number, truck_type, status, capacity_tons')
-        .eq('truck_type', formData.truck_type)
+        .eq('truck_type', formData.truck_type as TruckType)
         .eq('is_active', true)
         .order('registration_number');
 
