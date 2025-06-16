@@ -88,18 +88,29 @@ export function DeliveryActionDialog({
     }
   };
 
+  const handlePhotoUploadClick = () => {
+    setShowPhotoUpload(true);
+    onOpenChange(false); // Close the dialog when opening photo upload
+  };
+
   const handlePhotoUploaded = () => {
     setShowPhotoUpload(false);
     setPhotoUploaded(true);
+    onOpenChange(true); // Reopen the dialog after photo upload
     toast({
       title: "Photo Uploaded",
       description: "Delivery photo has been uploaded successfully",
     });
   };
 
+  const handlePhotoCancelled = () => {
+    setShowPhotoUpload(false);
+    onOpenChange(true); // Reopen the dialog if photo upload was cancelled
+  };
+
   return (
     <>
-      <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialog open={open && !showPhotoUpload} onOpenChange={onOpenChange}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -143,7 +154,7 @@ export function DeliveryActionDialog({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowPhotoUpload(true)}
+                  onClick={handlePhotoUploadClick}
                   className="w-full"
                   disabled={photoUploaded}
                 >
@@ -172,7 +183,7 @@ export function DeliveryActionDialog({
         <PhotoUpload
           orderId={order.id}
           onPhotoUploaded={handlePhotoUploaded}
-          onCancel={() => setShowPhotoUpload(false)}
+          onCancel={handlePhotoCancelled}
         />
       )}
     </>

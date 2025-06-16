@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -99,7 +98,7 @@ export function PhotoUpload({ orderId, onPhotoUploaded, onCancel }: PhotoUploadP
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999]">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <Card className="w-full max-w-md">
         <CardHeader>
           <div className="flex items-center justify-between">
