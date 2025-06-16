@@ -24,6 +24,12 @@ interface ActivityLog {
   admin_name: string;
 }
 
+// Helper function to safely access properties from Json type
+const getTargetDetail = (target_details: any, key: string): string | undefined => {
+  if (!target_details || typeof target_details !== 'object') return undefined;
+  return target_details[key];
+};
+
 export function ActivityLog() {
   const [searchQuery, setSearchQuery] = useState("");
   const [actionTypeFilter, setActionTypeFilter] = useState<string>("all");
@@ -71,12 +77,15 @@ export function ActivityLog() {
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(log => 
-        log.description.toLowerCase().includes(query) ||
-        log.admin_name.toLowerCase().includes(query) ||
-        (log.target_details?.order_number && log.target_details.order_number.toLowerCase().includes(query)) ||
-        (log.target_details?.customer_name && log.target_details.customer_name.toLowerCase().includes(query))
-      );
+      filtered = filtered.filter(log => {
+        const orderNumber = getTargetDetail(log.target_details, 'order_number');
+        const customerName = getTargetDetail(log.target_details, 'customer_name');
+        
+        return log.description.toLowerCase().includes(query) ||
+               log.admin_name.toLowerCase().includes(query) ||
+               (orderNumber && orderNumber.toLowerCase().includes(query)) ||
+               (customerName && customerName.toLowerCase().includes(query));
+      });
     }
 
     // Apply action type filter
@@ -124,9 +133,10 @@ export function ActivityLog() {
   const exportToCSV = () => {
     const csvContent = "data:text/csv;charset=utf-8," + 
       "Timestamp,Admin,Action Type,Target Type,Description,Target Details\n" +
-      filteredLogs.map(log => 
-        `"${format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}","${log.admin_name}","${log.action_type}","${log.target_type}","${log.description}","${log.target_details ? JSON.stringify(log.target_details) : ''}"`
-      ).join("\n");
+      filteredLogs.map(log => {
+        const targetDetails = log.target_details ? JSON.stringify(log.target_details) : '';
+        return `"${format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}","${log.admin_name}","${log.action_type}","${log.target_type}","${log.description}","${targetDetails}"`;
+      }).join("\n");
     
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -269,51 +279,56 @@ export function ActivityLog() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="text-sm">
-                      {format(new Date(log.created_at), 'MMM dd, yyyy HH:mm:ss')}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {log.admin_name}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getActionTypeColor(log.action_type)}>
-                        {log.action_type.replace('_', ' ').toUpperCase()}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getTargetTypeIcon(log.target_type)}
-                        <span className="capitalize">{log.target_type}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {log.description}
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-500">
-                      {log.target_details && (
-                        <div className="space-y-1">
-                          {log.target_details.order_number && (
-                            <div>Order: {log.target_details.order_number}</div>
-                          )}
-                          {log.target_details.customer_name && (
-                            <div>Customer: {log.target_details.customer_name}</div>
-                          )}
-                          {log.old_values && log.new_values && (
-                            <div className="text-xs">
-                              {Object.keys(log.old_values).map(key => (
-                                <div key={key}>
-                                  {key}: {log.old_values[key]} → {log.new_values[key]}
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                {filteredLogs.map((log) => {
+                  const orderNumber = getTargetDetail(log.target_details, 'order_number');
+                  const customerName = getTargetDetail(log.target_details, 'customer_name');
+
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-sm">
+                        {format(new Date(log.created_at), 'MMM dd, yyyy HH:mm:ss')}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {log.admin_name}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getActionTypeColor(log.action_type)}>
+                          {log.action_type.replace('_', ' ').toUpperCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getTargetTypeIcon(log.target_type)}
+                          <span className="capitalize">{log.target_type}</span>
                         </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {log.description}
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-500">
+                        {log.target_details && (
+                          <div className="space-y-1">
+                            {orderNumber && (
+                              <div>Order: {orderNumber}</div>
+                            )}
+                            {customerName && (
+                              <div>Customer: {customerName}</div>
+                            )}
+                            {log.old_values && log.new_values && (
+                              <div className="text-xs">
+                                {Object.keys(log.old_values).map(key => (
+                                  <div key={key}>
+                                    {key}: {log.old_values[key]} → {log.new_values[key]}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
