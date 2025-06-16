@@ -2,12 +2,12 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Split, Plus, Minus, Package } from "lucide-react";
-import { CartItem, SplitConfig, TruckType } from "./types";
+import { Split, Plus, Minus } from "lucide-react";
+import { CartItem, SplitConfig } from "./types";
+import { ProductAllocationCard } from "./ProductAllocationCard";
+import { SplitSummaryCard } from "./SplitSummaryCard";
+import { AllocationActions } from "./AllocationActions";
 
 interface SplitOrderConfigurationStepProps {
   cart: CartItem[];
@@ -63,19 +63,24 @@ export function SplitOrderConfigurationStep({
     const cartItem = cart.find(item => item.product.id === productId);
     if (!cartItem) return;
 
+    const totalAllocated = splits.reduce((total, split) => {
+      const splitProduct = split.products.find(p => p.productId === productId);
+      return total + (splitProduct?.quantity || 0);
+    }, 0);
+
+    if (totalAllocated >= cartItem.quantity) return;
+
     const split = splits[splitIndex];
     const existingProduct = split.products.find(p => p.productId === productId);
     
     if (existingProduct) {
-      // Increase quantity if product already in split
       const updatedProducts = split.products.map(p =>
         p.productId === productId 
-          ? { ...p, quantity: Math.min(p.quantity + 1, cartItem.quantity) }
+          ? { ...p, quantity: p.quantity + 1 }
           : p
       );
       updateSplit(splitIndex, { products: updatedProducts });
     } else {
-      // Add new product to split
       const updatedProducts = [...split.products, { productId, quantity: 1 }];
       updateSplit(splitIndex, { products: updatedProducts });
     }
@@ -88,12 +93,24 @@ export function SplitOrderConfigurationStep({
   };
 
   const updateProductQuantity = (splitIndex: number, productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeProductFromSplit(splitIndex, productId);
+      return;
+    }
+
     const split = splits[splitIndex];
     const cartItem = cart.find(item => item.product.id === productId);
     if (!cartItem) return;
 
-    const maxQuantity = cartItem.quantity;
-    const clampedQuantity = Math.max(1, Math.min(quantity, maxQuantity));
+    // Check total allocation across all splits
+    const totalAllocatedOtherSplits = splits.reduce((total, s, index) => {
+      if (index === splitIndex) return total;
+      const splitProduct = s.products.find(p => p.productId === productId);
+      return total + (splitProduct?.quantity || 0);
+    }, 0);
+
+    const maxAllowedForThisSplit = cartItem.quantity - totalAllocatedOtherSplits;
+    const clampedQuantity = Math.min(quantity, maxAllowedForThisSplit);
 
     const updatedProducts = split.products.map(p =>
       p.productId === productId ? { ...p, quantity: clampedQuantity } : p
@@ -101,20 +118,9 @@ export function SplitOrderConfigurationStep({
     updateSplit(splitIndex, { products: updatedProducts });
   };
 
-  const getAvailableProducts = (splitIndex: number) => {
-    return cart.filter(cartItem => {
-      const allocatedQuantity = splits.reduce((total, split, index) => {
-        if (index === splitIndex) return total; // Don't count current split
-        const splitProduct = split.products.find(p => p.productId === cartItem.product.id);
-        return total + (splitProduct?.quantity || 0);
-      }, 0);
-      return allocatedQuantity < cartItem.quantity;
-    });
-  };
-
   const canProceed = () => {
-    // Check if all products are allocated
-    const totalAllocated = cart.every(cartItem => {
+    // Check if all products are fully allocated
+    const fullyAllocated = cart.every(cartItem => {
       const allocatedQuantity = splits.reduce((total, split) => {
         const splitProduct = split.products.find(p => p.productId === cartItem.product.id);
         return total + (splitProduct?.quantity || 0);
@@ -125,7 +131,7 @@ export function SplitOrderConfigurationStep({
     // Check if each split has at least one product
     const allSplitsHaveProducts = splits.every(split => split.products.length > 0);
 
-    return totalAllocated && allSplitsHaveProducts;
+    return fullyAllocated && allSplitsHaveProducts;
   };
 
   return (
@@ -136,7 +142,7 @@ export function SplitOrderConfigurationStep({
           Step 4: Configure Order Splits
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Divide your products into separate orders with different delivery details.
+          Allocate your products across different splits and set delivery details for each.
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -165,114 +171,51 @@ export function SplitOrderConfigurationStep({
           </div>
         </div>
 
-        {/* Split Configuration */}
-        <div className="space-y-4">
-          {splits.map((split, index) => (
-            <Card key={split.id} className="border-l-4 border-l-blue-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Package className="w-4 h-4" />
-                  {split.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Product Assignment */}
-                <div>
-                  <Label className="text-sm font-medium mb-2 block">Products</Label>
-                  <div className="space-y-2">
-                    {split.products.map(splitProduct => {
-                      const cartItem = cart.find(item => item.product.id === splitProduct.productId);
-                      if (!cartItem) return null;
-                      
-                      return (
-                        <div key={splitProduct.productId} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                          <span className="text-sm">{cartItem.product.name}</span>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              min="1"
-                              max={cartItem.quantity}
-                              value={splitProduct.quantity}
-                              onChange={(e) => updateProductQuantity(index, splitProduct.productId, parseInt(e.target.value))}
-                              className="w-16 h-8"
-                            />
-                            <span className="text-xs text-gray-500">/ {cartItem.quantity}</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeProductFromSplit(index, splitProduct.productId)}
-                            >
-                              <Minus className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    
-                    {/* Add Product Dropdown */}
-                    <Select onValueChange={(productId) => addProductToSplit(index, productId)}>
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Add product to this split" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getAvailableProducts(index).map(cartItem => (
-                          <SelectItem key={cartItem.product.id} value={cartItem.product.id}>
-                            {cartItem.product.name} (Available: {cartItem.quantity - splits.reduce((total, s, i) => {
-                              if (i === index) return total;
-                              const sp = s.products.find(p => p.productId === cartItem.product.id);
-                              return total + (sp?.quantity || 0);
-                            }, 0)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+        {/* Quick Actions */}
+        <AllocationActions 
+          cart={cart}
+          splits={splits}
+          onSplitsChange={onSplitsChange}
+        />
 
-                {/* Basic Delivery Info */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium mb-1 block">Delivery Date</Label>
-                    <Input
-                      type="date"
-                      value={split.deliveryDate}
-                      onChange={(e) => updateSplit(index, { deliveryDate: e.target.value })}
-                      className="h-8"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium mb-1 block">Delivery Time</Label>
-                    <Input
-                      type="time"
-                      value={split.deliveryTime}
-                      onChange={(e) => updateSplit(index, { deliveryTime: e.target.value })}
-                      className="h-8"
-                    />
-                  </div>
-                </div>
+        {/* Product Allocation Section */}
+        <div>
+          <Label className="text-base font-medium mb-3 block">Product Allocation</Label>
+          <div className="grid gap-3">
+            {cart.map(cartItem => (
+              <ProductAllocationCard
+                key={cartItem.product.id}
+                cartItem={cartItem}
+                splits={splits}
+                onAddToSplit={addProductToSplit}
+              />
+            ))}
+          </div>
+        </div>
 
-                {/* Summary */}
-                <div className="flex items-center gap-4 text-xs text-gray-600">
-                  <Badge variant="outline">
-                    {split.products.reduce((sum, p) => sum + p.quantity, 0)} items
-                  </Badge>
-                  <span>
-                    ${split.products.reduce((sum, splitProduct) => {
-                      const cartItem = cart.find(item => item.product.id === splitProduct.productId);
-                      return sum + (cartItem ? cartItem.unit_price * splitProduct.quantity : 0);
-                    }, 0).toFixed(2)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        {/* Split Summary Section */}
+        <div>
+          <Label className="text-base font-medium mb-3 block">Split Details</Label>
+          <div className="grid gap-4">
+            {splits.map((split, index) => (
+              <SplitSummaryCard
+                key={split.id}
+                split={split}
+                splitIndex={index}
+                cart={cart}
+                onUpdateSplit={updateSplit}
+                onUpdateQuantity={updateProductQuantity}
+                onRemoveProduct={removeProductFromSplit}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Validation Message */}
         {!canProceed() && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <p className="text-sm text-yellow-800">
-              Please ensure all products are allocated to splits and each split has at least one product.
+              Please ensure all products are fully allocated and each split has at least one product.
             </p>
           </div>
         )}
