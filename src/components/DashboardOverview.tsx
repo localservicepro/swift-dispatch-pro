@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,11 +12,7 @@ import {
   CheckCircle, 
   DollarSign, 
   AlertTriangle, 
-  Plus, 
-  Users, 
-  TrendingUp,
   ShoppingCart,
-  FileText,
   RefreshCw
 } from "lucide-react";
 
@@ -389,36 +384,6 @@ export function DashboardOverview() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" />
-            Quick Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button className="h-16 flex flex-col gap-2" onClick={() => window.location.hash = '#orders'}>
-              <Plus className="w-6 h-6" />
-              Add New Order
-            </Button>
-            <Button variant="outline" className="h-16 flex flex-col gap-2" onClick={() => window.location.hash = '#products'}>
-              <Package className="w-6 h-6" />
-              Add Product
-            </Button>
-            <Button variant="outline" className="h-16 flex flex-col gap-2" onClick={() => window.location.hash = '#drivers'}>
-              <Users className="w-6 h-6" />
-              Update Deliveries
-            </Button>
-            <Button variant="outline" className="h-16 flex flex-col gap-2" onClick={() => window.location.hash = '#payments'}>
-              <FileText className="w-6 h-6" />
-              View Reports
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Recent Orders & Stock Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
