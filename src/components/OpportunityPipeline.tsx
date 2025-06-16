@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +50,10 @@ export function OpportunityPipeline() {
   const [dateFilter, setDateFilter] = useState<string>("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Refs for scroll synchronization
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const mainScrollRef = useRef<HTMLDivElement>(null);
 
   const { orders, isLoading, error, refetch } = useOpportunityData();
 
@@ -145,6 +148,30 @@ export function OpportunityPipeline() {
   // Calculate pipeline metrics
   const totalOrders = filteredOrders.length;
   const totalValue = filteredOrders.reduce((sum, order) => sum + order.total_amount, 0);
+
+  // Synchronize scroll positions
+  useEffect(() => {
+    const topScrollElement = topScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    const mainScrollElement = mainScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+
+    if (!topScrollElement || !mainScrollElement) return;
+
+    const handleTopScroll = () => {
+      mainScrollElement.scrollLeft = topScrollElement.scrollLeft;
+    };
+
+    const handleMainScroll = () => {
+      topScrollElement.scrollLeft = mainScrollElement.scrollLeft;
+    };
+
+    topScrollElement.addEventListener('scroll', handleTopScroll);
+    mainScrollElement.addEventListener('scroll', handleMainScroll);
+
+    return () => {
+      topScrollElement.removeEventListener('scroll', handleTopScroll);
+      mainScrollElement.removeEventListener('scroll', handleMainScroll);
+    };
+  }, [isLoading]);
 
   if (error) {
     return (
@@ -247,19 +274,35 @@ export function OpportunityPipeline() {
               <p className="mt-2 text-slate-600">Loading pipeline...</p>
             </div>
           ) : (
-            <ScrollArea className="w-full">
-              <div className="flex gap-4 pb-4 min-h-[600px]">
-                {PIPELINE_STAGES.map((stage) => (
-                  <PipelineColumn
-                    key={stage.id}
-                    stage={stage}
-                    orders={ordersByStage[stage.id] || []}
-                    onOrderMove={refetch}
-                  />
-                ))}
+            <div className="space-y-4">
+              {/* Top Scroll Bar */}
+              <div className="border-b border-slate-200 pb-2">
+                <p className="text-xs text-slate-500 mb-2">Scroll to navigate pipeline stages</p>
+                <ScrollArea ref={topScrollRef} className="w-full">
+                  <div className="flex gap-4" style={{ width: `${PIPELINE_STAGES.length * 320 + (PIPELINE_STAGES.length - 1) * 16}px` }}>
+                    {PIPELINE_STAGES.map((stage) => (
+                      <div key={`top-${stage.id}`} className="w-80 h-4 bg-slate-100 rounded-sm opacity-60" />
+                    ))}
+                  </div>
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
               </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+
+              {/* Main Pipeline */}
+              <ScrollArea ref={mainScrollRef} className="w-full">
+                <div className="flex gap-4 pb-4 min-h-[600px]">
+                  {PIPELINE_STAGES.map((stage) => (
+                    <PipelineColumn
+                      key={stage.id}
+                      stage={stage}
+                      orders={ordersByStage[stage.id] || []}
+                      onOrderMove={refetch}
+                    />
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </div>
           )}
         </CardContent>
       </Card>
