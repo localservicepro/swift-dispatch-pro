@@ -68,7 +68,7 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     suburb_id: order.suburb_id || '',
     delivery_fee: order.delivery_fee || 0,
     subtotal: order.subtotal || (order.total_amount - (order.delivery_fee || 0)),
-    truck_type: order.truck_type || 'none',
+    truck_type: (order.truck_type || 'none') as TruckType | 'none',
     truck_id: order.truck_id || 'none',
   });
   const { toast } = useToast();
@@ -138,7 +138,7 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
           driver_id: formData.driver_id === 'unassigned' ? null : formData.driver_id,
           delivery_fee: formData.delivery_fee,
           subtotal: formData.subtotal,
-          truck_type: formData.truck_type === 'none' ? null : formData.truck_type,
+          truck_type: formData.truck_type === 'none' ? null : formData.truck_type as TruckType,
           truck_id: formData.truck_id === 'none' ? null : formData.truck_id,
           updated_at: new Date().toISOString(),
         })
