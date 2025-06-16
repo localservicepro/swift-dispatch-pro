@@ -20,7 +20,7 @@ const truckTypes: TruckTypeOption[] = [
   { value: 'small', label: 'Small Truck', description: 'Up to 3 tons - Local deliveries' },
   { value: 'medium', label: 'Medium Truck', description: 'Up to 8 tons - Regional deliveries' },
   { value: 'large', label: 'Large Truck', description: 'Up to 15 tons - Long distance' },
-  { value: 'refrigerated', label: 'Refrigerated Truck', description: 'Temperature controlled cargo' }
+  { value: 'crane', label: 'Crane Truck', description: 'Heavy lifting and specialized cargo' }
 ];
 
 export function TruckTypeSelector({ selectedTruckType, onTruckTypeChange }: TruckTypeSelectorProps) {

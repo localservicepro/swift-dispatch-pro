@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,7 +95,12 @@ export function ProductManagement() {
         variant: "destructive",
       });
     } else {
-      setProducts(data || []);
+      // Ensure images array exists for each product
+      const productsWithImages = (data || []).map(product => ({
+        ...product,
+        images: product.images || []
+      }));
+      setProducts(productsWithImages);
     }
     setLoading(false);
   };
