@@ -1,8 +1,7 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { PhotoUpload } from "./PhotoUpload";
 import { Database } from "@/integrations/supabase/types";
 import {
   AlertDialog,
@@ -17,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { CheckCircle, XCircle, Camera } from "lucide-react";
+import { CheckCircle, XCircle, Camera, X, Upload } from "lucide-react";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -38,8 +37,10 @@ export function DeliveryActionDialog({
 }: DeliveryActionDialogProps) {
   const [notes, setNotes] = useState("");
   const [updating, setUpdating] = useState(false);
-  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [photoUploaded, setPhotoUploaded] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const isDelivered = action === "delivered";
@@ -47,6 +48,87 @@ export function DeliveryActionDialog({
   const description = isDelivered 
     ? "Please add notes about the delivery. Photo is optional but recommended."
     : "Please explain why this delivery is being cancelled.";
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid File",
+          description: "Please select an image file",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Please select an image smaller than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSelectedFile(file);
+      uploadPhoto(file);
+    }
+  };
+
+  const uploadPhoto = async (file: File) => {
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${order.id}_${Date.now()}.${fileExt}`;
+      const filePath = `delivery-photos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('delivery-photos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Save photo record to database
+      const { error: dbError } = await supabase
+        .from('delivery_photos')
+        .insert({
+          order_id: order.id,
+          photo_url: filePath,
+          uploaded_by: (await supabase.auth.getUser()).data.user?.id
+        });
+
+      if (dbError) throw dbError;
+
+      setPhotoUploaded(true);
+      toast({
+        title: "Photo Uploaded",
+        description: "Delivery photo has been uploaded successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      setSelectedFile(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePhotoUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const removeSelectedPhoto = () => {
+    setSelectedFile(null);
+    setPhotoUploaded(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleSubmit = async () => {
     if (!notes.trim()) {
@@ -76,6 +158,7 @@ export function DeliveryActionDialog({
       onStatusUpdate();
       onOpenChange(false);
       setNotes("");
+      setSelectedFile(null);
       setPhotoUploaded(false);
     } catch (error: any) {
       toast({
@@ -88,104 +171,110 @@ export function DeliveryActionDialog({
     }
   };
 
-  const handlePhotoUploadClick = () => {
-    setShowPhotoUpload(true);
-    onOpenChange(false); // Close the dialog when opening photo upload
-  };
-
-  const handlePhotoUploaded = () => {
-    setShowPhotoUpload(false);
-    setPhotoUploaded(true);
-    onOpenChange(true); // Reopen the dialog after photo upload
-    toast({
-      title: "Photo Uploaded",
-      description: "Delivery photo has been uploaded successfully",
-    });
-  };
-
-  const handlePhotoCancelled = () => {
-    setShowPhotoUpload(false);
-    onOpenChange(true); // Reopen the dialog if photo upload was cancelled
-  };
-
   return (
-    <>
-      <AlertDialog open={open && !showPhotoUpload} onOpenChange={onOpenChange}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              {isDelivered ? (
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              ) : (
-                <XCircle className="w-5 h-5 text-red-600" />
-              )}
-              {title}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Order: {order.order_number}
-              <br />
-              {description}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="notes">Notes *</Label>
-              <Textarea
-                id="notes"
-                placeholder={isDelivered 
-                  ? "e.g., Delivered to front door, customer was home, package secured..."
-                  : "e.g., Customer not available, address incorrect, weather conditions..."
-                }
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="min-h-20"
-              />
-            </div>
-
-            {isDelivered && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Delivery Photo (Optional)</Label>
-                  {photoUploaded && (
-                    <span className="text-sm text-green-600">✓ Photo uploaded</span>
-                  )}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handlePhotoUploadClick}
-                  className="w-full"
-                  disabled={photoUploaded}
-                >
-                  <Camera className="w-4 h-4 mr-2" />
-                  {photoUploaded ? "Photo Uploaded" : "Upload Photo"}
-                </Button>
-              </div>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            {isDelivered ? (
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            ) : (
+              <XCircle className="w-5 h-5 text-red-600" />
             )}
+            {title}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Order: {order.order_number}
+            <br />
+            {description}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="notes">Notes *</Label>
+            <Textarea
+              id="notes"
+              placeholder={isDelivered 
+                ? "e.g., Delivered to front door, customer was home, package secured..."
+                : "e.g., Customer not available, address incorrect, weather conditions..."
+              }
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="min-h-20"
+            />
           </div>
 
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleSubmit}
-              disabled={updating || !notes.trim()}
-              className={isDelivered ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
-            >
-              {updating ? 'Processing...' : (isDelivered ? 'Complete Delivery' : 'Cancel Delivery')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          {isDelivered && (
+            <div className="space-y-2">
+              <Label>Delivery Photo (Optional)</Label>
+              
+              {selectedFile && (
+                <div className="relative">
+                  <img
+                    src={URL.createObjectURL(selectedFile)}
+                    alt="Selected delivery photo"
+                    className="w-full h-32 object-cover rounded-lg border"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={removeSelectedPhoto}
+                    className="absolute top-2 right-2 h-6 w-6 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
 
-      {/* Photo Upload Modal */}
-      {showPhotoUpload && (
-        <PhotoUpload
-          orderId={order.id}
-          onPhotoUploaded={handlePhotoUploaded}
-          onCancel={handlePhotoCancelled}
-        />
-      )}
-    </>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePhotoUploadClick}
+                className="w-full"
+                disabled={uploading || photoUploaded}
+              >
+                {uploading ? (
+                  <>
+                    <Upload className="w-4 h-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : photoUploaded ? (
+                  <>
+                    <Camera className="w-4 h-4 mr-2" />
+                    Photo Uploaded
+                  </>
+                ) : (
+                  <>
+                    <Camera className="w-4 h-4 mr-2" />
+                    Upload Photo
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleSubmit}
+            disabled={updating || !notes.trim()}
+            className={isDelivered ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+          >
+            {updating ? 'Processing...' : (isDelivered ? 'Complete Delivery' : 'Cancel Delivery')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
