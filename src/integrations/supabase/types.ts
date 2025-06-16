@@ -107,108 +107,36 @@ export type Database = {
           },
         ]
       }
-      delivery_routes: {
-        Row: {
-          actual_distance: number | null
-          actual_duration: number | null
-          created_at: string
-          driver_id: string
-          estimated_distance: number | null
-          estimated_duration: number | null
-          id: string
-          order_id: string
-          route_data: Json
-          status: string | null
-          updated_at: string
-          waypoints: Json
-        }
-        Insert: {
-          actual_distance?: number | null
-          actual_duration?: number | null
-          created_at?: string
-          driver_id: string
-          estimated_distance?: number | null
-          estimated_duration?: number | null
-          id?: string
-          order_id: string
-          route_data: Json
-          status?: string | null
-          updated_at?: string
-          waypoints: Json
-        }
-        Update: {
-          actual_distance?: number | null
-          actual_duration?: number | null
-          created_at?: string
-          driver_id?: string
-          estimated_distance?: number | null
-          estimated_duration?: number | null
-          id?: string
-          order_id?: string
-          route_data?: Json
-          status?: string | null
-          updated_at?: string
-          waypoints?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "delivery_routes_driver_id_fkey"
-            columns: ["driver_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "delivery_routes_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       delivery_status_updates: {
         Row: {
-          accuracy: number | null
           created_at: string | null
           driver_id: string
-          gps_coordinates: Json | null
-          heading: number | null
           id: string
           location: Json | null
           new_status: Database["public"]["Enums"]["order_status"]
           notes: string | null
           old_status: Database["public"]["Enums"]["order_status"] | null
           order_id: string
-          speed: number | null
         }
         Insert: {
-          accuracy?: number | null
           created_at?: string | null
           driver_id: string
-          gps_coordinates?: Json | null
-          heading?: number | null
           id?: string
           location?: Json | null
           new_status: Database["public"]["Enums"]["order_status"]
           notes?: string | null
           old_status?: Database["public"]["Enums"]["order_status"] | null
           order_id: string
-          speed?: number | null
         }
         Update: {
-          accuracy?: number | null
           created_at?: string | null
           driver_id?: string
-          gps_coordinates?: Json | null
-          heading?: number | null
           id?: string
           location?: Json | null
           new_status?: Database["public"]["Enums"]["order_status"]
           notes?: string | null
           old_status?: Database["public"]["Enums"]["order_status"] | null
           order_id?: string
-          speed?: number | null
         }
         Relationships: [
           {
@@ -220,60 +148,6 @@ export type Database = {
           },
           {
             foreignKeyName: "delivery_status_updates_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      driver_locations: {
-        Row: {
-          accuracy: number | null
-          created_at: string
-          driver_id: string
-          heading: number | null
-          id: string
-          latitude: number
-          longitude: number
-          order_id: string | null
-          speed: number | null
-          timestamp: string
-        }
-        Insert: {
-          accuracy?: number | null
-          created_at?: string
-          driver_id: string
-          heading?: number | null
-          id?: string
-          latitude: number
-          longitude: number
-          order_id?: string | null
-          speed?: number | null
-          timestamp?: string
-        }
-        Update: {
-          accuracy?: number | null
-          created_at?: string
-          driver_id?: string
-          heading?: number | null
-          id?: string
-          latitude?: number
-          longitude?: number
-          order_id?: string | null
-          speed?: number | null
-          timestamp?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "driver_locations_driver_id_fkey"
-            columns: ["driver_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "driver_locations_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
