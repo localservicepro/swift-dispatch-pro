@@ -2,27 +2,48 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Download, Package, Phone } from "lucide-react";
-import { PaymentVerificationStatus } from "@/components/PaymentVerificationStatus";
+import { CheckCircle, Download, Package, Phone, Clock, AlertCircle } from "lucide-react";
 import { PaymentDetailsCard } from "@/components/PaymentDetailsCard";
 import { usePaymentDetails } from "@/hooks/usePaymentDetails";
 import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const [verificationComplete, setVerificationComplete] = useState(false);
-  const [verificationSuccess, setVerificationSuccess] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'failed'>('pending');
 
   const sessionId = searchParams.get('session_id');
   const invoiceId = searchParams.get('invoice_id');
   
   const { invoice, order, loading: detailsLoading, error: detailsError } = usePaymentDetails(invoiceId);
 
-  const handleVerificationComplete = (success: boolean) => {
-    setVerificationComplete(true);
-    setVerificationSuccess(success);
-  };
+  // Background verification - doesn't block UI
+  useEffect(() => {
+    if (!sessionId || !invoiceId) return;
+
+    const runVerification = async () => {
+      try {
+        const response = await fetch('/api/verify-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, invoiceId })
+        });
+        
+        if (response.ok) {
+          setVerificationStatus('success');
+        } else {
+          setVerificationStatus('failed');
+        }
+      } catch (error) {
+        console.error('Background verification failed:', error);
+        setVerificationStatus('failed');
+      }
+    };
+
+    runVerification();
+  }, [sessionId, invoiceId]);
 
   const handleDownloadReceipt = () => {
     toast({
@@ -33,7 +54,6 @@ export default function PaymentSuccess() {
 
   const handleViewOrderStatus = () => {
     if (order?.id) {
-      // Navigate to order tracking page when available
       toast({
         title: "Order Tracking",
         description: "Order tracking feature will be available soon.",
@@ -59,69 +79,116 @@ export default function PaymentSuccess() {
     );
   }
 
+  const getVerificationBadge = () => {
+    switch (verificationStatus) {
+      case 'success':
+        return <Badge className="bg-green-100 text-green-800">Verified</Badge>;
+      case 'failed':
+        return <Badge variant="destructive">Verification Failed</Badge>;
+      default:
+        return <Badge className="bg-yellow-100 text-yellow-800">Verifying...</Badge>;
+    }
+  };
+
+  const getVerificationIcon = () => {
+    switch (verificationStatus) {
+      case 'success':
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'failed':
+        return <AlertCircle className="w-5 h-5 text-red-500" />;
+      default:
+        return <Clock className="w-5 h-5 text-yellow-500 animate-pulse" />;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        {!verificationComplete ? (
-          <div className="flex justify-center">
-            <PaymentVerificationStatus
-              sessionId={sessionId}
-              invoiceId={invoiceId}
-              onVerificationComplete={handleVerificationComplete}
-            />
+      <div className="max-w-4xl mx-auto px-4 space-y-6">
+        {/* Immediate Payment Success Header */}
+        <div className="text-center space-y-4">
+          <div className="mx-auto mb-4">
+            <CheckCircle className="w-16 h-16 text-green-500" />
           </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Payment Status Header */}
-            <div className="text-center space-y-4">
-              <div className="mx-auto mb-4">
-                <CheckCircle className={`w-16 h-16 ${verificationSuccess ? 'text-green-500' : 'text-blue-500'}`} />
-              </div>
+          <div>
+            <h1 className="text-3xl font-bold text-green-600 mb-2">
+              Payment Successful!
+            </h1>
+            <p className="text-gray-600 text-lg">
+              Thank you! Your payment has been received and is being processed.
+            </p>
+          </div>
+        </div>
+
+        {/* Background Verification Status Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {getVerificationIcon()}
+              Payment Verification
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
               <div>
-                <h1 className={`text-3xl font-bold mb-2 ${verificationSuccess ? 'text-green-600' : 'text-blue-600'}`}>
-                  {verificationSuccess ? 'Payment Successful!' : 'Payment Received'}
-                </h1>
-                <p className="text-gray-600 text-lg">
-                  {verificationSuccess 
-                    ? 'Thank you! Your payment has been processed and your order status has been updated.'
-                    : 'Your payment has been received. If verification failed, our team will process it manually and update your order status shortly.'
-                  }
+                <p className="text-sm text-gray-600">
+                  {verificationStatus === 'pending' && "We're verifying your payment with our system..."}
+                  {verificationStatus === 'success' && "Your payment has been verified and your order status updated."}
+                  {verificationStatus === 'failed' && "Automatic verification failed, but your payment was successful. Our team will process it manually."}
                 </p>
+                {sessionId && (
+                  <p className="text-xs text-gray-400 mt-1">Session: {sessionId.slice(-8)}</p>
+                )}
               </div>
+              {getVerificationBadge()}
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Payment Details */}
-            {!detailsLoading && !detailsError && invoice && (
-              <PaymentDetailsCard invoice={invoice} order={order} />
-            )}
-
-            {detailsError && (
-              <div className="text-center text-red-600">
-                <p>Unable to load payment details: {detailsError}</p>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={handleDownloadReceipt} className="flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                Download Receipt
-              </Button>
-              
-              {order && (
-                <Button onClick={handleViewOrderStatus} variant="outline" className="flex items-center gap-2">
-                  <Package className="w-4 h-4" />
-                  View Order Status
-                </Button>
-              )}
-              
-              <Button onClick={handleContactSupport} variant="outline" className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                Contact Support
-              </Button>
-            </div>
-          </div>
+        {/* Payment Details */}
+        {!detailsLoading && !detailsError && invoice && (
+          <PaymentDetailsCard invoice={invoice} order={order} />
         )}
+
+        {detailsError && (
+          <Card>
+            <CardContent className="text-center py-6">
+              <p className="text-amber-600">
+                Unable to load payment details at the moment. Your payment was successful.
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Details will be available shortly or contact support for assistance.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {detailsLoading && (
+          <Card>
+            <CardContent className="text-center py-6">
+              <p className="text-gray-600">Loading payment details...</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Button onClick={handleDownloadReceipt} className="flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Download Receipt
+          </Button>
+          
+          {order && (
+            <Button onClick={handleViewOrderStatus} variant="outline" className="flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              View Order Status
+            </Button>
+          )}
+          
+          <Button onClick={handleContactSupport} variant="outline" className="flex items-center gap-2">
+            <Phone className="w-4 h-4" />
+            Contact Support
+          </Button>
+        </div>
       </div>
     </div>
   );
