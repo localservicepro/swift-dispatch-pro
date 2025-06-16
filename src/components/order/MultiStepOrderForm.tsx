@@ -33,6 +33,7 @@ interface Product {
   price: number;
   stock_quantity: number;
   sku: string | null;
+  images: string[];
   category?: {
     name: string;
   };
