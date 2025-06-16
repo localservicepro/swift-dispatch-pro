@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,19 +31,23 @@ export function CategoryManagement() {
   useEffect(() => {
     loadCategories();
     
-    // Set up realtime subscription
+    // Set up realtime subscription with proper cleanup
     const channel = supabase
       .channel('categories-changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'product_categories' },
-        () => loadCategories()
+        () => {
+          console.log('Categories table changed, reloading...');
+          loadCategories();
+        }
       )
       .subscribe();
 
     return () => {
+      console.log('Cleaning up categories subscription...');
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, []); // Empty dependency array to prevent re-subscriptions
 
   const loadCategories = async () => {
     setLoading(true);

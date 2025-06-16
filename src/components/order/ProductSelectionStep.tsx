@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -85,6 +84,7 @@ export function ProductSelectionStep({
       .from('products')
       .select(`
         *,
+        images,
         category:product_categories(name)
       `)
       .eq('is_active', true)
