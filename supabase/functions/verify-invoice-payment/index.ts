@@ -33,20 +33,23 @@ const handler = async (req: Request): Promise<Response> => {
     const stripe = new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' })
 
     const { sessionId, invoiceId }: VerifyPaymentRequest = await req.json()
-    console.log('Verifying payment for session:', sessionId, 'invoice:', invoiceId)
+    console.log('=== VERIFICATION REQUEST ===')
+    console.log('Session ID:', sessionId)
+    console.log('Invoice ID:', invoiceId)
 
     // Retrieve the checkout session from Stripe
+    console.log('Retrieving Stripe session...')
     const session = await stripe.checkout.sessions.retrieve(sessionId)
-    console.log('Stripe session retrieved:', {
-      id: session.id,
-      payment_status: session.payment_status,
-      metadata: session.metadata
-    })
+    console.log('=== STRIPE SESSION DETAILS ===')
+    console.log('Payment Status:', session.payment_status)
+    console.log('Session Metadata:', session.metadata)
+    console.log('Payment Intent:', session.payment_intent)
     
     if (session.payment_status === 'paid') {
-      console.log('Payment confirmed as paid, updating database...')
+      console.log('✅ PAYMENT CONFIRMED - Starting database updates...')
 
-      // Update invoice status to paid
+      // First, update invoice status to paid
+      console.log('Updating invoice status...')
       const { error: invoiceUpdateError } = await supabase
         .from('invoices')
         .update({ 
@@ -56,17 +59,17 @@ const handler = async (req: Request): Promise<Response> => {
         .eq('id', invoiceId)
 
       if (invoiceUpdateError) {
-        console.error('Error updating invoice status:', invoiceUpdateError)
+        console.error('❌ Error updating invoice status:', invoiceUpdateError)
         throw new Error('Failed to update invoice status')
       }
-      console.log('Invoice status updated to paid for invoice:', invoiceId)
+      console.log('✅ Invoice status updated to PAID')
 
       // Get order ID from session metadata or invoice record
       let orderId = session.metadata?.order_id
       console.log('Order ID from session metadata:', orderId)
 
       if (!orderId) {
-        console.log('No order ID in metadata, fetching from invoice record...')
+        console.log('No order ID in metadata, fetching from invoice...')
         const { data: invoiceData, error: invoiceError } = await supabase
           .from('invoices')
           .select('order_id')
@@ -74,7 +77,7 @@ const handler = async (req: Request): Promise<Response> => {
           .single()
 
         if (invoiceError) {
-          console.error('Error fetching invoice for order ID:', invoiceError)
+          console.error('❌ Error fetching invoice for order ID:', invoiceError)
           throw new Error('Failed to get order ID from invoice')
         }
 
@@ -83,7 +86,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       if (orderId) {
-        // Update order payment status
+        console.log('Updating order payment status...')
         const { error: orderUpdateError } = await supabase
           .from('orders')
           .update({ 
@@ -94,13 +97,13 @@ const handler = async (req: Request): Promise<Response> => {
           .eq('id', orderId)
 
         if (orderUpdateError) {
-          console.error('Error updating order payment status:', orderUpdateError)
+          console.error('❌ Error updating order payment status:', orderUpdateError)
           // Don't throw error, just log it - invoice update was successful
         } else {
-          console.log('Order payment status updated to paid for order:', orderId)
+          console.log('✅ Order payment status updated to PAID')
         }
       } else {
-        console.warn('No order ID found to update order payment status')
+        console.warn('⚠️ No order ID found - skipping order update')
       }
 
       console.log('=== PAYMENT VERIFICATION COMPLETED SUCCESSFULLY ===')
@@ -110,7 +113,9 @@ const handler = async (req: Request): Promise<Response> => {
           success: true, 
           status: 'paid',
           message: 'Payment verified and statuses updated successfully',
-          orderId: orderId || null
+          orderId: orderId || null,
+          invoiceId: invoiceId,
+          sessionId: sessionId
         }),
         {
           status: 200,
@@ -121,12 +126,14 @@ const handler = async (req: Request): Promise<Response> => {
         }
       )
     } else {
-      console.log('Payment not completed, status:', session.payment_status)
+      console.log('❌ Payment not completed, status:', session.payment_status)
       return new Response(
         JSON.stringify({ 
           success: false, 
           status: session.payment_status,
-          message: 'Payment not completed'
+          message: `Payment not completed. Current status: ${session.payment_status}`,
+          sessionId: sessionId,
+          invoiceId: invoiceId
         }),
         {
           status: 400,
@@ -138,11 +145,16 @@ const handler = async (req: Request): Promise<Response> => {
       )
     }
   } catch (error: any) {
-    console.error('=== ERROR in verify-invoice-payment ===', error)
+    console.error('=== ERROR in verify-invoice-payment ===')
+    console.error('Error name:', error.name)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
+    
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Failed to verify payment',
-        details: error.name || 'UnknownError'
+        details: error.name || 'UnknownError',
+        timestamp: new Date().toISOString()
       }),
       {
         status: 500,

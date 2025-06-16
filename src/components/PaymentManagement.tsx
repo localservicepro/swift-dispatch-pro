@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Receipt } from "lucide-react";
+import { Loader2, Receipt, RefreshCw } from "lucide-react";
 
 interface PaymentOrder {
   id: string;
@@ -31,6 +31,7 @@ export function PaymentManagement() {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [sendingInvoices, setSendingInvoices] = useState<string[]>([]);
   const [generatingInvoices, setGeneratingInvoices] = useState<string[]>([]);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -76,6 +77,86 @@ export function PaymentManagement() {
       }));
     }
   });
+
+  // Set up real-time subscription for payment updates
+  useEffect(() => {
+    console.log('Setting up real-time subscription for payment updates...');
+    
+    const channel = supabase
+      .channel('payment-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: 'payment_status=neq.null'
+        },
+        (payload) => {
+          console.log('Real-time payment update received:', payload);
+          
+          // Show toast for payment status changes
+          if (payload.new && payload.old) {
+            const oldStatus = payload.old.payment_status;
+            const newStatus = payload.new.payment_status;
+            
+            if (oldStatus !== newStatus) {
+              toast({
+                title: "Payment Status Updated",
+                description: `Order ${payload.new.order_number} payment changed from ${oldStatus} to ${newStatus}`,
+              });
+            }
+          }
+          
+          // Refresh the orders data
+          queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'invoices'
+        },
+        (payload) => {
+          console.log('Real-time invoice update received:', payload);
+          
+          // Show toast for invoice status changes
+          if (payload.new && payload.old) {
+            const oldStatus = payload.old.status;
+            const newStatus = payload.new.status;
+            
+            if (oldStatus !== newStatus && newStatus === 'paid') {
+              toast({
+                title: "Invoice Paid",
+                description: `Invoice ${payload.new.invoice_number} has been paid!`,
+              });
+              
+              // Refresh the orders data when invoice is paid
+              queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+        setRealtimeConnected(status === 'SUBSCRIBED');
+        
+        if (status === 'SUBSCRIBED') {
+          toast({
+            title: "Real-time Updates Enabled",
+            description: "Payment status will update automatically",
+          });
+        }
+      });
+
+    return () => {
+      console.log('Cleaning up real-time subscription...');
+      supabase.removeChannel(channel);
+      setRealtimeConnected(false);
+    };
+  }, [queryClient, toast]);
 
   // Generate and send invoice with payment link
   const generateAndSendInvoice = async (orderId: string) => {
@@ -384,14 +465,21 @@ export function PaymentManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-slate-800">Payment Management</h2>
-          <p className="text-slate-600 mt-1">Track payments and manage invoicing • Real-time order data</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-slate-600">Track payments and manage invoicing • Real-time order data</p>
+            <div className={`w-2 h-2 rounded-full ${realtimeConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="text-xs text-slate-500">
+              {realtimeConnected ? 'Live' : 'Offline'}
+            </span>
+          </div>
         </div>
         <div className="flex gap-3">
           <Button onClick={sendBatchInvoices} variant="outline" disabled={selectedPayments.length === 0 || selectedPayments.some(id => sendingInvoices.includes(id))} className="flex items-center gap-2">
             {selectedPayments.some(id => sendingInvoices.includes(id)) && <Loader2 className="w-4 h-4 animate-spin" />}
             Batch Invoice ({selectedPayments.length})
           </Button>
-          <Button onClick={() => refetch()} className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800">
+          <Button onClick={() => refetch()} className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" />
             Refresh Data
           </Button>
         </div>
@@ -502,7 +590,7 @@ export function PaymentManagement() {
                       {generatingInvoices.includes(payment.id) ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <Receipt className="w-4 h-4" />
+                        <Receipt className="w-4 w-4" />
                       )}
                       {generatingInvoices.includes(payment.id) ? "Generating..." : "Generate Invoice"}
                     </Button>

@@ -18,7 +18,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('Creating invoice payment session...')
+    console.log('=== CREATE INVOICE PAYMENT STARTED ===')
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -65,9 +65,17 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log('Creating Stripe checkout session for invoice:', invoice.invoice_number)
-    console.log('Order ID to include in metadata:', invoice.order_id)
+    console.log('Order details:', {
+      orderId: invoice.order_id,
+      orderNumber: invoice.orders.order_number,
+      customerName: invoice.orders.customer_name
+    })
 
-    // Create Stripe checkout session with proper metadata
+    // Get origin from request headers
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'http://localhost:3000'
+    console.log('Using origin for URLs:', origin)
+
+    // Create Stripe checkout session with proper metadata and URLs
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -76,7 +84,7 @@ const handler = async (req: Request): Promise<Response> => {
             currency: invoice.currency.toLowerCase(),
             product_data: {
               name: `Invoice ${invoice.invoice_number}`,
-              description: `Payment for Order ${invoice.orders.order_number}`,
+              description: `Payment for Order ${invoice.orders.order_number} - ${invoice.orders.customer_name}`,
             },
             unit_amount: Math.round(invoice.amount * 100), // Convert to cents
           },
@@ -84,27 +92,29 @@ const handler = async (req: Request): Promise<Response> => {
         },
       ],
       mode: 'payment',
-      success_url: `${req.headers.get('origin')}/payment-success?session_id={CHECKOUT_SESSION_ID}&invoice_id=${invoice.id}`,
-      cancel_url: `${req.headers.get('origin')}/payment-cancelled?invoice_id=${invoice.id}`,
+      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&invoice_id=${invoice.id}`,
+      cancel_url: `${origin}/payment-cancelled?invoice_id=${invoice.id}`,
       customer_email: invoice.customer_email,
       metadata: {
         invoice_id: invoice.id,
         order_id: invoice.order_id,
         invoice_number: invoice.invoice_number,
+        order_number: invoice.orders.order_number,
       },
     })
 
-    console.log('Stripe session created with metadata:', {
+    console.log('Stripe session created successfully:', {
       sessionId: session.id,
+      successUrl: session.success_url,
       metadata: session.metadata
     })
 
-    // Update invoice with payment URL and session ID (renamed for clarity)
+    // Update invoice with payment URL and session ID
     const { error: updateError } = await supabase
       .from('invoices')
       .update({ 
         payment_url: session.url,
-        stripe_payment_intent_id: session.id // This stores the session ID for now
+        stripe_payment_intent_id: session.id
       })
       .eq('id', invoiceId)
 
@@ -113,7 +123,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Failed to update invoice with payment information')
     }
 
-    console.log('Payment session created successfully with order_id in metadata:', session.id)
+    console.log('=== INVOICE PAYMENT SESSION CREATED SUCCESSFULLY ===')
 
     return new Response(
       JSON.stringify({ 
@@ -130,7 +140,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     )
   } catch (error: any) {
-    console.error('Error creating invoice payment:', error)
+    console.error('=== ERROR in create-invoice-payment ===', error)
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Failed to create payment session',

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,7 @@ export default function PaymentSuccess() {
       }
 
       try {
+        console.log('=== PAYMENT SUCCESS PAGE ===');
         console.log('Starting payment verification...', { sessionId, invoiceId });
         
         const { data, error } = await supabase.functions.invoke('verify-invoice-payment', {
@@ -50,17 +52,17 @@ export default function PaymentSuccess() {
           throw error;
         }
 
-        if (data.success) {
+        if (data && data.success) {
+          console.log('✅ Payment verified successfully:', data);
           setPaymentVerified(true);
           setVerificationDetails(data);
-          console.log('Payment verified successfully:', data);
           toast({
             title: "Payment Successful",
             description: "Your invoice has been paid and order status updated!"
           });
         } else {
-          console.warn('Payment verification failed:', data);
-          throw new Error(data.message || 'Payment verification failed');
+          console.warn('❌ Payment verification failed:', data);
+          throw new Error(data?.message || 'Payment verification failed');
         }
       } catch (error: any) {
         console.error('Payment verification error:', error);
@@ -90,6 +92,9 @@ export default function PaymentSuccess() {
     setIsAutoLoginLoading(true);
 
     try {
+      console.log('=== AUTO LOGIN PROCESS ===');
+      console.log('Getting customer email from invoice...');
+      
       // First, get the customer email from the invoice
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
@@ -98,8 +103,12 @@ export default function PaymentSuccess() {
         .single();
 
       if (invoiceError || !invoiceData?.customer_email) {
+        console.error('Failed to get customer email:', invoiceError);
         throw new Error('Unable to retrieve customer email');
       }
+
+      console.log('Customer email retrieved:', invoiceData.customer_email);
+      console.log('Initiating auto-login with order ID:', verificationDetails.orderId);
 
       const { error, isNewAccount } = await autoSignIn(
         invoiceData.customer_email, 
@@ -116,6 +125,8 @@ export default function PaymentSuccess() {
         return;
       }
 
+      console.log('✅ Auto-login successful, new account:', isNewAccount);
+
       toast({
         title: isNewAccount ? "Account Created!" : "Welcome Back!",
         description: isNewAccount 
@@ -123,8 +134,9 @@ export default function PaymentSuccess() {
           : "You're now logged in to view your orders.",
       });
 
-      // Redirect to customer portal
-      navigate('/customer');
+      // Redirect to customer portal with new account flag
+      const redirectUrl = isNewAccount ? '/customer?new_account=true' : '/customer';
+      navigate(redirectUrl);
     } catch (error: any) {
       console.error('Auto-login error:', error);
       toast({
@@ -145,6 +157,10 @@ export default function PaymentSuccess() {
             <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-blue-600" />
             <h2 className="text-xl font-semibold mb-2">Verifying Payment</h2>
             <p className="text-gray-600">Please wait while we confirm your payment and update your order status...</p>
+            <div className="mt-4 text-xs text-gray-500">
+              <p>Session: {sessionId}</p>
+              <p>Invoice: {invoiceId}</p>
+            </div>
           </CardContent>
         </Card>
       </div>
