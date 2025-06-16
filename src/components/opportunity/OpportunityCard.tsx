@@ -58,7 +58,11 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
       
       switch (nextStage) {
         case 'confirmed':
-          updateData = { payment_status: 'paid' };
+          // When confirming an order, set payment status to paid and status to preparing
+          updateData = { 
+            payment_status: 'paid',
+            status: 'preparing'
+          };
           break;
         case 'preparing':
           updateData = { status: 'preparing' };
@@ -107,9 +111,10 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
         }
       }
 
+      const actionText = getNextStageAction(currentStage);
       toast({
         title: "Order Updated",
-        description: `Order ${order.order_number} moved to ${getNextStageAction(currentStage)}`,
+        description: `Order ${order.order_number} - ${actionText} completed`,
       });
 
       onOrderMove();

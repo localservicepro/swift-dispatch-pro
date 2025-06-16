@@ -117,7 +117,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       // Generate order number
       const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
 
-      // Create order with truck_id
+      // Create order with 'requested' status
       const orderData = {
         order_number: orderNumber,
         customer_id: selectedCustomer.id,
@@ -141,7 +141,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         driver_id: driverId || null,
         admin_id: user.id,
         special_instructions: specialInstructions || null,
-        status: 'preparing' as const
+        status: 'requested' as const,
+        payment_status: 'pending' as const
       };
 
       const { data: order, error: orderError } = await supabase
@@ -183,7 +184,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
       toast({
         title: "Success",
-        description: `Order ${orderNumber} created successfully!`,
+        description: `Order ${orderNumber} created successfully! It's now in the pipeline awaiting confirmation.`,
       });
 
       onOrderCreated();

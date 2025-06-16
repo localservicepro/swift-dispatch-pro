@@ -97,8 +97,11 @@ export function OrderReviewStep({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CheckCircle className="w-5 h-5" />
-          Step 4: Order Review
+          Step 4: Create Order
         </CardTitle>
+        <p className="text-sm text-gray-600">
+          Review the order details below. Once created, the order will enter the pipeline as "requested" and await confirmation.
+        </p>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Customer Information */}
@@ -237,6 +240,20 @@ export function OrderReviewStep({
           </div>
         </div>
 
+        {/* Order Status Notice */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+            <div>
+              <h4 className="font-medium text-blue-900 mb-1">Order Status</h4>
+              <p className="text-sm text-blue-700">
+                This order will be created with "requested" status and will appear in the opportunity pipeline. 
+                It will need to be confirmed by an admin or when payment is received before processing begins.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="flex gap-2 pt-4">
           <Button variant="outline" onClick={onBack}>
             Back
@@ -246,7 +263,7 @@ export function OrderReviewStep({
             disabled={isCreating}
             className="ml-auto"
           >
-            {isCreating ? "Creating Order..." : "Confirm Order"}
+            {isCreating ? "Creating Order..." : "Create Order"}
           </Button>
         </div>
       </CardContent>

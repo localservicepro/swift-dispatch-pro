@@ -113,10 +113,16 @@ export function OpportunityPipeline() {
       // Map order status to pipeline stage
       let stage = 'requested';
       
-      if (order.payment_status === 'paid' || order.status !== 'preparing') {
+      // Orders with 'requested' status stay in 'requested' stage
+      if (order.status === 'requested') {
+        stage = 'requested';
+      } 
+      // Orders that are paid or have status other than 'requested' move to confirmed
+      else if (order.payment_status === 'paid' || order.status === 'preparing') {
         stage = 'confirmed';
       }
       
+      // Map other statuses directly
       if (order.status === 'preparing') {
         stage = 'preparing';
       } else if (order.status === 'loading') {
