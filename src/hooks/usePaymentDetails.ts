@@ -12,6 +12,7 @@ interface PaymentDetails {
     due_date: string;
     customer_email: string;
     paid_at?: string;
+    payment_url?: string;
   } | null;
   order: {
     id: string;
