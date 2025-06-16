@@ -10,6 +10,7 @@ import { ProductManagement } from "@/components/ProductManagement";
 import { PaymentManagement } from "@/components/PaymentManagement";
 import { DriverManagement } from "@/components/DriverManagement";
 import { EmailManagement } from "@/components/EmailManagement";
+import { CustomerManagement } from "@/components/CustomerManagement";
 import { Settings } from "@/components/Settings";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -46,6 +47,8 @@ const Index = () => {
         return <OrderManagement />;
       case "products":
         return <ProductManagement />;
+      case "customers":
+        return <CustomerManagement />;
       case "payments":
         return <PaymentManagement />;
       case "drivers":

@@ -1,4 +1,5 @@
-import { Calendar, Settings, Users, FileText, ChartBar } from "lucide-react";
+
+import { Calendar, Settings, Users, FileText, ChartBar, UserCheck } from "lucide-react";
 
 interface MobileBottomNavProps {
   activeTab: string;
@@ -22,9 +23,9 @@ const navItems = [
     key: "products",
   },
   {
-    title: "Payments",
-    icon: Calendar,
-    key: "payments",
+    title: "Customers",
+    icon: UserCheck,
+    key: "customers",
   },
   {
     title: "Staffs",
