@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { Customer, CartItem, SplitConfig, TruckType } from "../types";
@@ -20,7 +19,20 @@ export interface CreateOrderParams {
   paymentMethod: string;
 }
 
-export async function createOrder(params: CreateOrderParams) {
+export interface SingleOrderResult {
+  orderNumber: string;
+  type: 'single';
+}
+
+export interface SplitOrderResult {
+  orderNumber: string;
+  type: 'split';
+  splitCount: number;
+}
+
+export type OrderCreationResult = SingleOrderResult | SplitOrderResult;
+
+export async function createOrder(params: CreateOrderParams): Promise<OrderCreationResult> {
   const {
     selectedCustomer,
     cart,
@@ -87,7 +99,7 @@ async function createSingleOrder(params: {
   specialInstructions: string;
   paymentMethod: string;
   userId: string;
-}) {
+}): Promise<SingleOrderResult> {
   const {
     selectedCustomer,
     cart,
@@ -187,7 +199,7 @@ async function createSplitOrder(params: {
   splits: SplitConfig[];
   paymentMethod: string;
   userId: string;
-}) {
+}): Promise<SplitOrderResult> {
   const {
     selectedCustomer,
     cart,
