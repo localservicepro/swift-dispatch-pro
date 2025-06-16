@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -94,7 +95,6 @@ export function ProductManagement() {
       .from('products')
       .select(`
         *,
-        images,
         category:product_categories(name)
       `)
       .order('name');
@@ -119,7 +119,7 @@ export function ProductManagement() {
       // Ensure images array exists for each product
       const productsWithImages = (data || []).map(product => ({
         ...product,
-        images: product.images || []
+        images: Array.isArray(product.images) ? product.images : []
       }));
       setProducts(productsWithImages);
     }

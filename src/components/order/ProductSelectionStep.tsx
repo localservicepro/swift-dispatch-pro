@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,24 @@ export function ProductSelectionStep({
   useEffect(() => {
     loadCategories();
     loadProducts();
-  }, []);
+
+    // Set up realtime subscription with proper cleanup
+    const channel = supabase
+      .channel('product-selection-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'products' },
+        () => {
+          console.log('Products table changed, reloading...');
+          loadProducts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up product selection subscription...');
+      supabase.removeChannel(channel);
+    };
+  }, []); // Empty dependency array to prevent re-subscriptions
 
   useEffect(() => {
     loadProducts();
@@ -84,7 +102,6 @@ export function ProductSelectionStep({
       .from('products')
       .select(`
         *,
-        images,
         category:product_categories(name)
       `)
       .eq('is_active', true)
@@ -105,7 +122,7 @@ export function ProductSelectionStep({
       // Ensure images array exists for each product
       const productsWithImages = data.map(product => ({
         ...product,
-        images: product.images || []
+        images: Array.isArray(product.images) ? product.images : []
       }));
       setProducts(productsWithImages);
     }
