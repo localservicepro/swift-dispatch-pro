@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera, RotateCcw, X, Check, SwitchCamera, RefreshCw } from "lucide-react";
@@ -16,40 +17,64 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
   const [isLoading, setIsLoading] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
   const [streamStatus, setStreamStatus] = useState<string>('');
-  const [videoTracks, setVideoTracks] = useState<MediaStreamTrack[]>([]);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const readyCheckInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     startCamera();
     return () => {
       stopCamera();
+      if (readyCheckInterval.current) {
+        clearInterval(readyCheckInterval.current);
+      }
     };
   }, [facingMode]);
 
-  const checkStreamHealth = (mediaStream: MediaStream) => {
-    const tracks = mediaStream.getVideoTracks();
-    console.log('Video tracks:', tracks);
-    console.log('Stream active:', mediaStream.active);
+  const checkVideoReady = () => {
+    if (!videoRef.current) return false;
     
-    if (tracks.length === 0) {
-      throw new Error('No video tracks found in stream');
+    const video = videoRef.current;
+    console.log('Checking video ready state:', {
+      readyState: video.readyState,
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight,
+      paused: video.paused,
+      ended: video.ended
+    });
+
+    // Check if video has loaded and has dimensions
+    const hasValidDimensions = video.videoWidth > 0 && video.videoHeight > 0;
+    const isPlaying = !video.paused && !video.ended && video.readyState >= 2;
+    
+    return hasValidDimensions && (isPlaying || video.readyState >= 3);
+  };
+
+  const startReadyPolling = () => {
+    if (readyCheckInterval.current) {
+      clearInterval(readyCheckInterval.current);
     }
-    
-    const activeTrack = tracks[0];
-    console.log('Track state:', activeTrack.readyState);
-    console.log('Track enabled:', activeTrack.enabled);
-    console.log('Track settings:', activeTrack.getSettings());
-    
-    if (activeTrack.readyState === 'ended') {
-      throw new Error('Video track has ended');
-    }
-    
-    setVideoTracks(tracks);
-    setStreamStatus(`Stream: ${mediaStream.active ? 'Active' : 'Inactive'}, Track: ${activeTrack.readyState}`);
-    
-    return true;
+
+    let attempts = 0;
+    const maxAttempts = 20; // 10 seconds total
+
+    readyCheckInterval.current = setInterval(() => {
+      attempts++;
+      
+      if (checkVideoReady()) {
+        console.log('Camera ready after', attempts * 500, 'ms');
+        setVideoReady(true);
+        setIsLoading(false);
+        setStreamStatus('Camera ready for photo');
+        clearInterval(readyCheckInterval.current!);
+      } else if (attempts >= maxAttempts) {
+        console.log('Camera ready check timeout');
+        setError('Camera loading timeout. Please try the manual enable button.');
+        setIsLoading(false);
+        clearInterval(readyCheckInterval.current!);
+      }
+    }, 500);
   };
 
   const tryDifferentConstraints = async () => {
@@ -70,13 +95,11 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
           height: { ideal: 480 }
         }
       },
-      // Fallback 2: Basic constraints
+      // Fallback 2: Basic constraints with facing mode
       {
-        video: {
-          facingMode: facingMode
-        }
+        video: { facingMode: facingMode }
       },
-      // Fallback 3: No facing mode
+      // Fallback 3: No facing mode constraint
       {
         video: true
       }
@@ -101,7 +124,12 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
     setIsLoading(true);
     setError(null);
     setVideoReady(false);
-    setStreamStatus('Initializing...');
+    setStreamStatus('Requesting camera access...');
+    
+    // Clear any existing interval
+    if (readyCheckInterval.current) {
+      clearInterval(readyCheckInterval.current);
+    }
     
     try {
       console.log('Starting camera with facing mode:', facingMode);
@@ -110,85 +138,36 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
         throw new Error('Camera not supported on this device');
       }
 
-      setStreamStatus('Requesting camera access...');
       const mediaStream = await tryDifferentConstraints();
-      
       console.log('Camera stream obtained:', mediaStream);
-      checkStreamHealth(mediaStream);
       
       setStream(mediaStream);
       setHasPermission(true);
-      setStreamStatus('Setting up video...');
+      setStreamStatus('Preparing camera for photo...');
 
       if (videoRef.current) {
         const video = videoRef.current;
         
-        // Clear any existing handlers
-        video.onloadedmetadata = null;
-        video.oncanplay = null;
-        video.onerror = null;
-        
-        // Force video properties
+        // Set up video element
         video.autoplay = true;
         video.playsInline = true;
         video.muted = true;
-        
-        let timeoutId: NodeJS.Timeout;
-        
-        const handleMetadataLoaded = () => {
-          console.log('Video metadata loaded');
-          console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
-          setStreamStatus(`Video loaded: ${video.videoWidth}x${video.videoHeight}`);
-          
-          if (video.videoWidth === 0 || video.videoHeight === 0) {
-            console.error('Video has no dimensions');
-            setError('Video stream has no dimensions. Please try again.');
-            return;
-          }
-          
-          video.play()
-            .then(() => {
-              console.log('Video playing successfully');
-              setVideoReady(true);
-              setIsLoading(false);
-              setStreamStatus('Camera ready');
-              clearTimeout(timeoutId);
-            })
-            .catch((playError) => {
-              console.error('Video play error:', playError);
-              setError('Unable to start video playback');
-              setIsLoading(false);
-            });
-        };
-
-        const handleCanPlay = () => {
-          console.log('Video can play');
-          setStreamStatus('Video ready to play');
-        };
-
-        const handleError = (e: any) => {
-          console.error('Video error:', e);
-          setError('Video playback error. Please refresh and try again.');
-          setIsLoading(false);
-          clearTimeout(timeoutId);
-        };
-
-        // Set up event listeners
-        video.onloadedmetadata = handleMetadataLoaded;
-        video.oncanplay = handleCanPlay;
-        video.onerror = handleError;
-
-        // Set timeout for video loading
-        timeoutId = setTimeout(() => {
-          console.log('Video loading timeout');
-          setError('Camera loading timeout. Please refresh and try again.');
-          setIsLoading(false);
-        }, 10000);
-
-        // Assign stream
         video.srcObject = mediaStream;
+        
         console.log('Stream assigned to video element');
-        setStreamStatus('Stream assigned, waiting for video...');
+        setStreamStatus('Loading camera...');
+        
+        // Start polling for ready state
+        startReadyPolling();
+        
+        // Also try to play the video
+        try {
+          await video.play();
+          console.log('Video play() successful');
+        } catch (playError) {
+          console.log('Video play() failed, but continuing:', playError);
+          // Don't fail here, polling will still check for ready state
+        }
       }
     } catch (err: any) {
       console.error('Camera access error:', err);
@@ -200,8 +179,8 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
       } else if (err.name === 'NotSupportedError') {
         setError('Camera not supported on this browser.');
       } else if (err.name === 'OverconstrainedError') {
-        setError('Camera constraints not supported. Trying basic camera...');
-        // Auto-retry with basic constraints
+        setError('Camera constraints not supported. Trying different settings...');
+        // Auto-retry with different facing mode
         setTimeout(() => {
           setFacingMode('user');
         }, 2000);
@@ -226,7 +205,10 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
     }
     setVideoReady(false);
     setStreamStatus('Stopped');
-    setVideoTracks([]);
+    
+    if (readyCheckInterval.current) {
+      clearInterval(readyCheckInterval.current);
+    }
   };
 
   const refreshCamera = () => {
@@ -236,8 +218,16 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
     }, 500);
   };
 
+  const forceEnableCamera = () => {
+    console.log('Force enabling camera');
+    setVideoReady(true);
+    setIsLoading(false);
+    setError(null);
+    setStreamStatus('Camera force-enabled');
+  };
+
   const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current || !videoReady) {
+    if (!videoRef.current || !canvasRef.current) {
       console.error('Video or canvas not ready for capture');
       return;
     }
@@ -254,8 +244,8 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
     console.log('Capturing photo, video dimensions:', video.videoWidth, 'x', video.videoHeight);
 
     // Set canvas dimensions to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
 
     // Draw the video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -296,7 +286,7 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
       <div className="fixed inset-0 bg-black flex items-center justify-center">
         <div className="text-center text-white">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p>Starting camera...</p>
+          <p>Preparing camera for photo...</p>
           {streamStatus && <p className="text-sm mt-2 text-gray-300">{streamStatus}</p>}
         </div>
       </div>
@@ -313,6 +303,11 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
             {streamStatus && <p className="text-sm mt-2 text-gray-600">Status: {streamStatus}</p>}
           </div>
           <div className="space-y-2">
+            {stream && (
+              <Button onClick={forceEnableCamera} className="w-full bg-green-600 hover:bg-green-700">
+                Force Enable Camera
+              </Button>
+            )}
             <Button onClick={refreshCamera} className="w-full">
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh Camera
@@ -391,20 +386,17 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                 <div className="text-center text-white">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                  <p className="text-sm">Loading camera...</p>
+                  <p className="text-sm">Preparing photo capture...</p>
                   {streamStatus && <p className="text-xs mt-1 text-gray-300">{streamStatus}</p>}
+                  {stream && !videoReady && (
+                    <Button 
+                      onClick={forceEnableCamera}
+                      className="mt-3 bg-green-600 hover:bg-green-700 text-sm px-4 py-2"
+                    >
+                      Enable Camera Now
+                    </Button>
+                  )}
                 </div>
-              </div>
-            )}
-            
-            {/* Debug info */}
-            {videoTracks.length > 0 && (
-              <div className="absolute top-4 left-4 bg-black/50 text-white text-xs p-2 rounded">
-                <div>Tracks: {videoTracks.length}</div>
-                <div>Ready: {videoReady ? 'Yes' : 'No'}</div>
-                {videoRef.current && (
-                  <div>Size: {videoRef.current.videoWidth}x{videoRef.current.videoHeight}</div>
-                )}
               </div>
             )}
           </div>
