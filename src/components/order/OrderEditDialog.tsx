@@ -68,8 +68,8 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     suburb_id: order.suburb_id || '',
     delivery_fee: order.delivery_fee || 0,
     subtotal: order.subtotal || (order.total_amount - (order.delivery_fee || 0)),
-    truck_type: order.truck_type || '' as TruckType | '',
-    truck_id: order.truck_id || '',
+    truck_type: order.truck_type || 'none',
+    truck_id: order.truck_id || 'none',
   });
   const { toast } = useToast();
 
@@ -77,7 +77,7 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
   const { data: availableTrucks = [] } = useQuery({
     queryKey: ['available-trucks', formData.truck_type],
     queryFn: async () => {
-      if (!formData.truck_type) return [];
+      if (!formData.truck_type || formData.truck_type === 'none') return [];
       
       const { data, error } = await supabase
         .from('trucks')
@@ -89,13 +89,13 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
       if (error) throw error;
       return data;
     },
-    enabled: !!formData.truck_type,
+    enabled: !!formData.truck_type && formData.truck_type !== 'none',
   });
 
   // Reset truck selection when truck type changes
   useEffect(() => {
     if (formData.truck_type !== order.truck_type) {
-      setFormData(prev => ({ ...prev, truck_id: '' }));
+      setFormData(prev => ({ ...prev, truck_id: 'none' }));
     }
   }, [formData.truck_type, order.truck_type]);
 
@@ -115,7 +115,7 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
         }
 
         // Set new truck to assigned if one is selected
-        if (formData.truck_id) {
+        if (formData.truck_id && formData.truck_id !== 'none') {
           await supabase
             .from('trucks')
             .update({ status: 'assigned' })
@@ -138,8 +138,8 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
           driver_id: formData.driver_id === 'unassigned' ? null : formData.driver_id,
           delivery_fee: formData.delivery_fee,
           subtotal: formData.subtotal,
-          truck_type: formData.truck_type || null,
-          truck_id: formData.truck_id || null,
+          truck_type: formData.truck_type === 'none' ? null : formData.truck_type,
+          truck_id: formData.truck_id === 'none' ? null : formData.truck_id,
           updated_at: new Date().toISOString(),
         })
         .eq('id', order.id);
@@ -318,7 +318,7 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
                   <SelectValue placeholder="Select truck type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No truck assigned</SelectItem>
+                  <SelectItem value="none">No truck assigned</SelectItem>
                   <SelectItem value="small">Small Truck</SelectItem>
                   <SelectItem value="medium">Medium Truck</SelectItem>
                   <SelectItem value="large">Large Truck</SelectItem>
@@ -327,7 +327,7 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
               </Select>
             </div>
 
-            {formData.truck_type && (
+            {formData.truck_type && formData.truck_type !== 'none' && (
               <div>
                 <Label htmlFor="truck_id">Specific Truck</Label>
                 <Select value={formData.truck_id} onValueChange={(value) => handleInputChange('truck_id', value)}>
@@ -335,7 +335,7 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
                     <SelectValue placeholder="Select specific truck" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No specific truck</SelectItem>
+                    <SelectItem value="none">No specific truck</SelectItem>
                     {availableTrucks.map((truck) => (
                       <SelectItem 
                         key={truck.id} 
