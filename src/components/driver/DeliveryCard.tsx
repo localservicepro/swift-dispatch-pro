@@ -6,17 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { DeliveryActionDialog } from "./DeliveryActionDialog";
+import { OrderDetailsCard } from "./OrderDetailsCard";
 import { Database } from "@/integrations/supabase/types";
 import { 
   MapPin, 
   Phone, 
-  Package, 
-  DollarSign, 
-  Clock,
-  Truck,
   CheckCircle,
   AlertCircle,
-  XCircle
+  XCircle,
+  Truck,
+  Clock,
+  Package
 } from "lucide-react";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -110,7 +110,6 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
     setActionDialog({ open: false, action: null });
   };
 
-  const products = Array.isArray(order.products) ? order.products : [];
   const nextStatus = getNextStatus(order.status);
   const statusLabel = getStatusLabel(order.status);
 
@@ -133,20 +132,20 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
 
           {/* Customer Info */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-slate-700">
-              <MapPin className="w-4 h-4 text-slate-500" />
-              <div>
+            <div className="flex items-start gap-2 text-slate-700">
+              <MapPin className="w-4 h-4 text-slate-500 mt-0.5" />
+              <div className="flex-1">
                 <div className="font-medium">{order.customer_name}</div>
                 <div className="text-sm text-slate-600">{order.customer_address}</div>
               </div>
             </div>
             
             {order.customer_phone && (
-              <div className="flex items-center gap-2 text-slate-700">
+              <div className="flex items-center gap-2 text-slate-700 ml-6">
                 <Phone className="w-4 h-4 text-slate-500" />
                 <a 
                   href={`tel:${order.customer_phone}`}
-                  className="text-blue-600 hover:underline"
+                  className="text-blue-600 hover:underline text-sm"
                 >
                   {order.customer_phone}
                 </a>
@@ -154,28 +153,8 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
             )}
           </div>
 
-          {/* Products */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-slate-700">
-              <Package className="w-4 h-4 text-slate-500" />
-              <span className="font-medium">Items:</span>
-            </div>
-            <div className="text-sm text-slate-600 pl-6">
-              {products.map((product: any, index: number) => (
-                <div key={index}>
-                  {typeof product === 'string' ? product : product.name || 'Item'}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Total */}
-          <div className="flex items-center gap-2 text-slate-700">
-            <DollarSign className="w-4 h-4 text-slate-500" />
-            <span className="font-semibold text-green-600">
-              ${order.total_amount.toFixed(2)}
-            </span>
-          </div>
+          {/* Order Details */}
+          <OrderDetailsCard order={order} />
 
           {/* Special Instructions */}
           {order.special_instructions && (
