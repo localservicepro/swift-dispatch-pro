@@ -2,17 +2,18 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { DriverSelector } from "./DriverSelector";
 import { SuburbSelector } from "./SuburbSelector";
-import { useQuery } from "@tanstack/react-query";
+import { OrderBasicInfoForm } from "./OrderBasicInfoForm";
+import { OrderPricingForm } from "./OrderPricingForm";
+import { OrderTruckSelectionForm } from "./OrderTruckSelectionForm";
+import { OrderDeliveryForm } from "./OrderDeliveryForm";
+import { useOrderFormData, OrderFormData } from "./hooks/useOrderFormData";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -39,14 +40,6 @@ interface Order {
   truck_id?: string;
 }
 
-interface Truck {
-  id: string;
-  registration_number: string;
-  truck_type: TruckType;
-  status: string;
-  capacity_tons: number | null;
-}
-
 interface OrderEditDialogProps {
   order: Order;
   onOrderUpdated: () => void;
@@ -55,49 +48,22 @@ interface OrderEditDialogProps {
 
 export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDialogProps) {
   const [isUpdating, setIsUpdating] = useState(false);
-  const [formData, setFormData] = useState({
-    customer_name: order.customer_name,
-    customer_phone: order.customer_phone || '',
-    customer_address: order.customer_address,
-    total_amount: order.total_amount.toString(),
-    status: order.status,
-    delivery_date: order.delivery_date || '',
-    delivery_time: order.delivery_time || '',
-    special_instructions: order.special_instructions || '',
-    driver_id: order.driver_id || 'unassigned',
-    suburb_id: order.suburb_id || '',
-    delivery_fee: order.delivery_fee || 0,
-    subtotal: order.subtotal || (order.total_amount - (order.delivery_fee || 0)),
-    truck_type: (order.truck_type || 'none') as TruckType | 'none',
-    truck_id: order.truck_id || 'none',
-  });
   const { toast } = useToast();
-
-  // Fetch available trucks based on selected truck type
-  const { data: availableTrucks = [] } = useQuery({
-    queryKey: ['available-trucks', formData.truck_type],
-    queryFn: async () => {
-      if (!formData.truck_type || formData.truck_type === 'none') return [];
-      
-      const { data, error } = await supabase
-        .from('trucks')
-        .select('id, registration_number, truck_type, status, capacity_tons')
-        .eq('truck_type', formData.truck_type as TruckType)
-        .eq('is_active', true)
-        .order('registration_number');
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!formData.truck_type && formData.truck_type !== 'none',
-  });
+  
+  const {
+    formData,
+    setFormData,
+    handleInputChange,
+    handleDriverChange,
+    handleSuburbChange,
+  } = useOrderFormData(order);
 
   // Reset truck selection when truck type changes
   useEffect(() => {
     if (formData.truck_type !== order.truck_type) {
       setFormData(prev => ({ ...prev, truck_id: 'none' }));
     }
-  }, [formData.truck_type, order.truck_type]);
+  }, [formData.truck_type, order.truck_type, setFormData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,43 +141,6 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleDriverChange = (driverId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      driver_id: driverId
-    }));
-  };
-
-  const handleSuburbChange = (suburbId: string, deliveryRate: number) => {
-    const newSubtotal = parseFloat(formData.total_amount) - formData.delivery_fee;
-    const newTotalAmount = newSubtotal + deliveryRate;
-    
-    setFormData(prev => ({
-      ...prev,
-      suburb_id: suburbId,
-      delivery_fee: deliveryRate,
-      total_amount: newTotalAmount.toString(),
-      subtotal: newSubtotal,
-    }));
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'available': return 'bg-green-100 text-green-800';
-      case 'assigned': return 'bg-yellow-100 text-yellow-800';
-      case 'maintenance': return 'bg-orange-100 text-orange-800';
-      case 'out_of_service': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -220,35 +149,10 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="customer_name">Customer Name</Label>
-              <Input
-                id="customer_name"
-                value={formData.customer_name}
-                onChange={(e) => handleInputChange('customer_name', e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="customer_phone">Customer Phone</Label>
-              <Input
-                id="customer_phone"
-                value={formData.customer_phone}
-                onChange={(e) => handleInputChange('customer_phone', e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="customer_address">Customer Address</Label>
-            <Textarea
-              id="customer_address"
-              value={formData.customer_address}
-              onChange={(e) => handleInputChange('customer_address', e.target.value)}
-              required
-            />
-          </div>
+          <OrderBasicInfoForm 
+            formData={formData}
+            onInputChange={handleInputChange}
+          />
 
           <div>
             <SuburbSelector
@@ -257,41 +161,10 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="subtotal">Subtotal</Label>
-              <Input
-                id="subtotal"
-                type="number"
-                step="0.01"
-                value={formData.subtotal.toString()}
-                onChange={(e) => handleInputChange('subtotal', e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="delivery_fee">Delivery Fee</Label>
-              <Input
-                id="delivery_fee"
-                type="number"
-                step="0.01"
-                value={formData.delivery_fee.toString()}
-                readOnly
-                className="bg-gray-100"
-              />
-            </div>
-            <div>
-              <Label htmlFor="total_amount">Total Amount</Label>
-              <Input
-                id="total_amount"
-                type="number"
-                step="0.01"
-                value={formData.total_amount}
-                readOnly
-                className="bg-gray-100"
-              />
-            </div>
-          </div>
+          <OrderPricingForm 
+            formData={formData}
+            onInputChange={handleInputChange}
+          />
 
           <div>
             <Label htmlFor="status">Status</Label>
@@ -309,52 +182,11 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
             </Select>
           </div>
 
-          {/* Truck Selection */}
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="truck_type">Truck Type</Label>
-              <Select value={formData.truck_type} onValueChange={(value) => handleInputChange('truck_type', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select truck type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No truck assigned</SelectItem>
-                  <SelectItem value="small">Small Truck</SelectItem>
-                  <SelectItem value="medium">Medium Truck</SelectItem>
-                  <SelectItem value="large">Large Truck</SelectItem>
-                  <SelectItem value="crane">Crane Truck</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.truck_type && formData.truck_type !== 'none' && (
-              <div>
-                <Label htmlFor="truck_id">Specific Truck</Label>
-                <Select value={formData.truck_id} onValueChange={(value) => handleInputChange('truck_id', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select specific truck" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No specific truck</SelectItem>
-                    {availableTrucks.map((truck) => (
-                      <SelectItem 
-                        key={truck.id} 
-                        value={truck.id}
-                        disabled={truck.status !== 'available' && truck.id !== order.truck_id}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span>{truck.registration_number}</span>
-                          <Badge className={`ml-2 ${getStatusColor(truck.status)}`}>
-                            {truck.status.replace('_', ' ').toUpperCase()}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
+          <OrderTruckSelectionForm 
+            formData={formData}
+            onInputChange={handleInputChange}
+            orderId={order.id}
+          />
 
           <div>
             <DriverSelector
@@ -363,36 +195,10 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="delivery_date">Delivery Date</Label>
-              <Input
-                id="delivery_date"
-                type="date"
-                value={formData.delivery_date}
-                onChange={(e) => handleInputChange('delivery_date', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="delivery_time">Delivery Time</Label>
-              <Input
-                id="delivery_time"
-                type="time"
-                value={formData.delivery_time}
-                onChange={(e) => handleInputChange('delivery_time', e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="special_instructions">Special Instructions</Label>
-            <Textarea
-              id="special_instructions"
-              value={formData.special_instructions}
-              onChange={(e) => handleInputChange('special_instructions', e.target.value)}
-              placeholder="Any special delivery instructions..."
-            />
-          </div>
+          <OrderDeliveryForm 
+            formData={formData}
+            onInputChange={handleInputChange}
+          />
 
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={onClose}>
