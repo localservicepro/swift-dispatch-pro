@@ -47,12 +47,14 @@ export function OrderManagement() {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
 
-  // Fetch orders from database with additional relations
+  // Fetch orders from database with enhanced suburb retrieval
   const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
-      console.log('Fetching orders from database...');
-      const { data, error } = await supabase
+      console.log('Fetching orders from database with enhanced suburb lookup...');
+      
+      // First, get all orders with their basic relationships
+      const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`
           id,
@@ -73,27 +75,90 @@ export function OrderManagement() {
           subtotal,
           truck_type,
           truck_id,
-          customers!orders_customer_id_fkey(suburb_id, suburbs(name, state)),
+          customers!orders_customer_id_fkey(
+            id,
+            suburb_id,
+            suburbs(id, name, state, postcode)
+          ),
           profiles!orders_driver_id_fkey(full_name),
           trucks!orders_truck_id_fkey(registration_number, truck_type)
         `)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching orders:', error);
-        throw error;
+      if (ordersError) {
+        console.error('Error fetching orders:', ordersError);
+        throw ordersError;
       }
 
-      console.log('Fetched orders:', data);
-      return data.map(order => ({
-        ...order,
-        suburb_id: order.customers?.suburb_id || null,
-        suburb_name: order.customers?.suburbs?.name || null,
-        suburb_state: order.customers?.suburbs?.state || null,
-        driver_name: order.profiles?.full_name || 'Not Assigned',
-        truck_registration: order.trucks?.registration_number || null,
-        truck_type_from_truck: order.trucks?.truck_type || order.truck_type
-      }));
+      console.log('Raw orders data:', ordersData);
+
+      // Now get all unique customer IDs that might be missing suburb data
+      const customerIds = ordersData
+        ?.filter(order => order.customer_id && (!order.customers?.suburbs || !order.customers.suburb_id))
+        .map(order => order.customer_id)
+        .filter(Boolean) as string[];
+
+      // Fetch additional customer data for those missing suburb info
+      let additionalCustomerData: any[] = [];
+      if (customerIds.length > 0) {
+        console.log('Fetching additional customer data for:', customerIds);
+        const { data: customerData, error: customerError } = await supabase
+          .from('customers')
+          .select(`
+            id,
+            suburb_id,
+            suburbs(id, name, state, postcode)
+          `)
+          .in('id', customerIds);
+
+        if (!customerError) {
+          additionalCustomerData = customerData || [];
+          console.log('Additional customer data:', additionalCustomerData);
+        }
+      }
+
+      // Map the data with enhanced suburb resolution
+      const mappedOrders = ordersData?.map(order => {
+        // Primary suburb source: from the main query
+        let suburbData = order.customers?.suburbs;
+        let suburbId = order.customers?.suburb_id;
+
+        // Fallback: check additional customer data if primary is missing
+        if (!suburbData && order.customer_id) {
+          const additionalCustomer = additionalCustomerData.find(c => c.id === order.customer_id);
+          if (additionalCustomer?.suburbs) {
+            suburbData = additionalCustomer.suburbs;
+            suburbId = additionalCustomer.suburb_id;
+            console.log(`Found suburb data for order ${order.order_number} via fallback:`, suburbData);
+          }
+        }
+
+        const mappedOrder = {
+          ...order,
+          suburb_id: suburbId || null,
+          suburb_name: suburbData?.name || null,
+          suburb_state: suburbData?.state || null,
+          suburb_postcode: suburbData?.postcode || null,
+          driver_name: order.profiles?.full_name || 'Not Assigned',
+          truck_registration: order.trucks?.registration_number || null,
+          truck_type_from_truck: order.trucks?.truck_type || order.truck_type
+        };
+
+        // Debug logging for orders without suburb data
+        if (!suburbData && order.customer_id) {
+          console.warn(`Order ${order.order_number} missing suburb data:`, {
+            customer_id: order.customer_id,
+            has_customer_relation: !!order.customers,
+            customer_suburb_id: order.customers?.suburb_id,
+            has_suburb_relation: !!order.customers?.suburbs
+          });
+        }
+
+        return mappedOrder;
+      }) || [];
+
+      console.log('Final mapped orders:', mappedOrders);
+      return mappedOrders;
     },
   });
 
@@ -494,7 +559,10 @@ export function OrderManagement() {
                           Suburb
                         </p>
                         <p className="font-medium">
-                          {order.suburb_name ? `${order.suburb_name}, ${order.suburb_state}` : 'Not specified'}
+                          {order.suburb_name ? 
+                            `${order.suburb_name}, ${order.suburb_state}${order.suburb_postcode ? ` (${order.suburb_postcode})` : ''}` : 
+                            'Not specified'
+                          }
                         </p>
                       </div>
                     </div>
