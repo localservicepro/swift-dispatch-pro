@@ -1,7 +1,6 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, RotateCcw, X, Check, SwitchCamera } from "lucide-react";
+import { Camera, RotateCcw, X, Check, SwitchCamera, RefreshCw } from "lucide-react";
 
 interface CameraCaptureProps {
   onPhotoCapture: (file: File) => void;
@@ -16,6 +15,8 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [isLoading, setIsLoading] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
+  const [streamStatus, setStreamStatus] = useState<string>('');
+  const [videoTracks, setVideoTracks] = useState<MediaStreamTrack[]>([]);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -27,46 +28,131 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
     };
   }, [facingMode]);
 
-  const startCamera = async () => {
-    setIsLoading(true);
-    setError(null);
-    setVideoReady(false);
+  const checkStreamHealth = (mediaStream: MediaStream) => {
+    const tracks = mediaStream.getVideoTracks();
+    console.log('Video tracks:', tracks);
+    console.log('Stream active:', mediaStream.active);
     
-    try {
-      console.log('Starting camera with facing mode:', facingMode);
-      
-      // Check if getUserMedia is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera not supported on this device');
-      }
+    if (tracks.length === 0) {
+      throw new Error('No video tracks found in stream');
+    }
+    
+    const activeTrack = tracks[0];
+    console.log('Track state:', activeTrack.readyState);
+    console.log('Track enabled:', activeTrack.enabled);
+    console.log('Track settings:', activeTrack.getSettings());
+    
+    if (activeTrack.readyState === 'ended') {
+      throw new Error('Video track has ended');
+    }
+    
+    setVideoTracks(tracks);
+    setStreamStatus(`Stream: ${mediaStream.active ? 'Active' : 'Inactive'}, Track: ${activeTrack.readyState}`);
+    
+    return true;
+  };
 
-      const constraints = {
+  const tryDifferentConstraints = async () => {
+    const constraintSets = [
+      // Primary constraints
+      {
         video: {
           facingMode: facingMode,
           width: { ideal: 1280 },
           height: { ideal: 720 }
         }
-      };
+      },
+      // Fallback 1: Lower resolution
+      {
+        video: {
+          facingMode: facingMode,
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
+      },
+      // Fallback 2: Basic constraints
+      {
+        video: {
+          facingMode: facingMode
+        }
+      },
+      // Fallback 3: No facing mode
+      {
+        video: true
+      }
+    ];
 
-      console.log('Requesting camera with constraints:', constraints);
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+    for (let i = 0; i < constraintSets.length; i++) {
+      try {
+        console.log(`Trying constraint set ${i + 1}:`, constraintSets[i]);
+        const mediaStream = await navigator.mediaDevices.getUserMedia(constraintSets[i]);
+        console.log(`Success with constraint set ${i + 1}`);
+        return mediaStream;
+      } catch (err) {
+        console.log(`Constraint set ${i + 1} failed:`, err);
+        if (i === constraintSets.length - 1) {
+          throw err;
+        }
+      }
+    }
+  };
+
+  const startCamera = async () => {
+    setIsLoading(true);
+    setError(null);
+    setVideoReady(false);
+    setStreamStatus('Initializing...');
+    
+    try {
+      console.log('Starting camera with facing mode:', facingMode);
+      
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not supported on this device');
+      }
+
+      setStreamStatus('Requesting camera access...');
+      const mediaStream = await tryDifferentConstraints();
+      
       console.log('Camera stream obtained:', mediaStream);
+      checkStreamHealth(mediaStream);
       
       setStream(mediaStream);
       setHasPermission(true);
+      setStreamStatus('Setting up video...');
 
-      // Wait for video element to be ready before assigning stream
       if (videoRef.current) {
         const video = videoRef.current;
         
-        // Add event listeners before setting srcObject
-        video.onloadedmetadata = () => {
+        // Clear any existing handlers
+        video.onloadedmetadata = null;
+        video.oncanplay = null;
+        video.onerror = null;
+        
+        // Force video properties
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = true;
+        
+        let timeoutId: NodeJS.Timeout;
+        
+        const handleMetadataLoaded = () => {
           console.log('Video metadata loaded');
+          console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+          setStreamStatus(`Video loaded: ${video.videoWidth}x${video.videoHeight}`);
+          
+          if (video.videoWidth === 0 || video.videoHeight === 0) {
+            console.error('Video has no dimensions');
+            setError('Video stream has no dimensions. Please try again.');
+            return;
+          }
+          
           video.play()
             .then(() => {
               console.log('Video playing successfully');
               setVideoReady(true);
               setIsLoading(false);
+              setStreamStatus('Camera ready');
+              clearTimeout(timeoutId);
             })
             .catch((playError) => {
               console.error('Video play error:', playError);
@@ -75,19 +161,34 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
             });
         };
 
-        video.oncanplay = () => {
+        const handleCanPlay = () => {
           console.log('Video can play');
+          setStreamStatus('Video ready to play');
         };
 
-        video.onerror = (e) => {
+        const handleError = (e: any) => {
           console.error('Video error:', e);
-          setError('Video playback error');
+          setError('Video playback error. Please refresh and try again.');
           setIsLoading(false);
+          clearTimeout(timeoutId);
         };
 
-        // Set the stream
+        // Set up event listeners
+        video.onloadedmetadata = handleMetadataLoaded;
+        video.oncanplay = handleCanPlay;
+        video.onerror = handleError;
+
+        // Set timeout for video loading
+        timeoutId = setTimeout(() => {
+          console.log('Video loading timeout');
+          setError('Camera loading timeout. Please refresh and try again.');
+          setIsLoading(false);
+        }, 10000);
+
+        // Assign stream
         video.srcObject = mediaStream;
         console.log('Stream assigned to video element');
+        setStreamStatus('Stream assigned, waiting for video...');
       }
     } catch (err: any) {
       console.error('Camera access error:', err);
@@ -98,12 +199,19 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
         setError('No camera found on this device.');
       } else if (err.name === 'NotSupportedError') {
         setError('Camera not supported on this browser.');
+      } else if (err.name === 'OverconstrainedError') {
+        setError('Camera constraints not supported. Trying basic camera...');
+        // Auto-retry with basic constraints
+        setTimeout(() => {
+          setFacingMode('user');
+        }, 2000);
       } else {
-        setError('Unable to access camera. Please try again.');
+        setError(`Camera error: ${err.message}`);
       }
       
       setHasPermission(false);
       setIsLoading(false);
+      setStreamStatus('Failed');
     }
   };
 
@@ -117,6 +225,15 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
       setStream(null);
     }
     setVideoReady(false);
+    setStreamStatus('Stopped');
+    setVideoTracks([]);
+  };
+
+  const refreshCamera = () => {
+    stopCamera();
+    setTimeout(() => {
+      startCamera();
+    }, 500);
   };
 
   const capturePhoto = () => {
@@ -180,6 +297,7 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
         <div className="text-center text-white">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
           <p>Starting camera...</p>
+          {streamStatus && <p className="text-sm mt-2 text-gray-300">{streamStatus}</p>}
         </div>
       </div>
     );
@@ -192,9 +310,14 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
           <div className="text-red-600 mb-4">
             <Camera className="w-12 h-12 mx-auto mb-2" />
             <p className="font-medium">{error}</p>
+            {streamStatus && <p className="text-sm mt-2 text-gray-600">Status: {streamStatus}</p>}
           </div>
           <div className="space-y-2">
-            <Button onClick={startCamera} className="w-full">
+            <Button onClick={refreshCamera} className="w-full">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh Camera
+            </Button>
+            <Button onClick={startCamera} variant="outline" className="w-full">
               Try Again
             </Button>
             <Button onClick={handleCancel} variant="outline" className="w-full">
@@ -218,15 +341,28 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
         >
           <X className="w-6 h-6" />
         </Button>
-        <h2 className="text-lg font-medium">Take Photo</h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={switchCamera}
-          className="text-white hover:bg-white/20"
-        >
-          <SwitchCamera className="w-6 h-6" />
-        </Button>
+        <div className="text-center">
+          <h2 className="text-lg font-medium">Take Photo</h2>
+          {streamStatus && <p className="text-xs text-gray-300">{streamStatus}</p>}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={refreshCamera}
+            className="text-white hover:bg-white/20"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={switchCamera}
+            className="text-white hover:bg-white/20"
+          >
+            <SwitchCamera className="w-6 h-6" />
+          </Button>
+        </div>
       </div>
 
       {/* Camera View */}
@@ -245,14 +381,30 @@ export function CameraCapture({ onPhotoCapture, onCancel }: CameraCaptureProps) 
               playsInline
               muted
               className="w-full h-full object-cover"
-              style={{ backgroundColor: '#000' }}
+              style={{ 
+                backgroundColor: '#000',
+                minHeight: '100%',
+                minWidth: '100%'
+              }}
             />
             {!videoReady && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                 <div className="text-center text-white">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
                   <p className="text-sm">Loading camera...</p>
+                  {streamStatus && <p className="text-xs mt-1 text-gray-300">{streamStatus}</p>}
                 </div>
+              </div>
+            )}
+            
+            {/* Debug info */}
+            {videoTracks.length > 0 && (
+              <div className="absolute top-4 left-4 bg-black/50 text-white text-xs p-2 rounded">
+                <div>Tracks: {videoTracks.length}</div>
+                <div>Ready: {videoReady ? 'Yes' : 'No'}</div>
+                {videoRef.current && (
+                  <div>Size: {videoRef.current.videoWidth}x{videoRef.current.videoHeight}</div>
+                )}
               </div>
             )}
           </div>
