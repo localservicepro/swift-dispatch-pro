@@ -130,6 +130,8 @@ export function DeliveryDetailsStep({
         <SpecificTruckSelector
           selectedTruckType={truckType}
           selectedTruckId={truckId}
+          deliveryDate={deliveryDate}
+          deliveryTime={deliveryTime}
           onTruckSelect={onTruckSelect}
         />
 
