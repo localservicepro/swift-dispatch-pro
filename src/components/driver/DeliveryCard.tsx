@@ -1,25 +1,12 @@
-
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { MapPin, Clock, Package, Navigation, Camera } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PhotoUpload } from "./PhotoUpload";
-import { Database } from "@/integrations/supabase/types";
-import { emailService } from "@/utils/emailService";
-import { 
-  MapPin, 
-  Phone, 
-  Package, 
-  DollarSign, 
-  Clock,
-  Truck,
-  CheckCircle,
-  AlertCircle
-} from "lucide-react";
-
-type OrderStatus = Database["public"]["Enums"]["order_status"];
+import { DeliveryMapView } from "./DeliveryMapView";
 
 interface DeliveryCardProps {
   order: any;
@@ -27,193 +14,208 @@ interface DeliveryCardProps {
 }
 
 export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
-  const [updating, setUpdating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [showPhotoUpload, setShowPhotoUpload] = useState(false);
+  const [showMapView, setShowMapView] = useState(false);
   const { toast } = useToast();
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'preparing': return 'bg-orange-100 text-orange-800';
-      case 'loading': return 'bg-blue-100 text-blue-800';
-      case 'en_route': return 'bg-purple-100 text-purple-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'preparing': return <Package className="w-4 h-4" />;
-      case 'loading': return <Clock className="w-4 h-4" />;
-      case 'en_route': return <Truck className="w-4 h-4" />;
-      case 'delivered': return <CheckCircle className="w-4 h-4" />;
-      default: return <AlertCircle className="w-4 h-4" />;
-    }
-  };
-
-  const getNextStatus = (currentStatus: string): OrderStatus | null => {
-    switch (currentStatus) {
-      case 'preparing': return 'loading';
-      case 'loading': return 'en_route';
-      case 'en_route': return 'delivered';
-      default: return null;
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'preparing': return 'Start Loading';
-      case 'loading': return 'Start Delivery';
-      case 'en_route': return 'Mark Delivered';
-      default: return null;
-    }
-  };
-
-  const updateStatus = async (newStatus: OrderStatus) => {
-    if (newStatus === 'delivered') {
-      setShowPhotoUpload(true);
-      return;
-    }
-
-    setUpdating(true);
+  const updateOrderStatus = async (newStatus: string) => {
     try {
-      // Get current order details for email notification
-      const { data: currentOrder } = await supabase
+      setIsUpdating(true);
+      
+      const { error } = await supabase
         .from('orders')
-        .select('status')
-        .eq('id', order.id)
-        .single();
-
-      const oldStatus = currentOrder?.status;
-
-      const { error } = await supabase.rpc('update_order_status', {
-        order_id: order.id,
-        new_status: newStatus
-      });
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', order.id);
 
       if (error) throw error;
 
       toast({
         title: "Status Updated",
-        description: `Order marked as ${newStatus.replace('_', ' ')}`,
+        description: `Order ${order.order_number} marked as ${newStatus.replace('_', ' ')}`,
       });
 
       onStatusUpdate();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to update order status",
         variant: "destructive",
       });
     } finally {
-      setUpdating(false);
+      setIsUpdating(false);
     }
   };
 
-  const handlePhotoUploaded = async () => {
-    setShowPhotoUpload(false);
-    await updateStatus('delivered' as OrderStatus);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'preparing': return 'bg-yellow-100 text-yellow-800';
+      case 'loading': return 'bg-orange-100 text-orange-800';
+      case 'en_route': return 'bg-blue-100 text-blue-800';
+      case 'delivered': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
-  const products = Array.isArray(order.products) ? order.products : [];
-  const nextStatus = getNextStatus(order.status);
-  const statusLabel = getStatusLabel(order.status);
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'preparing': return 'secondary';
+      case 'loading': return 'default';
+      case 'en_route': return 'secondary';
+      case 'delivered': return 'default';
+      default: return 'outline';
+    }
+  };
+
+  const formatProducts = (products: any) => {
+    if (!products) return 'No products';
+    if (Array.isArray(products)) {
+      return products.map(p => p.name || p).join(', ');
+    }
+    return 'Products listed';
+  };
+
+  if (showMapView) {
+    return (
+      <DeliveryMapView
+        order={order}
+        onBack={() => setShowMapView(false)}
+        onStatusUpdate={onStatusUpdate}
+      />
+    );
+  }
 
   return (
     <>
-      <Card className="overflow-hidden">
-        <CardContent className="p-4 space-y-4">
-          {/* Header */}
+      <Card className="border-l-4 border-l-blue-500">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <div className="font-semibold text-slate-800">
+            <CardTitle className="text-lg font-semibold text-slate-800">
               {order.order_number}
-            </div>
+            </CardTitle>
             <Badge className={getStatusColor(order.status)}>
-              <div className="flex items-center gap-1">
-                {getStatusIcon(order.status)}
-                {order.status.replace('_', ' ').toUpperCase()}
-              </div>
+              {order.status.replace('_', ' ')}
             </Badge>
           </div>
-
-          {/* Customer Info */}
+        </CardHeader>
+        
+        <CardContent className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-slate-700">
-              <MapPin className="w-4 h-4 text-slate-500" />
+              <MapPin className="w-4 h-4" />
               <div>
-                <div className="font-medium">{order.customer_name}</div>
-                <div className="text-sm text-slate-600">{order.customer_address}</div>
+                <p className="font-medium">{order.customer_name}</p>
+                <p className="text-sm text-slate-600">{order.customer_address}</p>
+                {order.customer_phone && (
+                  <p className="text-xs text-slate-500">{order.customer_phone}</p>
+                )}
               </div>
             </div>
             
-            {order.customer_phone && (
-              <div className="flex items-center gap-2 text-slate-700">
-                <Phone className="w-4 h-4 text-slate-500" />
-                <a 
-                  href={`tel:${order.customer_phone}`}
-                  className="text-blue-600 hover:underline"
-                >
-                  {order.customer_phone}
-                </a>
+            <div className="flex items-center gap-2 text-slate-600">
+              <Package className="w-4 h-4" />
+              <span className="text-sm">{formatProducts(order.products)}</span>
+            </div>
+            
+            {(order.delivery_date || order.delivery_time) && (
+              <div className="flex items-center gap-2 text-slate-600">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm">
+                  {order.delivery_date && new Date(order.delivery_date).toLocaleDateString()}
+                  {order.delivery_time && ` at ${order.delivery_time}`}
+                </span>
               </div>
             )}
           </div>
 
-          {/* Products */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-slate-700">
-              <Package className="w-4 h-4 text-slate-500" />
-              <span className="font-medium">Items:</span>
-            </div>
-            <div className="text-sm text-slate-600 pl-6">
-              {products.map((product: any, index: number) => (
-                <div key={index}>
-                  {typeof product === 'string' ? product : product.name || 'Item'}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Total */}
-          <div className="flex items-center gap-2 text-slate-700">
-            <DollarSign className="w-4 h-4 text-slate-500" />
-            <span className="font-semibold text-green-600">
+          <div className="text-right">
+            <span className="text-xl font-bold text-green-600">
               ${order.total_amount.toFixed(2)}
             </span>
           </div>
 
-          {/* Special Instructions */}
-          {order.special_instructions && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <div className="text-sm font-medium text-yellow-800 mb-1">
-                Special Instructions:
-              </div>
-              <div className="text-sm text-yellow-700">
-                {order.special_instructions}
-              </div>
-            </div>
-          )}
-
-          {/* Action Button */}
-          {nextStatus && statusLabel && (
-            <Button
-              onClick={() => updateStatus(nextStatus)}
-              disabled={updating}
-              className="w-full"
-              variant={nextStatus === 'delivered' ? 'default' : 'outline'}
+          <div className="flex flex-col gap-2">
+            {/* Navigation Button */}
+            <Button 
+              onClick={() => setShowMapView(true)}
+              className="w-full bg-blue-600 hover:bg-blue-700"
             >
-              {updating ? 'Updating...' : statusLabel}
+              <Navigation className="w-4 h-4 mr-2" />
+              Navigate to Delivery
             </Button>
+
+            {/* Status Update Buttons */}
+            <div className="flex gap-2">
+              {order.status === 'preparing' && (
+                <Button 
+                  size="sm" 
+                  onClick={() => updateOrderStatus('loading')}
+                  disabled={isUpdating}
+                  className="flex-1"
+                >
+                  Mark Loading
+                </Button>
+              )}
+              
+              {order.status === 'loading' && (
+                <Button 
+                  size="sm" 
+                  onClick={() => updateOrderStatus('en_route')}
+                  disabled={isUpdating}
+                  className="flex-1"
+                >
+                  Start Delivery
+                </Button>
+              )}
+              
+              {order.status === 'en_route' && (
+                <>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setShowPhotoUpload(true)}
+                    className="flex-1"
+                  >
+                    <Camera className="w-4 h-4 mr-1" />
+                    Photo
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    onClick={() => updateOrderStatus('delivered')}
+                    disabled={isUpdating}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                  >
+                    Complete
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {order.special_instructions && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">
+                <strong>Special Instructions:</strong> {order.special_instructions}
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Photo Upload Modal */}
       {showPhotoUpload && (
         <PhotoUpload
           orderId={order.id}
-          onPhotoUploaded={handlePhotoUploaded}
-          onCancel={() => setShowPhotoUpload(false)}
+          onClose={() => setShowPhotoUpload(false)}
+          onUploadComplete={() => {
+            setShowPhotoUpload(false);
+            toast({
+              title: "Photo Uploaded",
+              description: "Delivery photo has been uploaded successfully.",
+            });
+          }}
         />
       )}
     </>
