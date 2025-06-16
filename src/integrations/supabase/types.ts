@@ -9,6 +9,59 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action_type: string
+          admin_id: string
+          created_at: string
+          description: string
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          target_details: Json | null
+          target_id: string | null
+          target_type: string
+          user_agent: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_id: string
+          created_at?: string
+          description: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          target_details?: Json | null
+          target_id?: string | null
+          target_type: string
+          user_agent?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          target_details?: Json | null
+          target_id?: string | null
+          target_type?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           auth_user_id: string | null
@@ -687,6 +740,18 @@ export type Database = {
       is_current_user_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      log_admin_activity: {
+        Args: {
+          p_action_type: string
+          p_target_type: string
+          p_target_id?: string
+          p_target_details?: Json
+          p_old_values?: Json
+          p_new_values?: Json
+          p_description?: string
+        }
+        Returns: string
       }
       update_order_status: {
         Args: {

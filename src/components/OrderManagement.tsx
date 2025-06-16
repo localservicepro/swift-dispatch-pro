@@ -12,6 +12,8 @@ import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Filter, X } from "lucide-react";
 import { emailService } from "@/utils/emailService";
+import { activityLogger } from "@/utils/activityLogger";
+import { useAuth } from "./auth/AuthProvider";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -42,6 +44,7 @@ export function OrderManagement() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { profile } = useAuth();
 
   // Fetch orders from database
   const { data: orders = [], isLoading, error, refetch } = useQuery({
@@ -239,9 +242,11 @@ export function OrderManagement() {
     return 'Products listed';
   };
 
-  // Quick status update function for admin
+  // Quick status update function for admin with activity logging
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
     try {
+      const oldStatus = currentOrder.status;
+      
       const { error } = await supabase
         .from('orders')
         .update({ 
@@ -251,6 +256,27 @@ export function OrderManagement() {
         .eq('id', orderId);
 
       if (error) throw error;
+
+      // Log the activity
+      if (profile?.full_name) {
+        if (newStatus === 'cancelled') {
+          await activityLogger.orderCancel(
+            orderId,
+            currentOrder.order_number,
+            currentOrder.customer_name,
+            profile.full_name
+          );
+        } else {
+          await activityLogger.orderStatusUpdate(
+            orderId,
+            currentOrder.order_number,
+            currentOrder.customer_name,
+            oldStatus,
+            newStatus,
+            profile.full_name
+          );
+        }
+      }
 
       toast({
         title: "Status Updated",
