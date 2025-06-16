@@ -1,7 +1,7 @@
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Clock, Calendar } from "lucide-react";
+import { AlertTriangle, Clock, Calendar, Info } from "lucide-react";
 import { ConflictResult } from "@/utils/conflictDetection";
 
 interface ConflictWarningProps {
@@ -10,9 +10,10 @@ interface ConflictWarningProps {
 }
 
 export function ConflictWarning({ driverConflict, truckConflict }: ConflictWarningProps) {
-  const hasAnyConflict = (driverConflict?.hasConflict || truckConflict?.hasConflict);
+  const hasBlockingConflict = (driverConflict?.hasConflict || truckConflict?.hasConflict);
+  const hasAnyInfo = (driverConflict?.conflictingOrders.length || truckConflict?.conflictingOrders.length);
 
-  if (!hasAnyConflict) return null;
+  if (!hasAnyInfo) return null;
 
   const getVariant = (conflictType: string) => {
     switch (conflictType) {
@@ -27,20 +28,36 @@ export function ConflictWarning({ driverConflict, truckConflict }: ConflictWarni
     switch (conflictType) {
       case 'exact': return <AlertTriangle className="w-4 h-4 text-red-500" />;
       case 'overlap': return <Clock className="w-4 h-4 text-orange-500" />;
-      case 'same-day': return <Calendar className="w-4 h-4 text-blue-500" />;
-      default: return <AlertTriangle className="w-4 h-4" />;
+      case 'same-day': return <Info className="w-4 h-4 text-blue-500" />;
+      default: return <Calendar className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const getSeverityLabel = (conflictType: string) => {
+    switch (conflictType) {
+      case 'exact': return 'CRITICAL';
+      case 'overlap': return 'WARNING';
+      case 'same-day': return 'INFO';
+      default: return '';
     }
   };
 
   return (
     <div className="space-y-2">
-      {driverConflict?.hasConflict && (
+      {driverConflict?.conflictingOrders.length > 0 && (
         <Alert variant={getVariant(driverConflict.conflictType)}>
           <div className="flex items-start gap-2">
             {getIcon(driverConflict.conflictType)}
             <div className="flex-1">
               <AlertDescription>
-                <div className="font-medium mb-1">Driver Conflict</div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-medium">Driver Conflict</span>
+                  {getSeverityLabel(driverConflict.conflictType) && (
+                    <Badge variant="outline" className="text-xs">
+                      {getSeverityLabel(driverConflict.conflictType)}
+                    </Badge>
+                  )}
+                </div>
                 <div className="text-sm">{driverConflict.message}</div>
                 <div className="mt-2 space-y-1">
                   {driverConflict.conflictingOrders.map((order) => (
@@ -63,13 +80,20 @@ export function ConflictWarning({ driverConflict, truckConflict }: ConflictWarni
         </Alert>
       )}
 
-      {truckConflict?.hasConflict && (
+      {truckConflict?.conflictingOrders.length > 0 && (
         <Alert variant={getVariant(truckConflict.conflictType)}>
           <div className="flex items-start gap-2">
             {getIcon(truckConflict.conflictType)}
             <div className="flex-1">
               <AlertDescription>
-                <div className="font-medium mb-1">Truck Conflict</div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-medium">Truck Conflict</span>
+                  {getSeverityLabel(truckConflict.conflictType) && (
+                    <Badge variant="outline" className="text-xs">
+                      {getSeverityLabel(truckConflict.conflictType)}
+                    </Badge>
+                  )}
+                </div>
                 <div className="text-sm">{truckConflict.message}</div>
                 <div className="mt-2 space-y-1">
                   {truckConflict.conflictingOrders.map((order) => (

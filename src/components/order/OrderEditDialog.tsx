@@ -81,6 +81,34 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     }
   }, [formData.truck_type, order.truck_type, setFormData]);
 
+  const getButtonText = () => {
+    if (isUpdating) return "Updating...";
+    
+    if (hasAnyConflict) {
+      const criticalConflicts = [driverConflict, truckConflict].filter(
+        conflict => conflict?.hasConflict && (conflict.conflictType === 'exact' || conflict.conflictType === 'overlap')
+      );
+      
+      if (criticalConflicts.length > 0) {
+        return "Update Despite Conflicts";
+      }
+    }
+    return "Update Order";
+  };
+
+  const getButtonStyle = () => {
+    if (hasAnyConflict) {
+      const criticalConflicts = [driverConflict, truckConflict].filter(
+        conflict => conflict?.hasConflict && (conflict.conflictType === 'exact' || conflict.conflictType === 'overlap')
+      );
+      
+      if (criticalConflicts.length > 0) {
+        return "bg-orange-600 hover:bg-orange-700";
+      }
+    }
+    return "";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUpdating(true);
@@ -238,9 +266,9 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
             <Button 
               type="submit" 
               disabled={isUpdating}
-              className={hasAnyConflict ? "bg-orange-600 hover:bg-orange-700" : ""}
+              className={getButtonStyle()}
             >
-              {isUpdating ? "Updating..." : hasAnyConflict ? "Update Despite Conflicts" : "Update Order"}
+              {getButtonText()}
             </Button>
           </div>
         </form>

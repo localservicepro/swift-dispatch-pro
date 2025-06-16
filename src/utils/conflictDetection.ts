@@ -17,13 +17,13 @@ export interface ConflictResult {
   message: string;
 }
 
-// Helper function to create time buffer (1 hour before and after)
+// Helper function to create time buffer (3 hours before and after for realistic delivery windows)
 const createTimeBuffer = (time: string): { start: string; end: string } => {
   const [hours, minutes] = time.split(':').map(Number);
   const timeInMinutes = hours * 60 + minutes;
   
-  const startMinutes = Math.max(0, timeInMinutes - 60); // 1 hour before
-  const endMinutes = Math.min(1439, timeInMinutes + 60); // 1 hour after, max 23:59
+  const startMinutes = Math.max(0, timeInMinutes - 180); // 3 hours before
+  const endMinutes = Math.min(1439, timeInMinutes + 180); // 3 hours after, max 23:59
   
   const formatTime = (mins: number) => {
     const h = Math.floor(mins / 60);
@@ -72,45 +72,64 @@ export const checkDriverConflicts = async (
       };
     }
 
-    const conflictingOrders: ConflictingOrder[] = [];
-    let conflictType: 'exact' | 'overlap' | 'same-day' = 'same-day';
+    const exactConflicts: ConflictingOrder[] = [];
+    const overlapConflicts: ConflictingOrder[] = [];
+    const sameDayOrders: ConflictingOrder[] = [];
 
     const timeBuffer = createTimeBuffer(deliveryTime);
 
     for (const order of orders) {
-      if (order.delivery_time) {
-        if (order.delivery_time === deliveryTime) {
-          conflictType = 'exact';
-        } else if (order.delivery_time >= timeBuffer.start && order.delivery_time <= timeBuffer.end) {
-          if (conflictType !== 'exact') conflictType = 'overlap';
-        }
-      }
-      
-      conflictingOrders.push({
+      const orderData = {
         id: order.id,
         order_number: order.order_number,
         customer_name: order.customer_name,
         customer_address: order.customer_address,
         delivery_date: order.delivery_date || '',
         delivery_time: order.delivery_time || ''
-      });
+      };
+
+      if (order.delivery_time) {
+        if (order.delivery_time === deliveryTime) {
+          exactConflicts.push(orderData);
+        } else if (order.delivery_time >= timeBuffer.start && order.delivery_time <= timeBuffer.end) {
+          overlapConflicts.push(orderData);
+        } else {
+          sameDayOrders.push(orderData);
+        }
+      } else {
+        sameDayOrders.push(orderData);
+      }
     }
 
-    const getMessage = () => {
-      if (conflictType === 'exact') {
-        return `Driver has ${conflictingOrders.length} other delivery(ies) at the exact same time`;
-      } else if (conflictType === 'overlap') {
-        return `Driver has ${conflictingOrders.length} other delivery(ies) within 1 hour of this time`;
-      } else {
-        return `Driver has ${conflictingOrders.length} other delivery(ies) on the same day`;
-      }
-    };
+    // Determine conflict type and message based on actual conflicts
+    if (exactConflicts.length > 0) {
+      return {
+        hasConflict: true,
+        conflictType: 'exact',
+        conflictingOrders: exactConflicts,
+        message: `Driver has ${exactConflicts.length} other delivery(ies) at the exact same time`
+      };
+    } else if (overlapConflicts.length > 0) {
+      return {
+        hasConflict: true,
+        conflictType: 'overlap',
+        conflictingOrders: overlapConflicts,
+        message: `Driver has ${overlapConflicts.length} other delivery(ies) within 3 hours of this time`
+      };
+    } else if (sameDayOrders.length > 0) {
+      return {
+        hasConflict: false, // Same day is informational only
+        conflictType: 'same-day',
+        conflictingOrders: sameDayOrders,
+        message: `Driver has ${sameDayOrders.length} other delivery(ies) on the same day`
+      };
+    }
 
     return {
-      hasConflict: true,
-      conflictType,
-      conflictingOrders,
-      message: getMessage()
+      hasConflict: false,
+      conflictType: 'none',
+      conflictingOrders: [],
+      message: ''
     };
   } catch (error) {
     console.error('Error checking driver conflicts:', error);
@@ -158,45 +177,64 @@ export const checkTruckConflicts = async (
       };
     }
 
-    const conflictingOrders: ConflictingOrder[] = [];
-    let conflictType: 'exact' | 'overlap' | 'same-day' = 'same-day';
+    const exactConflicts: ConflictingOrder[] = [];
+    const overlapConflicts: ConflictingOrder[] = [];
+    const sameDayOrders: ConflictingOrder[] = [];
 
     const timeBuffer = createTimeBuffer(deliveryTime);
 
     for (const order of orders) {
-      if (order.delivery_time) {
-        if (order.delivery_time === deliveryTime) {
-          conflictType = 'exact';
-        } else if (order.delivery_time >= timeBuffer.start && order.delivery_time <= timeBuffer.end) {
-          if (conflictType !== 'exact') conflictType = 'overlap';
-        }
-      }
-      
-      conflictingOrders.push({
+      const orderData = {
         id: order.id,
         order_number: order.order_number,
         customer_name: order.customer_name,
         customer_address: order.customer_address,
         delivery_date: order.delivery_date || '',
         delivery_time: order.delivery_time || ''
-      });
+      };
+
+      if (order.delivery_time) {
+        if (order.delivery_time === deliveryTime) {
+          exactConflicts.push(orderData);
+        } else if (order.delivery_time >= timeBuffer.start && order.delivery_time <= timeBuffer.end) {
+          overlapConflicts.push(orderData);
+        } else {
+          sameDayOrders.push(orderData);
+        }
+      } else {
+        sameDayOrders.push(orderData);
+      }
     }
 
-    const getMessage = () => {
-      if (conflictType === 'exact') {
-        return `Truck has ${conflictingOrders.length} other delivery(ies) at the exact same time`;
-      } else if (conflictType === 'overlap') {
-        return `Truck has ${conflictingOrders.length} other delivery(ies) within 1 hour of this time`;
-      } else {
-        return `Truck has ${conflictingOrders.length} other delivery(ies) on the same day`;
-      }
-    };
+    // Determine conflict type and message based on actual conflicts
+    if (exactConflicts.length > 0) {
+      return {
+        hasConflict: true,
+        conflictType: 'exact',
+        conflictingOrders: exactConflicts,
+        message: `Truck has ${exactConflicts.length} other delivery(ies) at the exact same time`
+      };
+    } else if (overlapConflicts.length > 0) {
+      return {
+        hasConflict: true,
+        conflictType: 'overlap',
+        conflictingOrders: overlapConflicts,
+        message: `Truck has ${overlapConflicts.length} other delivery(ies) within 3 hours of this time`
+      };
+    } else if (sameDayOrders.length > 0) {
+      return {
+        hasConflict: false, // Same day is informational only
+        conflictType: 'same-day',
+        conflictingOrders: sameDayOrders,
+        message: `Truck has ${sameDayOrders.length} other delivery(ies) on the same day`
+      };
+    }
 
     return {
-      hasConflict: true,
-      conflictType,
-      conflictingOrders,
-      message: getMessage()
+      hasConflict: false,
+      conflictType: 'none',
+      conflictingOrders: [],
+      message: ''
     };
   } catch (error) {
     console.error('Error checking truck conflicts:', error);

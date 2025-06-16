@@ -80,6 +80,32 @@ export function DeliveryDetailsStep({
     truckId
   );
 
+  const getButtonText = () => {
+    if (hasAnyConflict) {
+      const criticalConflicts = [driverConflict, truckConflict].filter(
+        conflict => conflict?.hasConflict && (conflict.conflictType === 'exact' || conflict.conflictType === 'overlap')
+      );
+      
+      if (criticalConflicts.length > 0) {
+        return "Continue Despite Conflicts";
+      }
+    }
+    return "Review Order";
+  };
+
+  const getButtonStyle = () => {
+    if (hasAnyConflict) {
+      const criticalConflicts = [driverConflict, truckConflict].filter(
+        conflict => conflict?.hasConflict && (conflict.conflictType === 'exact' || conflict.conflictType === 'overlap')
+      );
+      
+      if (criticalConflicts.length > 0) {
+        return "bg-orange-600 hover:bg-orange-700";
+      }
+    }
+    return "";
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -146,9 +172,9 @@ export function DeliveryDetailsStep({
           <Button 
             onClick={onNext}
             disabled={!deliveryDate || !deliveryTime || !truckType || !truckId}
-            className={`ml-auto ${hasAnyConflict ? "bg-orange-600 hover:bg-orange-700" : ""}`}
+            className={`ml-auto ${getButtonStyle()}`}
           >
-            {hasAnyConflict ? "Continue Despite Conflicts" : "Review Order"}
+            {getButtonText()}
           </Button>
         </div>
       </CardContent>

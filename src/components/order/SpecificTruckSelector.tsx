@@ -32,7 +32,7 @@ export function SpecificTruckSelector({
   selectedTruckId, 
   onTruckSelect 
 }: SpecificTruckSelectorProps) {
-  // Fetch available trucks of the selected type
+  // Fetch all trucks of the selected type (not filtering by status for better UX)
   const { data: trucks = [], isLoading } = useQuery({
     queryKey: ['trucks', selectedTruckType],
     queryFn: async () => {
@@ -69,6 +69,11 @@ export function SpecificTruckSelector({
     }
   };
 
+  const canSelectTruck = (truck: Truck) => {
+    // Allow selection if truck is available, or if it's already selected (for editing)
+    return truck.status === 'available' || truck.id === selectedTruckId;
+  };
+
   if (!selectedTruckType) {
     return (
       <div className="space-y-2">
@@ -97,51 +102,62 @@ export function SpecificTruckSelector({
         <p className="text-sm text-gray-500 py-4">No trucks available for the selected type</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {trucks.map((truck) => (
-            <div
-              key={truck.id}
-              className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-                selectedTruckId === truck.id
-                  ? 'border-blue-500 bg-blue-50'
-                  : truck.status === 'available'
-                  ? 'border-gray-200 hover:border-gray-300'
-                  : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
-              }`}
-              onClick={() => {
-                if (truck.status === 'available') {
-                  onTruckSelect(truck.id, truck);
-                }
-              }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-semibold text-lg">{truck.registration_number}</div>
-                <Badge className={`flex items-center gap-1 ${getStatusColor(truck.status)}`}>
-                  {getStatusIcon(truck.status)}
-                  {truck.status.replace('_', ' ').toUpperCase()}
-                </Badge>
-              </div>
-              
-              <div className="text-sm text-gray-600 space-y-1">
-                {truck.capacity_tons && (
-                  <div>Capacity: {truck.capacity_tons} tons</div>
-                )}
-                {truck.fuel_type && (
-                  <div>Fuel: {truck.fuel_type}</div>
-                )}
-                {truck.year_manufactured && (
-                  <div>Year: {truck.year_manufactured}</div>
-                )}
-              </div>
-
-              {truck.status !== 'available' && (
-                <div className="text-xs text-red-600 mt-2">
-                  {truck.status === 'assigned' && 'Currently assigned to another order'}
-                  {truck.status === 'maintenance' && 'Under maintenance'}
-                  {truck.status === 'out_of_service' && 'Out of service'}
+          {trucks.map((truck) => {
+            const isSelectable = canSelectTruck(truck);
+            const isSelected = selectedTruckId === truck.id;
+            
+            return (
+              <div
+                key={truck.id}
+                className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                  isSelected
+                    ? 'border-blue-500 bg-blue-50'
+                    : isSelectable
+                    ? 'border-gray-200 hover:border-gray-300'
+                    : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                }`}
+                onClick={() => {
+                  if (isSelectable) {
+                    onTruckSelect(truck.id, truck);
+                  }
+                }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-semibold text-lg">{truck.registration_number}</div>
+                  <Badge className={`flex items-center gap-1 ${getStatusColor(truck.status)}`}>
+                    {getStatusIcon(truck.status)}
+                    {truck.status.replace('_', ' ').toUpperCase()}
+                  </Badge>
                 </div>
-              )}
-            </div>
-          ))}
+                
+                <div className="text-sm text-gray-600 space-y-1">
+                  {truck.capacity_tons && (
+                    <div>Capacity: {truck.capacity_tons} tons</div>
+                  )}
+                  {truck.fuel_type && (
+                    <div>Fuel: {truck.fuel_type}</div>
+                  )}
+                  {truck.year_manufactured && (
+                    <div>Year: {truck.year_manufactured}</div>
+                  )}
+                </div>
+
+                {!isSelectable && !isSelected && (
+                  <div className="text-xs text-red-600 mt-2">
+                    {truck.status === 'assigned' && 'Currently assigned - check for time conflicts above'}
+                    {truck.status === 'maintenance' && 'Under maintenance'}
+                    {truck.status === 'out_of_service' && 'Out of service'}
+                  </div>
+                )}
+                
+                {isSelected && truck.status === 'assigned' && (
+                  <div className="text-xs text-blue-600 mt-2">
+                    Currently selected for this order
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
