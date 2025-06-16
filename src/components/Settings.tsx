@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,9 +48,6 @@ export function Settings() {
         <h2 className="text-3xl font-bold text-slate-800">Settings</h2>
         <p className="text-slate-600 mt-1">Manage your business profile, preferences, and activity logs</p>
       </div>
-
-      {/* Activity Log */}
-      <ActivityLog />
 
       {/* Business Profile */}
       <Card className="hover:shadow-lg transition-shadow">
@@ -205,6 +201,9 @@ export function Settings() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Activity Log */}
+      <ActivityLog />
 
       {/* System Information */}
       <Card className="hover:shadow-lg transition-shadow">
