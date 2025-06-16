@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +18,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
+  autoSignIn: (email: string, orderId: string) => Promise<{ error: any; isNewAccount?: boolean }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -190,6 +190,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const autoSignIn = async (email: string, orderId: string) => {
+    try {
+      console.log('Starting auto-login process...', { email, orderId });
+      
+      // Call the auto-login edge function
+      const { data, error } = await supabase.functions.invoke('auto-login-customer', {
+        body: { email, orderId }
+      });
+
+      if (error) {
+        console.error('Auto-login function error:', error);
+        return { error };
+      }
+
+      if (!data.success) {
+        console.error('Auto-login failed:', data.error);
+        return { error: new Error(data.error || 'Auto-login failed') };
+      }
+
+      console.log('Auto-login response:', data);
+
+      // If we have a temporary password, try to sign in with it
+      if (data.temporaryPassword) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password: data.temporaryPassword,
+        });
+
+        if (signInError) {
+          console.error('Sign in with temporary password failed:', signInError);
+          return { error: signInError };
+        }
+      }
+
+      return { error: null, isNewAccount: data.isNewAccount };
+    } catch (error) {
+      console.error('Auto-login exception:', error);
+      return { error };
+    }
+  };
+
   const value = {
     user,
     session,
@@ -199,6 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     signOut,
+    autoSignIn,
   };
 
   return (
