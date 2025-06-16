@@ -60,37 +60,37 @@ export function AllocationActions({ cart, splits, onSplitsChange }: AllocationAc
   });
 
   return (
-    <div className="bg-gray-50 p-4 rounded-lg">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-gray-700">Quick Actions</h3>
+    <div className="bg-gray-50 p-3 rounded-lg">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-medium text-gray-700">Quick Actions</h3>
         {isFullyAllocated && (
-          <div className="flex items-center gap-1 text-green-600 text-sm">
-            <CheckCircle className="w-4 h-4" />
+          <div className="flex items-center gap-1 text-green-600 text-xs">
+            <CheckCircle className="w-3 h-3" />
             All products allocated
           </div>
         )}
       </div>
       
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         <Button
           variant="outline"
           size="sm"
           onClick={distributeEvenly}
-          className="text-xs"
+          className="text-xs h-7"
         >
-          <Shuffle className="w-3 h-3 mr-1" />
+          <Shuffle className="w-2 h-2 mr-1" />
           Distribute Evenly
         </Button>
         
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-600">Move all to:</span>
           <Select onValueChange={(value) => moveAllToSplit(parseInt(value))}>
-            <SelectTrigger className="h-8 w-32">
+            <SelectTrigger className="h-7 w-28 text-xs">
               <SelectValue placeholder="Select split" />
             </SelectTrigger>
             <SelectContent>
               {splits.map((split, index) => (
-                <SelectItem key={split.id} value={index.toString()}>
+                <SelectItem key={split.id} value={index.toString()} className="text-xs">
                   {split.name}
                 </SelectItem>
               ))}
@@ -102,9 +102,9 @@ export function AllocationActions({ cart, splits, onSplitsChange }: AllocationAc
           variant="outline"
           size="sm"
           onClick={clearAllocation}
-          className="text-xs text-red-600 hover:text-red-700"
+          className="text-xs text-red-600 hover:text-red-700 h-7"
         >
-          <RotateCcw className="w-3 h-3 mr-1" />
+          <RotateCcw className="w-2 h-2 mr-1" />
           Clear All
         </Button>
       </div>

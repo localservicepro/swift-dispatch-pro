@@ -27,34 +27,28 @@ export function ProductAllocationCard({ cartItem, splits, onAddToSplit }: Produc
     return "text-green-600";
   };
 
-  const getProgressColor = () => {
-    if (totalAllocated === 0) return "bg-red-500";
-    if (remainingQuantity > 0) return "bg-yellow-500";
-    return "bg-green-500";
-  };
-
   return (
     <Card className="border-l-4 border-l-blue-500">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2 py-3">
         <CardTitle className="text-sm flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Package className="w-4 h-4" />
-            {cartItem.product.name}
+            <Package className="w-3 h-3" />
+            <span className="text-sm">{cartItem.product.name}</span>
           </div>
-          <Badge variant="outline" className={getStatusColor()}>
+          <Badge variant="outline" className={`text-xs ${getStatusColor()}`}>
             {totalAllocated}/{cartItem.quantity}
           </Badge>
         </CardTitle>
-        <div className="space-y-2">
-          <Progress value={allocationPercentage} className="h-2" />
+        <div className="space-y-1">
+          <Progress value={allocationPercentage} className="h-1.5" />
           <div className="flex justify-between text-xs text-gray-600">
             <span>Allocated: {totalAllocated}</span>
             <span>Remaining: {remainingQuantity}</span>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        <div className="flex flex-wrap gap-2">
+      <CardContent className="pt-0 pb-3">
+        <div className="flex flex-wrap gap-1">
           {splits.map((split, index) => {
             const canAddToSplit = remainingQuantity > 0;
             return (
@@ -64,10 +58,10 @@ export function ProductAllocationCard({ cartItem, splits, onAddToSplit }: Produc
                 size="sm"
                 onClick={() => canAddToSplit && onAddToSplit(index, cartItem.product.id)}
                 disabled={!canAddToSplit}
-                className="text-xs"
+                className="text-xs h-7 px-2"
               >
-                <Plus className="w-3 h-3 mr-1" />
-                Add to {split.name}
+                <Plus className="w-2 h-2 mr-1" />
+                {split.name}
               </Button>
             );
           })}

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -44,12 +44,18 @@ export function SplitOrderConfigurationStep({
     return newSplits;
   };
 
-  const handleNumberOfSplitsChange = (count: number) => {
-    setNumberOfSplits(count);
-    if (count !== splits.length) {
-      const newSplits = initializeSplits(count);
+  // Initialize splits when component mounts if empty
+  useEffect(() => {
+    if (splits.length === 0) {
+      const newSplits = initializeSplits(numberOfSplits);
       onSplitsChange(newSplits);
     }
+  }, []);
+
+  const handleNumberOfSplitsChange = (count: number) => {
+    setNumberOfSplits(count);
+    const newSplits = initializeSplits(count);
+    onSplitsChange(newSplits);
   };
 
   const updateSplit = (splitIndex: number, updates: Partial<SplitConfig>) => {
@@ -136,38 +142,40 @@ export function SplitOrderConfigurationStep({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Split className="w-5 h-5" />
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Split className="w-4 h-4" />
           Step 4: Configure Order Splits
         </CardTitle>
-        <p className="text-sm text-gray-600">
+        <p className="text-xs text-gray-600">
           Allocate your products across different splits and set delivery details for each.
         </p>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
         {/* Number of Splits Selection */}
         <div>
-          <Label className="text-base font-medium mb-3 block">Number of Splits</Label>
-          <div className="flex items-center gap-4">
+          <Label className="text-sm font-medium mb-2 block">Number of Splits</Label>
+          <div className="flex items-center gap-3">
             <Button
               variant="outline"
               size="sm"
               onClick={() => handleNumberOfSplitsChange(Math.max(2, numberOfSplits - 1))}
               disabled={numberOfSplits <= 2}
+              className="h-7 w-7 p-0"
             >
-              <Minus className="w-4 h-4" />
+              <Minus className="w-3 h-3" />
             </Button>
-            <span className="text-lg font-medium w-8 text-center">{numberOfSplits}</span>
+            <span className="text-base font-medium w-6 text-center">{numberOfSplits}</span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => handleNumberOfSplitsChange(Math.min(5, numberOfSplits + 1))}
               disabled={numberOfSplits >= 5}
+              className="h-7 w-7 p-0"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3 h-3" />
             </Button>
-            <span className="text-sm text-gray-600">splits (2-5 allowed)</span>
+            <span className="text-xs text-gray-600">splits (2-5 allowed)</span>
           </div>
         </div>
 
@@ -180,8 +188,8 @@ export function SplitOrderConfigurationStep({
 
         {/* Product Allocation Section */}
         <div>
-          <Label className="text-base font-medium mb-3 block">Product Allocation</Label>
-          <div className="grid gap-3">
+          <Label className="text-sm font-medium mb-2 block">Product Allocation</Label>
+          <div className="grid gap-2">
             {cart.map(cartItem => (
               <ProductAllocationCard
                 key={cartItem.product.id}
@@ -195,8 +203,8 @@ export function SplitOrderConfigurationStep({
 
         {/* Split Summary Section */}
         <div>
-          <Label className="text-base font-medium mb-3 block">Split Details</Label>
-          <div className="grid gap-4">
+          <Label className="text-sm font-medium mb-2 block">Split Details</Label>
+          <div className="grid gap-3">
             {splits.map((split, index) => (
               <SplitSummaryCard
                 key={split.id}
@@ -213,21 +221,22 @@ export function SplitOrderConfigurationStep({
 
         {/* Validation Message */}
         {!canProceed() && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-800">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <p className="text-xs text-yellow-800">
               Please ensure all products are fully allocated and each split has at least one product.
             </p>
           </div>
         )}
 
-        <div className="flex gap-2 pt-4">
-          <Button variant="outline" onClick={onBack}>
+        <div className="flex gap-2 pt-3">
+          <Button variant="outline" onClick={onBack} size="sm">
             Back
           </Button>
           <Button 
             onClick={onNext}
             disabled={!canProceed()}
             className="ml-auto"
+            size="sm"
           >
             Continue to Delivery Details
           </Button>
