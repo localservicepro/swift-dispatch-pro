@@ -504,7 +504,12 @@ export function OrderManagement() {
                       </Button>
                     )}
                     
-                    <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => updateOrderStatus(order.id, 'cancelled', order)}
+                    >
                       Cancel
                     </Button>
                   </div>
