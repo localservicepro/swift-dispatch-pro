@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -246,16 +247,19 @@ export function OpportunityPipeline() {
               <p className="mt-2 text-slate-600">Loading pipeline...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 min-h-[600px]">
-              {PIPELINE_STAGES.map((stage) => (
-                <PipelineColumn
-                  key={stage.id}
-                  stage={stage}
-                  orders={ordersByStage[stage.id] || []}
-                  onOrderMove={refetch}
-                />
-              ))}
-            </div>
+            <ScrollArea className="w-full">
+              <div className="flex gap-4 pb-4 min-h-[600px]">
+                {PIPELINE_STAGES.map((stage) => (
+                  <PipelineColumn
+                    key={stage.id}
+                    stage={stage}
+                    orders={ordersByStage[stage.id] || []}
+                    onOrderMove={refetch}
+                  />
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           )}
         </CardContent>
       </Card>
