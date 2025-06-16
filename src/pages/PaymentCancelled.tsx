@@ -1,15 +1,14 @@
 
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { XCircle, RefreshCw, Phone, ArrowLeft, CreditCard } from "lucide-react";
+import { XCircle, RefreshCw, Phone, CreditCard } from "lucide-react";
 import { PaymentDetailsCard } from "@/components/PaymentDetailsCard";
 import { usePaymentDetails } from "@/hooks/usePaymentDetails";
 import { useToast } from "@/hooks/use-toast";
 
 export default function PaymentCancelled() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const { toast } = useToast();
   
   const invoiceId = searchParams.get('invoice_id');
@@ -123,20 +122,6 @@ export default function PaymentCancelled() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Optional Navigation */}
-          <div className="text-center pt-6 border-t">
-            <p className="text-gray-600 mb-3">Need to go somewhere else?</p>
-            <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <Button onClick={() => navigate('/')} variant="ghost">
-                Continue Shopping
-              </Button>
-              <Button onClick={() => window.history.back()} variant="ghost">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Go Back
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

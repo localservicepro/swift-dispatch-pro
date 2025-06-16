@@ -1,8 +1,8 @@
 
 import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Download, Package, Phone, ArrowLeft } from "lucide-react";
+import { CheckCircle, Download, Package, Phone } from "lucide-react";
 import { PaymentVerificationStatus } from "@/components/PaymentVerificationStatus";
 import { PaymentDetailsCard } from "@/components/PaymentDetailsCard";
 import { usePaymentDetails } from "@/hooks/usePaymentDetails";
@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [verificationComplete, setVerificationComplete] = useState(false);
   const [verificationSuccess, setVerificationSuccess] = useState(false);
@@ -54,11 +53,7 @@ export default function PaymentSuccess() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2 text-red-600">Invalid Payment Information</h2>
-          <p className="text-gray-600 mb-4">Missing payment session or invoice information</p>
-          <Button onClick={() => navigate('/')} variant="outline">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Go Back
-          </Button>
+          <p className="text-gray-600">Missing payment session or invoice information</p>
         </div>
       </div>
     );
@@ -124,20 +119,6 @@ export default function PaymentSuccess() {
                 <Phone className="w-4 h-4" />
                 Contact Support
               </Button>
-            </div>
-
-            {/* Optional Navigation */}
-            <div className="text-center pt-6 border-t">
-              <p className="text-gray-600 mb-3">Need to do something else?</p>
-              <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                <Button onClick={() => navigate('/')} variant="ghost">
-                  Continue Shopping
-                </Button>
-                <Button onClick={() => window.history.back()} variant="ghost">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Go Back
-                </Button>
-              </div>
             </div>
           </div>
         )}
