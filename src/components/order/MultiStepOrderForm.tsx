@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CustomerSearchStep } from "./CustomerSearchStep";
 import { ProductSelectionStep } from "./ProductSelectionStep";
 import { DeliveryDetailsStep } from "./DeliveryDetailsStep";
+import { PaymentMethodStep } from "./PaymentMethodStep";
 import { OrderReviewStep } from "./OrderReviewStep";
 import { Database } from "@/integrations/supabase/types";
 
@@ -76,6 +77,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
   const [driverId, setDriverId] = useState("");
   const [driverName, setDriverName] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
 
@@ -117,6 +119,14 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       // Generate order number
       const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
 
+      // Determine payment status based on payment method
+      let paymentStatus = 'pending';
+      if (paymentMethod === 'account') {
+        paymentStatus = 'account_billing';
+      } else if (paymentMethod === '7_day_invoice') {
+        paymentStatus = 'invoiced';
+      }
+
       // Create order with 'requested' status
       const orderData = {
         order_number: orderNumber,
@@ -141,8 +151,9 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         driver_id: driverId || null,
         admin_id: user.id,
         special_instructions: specialInstructions || null,
+        payment_method: paymentMethod,
         status: 'requested' as const,
-        payment_status: 'pending' as const
+        payment_status: paymentStatus as const
       };
 
       const { data: order, error: orderError } = await supabase
@@ -182,9 +193,16 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         }
       }
 
+      const paymentMethodLabel = {
+        'account': 'Account (Monthly Billing)',
+        'card_on_file': 'Card On File',
+        '7_day_invoice': '7 Day Invoice',
+        'in_yard': 'In Yard Payment'
+      }[paymentMethod] || paymentMethod;
+
       toast({
         title: "Success",
-        description: `Order ${orderNumber} created successfully! It's now in the pipeline awaiting confirmation.`,
+        description: `Order ${orderNumber} created successfully with ${paymentMethodLabel}! It's now in the pipeline awaiting confirmation.`,
       });
 
       onOrderCreated();
@@ -200,14 +218,14 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     }
   };
 
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 4));
+  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 5));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
   return (
     <div className="space-y-6">
       {/* Progress Indicator */}
       <div className="flex items-center justify-center space-x-4 mb-8">
-        {[1, 2, 3, 4].map((step) => (
+        {[1, 2, 3, 4, 5].map((step) => (
           <div key={step} className="flex items-center">
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -218,7 +236,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             >
               {step}
             </div>
-            {step < 4 && (
+            {step < 5 && (
               <div
                 className={`w-16 h-1 mx-2 ${
                   step < currentStep ? 'bg-blue-600' : 'bg-gray-200'
@@ -270,6 +288,16 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       )}
 
       {currentStep === 4 && selectedCustomer && (
+        <PaymentMethodStep
+          customer={selectedCustomer}
+          paymentMethod={paymentMethod}
+          onPaymentMethodChange={setPaymentMethod}
+          onBack={prevStep}
+          onNext={nextStep}
+        />
+      )}
+
+      {currentStep === 5 && selectedCustomer && (
         <OrderReviewStep
           customer={selectedCustomer}
           cart={cart}
@@ -281,6 +309,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           truckType={truckType as TruckType}
           driverName={driverName}
           specialInstructions={specialInstructions}
+          paymentMethod={paymentMethod}
           selectedTruck={selectedTruck}
           onBack={prevStep}
           onConfirm={createOrder}

@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, User, Package, Truck, Calendar, MapPin, FileText, DollarSign } from "lucide-react";
+import { CheckCircle, User, Package, Truck, Calendar, MapPin, FileText, DollarSign, CreditCard } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { getTruckInfo } from "@/utils/truckUtils";
 
@@ -67,6 +67,7 @@ interface OrderReviewStepProps {
   truckType: TruckType;
   driverName: string;
   specialInstructions: string;
+  paymentMethod: string;
   selectedTruck?: Truck | null;
   onBack: () => void;
   onConfirm: () => void;
@@ -84,6 +85,7 @@ export function OrderReviewStep({
   truckType,
   driverName,
   specialInstructions,
+  paymentMethod,
   selectedTruck,
   onBack,
   onConfirm,
@@ -92,12 +94,24 @@ export function OrderReviewStep({
   const total = subtotal + adjustments + deliveryFee;
   const truckInfo = getTruckInfo(truckType);
 
+  const getPaymentMethodDisplay = (method: string) => {
+    const methods = {
+      'account': { label: 'Account', description: 'Monthly billing cycle', color: 'bg-purple-100 text-purple-800' },
+      'card_on_file': { label: 'Card On File', description: 'Saved payment card', color: 'bg-blue-100 text-blue-800' },
+      '7_day_invoice': { label: '7 Day Invoice', description: 'Payment due in 7 days', color: 'bg-orange-100 text-orange-800' },
+      'in_yard': { label: 'In Yard', description: 'Pay on-site during delivery', color: 'bg-green-100 text-green-800' }
+    };
+    return methods[method as keyof typeof methods] || { label: method, description: '', color: 'bg-gray-100 text-gray-800' };
+  };
+
+  const paymentMethodInfo = getPaymentMethodDisplay(paymentMethod);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CheckCircle className="w-5 h-5" />
-          Step 4: Create Order
+          Step 5: Create Order
         </CardTitle>
         <p className="text-sm text-gray-600">
           Review the order details below. Once created, the order will enter the pipeline as "requested" and await confirmation.
@@ -114,6 +128,7 @@ export function OrderReviewStep({
             <div><strong>Name:</strong> {customer.first_name} {customer.last_name}</div>
             <div><strong>Email:</strong> {customer.email}</div>
             {customer.phone && <div><strong>Phone:</strong> {customer.phone}</div>}
+            <div><strong>Type:</strong> <Badge variant="outline">{customer.customer_type}</Badge></div>
             <div className="md:col-span-2"><strong>Address:</strong> {customer.full_address}</div>
           </div>
         </div>
@@ -135,6 +150,25 @@ export function OrderReviewStep({
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Payment Method */}
+        <div className="border rounded-lg p-4">
+          <h3 className="font-medium flex items-center gap-2 mb-3">
+            <CreditCard className="w-4 h-4" />
+            Payment Method
+          </h3>
+          <div className="flex items-center gap-3">
+            <Badge className={paymentMethodInfo.color}>
+              {paymentMethodInfo.label}
+            </Badge>
+            <span className="text-sm text-gray-600">{paymentMethodInfo.description}</span>
+          </div>
+          {paymentMethod === 'account' && (
+            <div className="mt-2 text-xs text-purple-600 bg-purple-50 p-2 rounded">
+              This order will be added to the monthly billing cycle for account customer.
+            </div>
+          )}
         </div>
 
         {/* Delivery Information */}
@@ -248,7 +282,12 @@ export function OrderReviewStep({
               <h4 className="font-medium text-blue-900 mb-1">Order Status</h4>
               <p className="text-sm text-blue-700">
                 This order will be created with "requested" status and will appear in the opportunity pipeline. 
-                It will need to be confirmed by an admin or when payment is received before processing begins.
+                {paymentMethod === 'account' 
+                  ? ' It will be added to the monthly billing cycle for this account customer.'
+                  : paymentMethod === '7_day_invoice'
+                  ? ' An invoice will be automatically generated with 7-day payment terms.'
+                  : ' It will need to be confirmed by an admin or when payment is received before processing begins.'
+                }
               </p>
             </div>
           </div>
