@@ -485,12 +485,15 @@ export type Database = {
           delivery_time: string | null
           driver_id: string | null
           id: string
+          is_split_order: boolean | null
+          master_order_id: string | null
           order_number: string
           payment_date: string | null
           payment_method: string | null
           payment_status: string | null
           products: Json
           special_instructions: string | null
+          split_number: number | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number | null
           total_amount: number
@@ -511,12 +514,15 @@ export type Database = {
           delivery_time?: string | null
           driver_id?: string | null
           id?: string
+          is_split_order?: boolean | null
+          master_order_id?: string | null
           order_number: string
           payment_date?: string | null
           payment_method?: string | null
           payment_status?: string | null
           products: Json
           special_instructions?: string | null
+          split_number?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number | null
           total_amount: number
@@ -537,12 +543,15 @@ export type Database = {
           delivery_time?: string | null
           driver_id?: string | null
           id?: string
+          is_split_order?: boolean | null
+          master_order_id?: string | null
           order_number?: string
           payment_date?: string | null
           payment_method?: string | null
           payment_status?: string | null
           products?: Json
           special_instructions?: string | null
+          split_number?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number | null
           total_amount?: number
@@ -570,6 +579,13 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_master_order_id_fkey"
+            columns: ["master_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
           {
