@@ -310,7 +310,11 @@ export function OrderManagement() {
   const formatProducts = (products: any) => {
     if (!products) return 'No products';
     if (Array.isArray(products)) {
-      return products.map(p => p.name || p).join(', ');
+      return products.map(p => {
+        const name = p.name || p.product_name || 'Product';
+        const quantity = p.quantity || 1;
+        return `${name} (Qty: ${quantity})`;
+      }).join(', ');
     }
     return 'Products listed';
   };
