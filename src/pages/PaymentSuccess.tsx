@@ -8,6 +8,7 @@ import { usePaymentDetails } from "@/hooks/usePaymentDetails";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
@@ -25,15 +26,25 @@ export default function PaymentSuccess() {
 
     const runVerification = async () => {
       try {
-        const response = await fetch('/api/verify-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId, invoiceId })
-        });
+        console.log('Starting payment verification...', { sessionId, invoiceId });
         
-        if (response.ok) {
+        const { data, error } = await supabase.functions.invoke('verify-invoice-payment', {
+          body: { 
+            sessionId, 
+            invoiceId 
+          }
+        });
+
+        console.log('Verification response:', { data, error });
+        
+        if (error) {
+          console.error('Verification error:', error);
+          setVerificationStatus('failed');
+        } else if (data?.success) {
+          console.log('Payment verified successfully');
           setVerificationStatus('success');
         } else {
+          console.log('Payment verification failed:', data);
           setVerificationStatus('failed');
         }
       } catch (error) {
