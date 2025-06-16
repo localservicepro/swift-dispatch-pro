@@ -1,5 +1,5 @@
 
-import { Calendar, Settings, Users, FileText, ChartBar, UserCheck } from "lucide-react";
+import { Calendar, Settings, Users, FileText, ChartBar, UserCheck, BarChart3 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -23,6 +23,11 @@ const menuItems = [
     title: "Dashboard",
     icon: ChartBar,
     key: "dashboard",
+  },
+  {
+    title: "Opportunity",
+    icon: BarChart3,
+    key: "opportunities",
   },
   {
     title: "Orders",

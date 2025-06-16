@@ -1,10 +1,10 @@
-
 import { useState } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { MobileHeader } from "@/components/MobileHeader";
 import { DashboardOverview } from "@/components/DashboardOverview";
+import { OpportunityPipeline } from "@/components/OpportunityPipeline";
 import { OrderManagement } from "@/components/OrderManagement";
 import { ProductManagement } from "@/components/ProductManagement";
 import { PaymentManagement } from "@/components/PaymentManagement";
@@ -43,6 +43,8 @@ const Index = () => {
     switch (activeTab) {
       case "dashboard":
         return <DashboardOverview />;
+      case "opportunities":
+        return <OpportunityPipeline />;
       case "orders":
         return <OrderManagement />;
       case "products":
