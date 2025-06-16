@@ -8,6 +8,8 @@ import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import { AuthPage } from "@/components/auth/AuthPage";
 import Index from "./pages/Index";
 import DriverPortal from "./pages/DriverPortal";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +55,8 @@ function AuthenticatedApp() {
             )
           } 
         />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-cancelled" element={<PaymentCancelled />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
