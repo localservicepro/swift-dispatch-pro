@@ -90,13 +90,14 @@ export function DeliveryActionDialog({
 
       if (uploadError) throw uploadError;
 
-      // Save photo record to database
+      // Save photo record to database - using correct column names
+      const currentUser = await supabase.auth.getUser();
       const { error: dbError } = await supabase
         .from('delivery_photos')
         .insert({
           order_id: order.id,
           photo_url: filePath,
-          uploaded_by: (await supabase.auth.getUser()).data.user?.id
+          driver_id: currentUser.data.user?.id || ''
         });
 
       if (dbError) throw dbError;
