@@ -32,7 +32,7 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
   const { profile } = useAuth();
 
   const getNextStage = (current: string) => {
-    const stages = ['requested', 'confirmed', 'preparing', 'loading', 'en_route', 'delivered'];
+    const stages = ['requested', 'preparing', 'loading', 'en_route', 'delivered'];
     const currentIndex = stages.indexOf(current);
     return currentIndex < stages.length - 1 ? stages[currentIndex + 1] : null;
   };
@@ -40,7 +40,6 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
   const getNextStageAction = (current: string) => {
     switch (current) {
       case 'requested': return 'Confirm Order';
-      case 'confirmed': return 'Start Preparing';
       case 'preparing': return 'Start Loading';
       case 'loading': return 'En Route';
       case 'en_route': return 'Mark Delivered';
@@ -57,15 +56,12 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
       let updateData: any = {};
       
       switch (nextStage) {
-        case 'confirmed':
-          // When confirming an order, set payment status to paid and status to preparing
+        case 'preparing':
+          // When confirming an order from requested, set payment status to paid and status to preparing
           updateData = { 
             payment_status: 'paid',
             status: 'preparing'
           };
-          break;
-        case 'preparing':
-          updateData = { status: 'preparing' };
           break;
         case 'loading':
           updateData = { status: 'loading' };
@@ -90,13 +86,13 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
 
       // Log the activity
       if (profile?.full_name) {
-        if (nextStage === 'confirmed') {
+        if (nextStage === 'preparing') {
           await activityLogger.orderStatusUpdate(
             order.id,
             order.order_number,
             order.customer_name,
             'requested',
-            'confirmed',
+            'preparing',
             profile.full_name
           );
         } else {

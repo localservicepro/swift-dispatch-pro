@@ -19,16 +19,10 @@ const PIPELINE_STAGES = [
     textColor: 'text-slate-700'
   },
   { 
-    id: 'confirmed', 
-    title: 'Order Confirmed', 
+    id: 'preparing', 
+    title: 'Confirmed & Preparing', 
     color: 'bg-blue-100 border-blue-300',
     textColor: 'text-blue-700'
-  },
-  { 
-    id: 'preparing', 
-    title: 'Preparing', 
-    color: 'bg-yellow-100 border-yellow-300',
-    textColor: 'text-yellow-700'
   },
   { 
     id: 'loading', 
@@ -117,15 +111,13 @@ export function OpportunityPipeline() {
       if (order.status === 'requested') {
         stage = 'requested';
       } 
-      // Orders that are paid or have status other than 'requested' move to confirmed
+      // Orders that are paid OR have status 'preparing' go to 'preparing' stage
       else if (order.payment_status === 'paid' || order.status === 'preparing') {
-        stage = 'confirmed';
+        stage = 'preparing';
       }
       
       // Map other statuses directly
-      if (order.status === 'preparing') {
-        stage = 'preparing';
-      } else if (order.status === 'loading') {
+      if (order.status === 'loading') {
         stage = 'loading';
       } else if (order.status === 'en_route') {
         stage = 'en_route';
@@ -254,7 +246,7 @@ export function OpportunityPipeline() {
               <p className="mt-2 text-slate-600">Loading pipeline...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 min-h-[600px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 min-h-[600px]">
               {PIPELINE_STAGES.map((stage) => (
                 <PipelineColumn
                   key={stage.id}
