@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -375,10 +374,9 @@ export function OpportunityPipeline() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold text-slate-800">
-                Pipeline Overview
+              <div className="text-lg font-semibold text-slate-800">
                 {isLoading && <span className="text-sm font-normal text-slate-500">(Loading...)</span>}
-              </CardTitle>
+              </div>
               {hasActiveFilters && (
                 <Button
                   variant="outline"
