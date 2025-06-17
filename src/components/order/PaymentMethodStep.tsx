@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { CreditCard, Calendar, Building2, MapPin, AlertCircle } from "lucide-react";
+import { CreditCard, Calendar, Building2, MapPin, AlertCircle, Check } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useCustomerPaymentMethods } from "@/hooks/useCustomerPaymentMethods";
 
 interface Customer {
   id: string;
@@ -31,7 +32,7 @@ const PAYMENT_METHODS = [
     label: 'Card On File',
     description: 'Use saved payment card',
     icon: CreditCard,
-    available: true
+    available: false // Will be set based on saved cards
   },
   {
     id: '7_day_invoice',
@@ -65,9 +66,16 @@ export function PaymentMethodStep({
 }: PaymentMethodStepProps) {
   const isAccountCustomer = customer.customer_type === 'account';
   
+  // Fetch customer's saved payment methods
+  const { data: savedCards = [], isLoading: isLoadingCards } = useCustomerPaymentMethods(customer.id);
+  const hasCardOnFile = savedCards.length > 0;
+  const defaultCard = savedCards.find(card => card.is_default);
+  
   const availablePaymentMethods = PAYMENT_METHODS.map(method => ({
     ...method,
-    available: method.id === 'account' ? isAccountCustomer : true
+    available: method.id === 'account' ? isAccountCustomer : 
+               method.id === 'card_on_file' ? hasCardOnFile : 
+               true
   }));
 
   const handleNext = () => {
@@ -75,6 +83,10 @@ export function PaymentMethodStep({
       return;
     }
     onNext();
+  };
+
+  const formatCardBrand = (brand: string) => {
+    return brand.charAt(0).toUpperCase() + brand.slice(1);
   };
 
   return (
@@ -99,6 +111,11 @@ export function PaymentMethodStep({
             {customer.first_name} {customer.last_name} is an{' '}
             <span className="font-semibold">{customer.customer_type}</span> customer
           </p>
+          {hasCardOnFile && (
+            <p className="text-xs text-blue-600 mt-1">
+              • {savedCards.length} saved payment method{savedCards.length !== 1 ? 's' : ''} on file
+            </p>
+          )}
         </div>
 
         {/* Account Customer Special Notice */}
@@ -107,6 +124,16 @@ export function PaymentMethodStep({
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               As an account customer, you can choose "Account" payment to be billed at the end of the month.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Card on File Notice for new customers */}
+        {!hasCardOnFile && !isLoadingCards && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              No saved payment methods found. Complete an order with card payment to save a card for future "Card on File" orders.
             </AlertDescription>
           </Alert>
         )}
@@ -152,10 +179,30 @@ export function PaymentMethodStep({
                           Account customers only
                         </span>
                       )}
+                      {!method.available && method.id === 'card_on_file' && (
+                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">
+                          No saved cards
+                        </span>
+                      )}
                     </div>
                     <p className={`text-sm ${method.available ? 'text-gray-600' : 'text-gray-400'}`}>
                       {method.description}
                     </p>
+                    
+                    {/* Show card details when Card on File is selected and available */}
+                    {method.id === 'card_on_file' && method.available && paymentMethod === method.id && defaultCard && (
+                      <div className="mt-2 p-2 bg-white border border-gray-200 rounded text-xs">
+                        <div className="flex items-center gap-2">
+                          <Check className="w-3 h-3 text-green-600" />
+                          <span className="font-medium">
+                            {formatCardBrand(defaultCard.card_brand)} •••• {defaultCard.card_last_four}
+                          </span>
+                          <span className="text-gray-500">
+                            {defaultCard.card_exp_month.toString().padStart(2, '0')}/{defaultCard.card_exp_year}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -181,6 +228,11 @@ export function PaymentMethodStep({
             {paymentMethod === '7_day_invoice' && (
               <p className="text-xs text-green-600 mt-1">
                 An invoice will be sent with 7-day payment terms.
+              </p>
+            )}
+            {paymentMethod === 'card_on_file' && defaultCard && (
+              <p className="text-xs text-green-600 mt-1">
+                Charge will be processed using your {formatCardBrand(defaultCard.card_brand)} ending in {defaultCard.card_last_four}.
               </p>
             )}
           </div>

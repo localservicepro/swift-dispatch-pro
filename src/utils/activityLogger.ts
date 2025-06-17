@@ -11,51 +11,6 @@ interface LogActivityParams {
   description: string;
 }
 
-/**
- * Sanitizes data to ensure it's safe for JSONB storage
- * Removes circular references, functions, and converts to simple key-value pairs
- */
-const sanitizeForJsonb = (data: any): Record<string, string | number | boolean> | null => {
-  if (!data || typeof data !== 'object') {
-    return null;
-  }
-
-  try {
-    const sanitized: Record<string, string | number | boolean> = {};
-    
-    // Only process simple, safe properties
-    Object.keys(data).forEach(key => {
-      const value = data[key];
-      
-      if (value === null || value === undefined) {
-        return; // Skip null/undefined values
-      }
-      
-      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-        sanitized[key] = value;
-      } else if (typeof value === 'object') {
-        // Convert objects to string representations
-        try {
-          sanitized[key] = JSON.stringify(value);
-        } catch {
-          sanitized[key] = '[Object]';
-        }
-      } else {
-        sanitized[key] = String(value);
-      }
-    });
-
-    return Object.keys(sanitized).length > 0 ? sanitized : null;
-  } catch (error) {
-    console.warn('Failed to sanitize data for JSONB:', error);
-    return null;
-  }
-};
-
-/**
- * Logs activity with aggressive error handling and sanitization
- * This function will never throw an error to prevent disrupting main functionality
- */
 export const logActivity = async ({
   actionType,
   targetType,
@@ -64,51 +19,41 @@ export const logActivity = async ({
   oldValues,
   newValues,
   description
-}: LogActivityParams): Promise<void> => {
-  // Use setTimeout to make this completely non-blocking
-  setTimeout(async () => {
-    try {
-      console.log('Attempting to log activity:', { actionType, targetType, description });
-      
-      // Sanitize all JSONB data
-      const sanitizedTargetDetails = sanitizeForJsonb(targetDetails);
-      const sanitizedOldValues = sanitizeForJsonb(oldValues);
-      const sanitizedNewValues = sanitizeForJsonb(newValues);
+}: LogActivityParams) => {
+  try {
+    console.log('Logging activity:', { actionType, targetType, description });
+    
+    const { data, error } = await supabase.rpc('log_admin_activity', {
+      p_action_type: actionType,
+      p_target_type: targetType,
+      p_target_id: targetId || null,
+      p_target_details: targetDetails || null,
+      p_old_values: oldValues || null,
+      p_new_values: newValues || null,
+      p_description: description
+    });
 
-      const { data, error } = await supabase.rpc('log_admin_activity', {
-        p_action_type: actionType,
-        p_target_type: targetType,
-        p_target_id: targetId || null,
-        p_target_details: sanitizedTargetDetails,
-        p_old_values: sanitizedOldValues,
-        p_new_values: sanitizedNewValues,
-        p_description: description
-      });
-
-      if (error) {
-        console.warn('Activity logging failed (non-critical):', error);
-        return;
-      }
-
-      console.log('Activity logged successfully:', data);
-    } catch (error) {
-      console.warn('Activity logging failed (non-critical):', error);
-      // Never throw errors from logging
+    if (error) {
+      console.error('Error logging activity:', error);
+      throw error;
     }
-  }, 0);
+
+    console.log('Activity logged successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+    // Don't throw error to avoid breaking main functionality
+  }
 };
 
-// Simplified helper functions for common activities with minimal data
+// Helper functions for common activities
 export const activityLogger = {
   orderStatusUpdate: (orderId: string, orderNumber: string, customerName: string, oldStatus: string, newStatus: string, adminName: string) =>
     logActivity({
       actionType: 'status_update',
       targetType: 'order',
       targetId: orderId,
-      targetDetails: { 
-        order_number: orderNumber, 
-        customer_name: customerName 
-      },
+      targetDetails: { order_number: orderNumber, customer_name: customerName },
       oldValues: { status: oldStatus },
       newValues: { status: newStatus },
       description: `${adminName} updated order ${orderNumber} status from ${oldStatus} to ${newStatus}`
@@ -119,10 +64,7 @@ export const activityLogger = {
       actionType: 'order_cancel',
       targetType: 'order',
       targetId: orderId,
-      targetDetails: { 
-        order_number: orderNumber, 
-        customer_name: customerName 
-      },
+      targetDetails: { order_number: orderNumber, customer_name: customerName },
       description: `${adminName} cancelled order ${orderNumber} for ${customerName}`
     }),
 
@@ -131,11 +73,58 @@ export const activityLogger = {
       actionType: 'order_create',
       targetType: 'order',
       targetId: orderId,
-      targetDetails: { 
-        order_number: orderNumber, 
-        customer_name: customerName, 
-        total_amount: totalAmount 
-      },
+      targetDetails: { order_number: orderNumber, customer_name: customerName, total_amount: totalAmount },
       description: `${adminName} created order ${orderNumber} for ${customerName} ($${totalAmount})`
+    }),
+
+  orderEdit: (orderId: string, orderNumber: string, customerName: string, changes: any, adminName: string) =>
+    logActivity({
+      actionType: 'order_edit',
+      targetType: 'order',
+      targetId: orderId,
+      targetDetails: { order_number: orderNumber, customer_name: customerName },
+      oldValues: changes.oldValues,
+      newValues: changes.newValues,
+      description: `${adminName} edited order ${orderNumber} for ${customerName}`
+    }),
+
+  invoiceSend: (invoiceId: string, orderNumber: string, customerEmail: string, amount: number, adminName: string) =>
+    logActivity({
+      actionType: 'invoice_send',
+      targetType: 'invoice',
+      targetId: invoiceId,
+      targetDetails: { order_number: orderNumber, customer_email: customerEmail, amount },
+      description: `${adminName} sent invoice for order ${orderNumber} to ${customerEmail} ($${amount})`
+    }),
+
+  paymentUpdate: (orderId: string, orderNumber: string, oldStatus: string, newStatus: string, adminName: string) =>
+    logActivity({
+      actionType: 'payment_update',
+      targetType: 'payment',
+      targetId: orderId,
+      targetDetails: { order_number: orderNumber },
+      oldValues: { payment_status: oldStatus },
+      newValues: { payment_status: newStatus },
+      description: `${adminName} updated payment status for order ${orderNumber} from ${oldStatus} to ${newStatus}`
+    }),
+
+  customerCreate: (customerId: string, customerName: string, customerEmail: string, adminName: string) =>
+    logActivity({
+      actionType: 'customer_create',
+      targetType: 'customer',
+      targetId: customerId,
+      targetDetails: { customer_name: customerName, customer_email: customerEmail },
+      description: `${adminName} created customer ${customerName} (${customerEmail})`
+    }),
+
+  customerEdit: (customerId: string, customerName: string, changes: any, adminName: string) =>
+    logActivity({
+      actionType: 'customer_edit',
+      targetType: 'customer',
+      targetId: customerId,
+      targetDetails: { customer_name: customerName },
+      oldValues: changes.oldValues,
+      newValues: changes.newValues,
+      description: `${adminName} edited customer ${customerName}`
     })
 };
