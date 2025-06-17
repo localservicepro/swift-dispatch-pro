@@ -1,8 +1,21 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { OrderFormData, OrderItem } from "@/types";
-import { OrderWithItems } from '../OrderManagement';
 import { ghlService } from "@/utils/ghlService";
+
+interface OrderWithItems {
+  id: string;
+  order_number: string;
+  customer_id: string;
+  total_amount: number;
+  status: string;
+  delivery_date: string;
+  customer_address: string;
+  payment_status: string;
+  notes?: string;
+  order_items?: any[];
+}
 
 export const orderCreationService = {
   async validateOrderData(formData: OrderFormData): Promise<string[]> {
@@ -33,8 +46,8 @@ export const orderCreationService = {
       order_id: orderId,
       product_id: item.product_id,
       quantity: item.quantity,
-      price: item.price,
-      total: item.total,
+      unit_price: item.price,
+      total_price: item.total,
       created_at: new Date().toISOString(),
     }));
 
@@ -60,14 +73,15 @@ export const orderCreationService = {
     const orderData = {
       id: orderId,
       customer_id: formData.customer_id,
-      order_number: formData.order_number,
-      order_date: new Date().toISOString(),
+      order_number: formData.order_number || `ORD-${Date.now()}`,
+      customer_name: 'Customer', // This should be populated from customer data
       delivery_date: formData.delivery_date,
       customer_address: formData.customer_address,
       total_amount: formData.total_amount,
       payment_status: formData.payment_status,
       status: formData.status,
       notes: formData.notes,
+      products: JSON.stringify(formData.items),
       created_at: new Date().toISOString(),
     };
 
@@ -200,3 +214,6 @@ export const orderCreationService = {
     }
   },
 };
+
+// Export individual functions for backward compatibility
+export const { createOrder, updateOrder, deleteOrder } = orderCreationService;

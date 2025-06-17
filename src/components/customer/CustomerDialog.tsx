@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -29,10 +30,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useGHLSync } from "@/hooks/useGHLSync";
 
 const customerFormSchema = z.object({
-  firstName: z.string().min(2, {
+  first_name: z.string().min(2, {
     message: "First name must be at least 2 characters.",
   }),
-  lastName: z.string().min(2, {
+  last_name: z.string().min(2, {
     message: "Last name must be at least 2 characters.",
   }),
   email: z.string().email({
@@ -66,8 +67,8 @@ export function CustomerDialog({ open, onOpenChange, customer, onSave }: Custome
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerFormSchema),
     defaultValues: {
-      firstName: customer?.firstName || "",
-      lastName: customer?.lastName || "",
+      first_name: customer?.first_name || "",
+      last_name: customer?.last_name || "",
       email: customer?.email || "",
       phone: customer?.phone || "",
       full_address: customer?.full_address || "",
@@ -142,7 +143,7 @@ export function CustomerDialog({ open, onOpenChange, customer, onSave }: Custome
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="firstName"
+              name="first_name"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>First Name</FormLabel>
@@ -155,7 +156,7 @@ export function CustomerDialog({ open, onOpenChange, customer, onSave }: Custome
             />
             <FormField
               control={form.control}
-              name="lastName"
+              name="last_name"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Last Name</FormLabel>

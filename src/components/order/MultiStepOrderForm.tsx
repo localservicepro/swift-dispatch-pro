@@ -10,7 +10,7 @@ import { OrderReviewStep } from "./OrderReviewStep";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { useOrderFormState } from "./hooks/useOrderFormState";
 import { useDriverManager } from "./hooks/useDriverManager";
-import { createOrder } from "./services/orderCreationService";
+import { orderCreationService } from "./services/orderCreationService";
 import { Truck } from "./types";
 
 interface MultiStepOrderFormProps {
@@ -70,45 +70,31 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
     setIsCreating(true);
     try {
-      // Transform CartItem[] to Product[] for order creation
-      const products = cart.map(cartItem => ({
-        id: cartItem.product.id,
-        name: cartItem.product.name,
+      // Transform CartItem[] to OrderItem[] for order creation
+      const orderItems = cart.map(cartItem => ({
+        product_id: cartItem.product.id,
+        quantity: cartItem.quantity,
         price: cartItem.unit_price,
-        quantity: cartItem.quantity
+        total: cartItem.total_price
       }));
 
-      // Ensure truckType is not empty string
-      const validTruckType = truckType || "small";
+      const orderData = {
+        customer_id: selectedCustomer.id,
+        delivery_date: deliveryDate,
+        customer_address: selectedCustomer.full_address,
+        total_amount: subtotal + adjustments + deliveryFee,
+        payment_status: 'pending',
+        status: 'preparing',
+        notes: specialInstructions,
+        items: orderItems
+      };
 
-      const result = await createOrder({
-        selectedCustomer,
-        cart: products,
-        subtotal,
-        adjustments,
-        deliveryFee,
-        orderType,
-        splits,
-        deliveryDate,
-        deliveryTime,
-        truckType: validTruckType,
-        truckId,
-        driverId,
-        specialInstructions,
-        paymentMethod
+      const result = await orderCreationService.createOrder(orderData);
+
+      toast({
+        title: "Success",
+        description: `Order ${result.order_number} created successfully!`,
       });
-
-      if (result.type === 'single') {
-        toast({
-          title: "Success",
-          description: `Order ${result.orderNumber} created successfully!`,
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: `Split order ${result.orderNumber} created with ${result.splitCount} parts!`,
-        });
-      }
 
       onOrderCreated();
       onClose();
