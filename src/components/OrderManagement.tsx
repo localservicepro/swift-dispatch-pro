@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -319,12 +320,14 @@ export function OrderManagement() {
     return 'Products listed';
   };
 
-  // Quick status update function for admin with activity logging
+  // Completely isolated order status update function
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
     try {
+      console.log(`Updating order ${orderId} status to ${newStatus}`);
       const oldStatus = currentOrder.status;
       
-      const { error } = await supabase
+      // PRIMARY OPERATION: Update order status (isolated from logging)
+      const { error: updateError } = await supabase
         .from('orders')
         .update({ 
           status: newStatus,
@@ -332,40 +335,53 @@ export function OrderManagement() {
         })
         .eq('id', orderId);
 
-      if (error) throw error;
-
-      // Log the activity
-      if (profile?.full_name) {
-        if (newStatus === 'cancelled') {
-          await activityLogger.orderCancel(
-            orderId,
-            currentOrder.order_number,
-            currentOrder.customer_name,
-            profile.full_name
-          );
-        } else {
-          await activityLogger.orderStatusUpdate(
-            orderId,
-            currentOrder.order_number,
-            currentOrder.customer_name,
-            oldStatus,
-            newStatus,
-            profile.full_name
-          );
-        }
+      if (updateError) {
+        console.error('Order status update failed:', updateError);
+        throw updateError;
       }
 
+      console.log(`Order ${orderId} status successfully updated to ${newStatus}`);
+
+      // SUCCESS: Show user feedback immediately
       toast({
         title: "Status Updated",
         description: `Order ${currentOrder.order_number} status updated to ${newStatus.replace('_', ' ')}`,
       });
 
-      // Refresh orders
+      // Refresh orders immediately
       refetch();
+
+      // SECONDARY OPERATION: Activity logging (completely isolated, non-blocking)
+      if (profile?.full_name) {
+        try {
+          if (newStatus === 'cancelled') {
+            activityLogger.orderCancel(
+              orderId,
+              currentOrder.order_number,
+              currentOrder.customer_name,
+              profile.full_name
+            );
+          } else {
+            activityLogger.orderStatusUpdate(
+              orderId,
+              currentOrder.order_number,
+              currentOrder.customer_name,
+              oldStatus,
+              newStatus,
+              profile.full_name
+            );
+          }
+        } catch (loggingError) {
+          console.warn('Activity logging failed (non-critical):', loggingError);
+          // Activity logging failure should not affect the main operation
+        }
+      }
+
     } catch (error: any) {
+      console.error('Order status update failed:', error);
       toast({
         title: "Error",
-        description: "Failed to update order status",
+        description: `Failed to update order status: ${error.message}`,
         variant: "destructive",
       });
     }
@@ -408,7 +424,7 @@ export function OrderManagement() {
           <p className="text-slate-600 mt-1">Create and manage customer orders • Real-time updates enabled</p>
         </div>
         <Button 
-          onClick={() => setIsCreating(true)} 
+          onClick={() => setIsCreating(true)}
           className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
         >
           Create New Order

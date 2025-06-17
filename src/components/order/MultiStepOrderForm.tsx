@@ -120,7 +120,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
 
       // Determine payment status based on payment method
-      let paymentStatus = 'pending';
+      let paymentStatus: string = 'pending';
       if (paymentMethod === 'account') {
         paymentStatus = 'account_billing';
       } else if (paymentMethod === '7_day_invoice') {
@@ -152,8 +152,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         admin_id: user.id,
         special_instructions: specialInstructions || null,
         payment_method: paymentMethod,
-        status: 'requested' as const,
-        payment_status: paymentStatus as const
+        status: 'requested',
+        payment_status: paymentStatus
       };
 
       const { data: order, error: orderError } = await supabase
