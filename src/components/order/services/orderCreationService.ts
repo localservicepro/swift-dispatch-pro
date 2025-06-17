@@ -1,7 +1,7 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { chargeCardOnFile } from "./cardOnFileService";
+import { emailService } from "@/utils/emailService";
 
 interface Product {
   id: string;
@@ -61,6 +61,38 @@ const generateOrderNumber = async (): Promise<string> => {
   const newUuid = uuidv4();
   const shortUuid = newUuid.substring(0, 8);
   return `ORD-${shortUuid.toUpperCase()}`;
+};
+
+const sendOrderConfirmationEmail = async (
+  customer: Customer,
+  orderNumber: string,
+  cart: Product[],
+  totalAmount: number,
+  deliveryDate: string,
+  deliveryTime: string,
+  specialInstructions: string
+) => {
+  try {
+    await emailService.sendOrderConfirmation({
+      customerName: `${customer.first_name} ${customer.last_name}`,
+      customerEmail: customer.email,
+      orderNumber,
+      orderItems: cart.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price
+      })),
+      totalAmount,
+      deliveryAddress: customer.full_address,
+      deliveryDate,
+      deliveryTime,
+      specialInstructions
+    });
+    console.log('Order confirmation email sent successfully');
+  } catch (error) {
+    console.error('Failed to send order confirmation email:', error);
+    // Don't throw error to prevent order creation failure
+  }
 };
 
 const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCreationResult> => {
@@ -138,6 +170,17 @@ const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCrea
     if (itemsError) {
       console.error(`Error creating order items for split order ${i + 1}:`, itemsError);
     }
+
+    // Send email for each split order
+    await sendOrderConfirmationEmail(
+      selectedCustomer,
+      splitOrderNumber,
+      cart,
+      totalAmount,
+      split.deliveryDate,
+      split.deliveryTime,
+      specialInstructions
+    );
   }
 
   return {
@@ -211,6 +254,17 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
   }
 
   console.log('Order created:', order);
+
+  // Send order confirmation email
+  await sendOrderConfirmationEmail(
+    selectedCustomer,
+    orderNumber,
+    cart,
+    totalAmount,
+    deliveryDate,
+    deliveryTime,
+    specialInstructions
+  );
 
   // Handle card on file payment
   if (paymentMethod === 'card_on_file') {
