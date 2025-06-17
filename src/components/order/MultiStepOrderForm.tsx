@@ -10,6 +10,7 @@ import { OrderReviewStep } from "./OrderReviewStep";
 import { Database } from "@/integrations/supabase/types";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
+type OrderStatus = Database["public"]["Enums"]["order_status"];
 
 interface Customer {
   id: string;
@@ -119,15 +120,18 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       // Generate order number
       const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
 
-      // Determine payment status based on payment method
-      let paymentStatus: string = 'pending';
+      // Determine payment status based on payment method with proper typing
+      let paymentStatus = 'pending';
       if (paymentMethod === 'account') {
         paymentStatus = 'account_billing';
       } else if (paymentMethod === '7_day_invoice') {
         paymentStatus = 'invoiced';
       }
 
-      // Create order with 'requested' status
+      // Create order with properly typed status
+      const orderStatus: OrderStatus = 'requested';
+
+      // Create order data with correct types
       const orderData = {
         order_number: orderNumber,
         customer_id: selectedCustomer.id,
@@ -152,13 +156,13 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         admin_id: user.id,
         special_instructions: specialInstructions || null,
         payment_method: paymentMethod,
-        status: 'requested',
+        status: orderStatus,
         payment_status: paymentStatus
       };
 
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert([orderData])
+        .insert(orderData)
         .select()
         .single();
 
