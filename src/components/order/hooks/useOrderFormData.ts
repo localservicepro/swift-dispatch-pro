@@ -42,6 +42,7 @@ export interface OrderFormData {
   subtotal: number;
   truck_type: TruckType | 'none';
   truck_id: string;
+  products: any[];
 }
 
 export function useOrderFormData(order: Order) {
@@ -60,9 +61,10 @@ export function useOrderFormData(order: Order) {
     subtotal: order.subtotal || (order.total_amount - (order.delivery_fee || 0)),
     truck_type: (order.truck_type || 'none') as TruckType | 'none',
     truck_id: order.truck_id || 'none',
+    products: Array.isArray(order.products) ? order.products : [],
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -77,15 +79,30 @@ export function useOrderFormData(order: Order) {
   };
 
   const handleSuburbChange = (suburbId: string, deliveryRate: number) => {
-    const newSubtotal = parseFloat(formData.total_amount) - formData.delivery_fee;
-    const newTotalAmount = newSubtotal + deliveryRate;
+    const newTotalAmount = formData.subtotal + deliveryRate;
     
     setFormData(prev => ({
       ...prev,
       suburb_id: suburbId,
       delivery_fee: deliveryRate,
       total_amount: newTotalAmount.toString(),
-      subtotal: newSubtotal,
+    }));
+  };
+
+  const handleProductsChange = (products: any[]) => {
+    setFormData(prev => ({
+      ...prev,
+      products
+    }));
+  };
+
+  const handleSubtotalChange = (subtotal: number) => {
+    const newTotalAmount = subtotal + formData.delivery_fee;
+    
+    setFormData(prev => ({
+      ...prev,
+      subtotal,
+      total_amount: newTotalAmount.toString()
     }));
   };
 
@@ -95,5 +112,7 @@ export function useOrderFormData(order: Order) {
     handleInputChange,
     handleDriverChange,
     handleSuburbChange,
+    handleProductsChange,
+    handleSubtotalChange,
   };
 }

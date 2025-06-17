@@ -14,6 +14,7 @@ import { OrderPricingForm } from "./OrderPricingForm";
 import { OrderTruckSelectionForm } from "./OrderTruckSelectionForm";
 import { OrderDeliveryForm } from "./OrderDeliveryForm";
 import { ConflictWarning } from "./ConflictWarning";
+import { ProductEditSection } from "./ProductEditSection";
 import { useOrderFormData, OrderFormData } from "./hooks/useOrderFormData";
 import { useConflictDetection } from "./hooks/useConflictDetection";
 
@@ -58,6 +59,8 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     handleInputChange,
     handleDriverChange,
     handleSuburbChange,
+    handleProductsChange,
+    handleSubtotalChange,
   } = useOrderFormData(order);
 
   // Use conflict detection hook
@@ -140,14 +143,15 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
           customer_name: formData.customer_name,
           customer_phone: formData.customer_phone || null,
           customer_address: formData.customer_address,
+          products: formData.products,
           total_amount: parseFloat(formData.total_amount),
+          subtotal: formData.subtotal,
           status: formData.status,
           delivery_date: formData.delivery_date || null,
           delivery_time: formData.delivery_time || null,
           special_instructions: formData.special_instructions || null,
           driver_id: formData.driver_id === 'unassigned' ? null : formData.driver_id,
           delivery_fee: formData.delivery_fee,
-          subtotal: formData.subtotal,
           truck_type: formData.truck_type === 'none' ? null : formData.truck_type as TruckType,
           truck_id: formData.truck_id === 'none' ? null : formData.truck_id,
           updated_at: new Date().toISOString(),
@@ -155,6 +159,34 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
         .eq('id', order.id);
 
       if (orderError) throw orderError;
+
+      // Update order_items table to reflect product changes
+      if (formData.products.length > 0) {
+        // Delete existing order items
+        await supabase
+          .from('order_items')
+          .delete()
+          .eq('order_id', order.id);
+
+        // Insert updated order items
+        const orderItems = formData.products.map((item) => ({
+          order_id: order.id,
+          product_id: item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          total_price: item.price * item.quantity,
+          price_adjustment: 0,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItems);
+
+        if (itemsError) {
+          console.error('Error updating order items:', itemsError);
+          // Don't throw here as the main order was updated successfully
+        }
+      }
 
       // Update the customer's suburb if customer_id exists and suburb changed
       if (order.customer_id && formData.suburb_id && formData.suburb_id !== order.suburb_id) {
@@ -172,7 +204,13 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
         }
       }
 
+      toast({
+        title: "Success",
+        description: "Order updated successfully!",
+      });
+
       onOrderUpdated();
+      onClose();
     } catch (error: any) {
       console.error('Error updating order:', error);
       toast({
@@ -187,12 +225,18 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Order {order.order_number}</DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <ProductEditSection
+            currentProducts={formData.products}
+            onProductsChange={handleProductsChange}
+            onSubtotalChange={handleSubtotalChange}
+          />
+
           <OrderBasicInfoForm 
             formData={formData}
             onInputChange={handleInputChange}
