@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { chargeCardOnFile } from "./cardOnFileService";
@@ -92,7 +93,7 @@ const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCrea
       customer_name: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`,
       customer_address: selectedCustomer.full_address,
       customer_phone: selectedCustomer.phone,
-      products: cart,
+      products: cart as any, // Cast to any for JSON storage
       subtotal,
       adjustments,
       delivery_fee: deliveryFee,
@@ -182,7 +183,7 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
     customer_name: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`,
     customer_address: selectedCustomer.full_address,
     customer_phone: selectedCustomer.phone,
-    products: cart,
+    products: cart as any, // Cast to any for JSON storage
     subtotal,
     adjustments,
     delivery_fee: deliveryFee,

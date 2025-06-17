@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
@@ -71,9 +70,20 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
     setIsCreating(true);
     try {
+      // Transform CartItem[] to Product[] for order creation
+      const products = cart.map(cartItem => ({
+        id: cartItem.product.id,
+        name: cartItem.product.name,
+        price: cartItem.unit_price,
+        quantity: cartItem.quantity
+      }));
+
+      // Ensure truckType is not empty string
+      const validTruckType = truckType || "small";
+
       const result = await createOrder({
         selectedCustomer,
-        cart,
+        cart: products,
         subtotal,
         adjustments,
         deliveryFee,
@@ -81,7 +91,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         splits,
         deliveryDate,
         deliveryTime,
-        truckType,
+        truckType: validTruckType,
         truckId,
         driverId,
         specialInstructions,
