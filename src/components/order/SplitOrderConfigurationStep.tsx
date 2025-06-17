@@ -3,7 +3,9 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Split, Plus, Minus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Split, Plus, Minus, Calendar } from "lucide-react";
 import { CartItem, SplitConfig } from "./types";
 import { ProductAllocationCard } from "./ProductAllocationCard";
 import { SplitSummaryCard } from "./SplitSummaryCard";
@@ -25,6 +27,9 @@ export function SplitOrderConfigurationStep({
   onNext
 }: SplitOrderConfigurationStepProps) {
   const [numberOfSplits, setNumberOfSplits] = useState(splits.length || 2);
+  const [useSameDateForAll, setUseSameDateForAll] = useState(false);
+  const [commonDeliveryDate, setCommonDeliveryDate] = useState("");
+  const [commonDeliveryTime, setCommonDeliveryTime] = useState("");
 
   const initializeSplits = (count: number) => {
     const newSplits: SplitConfig[] = [];
@@ -56,6 +61,41 @@ export function SplitOrderConfigurationStep({
     setNumberOfSplits(count);
     const newSplits = initializeSplits(count);
     onSplitsChange(newSplits);
+  };
+
+  const handleSameDateToggle = (checked: boolean) => {
+    setUseSameDateForAll(checked);
+    if (checked && commonDeliveryDate && commonDeliveryTime) {
+      // Apply common date/time to all splits
+      const updatedSplits = splits.map(split => ({
+        ...split,
+        deliveryDate: commonDeliveryDate,
+        deliveryTime: commonDeliveryTime
+      }));
+      onSplitsChange(updatedSplits);
+    }
+  };
+
+  const handleCommonDateChange = (date: string) => {
+    setCommonDeliveryDate(date);
+    if (useSameDateForAll) {
+      const updatedSplits = splits.map(split => ({
+        ...split,
+        deliveryDate: date
+      }));
+      onSplitsChange(updatedSplits);
+    }
+  };
+
+  const handleCommonTimeChange = (time: string) => {
+    setCommonDeliveryTime(time);
+    if (useSameDateForAll) {
+      const updatedSplits = splits.map(split => ({
+        ...split,
+        deliveryTime: time
+      }));
+      onSplitsChange(updatedSplits);
+    }
   };
 
   const updateSplit = (splitIndex: number, updates: Partial<SplitConfig>) => {
@@ -137,7 +177,12 @@ export function SplitOrderConfigurationStep({
     // Check if each split has at least one product
     const allSplitsHaveProducts = splits.every(split => split.products.length > 0);
 
-    return fullyAllocated && allSplitsHaveProducts;
+    // Check if each split has truck type and truck ID assigned
+    const allSplitsHaveDeliveryDetails = splits.every(split => 
+      split.truckType && split.truckId && split.deliveryDate && split.deliveryTime
+    );
+
+    return fullyAllocated && allSplitsHaveProducts && allSplitsHaveDeliveryDetails;
   };
 
   return (
@@ -179,6 +224,44 @@ export function SplitOrderConfigurationStep({
           </div>
         </div>
 
+        {/* Same Date for All Option */}
+        <div className="bg-gray-50 p-3 rounded-lg">
+          <div className="flex items-center space-x-2 mb-3">
+            <Checkbox
+              id="same-date"
+              checked={useSameDateForAll}
+              onCheckedChange={handleSameDateToggle}
+            />
+            <Label htmlFor="same-date" className="text-sm font-medium flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Use same delivery date and time for all splits
+            </Label>
+          </div>
+          
+          {useSameDateForAll && (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs font-medium mb-1 block">Common Delivery Date</Label>
+                <Input
+                  type="date"
+                  value={commonDeliveryDate}
+                  onChange={(e) => handleCommonDateChange(e.target.value)}
+                  className="h-7 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-medium mb-1 block">Common Delivery Time</Label>
+                <Input
+                  type="time"
+                  value={commonDeliveryTime}
+                  onChange={(e) => handleCommonTimeChange(e.target.value)}
+                  className="h-7 text-xs"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Quick Actions */}
         <AllocationActions 
           cart={cart}
@@ -214,6 +297,7 @@ export function SplitOrderConfigurationStep({
                 onUpdateSplit={updateSplit}
                 onUpdateQuantity={updateProductQuantity}
                 onRemoveProduct={removeProductFromSplit}
+                isCommonDateMode={useSameDateForAll}
               />
             ))}
           </div>
@@ -223,7 +307,7 @@ export function SplitOrderConfigurationStep({
         {!canProceed() && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="text-xs text-yellow-800">
-              Please ensure all products are fully allocated and each split has at least one product.
+              Please ensure all products are fully allocated, each split has at least one product, and all delivery details (truck type, truck, date, time) are configured.
             </p>
           </div>
         )}
@@ -238,7 +322,7 @@ export function SplitOrderConfigurationStep({
             className="ml-auto"
             size="sm"
           >
-            Continue to Delivery Details
+            Continue to Payment
           </Button>
         </div>
       </CardContent>
