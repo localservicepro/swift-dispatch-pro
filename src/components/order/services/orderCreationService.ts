@@ -3,13 +3,16 @@ import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { OrderFormData, OrderItem } from "@/types";
 import { ghlService } from "@/utils/ghlService";
+import { Database } from "@/integrations/supabase/types";
+
+type OrderStatus = Database["public"]["Enums"]["order_status"];
 
 interface OrderWithItems {
   id: string;
   order_number: string;
   customer_id: string;
   total_amount: number;
-  status: string;
+  status: OrderStatus;
   delivery_date: string;
   customer_address: string;
   payment_status: string;
@@ -79,7 +82,7 @@ export const orderCreationService = {
       customer_address: formData.customer_address,
       total_amount: formData.total_amount,
       payment_status: formData.payment_status,
-      status: formData.status,
+      status: formData.status as OrderStatus,
       notes: formData.notes,
       products: JSON.stringify(formData.items),
       created_at: new Date().toISOString(),
@@ -88,7 +91,7 @@ export const orderCreationService = {
     try {
       const { data: newOrderData, error: orderError } = await supabase
         .from('orders')
-        .insert([orderData])
+        .insert(orderData)
         .select()
         .single();
 
@@ -135,7 +138,7 @@ export const orderCreationService = {
       customer_address: formData.customer_address,
       total_amount: formData.total_amount,
       payment_status: formData.payment_status,
-      status: formData.status,
+      status: formData.status as OrderStatus,
       notes: formData.notes,
       updated_at: new Date().toISOString(),
     };
@@ -217,3 +220,4 @@ export const orderCreationService = {
 
 // Export individual functions for backward compatibility
 export const { createOrder, updateOrder, deleteOrder } = orderCreationService;
+

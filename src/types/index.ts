@@ -9,7 +9,7 @@ export type OrderFormData = {
   customer_address: string;
   total_amount: number;
   payment_status: string;
-  status: string;
+  status: Database["public"]["Enums"]["order_status"];
   notes?: string;
   items: OrderItem[];
 };
@@ -22,3 +22,6 @@ export type OrderItem = {
 };
 
 export type Product = Database["public"]["Tables"]["products"]["Row"];
+
+export type CustomerType = "account" | "trade";
+

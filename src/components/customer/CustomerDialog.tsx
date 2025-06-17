@@ -25,7 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Customer } from "@/types";
+import { Customer, CustomerType } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGHLSync } from "@/hooks/useGHLSync";
 
@@ -44,7 +44,9 @@ const customerFormSchema = z.object({
   }).max(15, {
     message: "Phone number cannot exceed 15 digits.",
   }),
-  full_address: z.string().optional(),
+  full_address: z.string().min(1, {
+    message: "Address is required.",
+  }),
   customer_type: z.enum(["account", "trade"]).default("account"),
   suburb_id: z.string().uuid().optional(),
 });
@@ -72,7 +74,7 @@ export function CustomerDialog({ open, onOpenChange, customer, onSave }: Custome
       email: customer?.email || "",
       phone: customer?.phone || "",
       full_address: customer?.full_address || "",
-      customer_type: customer?.customer_type || "account",
+      customer_type: (customer?.customer_type as CustomerType) || "account",
       suburb_id: customer?.suburb_id || undefined,
     },
   });
@@ -100,7 +102,7 @@ export function CustomerDialog({ open, onOpenChange, customer, onSave }: Custome
         // Create new customer
         const { data: newCustomer, error } = await supabase
           .from('customers')
-          .insert([data])
+          .insert(data)
           .select()
           .single();
 
@@ -240,3 +242,4 @@ export function CustomerDialog({ open, onOpenChange, customer, onSave }: Custome
     </Dialog>
   );
 }
+
