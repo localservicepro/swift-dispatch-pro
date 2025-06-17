@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Database } from "@/integrations/supabase/types";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -46,7 +46,7 @@ export interface OrderFormData {
 }
 
 export function useOrderFormData(order: Order) {
-  const [formData, setFormData] = useState<OrderFormData>({
+  const initialFormData = useMemo(() => ({
     customer_name: order.customer_name,
     customer_phone: order.customer_phone || '',
     customer_address: order.customer_address,
@@ -62,49 +62,53 @@ export function useOrderFormData(order: Order) {
     truck_type: (order.truck_type || 'none') as TruckType | 'none',
     truck_id: order.truck_id || 'none',
     products: Array.isArray(order.products) ? order.products : [],
-  });
+  }), [order]);
 
-  const handleInputChange = (field: string, value: string | number) => {
+  const [formData, setFormData] = useState<OrderFormData>(initialFormData);
+
+  const handleInputChange = useCallback((field: string, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
 
-  const handleDriverChange = (driverId: string) => {
+  const handleDriverChange = useCallback((driverId: string) => {
     setFormData(prev => ({
       ...prev,
       driver_id: driverId
     }));
-  };
+  }, []);
 
-  const handleSuburbChange = (suburbId: string, deliveryRate: number) => {
-    const newTotalAmount = formData.subtotal + deliveryRate;
-    
-    setFormData(prev => ({
-      ...prev,
-      suburb_id: suburbId,
-      delivery_fee: deliveryRate,
-      total_amount: newTotalAmount.toString(),
-    }));
-  };
+  const handleSuburbChange = useCallback((suburbId: string, deliveryRate: number) => {
+    setFormData(prev => {
+      const newTotalAmount = prev.subtotal + deliveryRate;
+      return {
+        ...prev,
+        suburb_id: suburbId,
+        delivery_fee: deliveryRate,
+        total_amount: newTotalAmount.toString(),
+      };
+    });
+  }, []);
 
-  const handleProductsChange = (products: any[]) => {
+  const handleProductsChange = useCallback((products: any[]) => {
     setFormData(prev => ({
       ...prev,
       products
     }));
-  };
+  }, []);
 
-  const handleSubtotalChange = (subtotal: number) => {
-    const newTotalAmount = subtotal + formData.delivery_fee;
-    
-    setFormData(prev => ({
-      ...prev,
-      subtotal,
-      total_amount: newTotalAmount.toString()
-    }));
-  };
+  const handleSubtotalChange = useCallback((subtotal: number) => {
+    setFormData(prev => {
+      const newTotalAmount = subtotal + prev.delivery_fee;
+      return {
+        ...prev,
+        subtotal,
+        total_amount: newTotalAmount.toString()
+      };
+    });
+  }, []);
 
   return {
     formData,

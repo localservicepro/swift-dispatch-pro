@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,13 +22,6 @@ interface Product {
   };
 }
 
-interface CartItem {
-  product: Product;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-}
-
 interface ProductEditSectionProps {
   currentProducts: any[];
   onProductsChange: (products: any[]) => void;
@@ -48,57 +41,17 @@ export function ProductEditSection({
   const [showSearch, setShowSearch] = useState(false);
   const { toast } = useToast();
 
-  // Convert current products to cart items format
-  const [cart, setCart] = useState<CartItem[]>([]);
-
-  useEffect(() => {
-    // Initialize cart from current products
-    const initialCart = currentProducts.map(product => ({
-      product: {
-        id: product.id,
-        name: product.name,
-        description: null,
-        price: product.price,
-        stock_quantity: 999, // Assume available for editing
-        sku: null,
-        images: []
-      },
-      quantity: product.quantity,
-      unit_price: product.price,
-      total_price: product.price * product.quantity
-    }));
-    setCart(initialCart);
+  // Calculate subtotal from current products
+  const subtotal = useMemo(() => {
+    return currentProducts.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   }, [currentProducts]);
 
+  // Update parent when subtotal changes
   useEffect(() => {
-    if (showSearch) {
-      loadCategories();
-      loadProducts();
-    }
-  }, [showSearch]);
+    onSubtotalChange(subtotal);
+  }, [subtotal, onSubtotalChange]);
 
-  useEffect(() => {
-    if (showSearch) {
-      loadProducts();
-    }
-  }, [searchQuery, selectedCategory, showSearch]);
-
-  // Update parent when cart changes
-  useEffect(() => {
-    const newProducts = cart.map(item => ({
-      id: item.product.id,
-      name: item.product.name,
-      price: item.unit_price,
-      quantity: item.quantity
-    }));
-    
-    const newSubtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
-    
-    onProductsChange(newProducts);
-    onSubtotalChange(newSubtotal);
-  }, [cart, onProductsChange, onSubtotalChange]);
-
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     const { data, error } = await supabase
       .from('product_categories')
       .select('*')
@@ -108,9 +61,9 @@ export function ProductEditSection({
     if (!error && data) {
       setCategories(data);
     }
-  };
+  }, []);
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     setLoading(true);
     let query = supabase
       .from('products')
@@ -140,48 +93,60 @@ export function ProductEditSection({
       setProducts(productsWithImages);
     }
     setLoading(false);
-  };
+  }, [searchQuery, selectedCategory]);
 
-  const addToCart = (product: Product) => {
-    const existingItem = cart.find(item => item.product.id === product.id);
-    
-    if (existingItem) {
-      updateQuantity(product.id, existingItem.quantity + 1);
-    } else {
-      const newItem: CartItem = {
-        product,
-        quantity: 1,
-        unit_price: product.price,
-        total_price: product.price
-      };
-      setCart([...cart, newItem]);
+  useEffect(() => {
+    if (showSearch) {
+      loadCategories();
+      loadProducts();
     }
-  };
+  }, [showSearch, loadCategories, loadProducts]);
 
-  const updateQuantity = (productId: string, newQuantity: number) => {
+  const addToCart = useCallback((product: Product) => {
+    const existingItemIndex = currentProducts.findIndex(item => item.id === product.id);
+    
+    if (existingItemIndex >= 0) {
+      const updatedProducts = [...currentProducts];
+      updatedProducts[existingItemIndex] = {
+        ...updatedProducts[existingItemIndex],
+        quantity: updatedProducts[existingItemIndex].quantity + 1
+      };
+      onProductsChange(updatedProducts);
+    } else {
+      const newItem = {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        quantity: 1
+      };
+      onProductsChange([...currentProducts, newItem]);
+    }
+  }, [currentProducts, onProductsChange]);
+
+  const updateQuantity = useCallback((productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
-      removeFromCart(productId);
+      const updatedProducts = currentProducts.filter(item => item.id !== productId);
+      onProductsChange(updatedProducts);
       return;
     }
 
-    const updatedCart = cart.map(item => 
-      item.product.id === productId 
-        ? { ...item, quantity: newQuantity, total_price: item.unit_price * newQuantity }
+    const updatedProducts = currentProducts.map(item => 
+      item.id === productId 
+        ? { ...item, quantity: newQuantity }
         : item
     );
-    setCart(updatedCart);
-  };
+    onProductsChange(updatedProducts);
+  }, [currentProducts, onProductsChange]);
 
-  const removeFromCart = (productId: string) => {
-    setCart(cart.filter(item => item.product.id !== productId));
-  };
+  const removeFromCart = useCallback((productId: string) => {
+    const updatedProducts = currentProducts.filter(item => item.id !== productId);
+    onProductsChange(updatedProducts);
+  }, [currentProducts, onProductsChange]);
 
-  const getCartQuantity = (productId: string) => {
-    const item = cart.find(item => item.product.id === productId);
+  const getCartQuantity = useCallback((productId: string) => {
+    const item = currentProducts.find(item => item.id === productId);
     return item ? item.quantity : 0;
-  };
-
-  const subtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
+  }, [currentProducts]);
 
   return (
     <div className="space-y-4">
@@ -205,17 +170,17 @@ export function ProductEditSection({
           {/* Current Products */}
           <div className="space-y-2">
             <h4 className="font-medium">Current Products</h4>
-            {cart.length === 0 ? (
+            {currentProducts.length === 0 ? (
               <div className="text-center py-4 text-gray-500">
                 No products in order
               </div>
             ) : (
               <div className="space-y-2">
-                {cart.map((item) => (
-                  <div key={item.product.id} className="flex items-center justify-between p-3 border rounded">
+                {currentProducts.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between p-3 border rounded">
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm">{item.product.name}</div>
-                      <div className="text-xs text-gray-500">${item.unit_price.toFixed(2)} each</div>
+                      <div className="font-medium text-sm">{item.name}</div>
+                      <div className="text-xs text-gray-500">${item.price.toFixed(2)} each</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
@@ -223,7 +188,7 @@ export function ProductEditSection({
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
-                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         >
                           <Minus className="w-3 h-3" />
                         </Button>
@@ -232,17 +197,17 @@ export function ProductEditSection({
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
-                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         >
                           <Plus className="w-3 h-3" />
                         </Button>
                       </div>
-                      <div className="font-medium text-sm w-16 text-right">${item.total_price.toFixed(2)}</div>
+                      <div className="font-medium text-sm w-16 text-right">${(item.price * item.quantity).toFixed(2)}</div>
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                        onClick={() => removeFromCart(item.product.id)}
+                        onClick={() => removeFromCart(item.id)}
                       >
                         <X className="w-3 h-3" />
                       </Button>
