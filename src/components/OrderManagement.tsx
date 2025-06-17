@@ -353,28 +353,33 @@ export function OrderManagement() {
         throw error;
       }
 
-      // Log the activity
+      // Log the activity with proper error handling
       if (profile?.full_name) {
         try {
+          // Sanitize the data before logging
+          const sanitizedOrderNumber = currentOrder.order_number || 'Unknown';
+          const sanitizedCustomerName = currentOrder.customer_name || 'Unknown Customer';
+          const sanitizedAdminName = profile.full_name || 'Unknown Admin';
+          
           if (newStatus === 'cancelled') {
             await activityLogger.orderCancel(
               orderId,
-              currentOrder.order_number,
-              currentOrder.customer_name,
-              profile.full_name
+              sanitizedOrderNumber,
+              sanitizedCustomerName,
+              sanitizedAdminName
             );
           } else {
             await activityLogger.orderStatusUpdate(
               orderId,
-              currentOrder.order_number,
-              currentOrder.customer_name,
+              sanitizedOrderNumber,
+              sanitizedCustomerName,
               oldStatus,
               newStatus,
-              profile.full_name
+              sanitizedAdminName
             );
           }
         } catch (logError) {
-          console.warn('Activity logging failed:', logError);
+          console.warn('Activity logging failed but order was updated successfully:', logError);
           // Don't throw - activity logging failure shouldn't block status update
         }
       }
