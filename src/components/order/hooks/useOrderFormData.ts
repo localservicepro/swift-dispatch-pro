@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Database } from "@/integrations/supabase/types";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -42,10 +42,11 @@ export interface OrderFormData {
   subtotal: number;
   truck_type: TruckType | 'none';
   truck_id: string;
+  products: any[];
 }
 
 export function useOrderFormData(order: Order) {
-  const [formData, setFormData] = useState<OrderFormData>({
+  const initialFormData = useMemo(() => ({
     customer_name: order.customer_name,
     customer_phone: order.customer_phone || '',
     customer_address: order.customer_address,
@@ -60,34 +61,54 @@ export function useOrderFormData(order: Order) {
     subtotal: order.subtotal || (order.total_amount - (order.delivery_fee || 0)),
     truck_type: (order.truck_type || 'none') as TruckType | 'none',
     truck_id: order.truck_id || 'none',
-  });
+    products: Array.isArray(order.products) ? order.products : [],
+  }), [order]);
 
-  const handleInputChange = (field: string, value: string) => {
+  const [formData, setFormData] = useState<OrderFormData>(initialFormData);
+
+  const handleInputChange = useCallback((field: string, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
 
-  const handleDriverChange = (driverId: string) => {
+  const handleDriverChange = useCallback((driverId: string) => {
     setFormData(prev => ({
       ...prev,
       driver_id: driverId
     }));
-  };
+  }, []);
 
-  const handleSuburbChange = (suburbId: string, deliveryRate: number) => {
-    const newSubtotal = parseFloat(formData.total_amount) - formData.delivery_fee;
-    const newTotalAmount = newSubtotal + deliveryRate;
-    
+  const handleSuburbChange = useCallback((suburbId: string, deliveryRate: number) => {
+    setFormData(prev => {
+      const newTotalAmount = prev.subtotal + deliveryRate;
+      return {
+        ...prev,
+        suburb_id: suburbId,
+        delivery_fee: deliveryRate,
+        total_amount: newTotalAmount.toString(),
+      };
+    });
+  }, []);
+
+  const handleProductsChange = useCallback((products: any[]) => {
     setFormData(prev => ({
       ...prev,
-      suburb_id: suburbId,
-      delivery_fee: deliveryRate,
-      total_amount: newTotalAmount.toString(),
-      subtotal: newSubtotal,
+      products
     }));
-  };
+  }, []);
+
+  const handleSubtotalChange = useCallback((subtotal: number) => {
+    setFormData(prev => {
+      const newTotalAmount = subtotal + prev.delivery_fee;
+      return {
+        ...prev,
+        subtotal,
+        total_amount: newTotalAmount.toString()
+      };
+    });
+  }, []);
 
   return {
     formData,
@@ -95,5 +116,7 @@ export function useOrderFormData(order: Order) {
     handleInputChange,
     handleDriverChange,
     handleSuburbChange,
+    handleProductsChange,
+    handleSubtotalChange,
   };
 }

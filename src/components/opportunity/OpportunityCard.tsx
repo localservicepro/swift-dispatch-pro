@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +17,7 @@ import {
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { useAuth } from "../auth/AuthProvider";
-import { Database } from "@/integrations/supabase/types";
-
-type OrderStatus = Database['public']['Enums']['order_status'];
+import { activityLogger } from "@/utils/activityLogger";
 
 interface OpportunityCardProps {
   order: any;
@@ -33,9 +30,9 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
   const { toast } = useToast();
   const { profile } = useAuth();
 
-  const getNextStage = (current: string): OrderStatus | null => {
-    const stages: OrderStatus[] = ['requested', 'preparing', 'loading', 'en_route', 'delivered'];
-    const currentIndex = stages.indexOf(current as OrderStatus);
+  const getNextStage = (current: string) => {
+    const stages = ['requested', 'preparing', 'loading', 'en_route', 'delivered'];
+    const currentIndex = stages.indexOf(current);
     return currentIndex < stages.length - 1 ? stages[currentIndex + 1] : null;
   };
 
@@ -55,29 +52,57 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
 
     setIsMoving(true);
     try {
-      console.log(`Moving order ${order.order_number} from ${currentStage} to ${nextStage}`);
+      let updateData: any = {};
       
-      const { error } = await supabase.rpc('update_order_status', {
-        order_id: order.id,
-        new_status: nextStage,
-        notes: `Status updated from opportunity card: ${currentStage} to ${nextStage}`,
-        location: JSON.stringify(null) // Convert null to JSON string
-      });
-
-      if (error) {
-        console.error('OpportunityCard RPC error:', error);
-        throw new Error(`Failed to update order status: ${error.message}`);
+      switch (nextStage) {
+        case 'preparing':
+          // When confirming an order from requested, set payment status to paid and status to preparing
+          updateData = { 
+            payment_status: 'paid',
+            status: 'preparing'
+          };
+          break;
+        case 'loading':
+          updateData = { status: 'loading' };
+          break;
+        case 'en_route':
+          updateData = { status: 'en_route' };
+          break;
+        case 'delivered':
+          updateData = { status: 'delivered' };
+          break;
       }
 
-      // Update payment status if moving to preparing stage
-      if (nextStage === 'preparing') {
-        const { error: paymentError } = await supabase
-          .from('orders')
-          .update({ payment_status: 'paid' })
-          .eq('id', order.id);
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', order.id);
 
-        if (paymentError) {
-          console.error('Payment status update error:', paymentError);
+      if (error) throw error;
+
+      // Log the activity
+      if (profile?.full_name) {
+        if (nextStage === 'preparing') {
+          await activityLogger.orderStatusUpdate(
+            order.id,
+            order.order_number,
+            order.customer_name,
+            'requested',
+            'preparing',
+            profile.full_name
+          );
+        } else {
+          await activityLogger.orderStatusUpdate(
+            order.id,
+            order.order_number,
+            order.customer_name,
+            order.status,
+            updateData.status,
+            profile.full_name
+          );
         }
       }
 
@@ -89,10 +114,9 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
 
       onOrderMove();
     } catch (error: any) {
-      console.error('OpportunityCard status update error:', error);
       toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update order status. Please try again.",
+        title: "Error",
+        description: "Failed to update order status",
         variant: "destructive",
       });
     } finally {

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -82,15 +81,10 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
     try {
       const { error } = await supabase.rpc('update_order_status', {
         order_id: order.id,
-        new_status: newStatus,
-        notes: `Status updated by driver to ${newStatus}`,
-        location: JSON.stringify(null) // Convert null to JSON string
+        new_status: newStatus
       });
 
-      if (error) {
-        console.error('DeliveryCard RPC error:', error);
-        throw new Error(`Failed to update order status: ${error.message}`);
-      }
+      if (error) throw error;
 
       toast({
         title: "Status Updated",
@@ -99,10 +93,9 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
 
       onStatusUpdate();
     } catch (error: any) {
-      console.error('DeliveryCard status update error:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update order status",
+        description: error.message,
         variant: "destructive",
       });
     } finally {

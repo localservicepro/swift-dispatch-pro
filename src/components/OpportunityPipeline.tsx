@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,8 +13,7 @@ import { useOpportunityData } from "./opportunity/useOpportunityData";
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { OpportunityCard } from "./opportunity/OpportunityCard";
 import { useAuth } from "./auth/AuthProvider";
-import { Database } from "@/integrations/supabase/types";
-
+import { activityLogger } from "@/utils/activityLogger";
 const PIPELINE_STAGES = [{
   id: 'requested',
   title: 'Order Requested',
@@ -42,9 +40,6 @@ const PIPELINE_STAGES = [{
   color: 'bg-green-100 border-green-300',
   textColor: 'text-green-700'
 }];
-
-type OrderStatus = Database['public']['Enums']['order_status'];
-
 export function OpportunityPipeline() {
   const [searchQuery, setSearchQuery] = useState("");
   const [customerFilter, setCustomerFilter] = useState<string>("all");
@@ -172,17 +167,20 @@ export function OpportunityPipeline() {
       setDraggedOrder(order);
     }
   };
-
   const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
+    const {
+      active,
+      over
+    } = event;
     setActiveId(null);
     setDraggedOrder(null);
-    
     if (!over || !active.data.current) {
       return;
     }
-    
-    const { order, currentStage } = active.data.current;
+    const {
+      order,
+      currentStage
+    } = active.data.current;
     const newStage = over.id as string;
 
     // If dropping in the same stage, do nothing
@@ -214,49 +212,57 @@ export function OpportunityPipeline() {
       });
       return;
     }
-
     try {
-      console.log(`Updating order ${order.order_number} from ${currentStage} to ${newStage}`);
-      
-      // Properly cast the status and handle parameters
-      const statusUpdate: OrderStatus = newStage as OrderStatus;
-      
-      const { error } = await supabase.rpc('update_order_status', {
-        order_id: order.id,
-        new_status: statusUpdate,
-        notes: `Status updated via pipeline from ${currentStage} to ${newStage}`,
-        location: JSON.stringify(null) // Convert null to JSON string
-      });
-
-      if (error) {
-        console.error('Pipeline RPC error:', error);
-        throw new Error(`Failed to update order status: ${error.message}`);
+      let updateData: any = {};
+      switch (newStage) {
+        case 'preparing':
+          updateData = {
+            payment_status: 'paid',
+            status: 'preparing'
+          };
+          break;
+        case 'loading':
+          updateData = {
+            status: 'loading'
+          };
+          break;
+        case 'en_route':
+          updateData = {
+            status: 'en_route'
+          };
+          break;
+        case 'delivered':
+          updateData = {
+            status: 'delivered'
+          };
+          break;
+        default:
+          updateData = {
+            status: newStage
+          };
       }
+      const {
+        error
+      } = await supabase.from('orders').update({
+        ...updateData,
+        updated_at: new Date().toISOString()
+      }).eq('id', order.id);
+      if (error) throw error;
 
-      // Update payment status if moving to preparing stage
-      if (newStage === 'preparing' && order.payment_status !== 'paid') {
-        const { error: paymentError } = await supabase
-          .from('orders')
-          .update({ payment_status: 'paid' })
-          .eq('id', order.id);
-
-        if (paymentError) {
-          console.error('Payment status update error:', paymentError);
-        }
+      // Log the activity
+      if (profile?.full_name) {
+        await activityLogger.orderStatusUpdate(order.id, order.order_number, order.customer_name, currentStage, newStage, profile.full_name);
       }
-
       toast({
-        title: "Order Updated",
-        description: `Order ${order.order_number} moved to ${PIPELINE_STAGES.find(s => s.id === newStage)?.title}`,
+        title: "Order Moved",
+        description: `Order ${order.order_number} moved to ${PIPELINE_STAGES.find(s => s.id === newStage)?.title}`
       });
-
       refetch();
     } catch (error: any) {
-      console.error('Pipeline drag update error:', error);
       toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update order status. Please try again.",
-        variant: "destructive",
+        title: "Error",
+        description: "Failed to move order",
+        variant: "destructive"
       });
     }
   };
@@ -279,7 +285,6 @@ export function OpportunityPipeline() {
       mainScrollElement.removeEventListener('scroll', handleMainScroll);
     };
   }, [isLoading]);
-
   if (error) {
     return <div className="space-y-6">
         <div className="flex items-center justify-between">
