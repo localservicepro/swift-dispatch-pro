@@ -289,7 +289,7 @@ export function OpportunityPipeline() {
     return <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-slate-800">Opportunity Pipeline</h2>
+            <h2 className="text-3xl font-bold text-slate-800">Jobs Management</h2>
             <p className="text-slate-600 mt-1">Track orders through your sales pipeline</p>
           </div>
         </div>
@@ -304,13 +304,14 @@ export function OpportunityPipeline() {
         </Card>
       </div>;
   }
+
   return <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-bold text-slate-800 flex items-center gap-2 text-base">
               <BarChart3 className="w-8 h-8" />
-              Opportunity Pipeline
+              Jobs Management
             </h2>
             <p className="text-slate-600 mt-1">Track orders through your sales pipeline • Drag to move orders • Real-time updates enabled</p>
           </div>
