@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
@@ -86,6 +87,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         deliveryFee,
       };
 
+      console.log('Creating split order with data:', splitOrderData);
+
       const result = await orderCreationService.createSplitOrder(splitOrderData);
 
       toast({
@@ -131,6 +134,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         payment_method: paymentMethod,
       };
 
+      console.log('Creating single order with data:', orderData);
+
       const result = await orderCreationService.createOrder(orderData);
 
       toast({
@@ -157,6 +162,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         await handleCreateSingleOrder();
       }
     } catch (error: any) {
+      console.error("Order creation error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to create order",
@@ -253,9 +259,12 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           specialInstructions={orderType === "single" ? specialInstructions : `Split order with ${splits.length} parts`}
           paymentMethod={paymentMethod}
           selectedTruck={orderType === "single" ? selectedTruck : null}
+          orderType={orderType}
+          splits={splits}
           onBack={prevStep}
           onConfirm={handleCreateOrder}
           isCreating={isCreating}
+          onSpecialInstructionsChange={orderType === "single" ? setSpecialInstructions : undefined}
         />
       )}
     </div>

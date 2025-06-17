@@ -68,11 +68,34 @@ export const orderCreationService = {
   async createSplitOrder(splitOrderData: SplitOrderData): Promise<OrderWithItems[]> {
     const { customer_id, customer_name, customer_address, payment_method, splits, adjustments, deliveryFee } = splitOrderData;
 
-    // Calculate total amount across all splits
+    console.log('Creating split order with data:', splitOrderData);
+
+    // Get product details for all splits to calculate totals properly
+    const allProductIds = splits.flatMap(split => split.products.map(p => p.productId));
+    const uniqueProductIds = [...new Set(allProductIds)];
+    
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('id, name, price')
+      .in('id', uniqueProductIds);
+
+    if (productsError) {
+      console.error('Failed to fetch products:', productsError);
+      throw new Error(`Failed to fetch products: ${productsError.message}`);
+    }
+
+    if (!products || products.length === 0) {
+      throw new Error('No products found for split order');
+    }
+
+    // Calculate total amount across all splits using actual product prices
     const totalAmount = splits.reduce((total, split) => {
       const splitTotal = split.products.reduce((splitSum, product) => {
-        // We'll need to get product price - for now using a placeholder
-        return splitSum + (product.quantity * 10); // TODO: Get actual product prices
+        const productData = products.find(p => p.id === product.productId);
+        if (!productData) {
+          throw new Error(`Product not found: ${product.productId}`);
+        }
+        return splitSum + (product.quantity * productData.price);
       }, 0);
       return total + splitTotal;
     }, 0) + adjustments + deliveryFee;
@@ -92,12 +115,17 @@ export const orderCreationService = {
         total_amount: totalAmount,
         payment_status: 'pending',
         status: 'requested' as OrderStatus,
-        notes: `Split order with ${splits.length} parts`,
+        special_instructions: `Split order with ${splits.length} parts`,
         products: JSON.stringify([]),
         is_split_order: true,
         payment_method,
+        subtotal: totalAmount - adjustments - deliveryFee,
+        adjustments,
+        delivery_fee: deliveryFee,
         created_at: new Date().toISOString(),
       };
+
+      console.log('Creating master order:', masterOrderData);
 
       const { data: masterOrder, error: masterError } = await supabase
         .from('orders')
@@ -106,8 +134,11 @@ export const orderCreationService = {
         .single();
 
       if (masterError) {
+        console.error('Failed to create master order:', masterError);
         throw new Error(`Failed to create master order: ${masterError.message}`);
       }
+
+      console.log('Master order created successfully:', masterOrder);
 
       // Create individual split orders
       const splitOrders: OrderWithItems[] = [];
@@ -117,20 +148,11 @@ export const orderCreationService = {
         const splitOrderId = uuidv4();
         const splitOrderNumber = `${masterOrderNumber}-${i + 1}`;
 
-        // Get product details for this split
-        const productIds = split.products.map(p => p.productId);
-        const { data: products, error: productsError } = await supabase
-          .from('products')
-          .select('id, name, price')
-          .in('id', productIds);
+        console.log(`Creating split ${i + 1}:`, split);
 
-        if (productsError) {
-          throw new Error(`Failed to fetch products: ${productsError.message}`);
-        }
-
-        // Calculate split total
+        // Calculate split total using actual product prices
         const splitItems = split.products.map(splitProduct => {
-          const product = products?.find(p => p.id === splitProduct.productId);
+          const product = products.find(p => p.id === splitProduct.productId);
           if (!product) {
             throw new Error(`Product not found: ${splitProduct.productId}`);
           }
@@ -145,7 +167,7 @@ export const orderCreationService = {
         const splitTotal = splitItems.reduce((sum, item) => sum + item.total, 0);
         
         // Proportionally distribute adjustments and delivery fee
-        const splitAdjustments = (adjustments * splitTotal) / (totalAmount - adjustments - deliveryFee);
+        const splitAdjustments = totalAmount > 0 ? (adjustments * splitTotal) / (totalAmount - adjustments - deliveryFee) : 0;
         const splitDeliveryFee = i === 0 ? deliveryFee : 0; // Only charge delivery fee for first split
 
         const splitOrderData = {
@@ -159,7 +181,7 @@ export const orderCreationService = {
           total_amount: splitTotal + splitAdjustments + splitDeliveryFee,
           payment_status: 'pending',
           status: 'requested' as OrderStatus,
-          notes: split.specialInstructions || `Split ${i + 1} of ${splits.length}`,
+          special_instructions: split.specialInstructions || `Split ${i + 1} of ${splits.length}`,
           products: JSON.stringify(splitItems),
           is_split_order: true,
           master_order_id: masterOrderId,
@@ -167,11 +189,14 @@ export const orderCreationService = {
           truck_type: split.truckType,
           truck_id: split.truckId,
           driver_id: split.driverId || null,
+          subtotal: splitTotal,
           adjustments: splitAdjustments,
           delivery_fee: splitDeliveryFee,
           payment_method,
           created_at: new Date().toISOString(),
         };
+
+        console.log(`Creating split order ${i + 1}:`, splitOrderData);
 
         const { data: splitOrder, error: splitError } = await supabase
           .from('orders')
@@ -180,8 +205,11 @@ export const orderCreationService = {
           .single();
 
         if (splitError) {
+          console.error(`Failed to create split order ${i + 1}:`, splitError);
           throw new Error(`Failed to create split order ${i + 1}: ${splitError.message}`);
         }
+
+        console.log(`Split order ${i + 1} created successfully:`, splitOrder);
 
         // Create order items for this split
         const orderItems = await this.createOrderItems(splitOrderId, splitItems);
@@ -205,6 +233,7 @@ export const orderCreationService = {
         // Don't fail the order creation if GHL sync fails
       }
 
+      console.log('Split order creation completed successfully:', splitOrders);
       return splitOrders;
     } catch (error) {
       console.error("Error creating split order:", error);

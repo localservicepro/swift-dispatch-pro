@@ -2,9 +2,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, User, Package, Truck, Calendar, MapPin, FileText, DollarSign, CreditCard } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { CheckCircle, User, Package, Truck, Calendar, MapPin, FileText, DollarSign, CreditCard, Edit3 } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { getTruckInfo } from "@/utils/truckUtils";
+import { useState } from "react";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
 
@@ -56,6 +59,21 @@ interface Truck {
   next_maintenance_due: string | null;
 }
 
+interface Split {
+  id: string;
+  name: string;
+  products: Array<{
+    productId: string;
+    quantity: number;
+  }>;
+  truckType: TruckType;
+  truckId: string;
+  driverId: string;
+  deliveryDate: string;
+  deliveryTime: string;
+  specialInstructions: string;
+}
+
 interface OrderReviewStepProps {
   customer: Customer;
   cart: CartItem[];
@@ -69,9 +87,12 @@ interface OrderReviewStepProps {
   specialInstructions: string;
   paymentMethod: string;
   selectedTruck?: Truck | null;
+  orderType?: string;
+  splits?: Split[];
   onBack: () => void;
   onConfirm: () => void;
   isCreating: boolean;
+  onSpecialInstructionsChange?: (instructions: string) => void;
 }
 
 export function OrderReviewStep({
@@ -87,10 +108,16 @@ export function OrderReviewStep({
   specialInstructions,
   paymentMethod,
   selectedTruck,
+  orderType = "single",
+  splits = [],
   onBack,
   onConfirm,
-  isCreating
+  isCreating,
+  onSpecialInstructionsChange
 }: OrderReviewStepProps) {
+  const [isEditingInstructions, setIsEditingInstructions] = useState(false);
+  const [tempInstructions, setTempInstructions] = useState(specialInstructions);
+
   const total = subtotal + adjustments + deliveryFee;
   const truckInfo = getTruckInfo(truckType);
 
@@ -106,12 +133,24 @@ export function OrderReviewStep({
 
   const paymentMethodInfo = getPaymentMethodDisplay(paymentMethod);
 
+  const handleSaveInstructions = () => {
+    if (onSpecialInstructionsChange) {
+      onSpecialInstructionsChange(tempInstructions);
+    }
+    setIsEditingInstructions(false);
+  };
+
+  const handleCancelEdit = () => {
+    setTempInstructions(specialInstructions);
+    setIsEditingInstructions(false);
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CheckCircle className="w-5 h-5" />
-          Step 5: Create Order
+          {orderType === "split" ? "Step 6: Review Split Order" : "Step 5: Create Order"}
         </CardTitle>
         <p className="text-sm text-gray-600">
           Review the order details below. Once created, the order will enter the pipeline as "requested" and await confirmation.
@@ -171,78 +210,142 @@ export function OrderReviewStep({
           )}
         </div>
 
-        {/* Delivery Information */}
-        <div className="border rounded-lg p-4">
-          <h3 className="font-medium flex items-center gap-2 mb-3">
-            <Calendar className="w-4 h-4" />
-            Delivery Information
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <strong>Date:</strong> {new Date(deliveryDate).toLocaleDateString()}
-            </div>
-            <div>
-              <strong>Time:</strong> {deliveryTime}
-            </div>
-            <div>
-              <strong>Driver:</strong> {driverName || 'Not assigned'}
+        {/* Delivery Information - Split vs Single */}
+        {orderType === "split" ? (
+          <div className="border rounded-lg p-4">
+            <h3 className="font-medium flex items-center gap-2 mb-3">
+              <Calendar className="w-4 h-4" />
+              Split Order Delivery Details
+            </h3>
+            <div className="space-y-4">
+              {splits.map((split, index) => (
+                <div key={split.id} className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">{split.name}</h4>
+                    <Badge variant="outline">{split.products.length} items</Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><strong>Date:</strong> {new Date(split.deliveryDate).toLocaleDateString()}</div>
+                    <div><strong>Time:</strong> {split.deliveryTime}</div>
+                    <div><strong>Truck Type:</strong> {getTruckInfo(split.truckType)?.label}</div>
+                    <div><strong>Truck ID:</strong> {split.truckId || 'Not assigned'}</div>
+                  </div>
+                  {split.specialInstructions && (
+                    <div className="mt-2 text-sm">
+                      <strong>Instructions:</strong> {split.specialInstructions}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="border rounded-lg p-4">
+            <h3 className="font-medium flex items-center gap-2 mb-3">
+              <Calendar className="w-4 h-4" />
+              Delivery Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <strong>Date:</strong> {new Date(deliveryDate).toLocaleDateString()}
+              </div>
+              <div>
+                <strong>Time:</strong> {deliveryTime}
+              </div>
+              <div>
+                <strong>Driver:</strong> {driverName || 'Not assigned'}
+              </div>
+            </div>
+          </div>
+        )}
 
-        {/* Truck Information */}
-        <div className="border rounded-lg p-4">
-          <h3 className="font-medium flex items-center gap-2 mb-3">
-            <Truck className="w-4 h-4" />
-            Truck Assignment
-          </h3>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              {truckInfo && (
-                <div className={`p-2 rounded-lg ${truckInfo.bgClass}`}>
-                  <truckInfo.icon className={`w-5 h-5 ${truckInfo.colorClass}`} />
+        {/* Truck Information - Split vs Single */}
+        {orderType === "single" && (
+          <div className="border rounded-lg p-4">
+            <h3 className="font-medium flex items-center gap-2 mb-3">
+              <Truck className="w-4 h-4" />
+              Truck Assignment
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                {truckInfo && (
+                  <div className={`p-2 rounded-lg ${truckInfo.bgClass}`}>
+                    <truckInfo.icon className={`w-5 h-5 ${truckInfo.colorClass}`} />
+                  </div>
+                )}
+                <div>
+                  <div className="font-medium">{truckInfo?.label}</div>
+                  <div className="text-sm text-gray-600">{truckInfo?.capacity}</div>
+                </div>
+              </div>
+              
+              {selectedTruck && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold text-blue-900">
+                      {selectedTruck.registration_number}
+                    </div>
+                    <Badge className="bg-green-100 text-green-800">
+                      {selectedTruck.status.replace('_', ' ').toUpperCase()}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-blue-700 space-y-1">
+                    {selectedTruck.capacity_tons && (
+                      <div>Capacity: {selectedTruck.capacity_tons} tons</div>
+                    )}
+                    {selectedTruck.fuel_type && (
+                      <div>Fuel Type: {selectedTruck.fuel_type}</div>
+                    )}
+                    {selectedTruck.year_manufactured && (
+                      <div>Year: {selectedTruck.year_manufactured}</div>
+                    )}
+                  </div>
                 </div>
               )}
-              <div>
-                <div className="font-medium">{truckInfo?.label}</div>
-                <div className="text-sm text-gray-600">{truckInfo?.capacity}</div>
-              </div>
             </div>
-            
-            {selectedTruck && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="font-semibold text-blue-900">
-                    {selectedTruck.registration_number}
-                  </div>
-                  <Badge className="bg-green-100 text-green-800">
-                    {selectedTruck.status.replace('_', ' ').toUpperCase()}
-                  </Badge>
-                </div>
-                <div className="text-sm text-blue-700 space-y-1">
-                  {selectedTruck.capacity_tons && (
-                    <div>Capacity: {selectedTruck.capacity_tons} tons</div>
-                  )}
-                  {selectedTruck.fuel_type && (
-                    <div>Fuel Type: {selectedTruck.fuel_type}</div>
-                  )}
-                  {selectedTruck.year_manufactured && (
-                    <div>Year: {selectedTruck.year_manufactured}</div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
-        </div>
+        )}
 
-        {/* Special Instructions */}
-        {specialInstructions && (
+        {/* Special Instructions - Editable */}
+        {(specialInstructions || orderType === "single") && (
           <div className="border rounded-lg p-4">
             <h3 className="font-medium flex items-center gap-2 mb-3">
               <FileText className="w-4 h-4" />
               Special Instructions
+              {orderType === "single" && onSpecialInstructionsChange && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditingInstructions(!isEditingInstructions)}
+                  className="ml-auto h-6 px-2"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  Edit
+                </Button>
+              )}
             </h3>
-            <p className="text-sm text-gray-700">{specialInstructions}</p>
+            {isEditingInstructions ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={tempInstructions}
+                  onChange={(e) => setTempInstructions(e.target.value)}
+                  placeholder="Enter special delivery instructions..."
+                  rows={3}
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSaveInstructions}>
+                    Save
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-700">
+                {specialInstructions || 'No special instructions'}
+              </p>
+            )}
           </div>
         )}
 
@@ -281,7 +384,10 @@ export function OrderReviewStep({
             <div>
               <h4 className="font-medium text-blue-900 mb-1">Order Status</h4>
               <p className="text-sm text-blue-700">
-                This order will be created with "requested" status and will appear in the opportunity pipeline. 
+                {orderType === "split" 
+                  ? `This split order with ${splits.length} parts will be created with "requested" status and will appear in the opportunity pipeline.`
+                  : "This order will be created with \"requested\" status and will appear in the opportunity pipeline."
+                }
                 {paymentMethod === 'account' 
                   ? ' It will be added to the monthly billing cycle for this account customer.'
                   : paymentMethod === '7_day_invoice'
@@ -302,7 +408,7 @@ export function OrderReviewStep({
             disabled={isCreating}
             className="ml-auto"
           >
-            {isCreating ? "Creating Order..." : "Create Order"}
+            {isCreating ? "Creating Order..." : `Create ${orderType === "split" ? "Split " : ""}Order`}
           </Button>
         </div>
       </CardContent>
