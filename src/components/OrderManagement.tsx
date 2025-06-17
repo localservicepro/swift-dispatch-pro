@@ -12,7 +12,6 @@ import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Filter, X, MapPin, Truck, FileText } from "lucide-react";
 import { emailService } from "@/utils/emailService";
-import { activityLogger } from "@/utils/activityLogger";
 import { useAuth } from "./auth/AuthProvider";
 import { getTruckInfo } from "@/utils/truckUtils";
 
@@ -319,7 +318,7 @@ export function OrderManagement() {
     return 'Products listed';
   };
 
-  // Quick status update function for admin with activity logging
+  // Quick status update function for admin without activity logging
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
     try {
       const oldStatus = currentOrder.status;
@@ -333,27 +332,6 @@ export function OrderManagement() {
         .eq('id', orderId);
 
       if (error) throw error;
-
-      // Log the activity
-      if (profile?.full_name) {
-        if (newStatus === 'cancelled') {
-          await activityLogger.orderCancel(
-            orderId,
-            currentOrder.order_number,
-            currentOrder.customer_name,
-            profile.full_name
-          );
-        } else {
-          await activityLogger.orderStatusUpdate(
-            orderId,
-            currentOrder.order_number,
-            currentOrder.customer_name,
-            oldStatus,
-            newStatus,
-            profile.full_name
-          );
-        }
-      }
 
       toast({
         title: "Status Updated",

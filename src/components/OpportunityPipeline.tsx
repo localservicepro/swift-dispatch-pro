@@ -13,7 +13,7 @@ import { useOpportunityData } from "./opportunity/useOpportunityData";
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { OpportunityCard } from "./opportunity/OpportunityCard";
 import { useAuth } from "./auth/AuthProvider";
-import { activityLogger } from "@/utils/activityLogger";
+
 const PIPELINE_STAGES = [{
   id: 'requested',
   title: 'Order Requested',
@@ -40,6 +40,7 @@ const PIPELINE_STAGES = [{
   color: 'bg-green-100 border-green-300',
   textColor: 'text-green-700'
 }];
+
 export function OpportunityPipeline() {
   const [searchQuery, setSearchQuery] = useState("");
   const [customerFilter, setCustomerFilter] = useState<string>("all");
@@ -250,9 +251,6 @@ export function OpportunityPipeline() {
       if (error) throw error;
 
       // Log the activity
-      if (profile?.full_name) {
-        await activityLogger.orderStatusUpdate(order.id, order.order_number, order.customer_name, currentStage, newStage, profile.full_name);
-      }
       toast({
         title: "Order Moved",
         description: `Order ${order.order_number} moved to ${PIPELINE_STAGES.find(s => s.id === newStage)?.title}`
