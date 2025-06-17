@@ -124,9 +124,11 @@ export type Database = {
           email: string
           first_name: string
           full_address: string
+          ghl_contact_id: string | null
           id: string
           is_active: boolean
           last_name: string
+          last_synced_to_ghl: string | null
           phone: string | null
           sms_notifications_enabled: boolean
           sms_opt_out_date: string | null
@@ -142,9 +144,11 @@ export type Database = {
           email: string
           first_name: string
           full_address: string
+          ghl_contact_id?: string | null
           id?: string
           is_active?: boolean
           last_name: string
+          last_synced_to_ghl?: string | null
           phone?: string | null
           sms_notifications_enabled?: boolean
           sms_opt_out_date?: string | null
@@ -160,9 +164,11 @@ export type Database = {
           email?: string
           first_name?: string
           full_address?: string
+          ghl_contact_id?: string | null
           id?: string
           is_active?: boolean
           last_name?: string
+          last_synced_to_ghl?: string | null
           phone?: string | null
           sms_notifications_enabled?: boolean
           sms_opt_out_date?: string | null
@@ -474,6 +480,105 @@ export type Database = {
         }
         Relationships: []
       }
+      ghl_settings: {
+        Row: {
+          api_key: string | null
+          auto_sync_customers: boolean
+          auto_sync_orders: boolean
+          connection_status: string
+          created_at: string
+          customer_field_mappings: Json | null
+          ghl_pipeline_id: string | null
+          id: string
+          last_tested_at: string | null
+          location_id: string | null
+          order_field_mappings: Json | null
+          stage_mappings: Json | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          auto_sync_customers?: boolean
+          auto_sync_orders?: boolean
+          connection_status?: string
+          created_at?: string
+          customer_field_mappings?: Json | null
+          ghl_pipeline_id?: string | null
+          id?: string
+          last_tested_at?: string | null
+          location_id?: string | null
+          order_field_mappings?: Json | null
+          stage_mappings?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          auto_sync_customers?: boolean
+          auto_sync_orders?: boolean
+          connection_status?: string
+          created_at?: string
+          customer_field_mappings?: Json | null
+          ghl_pipeline_id?: string | null
+          id?: string
+          last_tested_at?: string | null
+          location_id?: string | null
+          order_field_mappings?: Json | null
+          stage_mappings?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ghl_sync_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          ghl_contact_id: string | null
+          ghl_opportunity_id: string | null
+          id: string
+          local_record_id: string
+          operation: string
+          request_payload: Json | null
+          response_payload: Json | null
+          retry_count: number | null
+          status: string
+          sync_type: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          ghl_contact_id?: string | null
+          ghl_opportunity_id?: string | null
+          id?: string
+          local_record_id: string
+          operation: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          retry_count?: number | null
+          status?: string
+          sync_type: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          ghl_contact_id?: string | null
+          ghl_opportunity_id?: string | null
+          id?: string
+          local_record_id?: string
+          operation?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          retry_count?: number | null
+          status?: string
+          sync_type?: string
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           amount: number
@@ -588,8 +693,10 @@ export type Database = {
           delivery_fee: number | null
           delivery_time: string | null
           driver_id: string | null
+          ghl_opportunity_id: string | null
           id: string
           is_split_order: boolean | null
+          last_synced_to_ghl: string | null
           master_order_id: string | null
           order_number: string
           payment_date: string | null
@@ -617,8 +724,10 @@ export type Database = {
           delivery_fee?: number | null
           delivery_time?: string | null
           driver_id?: string | null
+          ghl_opportunity_id?: string | null
           id?: string
           is_split_order?: boolean | null
+          last_synced_to_ghl?: string | null
           master_order_id?: string | null
           order_number: string
           payment_date?: string | null
@@ -646,8 +755,10 @@ export type Database = {
           delivery_fee?: number | null
           delivery_time?: string | null
           driver_id?: string | null
+          ghl_opportunity_id?: string | null
           id?: string
           is_split_order?: boolean | null
+          last_synced_to_ghl?: string | null
           master_order_id?: string | null
           order_number?: string
           payment_date?: string | null
