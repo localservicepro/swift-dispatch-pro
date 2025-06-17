@@ -158,6 +158,7 @@ export function ProductEditSection({
               Products & Quantities
             </span>
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={() => setShowSearch(!showSearch)}
@@ -185,6 +186,7 @@ export function ProductEditSection({
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
                         <Button
+                          type="button"
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
@@ -194,6 +196,7 @@ export function ProductEditSection({
                         </Button>
                         <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
                         <Button
+                          type="button"
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
@@ -204,6 +207,7 @@ export function ProductEditSection({
                       </div>
                       <div className="font-medium text-sm w-16 text-right">${(item.price * item.quantity).toFixed(2)}</div>
                       <Button
+                        type="button"
                         size="sm"
                         variant="ghost"
                         className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
@@ -279,6 +283,7 @@ export function ProductEditSection({
                       {getCartQuantity(product.id) > 0 ? (
                         <div className="flex items-center gap-2">
                           <Button
+                            type="button"
                             size="sm"
                             variant="outline"
                             onClick={() => updateQuantity(product.id, getCartQuantity(product.id) - 1)}
@@ -287,6 +292,7 @@ export function ProductEditSection({
                           </Button>
                           <span className="font-medium">{getCartQuantity(product.id)}</span>
                           <Button
+                            type="button"
                             size="sm"
                             variant="outline"
                             onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + 1)}
@@ -295,7 +301,7 @@ export function ProductEditSection({
                           </Button>
                         </div>
                       ) : (
-                        <Button size="sm" onClick={() => addToCart(product)}>
+                        <Button type="button" size="sm" onClick={() => addToCart(product)}>
                           Add
                         </Button>
                       )}
