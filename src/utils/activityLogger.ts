@@ -11,35 +11,6 @@ interface LogActivityParams {
   description: string;
 }
 
-// Completely safe JSON sanitizer that removes all problematic data
-const createSafeJsonData = (data: any): any => {
-  if (!data) return null;
-  
-  try {
-    // Convert to string first, then parse to ensure clean JSON
-    const stringified = JSON.stringify(data, (key, value) => {
-      // Remove any functions, undefined values, or circular references
-      if (typeof value === 'function' || value === undefined) {
-        return null;
-      }
-      // Convert all values to simple strings or numbers
-      if (typeof value === 'object' && value !== null) {
-        return String(value);
-      }
-      if (typeof value === 'string') {
-        // Remove any control characters and non-printable characters
-        return value.replace(/[\u0000-\u001F\u007F-\u009F\u2000-\u200F\uFEFF]/g, '').trim();
-      }
-      return value;
-    });
-    
-    return JSON.parse(stringified);
-  } catch (error) {
-    console.warn('Failed to create safe JSON data:', error);
-    return null;
-  }
-};
-
 export const logActivity = async ({
   actionType,
   targetType,
@@ -52,194 +23,108 @@ export const logActivity = async ({
   try {
     console.log('Logging activity:', { actionType, targetType, description });
     
-    // Create completely safe, minimal data structures
-    const safeTargetDetails = targetDetails ? {
-      order_number: String(targetDetails.order_number || '').slice(0, 50),
-      customer_name: String(targetDetails.customer_name || '').slice(0, 100)
-    } : null;
-    
-    const safeOldValues = oldValues ? {
-      status: String(oldValues.status || '').slice(0, 50)
-    } : null;
-    
-    const safeNewValues = newValues ? {
-      status: String(newValues.status || '').slice(0, 50)
-    } : null;
-    
-    const safeDescription = String(description || '').slice(0, 500);
-    
-    // Double-check by creating safe JSON
-    const finalTargetDetails = createSafeJsonData(safeTargetDetails);
-    const finalOldValues = createSafeJsonData(safeOldValues);
-    const finalNewValues = createSafeJsonData(safeNewValues);
-    
     const { data, error } = await supabase.rpc('log_admin_activity', {
       p_action_type: actionType,
       p_target_type: targetType,
       p_target_id: targetId || null,
-      p_target_details: finalTargetDetails,
-      p_old_values: finalOldValues,
-      p_new_values: finalNewValues,
-      p_description: safeDescription
+      p_target_details: targetDetails || null,
+      p_old_values: oldValues || null,
+      p_new_values: newValues || null,
+      p_description: description
     });
 
     if (error) {
       console.error('Error logging activity:', error);
-      return null;
+      throw error;
     }
 
     console.log('Activity logged successfully:', data);
     return data;
   } catch (error) {
     console.error('Failed to log activity:', error);
-    return null;
+    // Don't throw error to avoid breaking main functionality
   }
 };
 
-// Simplified helper functions that only pass essential data
+// Helper functions for common activities
 export const activityLogger = {
-  orderStatusUpdate: (orderId: string, orderNumber: string, customerName: string, oldStatus: string, newStatus: string, adminName: string) => {
-    // Create completely safe strings
-    const safeOrderNumber = String(orderNumber || 'Unknown').replace(/[^\w\s-]/g, '').slice(0, 50);
-    const safeCustomerName = String(customerName || 'Unknown Customer').replace(/[^\w\s-]/g, '').slice(0, 100);
-    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
-    const safeOldStatus = String(oldStatus || '').replace(/[^\w\s-]/g, '').slice(0, 50);
-    const safeNewStatus = String(newStatus || '').replace(/[^\w\s-]/g, '').slice(0, 50);
-    
-    return logActivity({
+  orderStatusUpdate: (orderId: string, orderNumber: string, customerName: string, oldStatus: string, newStatus: string, adminName: string) =>
+    logActivity({
       actionType: 'status_update',
       targetType: 'order',
       targetId: orderId,
-      targetDetails: { 
-        order_number: safeOrderNumber, 
-        customer_name: safeCustomerName 
-      },
-      oldValues: { status: safeOldStatus },
-      newValues: { status: safeNewStatus },
-      description: `${safeAdminName} updated order ${safeOrderNumber} status from ${safeOldStatus} to ${safeNewStatus}`
-    });
-  },
+      targetDetails: { order_number: orderNumber, customer_name: customerName },
+      oldValues: { status: oldStatus },
+      newValues: { status: newStatus },
+      description: `${adminName} updated order ${orderNumber} status from ${oldStatus} to ${newStatus}`
+    }),
 
-  orderCancel: (orderId: string, orderNumber: string, customerName: string, adminName: string) => {
-    const safeOrderNumber = String(orderNumber || 'Unknown').replace(/[^\w\s-]/g, '').slice(0, 50);
-    const safeCustomerName = String(customerName || 'Unknown Customer').replace(/[^\w\s-]/g, '').slice(0, 100);
-    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
-    
-    return logActivity({
+  orderCancel: (orderId: string, orderNumber: string, customerName: string, adminName: string) =>
+    logActivity({
       actionType: 'order_cancel',
       targetType: 'order',
       targetId: orderId,
-      targetDetails: { 
-        order_number: safeOrderNumber, 
-        customer_name: safeCustomerName 
-      },
-      description: `${safeAdminName} cancelled order ${safeOrderNumber} for ${safeCustomerName}`
-    });
-  },
+      targetDetails: { order_number: orderNumber, customer_name: customerName },
+      description: `${adminName} cancelled order ${orderNumber} for ${customerName}`
+    }),
 
-  orderCreate: (orderId: string, orderNumber: string, customerName: string, totalAmount: number, adminName: string) => {
-    const safeOrderNumber = String(orderNumber || 'Unknown').replace(/[^\w\s-]/g, '').slice(0, 50);
-    const safeCustomerName = String(customerName || 'Unknown Customer').replace(/[^\w\s-]/g, '').slice(0, 100);
-    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
-    const safeTotalAmount = Number(totalAmount) || 0;
-    
-    return logActivity({
+  orderCreate: (orderId: string, orderNumber: string, customerName: string, totalAmount: number, adminName: string) =>
+    logActivity({
       actionType: 'order_create',
       targetType: 'order',
       targetId: orderId,
-      targetDetails: { 
-        order_number: safeOrderNumber, 
-        customer_name: safeCustomerName,
-        total_amount: safeTotalAmount
-      },
-      description: `${safeAdminName} created order ${safeOrderNumber} for ${safeCustomerName} ($${safeTotalAmount})`
-    });
-  },
+      targetDetails: { order_number: orderNumber, customer_name: customerName, total_amount: totalAmount },
+      description: `${adminName} created order ${orderNumber} for ${customerName} ($${totalAmount})`
+    }),
 
-  orderEdit: (orderId: string, orderNumber: string, customerName: string, changes: any, adminName: string) => {
-    const safeOrderNumber = String(orderNumber || 'Unknown').replace(/[^\w\s-]/g, '').slice(0, 50);
-    const safeCustomerName = String(customerName || 'Unknown Customer').replace(/[^\w\s-]/g, '').slice(0, 100);
-    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
-    
-    return logActivity({
+  orderEdit: (orderId: string, orderNumber: string, customerName: string, changes: any, adminName: string) =>
+    logActivity({
       actionType: 'order_edit',
       targetType: 'order',
       targetId: orderId,
-      targetDetails: { 
-        order_number: safeOrderNumber, 
-        customer_name: safeCustomerName 
-      },
-      oldValues: changes?.oldValues ? { summary: 'Order details changed' } : null,
-      newValues: changes?.newValues ? { summary: 'Order details updated' } : null,
-      description: `${safeAdminName} edited order ${safeOrderNumber} for ${safeCustomerName}`
-    });
-  },
+      targetDetails: { order_number: orderNumber, customer_name: customerName },
+      oldValues: changes.oldValues,
+      newValues: changes.newValues,
+      description: `${adminName} edited order ${orderNumber} for ${customerName}`
+    }),
 
-  invoiceSend: (invoiceId: string, orderNumber: string, customerEmail: string, amount: number, adminName: string) => {
-    const safeOrderNumber = String(orderNumber || 'Unknown').replace(/[^\w\s-]/g, '').slice(0, 50);
-    const safeCustomerEmail = String(customerEmail || '').replace(/[^\w\s@.-]/g, '').slice(0, 100);
-    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
-    const safeAmount = Number(amount) || 0;
-    
-    return logActivity({
+  invoiceSend: (invoiceId: string, orderNumber: string, customerEmail: string, amount: number, adminName: string) =>
+    logActivity({
       actionType: 'invoice_send',
       targetType: 'invoice',
       targetId: invoiceId,
-      targetDetails: { 
-        order_number: safeOrderNumber, 
-        customer_email: safeCustomerEmail,
-        amount: safeAmount
-      },
-      description: `${safeAdminName} sent invoice for order ${safeOrderNumber} to ${safeCustomerEmail} ($${safeAmount})`
-    });
-  },
+      targetDetails: { order_number: orderNumber, customer_email: customerEmail, amount },
+      description: `${adminName} sent invoice for order ${orderNumber} to ${customerEmail} ($${amount})`
+    }),
 
-  paymentUpdate: (orderId: string, orderNumber: string, oldStatus: string, newStatus: string, adminName: string) => {
-    const safeOrderNumber = String(orderNumber || 'Unknown').replace(/[^\w\s-]/g, '').slice(0, 50);
-    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
-    const safeOldStatus = String(oldStatus || '').replace(/[^\w\s-]/g, '').slice(0, 50);
-    const safeNewStatus = String(newStatus || '').replace(/[^\w\s-]/g, '').slice(0, 50);
-    
-    return logActivity({
+  paymentUpdate: (orderId: string, orderNumber: string, oldStatus: string, newStatus: string, adminName: string) =>
+    logActivity({
       actionType: 'payment_update',
       targetType: 'payment',
       targetId: orderId,
-      targetDetails: { order_number: safeOrderNumber },
-      oldValues: { payment_status: safeOldStatus },
-      newValues: { payment_status: safeNewStatus },
-      description: `${safeAdminName} updated payment status for order ${safeOrderNumber} from ${safeOldStatus} to ${safeNewStatus}`
-    });
-  },
+      targetDetails: { order_number: orderNumber },
+      oldValues: { payment_status: oldStatus },
+      newValues: { payment_status: newStatus },
+      description: `${adminName} updated payment status for order ${orderNumber} from ${oldStatus} to ${newStatus}`
+    }),
 
-  customerCreate: (customerId: string, customerName: string, customerEmail: string, adminName: string) => {
-    const safeCustomerName = String(customerName || 'Unknown Customer').replace(/[^\w\s-]/g, '').slice(0, 100);
-    const safeCustomerEmail = String(customerEmail || '').replace(/[^\w\s@.-]/g, '').slice(0, 100);
-    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
-    
-    return logActivity({
+  customerCreate: (customerId: string, customerName: string, customerEmail: string, adminName: string) =>
+    logActivity({
       actionType: 'customer_create',
       targetType: 'customer',
       targetId: customerId,
-      targetDetails: { 
-        customer_name: safeCustomerName, 
-        customer_email: safeCustomerEmail 
-      },
-      description: `${safeAdminName} created customer ${safeCustomerName} (${safeCustomerEmail})`
-    });
-  },
+      targetDetails: { customer_name: customerName, customer_email: customerEmail },
+      description: `${adminName} created customer ${customerName} (${customerEmail})`
+    }),
 
-  customerEdit: (customerId: string, customerName: string, changes: any, adminName: string) => {
-    const safeCustomerName = String(customerName || 'Unknown Customer').replace(/[^\w\s-]/g, '').slice(0, 100);
-    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
-    
-    return logActivity({
+  customerEdit: (customerId: string, customerName: string, changes: any, adminName: string) =>
+    logActivity({
       actionType: 'customer_edit',
       targetType: 'customer',
       targetId: customerId,
-      targetDetails: { customer_name: safeCustomerName },
-      oldValues: changes?.oldValues ? { summary: 'Customer details changed' } : null,
-      newValues: changes?.newValues ? { summary: 'Customer details updated' } : null,
-      description: `${safeAdminName} edited customer ${safeCustomerName}`
-    });
-  }
+      targetDetails: { customer_name: customerName },
+      oldValues: changes.oldValues,
+      newValues: changes.newValues,
+      description: `${adminName} edited customer ${customerName}`
+    })
 };
