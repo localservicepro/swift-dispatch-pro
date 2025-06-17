@@ -1,19 +1,17 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { Package, DollarSign, Calendar, Clock, ChevronDown, Weight, CreditCard } from "lucide-react";
 import { useState } from "react";
-
 interface OrderDetailsCardProps {
   order: any;
 }
-
-export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
+export function OrderDetailsCard({
+  order
+}: OrderDetailsCardProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const truckInfo = getTruckInfo(order.truck_type);
   const products = Array.isArray(order.products) ? order.products : [];
-
   const formatDeliveryDate = (date: string) => {
     if (!date) return 'Not scheduled';
     return new Date(date).toLocaleDateString('en-AU', {
@@ -22,7 +20,6 @@ export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
       month: 'short'
     });
   };
-
   const formatDeliveryTime = (time: string) => {
     if (!time) return '';
     return new Date(`2000-01-01T${time}`).toLocaleTimeString('en-AU', {
@@ -31,12 +28,9 @@ export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
       hour12: true
     });
   };
-
-  return (
-    <div className="space-y-3">
+  return <div className="space-y-3">
       {/* Truck Assignment */}
-      {truckInfo && (
-        <div className={`rounded-lg p-3 ${truckInfo.bgClass}`}>
+      {truckInfo && <div className={`rounded-lg p-3 ${truckInfo.bgClass}`}>
           <div className="flex items-center gap-2">
             <truckInfo.icon className={`w-5 h-5 ${truckInfo.colorClass}`} />
             <div>
@@ -48,8 +42,7 @@ export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* Delivery Schedule */}
       <div className="flex items-center justify-between text-sm">
@@ -58,12 +51,10 @@ export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
           <span className="font-medium">
             {formatDeliveryDate(order.delivery_date)}
           </span>
-          {order.delivery_time && (
-            <>
+          {order.delivery_time && <>
               <Clock className="w-4 h-4 text-slate-500 ml-2" />
               <span>{formatDeliveryTime(order.delivery_time)}</span>
-            </>
-          )}
+            </>}
         </div>
       </div>
 
@@ -98,25 +89,19 @@ export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
               <span>Items ({products.length})</span>
             </div>
             <div className="bg-slate-50 rounded-lg p-3 space-y-2">
-              {products.map((product: any, index: number) => (
-                <div key={index} className="flex justify-between text-sm">
+              {products.map((product: any, index: number) => <div key={index} className="flex justify-between text-sm">
                   <div>
                     <div className="font-medium">
                       {typeof product === 'string' ? product : product.name || 'Item'}
                     </div>
-                    {product.quantity && (
-                      <div className="text-slate-600">
+                    {product.quantity && <div className="text-slate-600">
                         Qty: {product.quantity}
-                      </div>
-                    )}
+                      </div>}
                   </div>
-                  {product.price && (
-                    <div className="text-slate-700">
+                  {product.price && <div className="text-slate-700">
                       ${product.price.toFixed(2)}
-                    </div>
-                  )}
-                </div>
-              ))}
+                    </div>}
+                </div>)}
             </div>
           </div>
 
@@ -127,26 +112,20 @@ export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
               <span>Cost Breakdown</span>
             </div>
             <div className="bg-slate-50 rounded-lg p-3 space-y-1 text-sm">
-              {order.subtotal > 0 && (
-                <div className="flex justify-between">
+              {order.subtotal > 0 && <div className="flex justify-between">
                   <span>Subtotal:</span>
                   <span>${order.subtotal.toFixed(2)}</span>
-                </div>
-              )}
-              {order.delivery_fee > 0 && (
-                <div className="flex justify-between">
+                </div>}
+              {order.delivery_fee > 0 && <div className="flex justify-between">
                   <span>Delivery Fee:</span>
                   <span>${order.delivery_fee.toFixed(2)}</span>
-                </div>
-              )}
-              {order.adjustments !== 0 && (
-                <div className="flex justify-between">
+                </div>}
+              {order.adjustments !== 0 && <div className="flex justify-between">
                   <span>Adjustments:</span>
                   <span className={order.adjustments > 0 ? 'text-green-600' : 'text-red-600'}>
                     ${order.adjustments.toFixed(2)}
                   </span>
-                </div>
-              )}
+                </div>}
               <div className="border-t pt-1 flex justify-between font-semibold">
                 <span>Total:</span>
                 <span>${order.total_amount.toFixed(2)}</span>
@@ -155,14 +134,11 @@ export function OrderDetailsCard({ order }: OrderDetailsCardProps) {
           </div>
 
           {/* Payment Method */}
-          {order.payment_method && (
-            <div className="text-sm">
+          {order.payment_method && <div className="text-sm">
               <span className="text-slate-600">Payment Method: </span>
               <span className="font-medium">{order.payment_method}</span>
-            </div>
-          )}
+            </div>}
         </CollapsibleContent>
       </Collapsible>
-    </div>
-  );
+    </div>;
 }

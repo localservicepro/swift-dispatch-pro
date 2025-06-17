@@ -47,148 +47,118 @@ export function OrderManagement() {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
 
-  // Simplified orders fetch to avoid JSON parsing issues
+  // Fetch orders from database with enhanced suburb retrieval
   const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
-      console.log('Fetching orders with simplified query...');
+      console.log('Fetching orders from database with enhanced suburb lookup...');
       
-      try {
-        // First, get basic orders data
-        const { data: ordersData, error: ordersError } = await supabase
-          .from('orders')
+      // First, get all orders with their basic relationships
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          order_number,
+          customer_name,
+          customer_phone,
+          customer_address,
+          products,
+          total_amount,
+          status,
+          driver_id,
+          created_at,
+          delivery_date,
+          delivery_time,
+          special_instructions,
+          customer_id,
+          delivery_fee,
+          subtotal,
+          truck_type,
+          truck_id,
+          customers!orders_customer_id_fkey(
+            id,
+            suburb_id,
+            suburbs(id, name, state, postcode)
+          ),
+          profiles!orders_driver_id_fkey(full_name),
+          trucks!orders_truck_id_fkey(registration_number, truck_type)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (ordersError) {
+        console.error('Error fetching orders:', ordersError);
+        throw ordersError;
+      }
+
+      console.log('Raw orders data:', ordersData);
+
+      // Now get all unique customer IDs that might be missing suburb data
+      const customerIds = ordersData
+        ?.filter(order => order.customer_id && (!order.customers?.suburbs || !order.customers.suburb_id))
+        .map(order => order.customer_id)
+        .filter(Boolean) as string[];
+
+      // Fetch additional customer data for those missing suburb info
+      let additionalCustomerData: any[] = [];
+      if (customerIds.length > 0) {
+        console.log('Fetching additional customer data for:', customerIds);
+        const { data: customerData, error: customerError } = await supabase
+          .from('customers')
           .select(`
             id,
-            order_number,
-            customer_name,
-            customer_phone,
-            customer_address,
-            products,
-            total_amount,
-            status,
-            driver_id,
-            created_at,
-            delivery_date,
-            delivery_time,
-            special_instructions,
-            customer_id,
-            delivery_fee,
-            subtotal,
-            truck_type,
-            truck_id
+            suburb_id,
+            suburbs(id, name, state, postcode)
           `)
-          .order('created_at', { ascending: false });
+          .in('id', customerIds);
 
-        if (ordersError) {
-          console.error('Error fetching orders:', ordersError);
-          throw ordersError;
+        if (!customerError) {
+          additionalCustomerData = customerData || [];
+          console.log('Additional customer data:', additionalCustomerData);
         }
-
-        if (!ordersData) {
-          console.log('No orders data returned');
-          return [];
-        }
-
-        console.log(`Fetched ${ordersData.length} orders`);
-
-        // Get additional data separately to avoid JSON conflicts
-        const customerIds = ordersData
-          .map(order => order.customer_id)
-          .filter(Boolean) as string[];
-
-        const driverIds = ordersData
-          .map(order => order.driver_id)
-          .filter(Boolean) as string[];
-
-        const truckIds = ordersData
-          .map(order => order.truck_id)
-          .filter(Boolean) as string[];
-
-        // Fetch related data separately
-        let customersData: any[] = [];
-        let driversData: any[] = [];
-        let trucksData: any[] = [];
-
-        if (customerIds.length > 0) {
-          const { data: customers } = await supabase
-            .from('customers')
-            .select(`
-              id,
-              suburb_id,
-              suburbs(id, name, state, postcode)
-            `)
-            .in('id', customerIds);
-          customersData = customers || [];
-        }
-
-        if (driverIds.length > 0) {
-          const { data: drivers } = await supabase
-            .from('profiles')
-            .select('id, full_name')
-            .in('id', driverIds);
-          driversData = drivers || [];
-        }
-
-        if (truckIds.length > 0) {
-          const { data: trucks } = await supabase
-            .from('trucks')
-            .select('id, registration_number, truck_type')
-            .in('id', truckIds);
-          trucksData = trucks || [];
-        }
-
-        // Map the data with proper error handling for JSON fields
-        const mappedOrders = ordersData.map(order => {
-          try {
-            // Safely handle products JSON field
-            let processedProducts = order.products;
-            if (typeof order.products === 'string') {
-              try {
-                processedProducts = JSON.parse(order.products);
-              } catch (jsonError) {
-                console.warn(`Invalid JSON in products for order ${order.id}:`, jsonError);
-                processedProducts = [];
-              }
-            }
-
-            // Find related data
-            const customerData = customersData.find(c => c.id === order.customer_id);
-            const driverData = driversData.find(d => d.id === order.driver_id);
-            const truckData = trucksData.find(t => t.id === order.truck_id);
-
-            return {
-              ...order,
-              products: processedProducts,
-              suburb_id: customerData?.suburb_id || null,
-              suburb_name: customerData?.suburbs?.name || null,
-              suburb_state: customerData?.suburbs?.state || null,
-              suburb_postcode: customerData?.suburbs?.postcode || null,
-              driver_name: driverData?.full_name || 'Not Assigned',
-              truck_registration: truckData?.registration_number || null,
-              truck_type_from_truck: truckData?.truck_type || order.truck_type
-            };
-          } catch (error) {
-            console.error(`Error processing order ${order.id}:`, error);
-            // Return order with safe defaults if processing fails
-            return {
-              ...order,
-              products: [],
-              suburb_name: null,
-              suburb_state: null,
-              suburb_postcode: null,
-              driver_name: 'Not Assigned',
-              truck_registration: null,
-              truck_type_from_truck: order.truck_type
-            };
-          }
-        });
-
-        console.log(`Successfully processed ${mappedOrders.length} orders`);
-        return mappedOrders;
-      } catch (error) {
-        console.error('Query error:', error);
-        throw error;
       }
+
+      // Map the data with enhanced suburb resolution
+      const mappedOrders = ordersData?.map(order => {
+        // Primary suburb source: from the main query
+        let suburbData = order.customers?.suburbs;
+        let suburbId = order.customers?.suburb_id;
+
+        // Fallback: check additional customer data if primary is missing
+        if (!suburbData && order.customer_id) {
+          const additionalCustomer = additionalCustomerData.find(c => c.id === order.customer_id);
+          if (additionalCustomer?.suburbs) {
+            suburbData = additionalCustomer.suburbs;
+            suburbId = additionalCustomer.suburb_id;
+            console.log(`Found suburb data for order ${order.order_number} via fallback:`, suburbData);
+          }
+        }
+
+        const mappedOrder = {
+          ...order,
+          suburb_id: suburbId || null,
+          suburb_name: suburbData?.name || null,
+          suburb_state: suburbData?.state || null,
+          suburb_postcode: suburbData?.postcode || null,
+          driver_name: order.profiles?.full_name || 'Not Assigned',
+          truck_registration: order.trucks?.registration_number || null,
+          truck_type_from_truck: order.trucks?.truck_type || order.truck_type
+        };
+
+        // Debug logging for orders without suburb data
+        if (!suburbData && order.customer_id) {
+          console.warn(`Order ${order.order_number} missing suburb data:`, {
+            customer_id: order.customer_id,
+            has_customer_relation: !!order.customers,
+            customer_suburb_id: order.customers?.suburb_id,
+            has_suburb_relation: !!order.customers?.suburbs
+          });
+        }
+
+        return mappedOrder;
+      }) || [];
+
+      console.log('Final mapped orders:', mappedOrders);
+      return mappedOrders;
     },
   });
 
@@ -349,14 +319,11 @@ export function OrderManagement() {
     return 'Products listed';
   };
 
-  // Simplified status update function to avoid JSON parsing issues
+  // Quick status update function for admin with activity logging
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
     try {
-      console.log(`Updating order ${orderId} from ${currentOrder.status} to ${newStatus}`);
-      
       const oldStatus = currentOrder.status;
       
-      // Simple, direct database update
       const { error } = await supabase
         .from('orders')
         .update({ 
@@ -365,36 +332,26 @@ export function OrderManagement() {
         })
         .eq('id', orderId);
 
-      if (error) {
-        console.error('Database update error:', error);
-        throw error;
-      }
-
-      console.log(`Successfully updated order ${orderId} to status ${newStatus}`);
+      if (error) throw error;
 
       // Log the activity
       if (profile?.full_name) {
-        try {
-          if (newStatus === 'cancelled') {
-            await activityLogger.orderCancel(
-              orderId,
-              currentOrder.order_number,
-              currentOrder.customer_name,
-              profile.full_name
-            );
-          } else {
-            await activityLogger.orderStatusUpdate(
-              orderId,
-              currentOrder.order_number,
-              currentOrder.customer_name,
-              oldStatus,
-              newStatus,
-              profile.full_name
-            );
-          }
-        } catch (activityError) {
-          console.error('Failed to log activity:', activityError);
-          // Don't fail the status update if activity logging fails
+        if (newStatus === 'cancelled') {
+          await activityLogger.orderCancel(
+            orderId,
+            currentOrder.order_number,
+            currentOrder.customer_name,
+            profile.full_name
+          );
+        } else {
+          await activityLogger.orderStatusUpdate(
+            orderId,
+            currentOrder.order_number,
+            currentOrder.customer_name,
+            oldStatus,
+            newStatus,
+            profile.full_name
+          );
         }
       }
 
@@ -406,10 +363,9 @@ export function OrderManagement() {
       // Refresh orders
       refetch();
     } catch (error: any) {
-      console.error('Error updating order status:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update order status",
+        description: "Failed to update order status",
         variant: "destructive",
       });
     }
