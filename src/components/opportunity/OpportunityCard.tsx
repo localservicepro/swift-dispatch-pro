@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { useAuth } from "../auth/AuthProvider";
+import { Database } from "@/integrations/supabase/types";
 
 interface OpportunityCardProps {
   order: any;
@@ -53,10 +55,10 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
     try {
       console.log(`Moving order ${order.order_number} from ${currentStage} to ${nextStage}`);
       
-      // Use the RPC function for consistent status updates
+      // Use the RPC function for consistent status updates - cast to proper type
       const { error } = await supabase.rpc('update_order_status', {
         order_id: order.id,
-        new_status: nextStage,
+        new_status: nextStage as Database['public']['Enums']['order_status'],
         notes: `Status updated from opportunity card: ${currentStage} to ${nextStage}`
       });
 
