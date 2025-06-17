@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
@@ -12,6 +13,9 @@ import { useOrderFormState } from "./hooks/useOrderFormState";
 import { useDriverManager } from "./hooks/useDriverManager";
 import { orderCreationService } from "./services/orderCreationService";
 import { Truck } from "./types";
+import { Database } from "@/integrations/supabase/types";
+
+type OrderStatus = Database["public"]["Enums"]["order_status"];
 
 interface MultiStepOrderFormProps {
   onOrderCreated: () => void;
@@ -84,7 +88,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         customer_address: selectedCustomer.full_address,
         total_amount: subtotal + adjustments + deliveryFee,
         payment_status: 'pending',
-        status: 'preparing',
+        status: 'preparing' as OrderStatus,
         notes: specialInstructions,
         items: orderItems
       };

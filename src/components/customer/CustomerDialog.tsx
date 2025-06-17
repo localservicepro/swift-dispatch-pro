@@ -99,10 +99,20 @@ export function CustomerDialog({ open, onOpenChange, customer, onSave }: Custome
         if (error) throw error;
         savedCustomer = updatedCustomer;
       } else {
-        // Create new customer
+        // Create new customer - ensure all required fields are present
+        const customerData = {
+          first_name: data.first_name,
+          last_name: data.last_name,
+          email: data.email,
+          phone: data.phone,
+          full_address: data.full_address,
+          customer_type: data.customer_type,
+          suburb_id: data.suburb_id || null,
+        };
+
         const { data: newCustomer, error } = await supabase
           .from('customers')
-          .insert(data)
+          .insert(customerData)
           .select()
           .single();
 
@@ -242,4 +252,3 @@ export function CustomerDialog({ open, onOpenChange, customer, onSave }: Custome
     </Dialog>
   );
 }
-
