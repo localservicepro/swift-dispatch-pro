@@ -128,6 +128,8 @@ export type Database = {
           is_active: boolean
           last_name: string
           phone: string | null
+          sms_notifications_enabled: boolean
+          sms_opt_out_date: string | null
           stripe_customer_id: string | null
           suburb_id: string | null
           updated_at: string
@@ -144,6 +146,8 @@ export type Database = {
           is_active?: boolean
           last_name: string
           phone?: string | null
+          sms_notifications_enabled?: boolean
+          sms_opt_out_date?: string | null
           stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
@@ -160,6 +164,8 @@ export type Database = {
           is_active?: boolean
           last_name?: string
           phone?: string | null
+          sms_notifications_enabled?: boolean
+          sms_opt_out_date?: string | null
           stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
@@ -855,6 +861,120 @@ export type Database = {
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      sms_logs: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          message_content: string
+          message_type: string
+          order_id: string | null
+          recipient_phone: string
+          sent_at: string | null
+          status: string
+          twilio_message_sid: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_content: string
+          message_type: string
+          order_id?: string | null
+          recipient_phone: string
+          sent_at?: string | null
+          status?: string
+          twilio_message_sid?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_content?: string
+          message_type?: string
+          order_id?: string | null
+          recipient_phone?: string
+          sent_at?: string | null
+          status?: string
+          twilio_message_sid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_settings: {
+        Row: {
+          connection_status: string
+          created_at: string
+          delivery_status_enabled: boolean
+          driver_assignment_enabled: boolean
+          id: string
+          last_tested_at: string | null
+          order_confirmation_enabled: boolean
+          payment_confirmation_enabled: boolean
+          sender_name: string
+          sms_provider: string
+          twilio_account_sid: string | null
+          twilio_auth_token: string | null
+          twilio_phone_number: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          connection_status?: string
+          created_at?: string
+          delivery_status_enabled?: boolean
+          driver_assignment_enabled?: boolean
+          id?: string
+          last_tested_at?: string | null
+          order_confirmation_enabled?: boolean
+          payment_confirmation_enabled?: boolean
+          sender_name?: string
+          sms_provider?: string
+          twilio_account_sid?: string | null
+          twilio_auth_token?: string | null
+          twilio_phone_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          connection_status?: string
+          created_at?: string
+          delivery_status_enabled?: boolean
+          driver_assignment_enabled?: boolean
+          id?: string
+          last_tested_at?: string | null
+          order_confirmation_enabled?: boolean
+          payment_confirmation_enabled?: boolean
+          sender_name?: string
+          sms_provider?: string
+          twilio_account_sid?: string | null
+          twilio_auth_token?: string | null
+          twilio_phone_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
