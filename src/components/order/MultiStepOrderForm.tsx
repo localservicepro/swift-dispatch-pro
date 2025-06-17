@@ -65,11 +65,83 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setSelectedTruck(truckDetails);
   };
 
+  // Frontend validation before order creation
+  const validateOrderData = () => {
+    console.log('Validating order data on frontend...');
+
+    if (!selectedCustomer) {
+      throw new Error('Please select a customer');
+    }
+
+    if (!cart || cart.length === 0) {
+      throw new Error('Please add at least one product to the cart');
+    }
+
+    if (!paymentMethod) {
+      throw new Error('Please select a payment method');
+    }
+
+    if (orderType === 'single') {
+      if (!deliveryDate) {
+        throw new Error('Please select a delivery date');
+      }
+      if (!deliveryTime) {
+        throw new Error('Please select a delivery time');
+      }
+      if (!truckType) {
+        throw new Error('Please select a truck type');
+      }
+    } else if (orderType === 'split') {
+      if (!splits || splits.length === 0) {
+        throw new Error('Please configure at least one split delivery');
+      }
+      for (let i = 0; i < splits.length; i++) {
+        const split = splits[i];
+        if (!split.deliveryDate) {
+          throw new Error(`Please set delivery date for split ${i + 1}`);
+        }
+        if (!split.deliveryTime) {
+          throw new Error(`Please set delivery time for split ${i + 1}`);
+        }
+      }
+    }
+
+    // Validate cart items have required fields
+    for (let i = 0; i < cart.length; i++) {
+      const item = cart[i];
+      if (!item.product || !item.product.id) {
+        throw new Error(`Product ${i + 1} is missing required information`);
+      }
+      if (!item.product.name) {
+        throw new Error(`Product ${i + 1} is missing a name`);
+      }
+      if (typeof item.unit_price !== 'number' || item.unit_price < 0) {
+        throw new Error(`Product ${i + 1} has an invalid price`);
+      }
+      if (typeof item.quantity !== 'number' || item.quantity <= 0) {
+        throw new Error(`Product ${i + 1} has an invalid quantity`);
+      }
+    }
+
+    console.log('Frontend validation passed');
+  };
+
   const handleCreateOrder = async () => {
-    if (!selectedCustomer) return;
+    if (!selectedCustomer) {
+      toast({
+        title: "Error",
+        description: "Please select a customer",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsCreating(true);
+    
     try {
+      // Frontend validation
+      validateOrderData();
+
       // Transform CartItem[] to Product[] for order creation
       const products = cart.map(cartItem => ({
         id: cartItem.product.id,
@@ -78,8 +150,15 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         quantity: cartItem.quantity
       }));
 
-      // Ensure truckType is not empty string
-      const validTruckType = truckType || "small";
+      // Ensure truckType is not empty string - use default for split orders
+      const validTruckType = (orderType === 'single' && truckType) ? truckType : "small";
+
+      console.log('Submitting order creation with validated data:', {
+        customerName: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`,
+        productCount: products.length,
+        orderType,
+        totalAmount: subtotal + adjustments + deliveryFee
+      });
 
       const result = await createOrder({
         selectedCustomer,
@@ -92,11 +171,13 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         deliveryDate,
         deliveryTime,
         truckType: validTruckType,
-        truckId,
-        driverId,
-        specialInstructions,
+        truckId: truckId || '', // Convert null to empty string if needed
+        driverId: driverId || '', // Convert null to empty string if needed
+        specialInstructions: specialInstructions || '',
         paymentMethod
       });
+
+      console.log('Order creation successful:', result);
 
       if (result.type === 'single') {
         toast({
@@ -112,10 +193,16 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
       onOrderCreated();
       onClose();
+
     } catch (error: any) {
+      console.error('Order creation failed:', error);
+      
+      // Show specific error message to user
+      const errorMessage = error.message || "Failed to create order due to an unexpected error";
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to create order",
+        title: "Order Creation Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -127,6 +214,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     <div className="space-y-6">
       <ProgressIndicator currentStep={currentStep} />
 
+      
       {currentStep === 1 && (
         <CustomerSearchStep
           selectedCustomer={selectedCustomer}
