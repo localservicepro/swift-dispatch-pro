@@ -36,7 +36,7 @@ export function OrderTypeSelectionStep({
           <RadioGroup 
             value={orderType} 
             onValueChange={(value) => onOrderTypeChange(value as "single" | "split")}
-            className="space-y-3"
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
           >
             {/* Single Order Option */}
             <div
