@@ -21,7 +21,8 @@ export const updateOrderStatus = async (
   newStatus: OrderStatus,
   adminName?: string
 ) => {
-  console.log(`Attempting to update order ${orderId} to status: ${newStatus}`);
+  console.log(`OrderStatusService: Attempting to update order ${orderId} to status: ${newStatus}`);
+  console.log(`Valid statuses:`, VALID_ORDER_STATUSES);
   
   // Validate status
   if (!validateOrderStatus(newStatus)) {
@@ -32,6 +33,7 @@ export const updateOrderStatus = async (
 
   try {
     // Get current order data for logging
+    console.log(`Fetching current order data for ${orderId}...`);
     const { data: currentOrder, error: fetchError } = await supabase
       .from('orders')
       .select('status, order_number, customer_name')
@@ -43,16 +45,25 @@ export const updateOrderStatus = async (
       throw new Error(`Failed to fetch order: ${fetchError.message}`);
     }
 
+    if (!currentOrder) {
+      const error = `Order ${orderId} not found`;
+      console.error(error);
+      throw new Error(error);
+    }
+
     const oldStatus = currentOrder.status;
+    console.log(`Order ${orderId} (${currentOrder.order_number}): ${oldStatus} -> ${newStatus}`);
 
     // Update order status using direct table update (working approach)
-    const { error: updateError } = await supabase
+    console.log(`Updating order ${orderId} in database...`);
+    const { error: updateError, data: updateData } = await supabase
       .from('orders')
       .update({
         status: newStatus,
         updated_at: new Date().toISOString()
       })
-      .eq('id', orderId);
+      .eq('id', orderId)
+      .select();
 
     if (updateError) {
       console.error('Error updating order status:', updateError);
@@ -60,6 +71,7 @@ export const updateOrderStatus = async (
     }
 
     console.log(`Successfully updated order ${orderId} from ${oldStatus} to ${newStatus}`);
+    console.log('Update result:', updateData);
 
     // Return success result with old status for logging
     return {
@@ -71,7 +83,12 @@ export const updateOrderStatus = async (
     };
 
   } catch (error: any) {
-    console.error(`Order status update failed for ${orderId}:`, error);
+    console.error(`Order status update failed for ${orderId}:`, {
+      error: error,
+      message: error?.message,
+      code: error?.code,
+      details: error?.details
+    });
     throw error;
   }
 };
