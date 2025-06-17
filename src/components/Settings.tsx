@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ActivityLog } from "./settings/ActivityLog";
 import { PaymentSettings } from "./settings/PaymentSettings";
+import { EmailSettings } from "./settings/EmailSettings";
 
 export function Settings() {
   const [businessInfo, setBusinessInfo] = useState({
@@ -117,6 +118,9 @@ export function Settings() {
 
       {/* Payment Settings */}
       <PaymentSettings />
+
+      {/* Email Configuration */}
+      <EmailSettings />
 
       {/* Email Notification Preferences */}
       <Card className="hover:shadow-lg transition-shadow">

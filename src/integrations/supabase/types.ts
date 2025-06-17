@@ -426,6 +426,48 @@ export type Database = {
         }
         Relationships: []
       }
+      email_settings: {
+        Row: {
+          connection_status: string
+          created_at: string
+          email_provider: string
+          id: string
+          last_tested_at: string | null
+          reply_to_email: string | null
+          resend_api_key: string | null
+          sender_email: string
+          sender_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          connection_status?: string
+          created_at?: string
+          email_provider?: string
+          id?: string
+          last_tested_at?: string | null
+          reply_to_email?: string | null
+          resend_api_key?: string | null
+          sender_email?: string
+          sender_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          connection_status?: string
+          created_at?: string
+          email_provider?: string
+          id?: string
+          last_tested_at?: string | null
+          reply_to_email?: string | null
+          resend_api_key?: string | null
+          sender_email?: string
+          sender_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           amount: number
