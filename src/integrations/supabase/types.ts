@@ -62,6 +62,59 @@ export type Database = {
           },
         ]
       }
+      customer_payment_methods: {
+        Row: {
+          card_brand: string
+          card_exp_month: number
+          card_exp_year: number
+          card_last_four: string
+          created_at: string
+          customer_id: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          stripe_customer_id: string
+          stripe_payment_method_id: string
+          updated_at: string
+        }
+        Insert: {
+          card_brand: string
+          card_exp_month: number
+          card_exp_year: number
+          card_last_four: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          stripe_customer_id: string
+          stripe_payment_method_id: string
+          updated_at?: string
+        }
+        Update: {
+          card_brand?: string
+          card_exp_month?: number
+          card_exp_year?: number
+          card_last_four?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          stripe_customer_id?: string
+          stripe_payment_method_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_payment_methods_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           auth_user_id: string | null
@@ -75,6 +128,7 @@ export type Database = {
           is_active: boolean
           last_name: string
           phone: string | null
+          stripe_customer_id: string | null
           suburb_id: string | null
           updated_at: string
         }
@@ -90,6 +144,7 @@ export type Database = {
           is_active?: boolean
           last_name: string
           phone?: string | null
+          stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
         }
@@ -105,6 +160,7 @@ export type Database = {
           is_active?: boolean
           last_name?: string
           phone?: string | null
+          stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
         }
