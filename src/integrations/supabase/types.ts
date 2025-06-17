@@ -653,6 +653,45 @@ export type Database = {
           },
         ]
       }
+      payment_settings: {
+        Row: {
+          created_at: string
+          currency: string
+          default_delivery_fee: number
+          gst_label: string
+          gst_rate: number
+          id: string
+          include_gst_in_prices: boolean
+          service_charge_rate: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          default_delivery_fee?: number
+          gst_label?: string
+          gst_rate?: number
+          id?: string
+          include_gst_in_prices?: boolean
+          service_charge_rate?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          default_delivery_fee?: number
+          gst_label?: string
+          gst_rate?: number
+          id?: string
+          include_gst_in_prices?: boolean
+          service_charge_rate?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       product_categories: {
         Row: {
           created_at: string
@@ -774,6 +813,48 @@ export type Database = {
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      stripe_settings: {
+        Row: {
+          connection_status: string
+          created_at: string
+          id: string
+          is_live_mode: boolean
+          last_tested_at: string | null
+          live_publishable_key: string | null
+          live_secret_key: string | null
+          test_publishable_key: string | null
+          test_secret_key: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          connection_status?: string
+          created_at?: string
+          id?: string
+          is_live_mode?: boolean
+          last_tested_at?: string | null
+          live_publishable_key?: string | null
+          live_secret_key?: string | null
+          test_publishable_key?: string | null
+          test_secret_key?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          connection_status?: string
+          created_at?: string
+          id?: string
+          is_live_mode?: boolean
+          last_tested_at?: string | null
+          live_publishable_key?: string | null
+          live_secret_key?: string | null
+          test_publishable_key?: string | null
+          test_secret_key?: string | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }

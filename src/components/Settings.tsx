@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ActivityLog } from "./settings/ActivityLog";
+import { PaymentSettings } from "./settings/PaymentSettings";
 
 export function Settings() {
   const [businessInfo, setBusinessInfo] = useState({
@@ -112,6 +114,9 @@ export function Settings() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Payment Settings */}
+      <PaymentSettings />
 
       {/* Email Notification Preferences */}
       <Card className="hover:shadow-lg transition-shadow">
