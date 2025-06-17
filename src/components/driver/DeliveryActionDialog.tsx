@@ -1,7 +1,10 @@
+
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
+import { updateOrderStatus } from "@/services/orderStatusService";
+import { handleOrderError } from "@/utils/errorHandler";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -113,6 +116,7 @@ export function DeliveryActionDialog({
         description: "Delivery photo has been uploaded successfully",
       });
     } catch (error: any) {
+      console.error('Photo upload failed:', error);
       toast({
         title: "Upload Failed",
         description: error.message,
@@ -146,15 +150,32 @@ export function DeliveryActionDialog({
       return;
     }
 
+    console.log(`DeliveryActionDialog: Updating order ${order.id} to status: ${action}`);
+    console.log(`Order number: ${order.order_number}, Customer: ${order.customer_name}`);
+    console.log(`Notes: ${notes.trim()}`);
+
     setUpdating(true);
     try {
-      const { error } = await supabase.rpc('update_order_status', {
-        order_id: order.id,
-        new_status: action as OrderStatus,
-        notes: notes.trim()
-      });
+      // Use the reliable orderStatusService instead of broken RPC
+      const result = await updateOrderStatus(order.id, action as OrderStatus);
+      
+      console.log('Order status update successful:', result);
 
-      if (error) throw error;
+      // Insert delivery status update with notes
+      const { error: statusUpdateError } = await supabase
+        .from('delivery_status_updates')
+        .insert({
+          order_id: order.id,
+          driver_id: (await supabase.auth.getUser()).data.user?.id,
+          old_status: order.status,
+          new_status: action as OrderStatus,
+          notes: notes.trim()
+        });
+
+      if (statusUpdateError) {
+        console.error('Failed to insert status update record:', statusUpdateError);
+        // Don't fail the entire operation for this
+      }
 
       toast({
         title: "Status Updated",
@@ -167,10 +188,14 @@ export function DeliveryActionDialog({
       setSelectedFile(null);
       setPhotoUploaded(false);
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
+      console.error(`Failed to update order status for ${order.order_number}:`, error);
+      
+      // Use centralized error handler
+      handleOrderError({
+        operation: `${isDelivered ? 'mark as delivered' : 'cancel delivery'}`,
+        orderId: order.id,
+        orderNumber: order.order_number,
+        originalError: error
       });
     } finally {
       setUpdating(false);

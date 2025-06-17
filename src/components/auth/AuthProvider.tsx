@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -160,29 +161,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    if (signingOut) return { error: null }; // Prevent multiple simultaneous sign out attempts
+    // Prevent multiple simultaneous sign out attempts
+    if (signingOut) {
+      console.log('Sign out already in progress, skipping...');
+      return { error: null };
+    }
     
     setSigningOut(true);
     
     try {
       console.log('Starting sign out process...');
       
-      // Clear state immediately to provide instant UI feedback
-      clearAuthState();
+      // Check if we have a valid session before attempting logout
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
       
-      // Attempt to sign out from Supabase
+      if (!currentSession) {
+        console.log('No active session found, clearing state...');
+        clearAuthState();
+        return { error: null };
+      }
+      
+      // Let Supabase handle the logout - onAuthStateChange will clear our state
+      console.log('Calling Supabase signOut...');
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error('Sign out error:', error);
-        // Don't restore state on error - user expects to be signed out
-      } else {
-        console.log('Sign out successful');
+        console.error('Supabase sign out error:', error);
+        // If there's an error but it's about session not found, treat as success
+        if (error.message?.includes('session_not_found') || error.message?.includes('Session not found')) {
+          console.log('Session already invalid, clearing state...');
+          clearAuthState();
+          return { error: null };
+        }
+        return { error };
       }
       
-      return { error };
+      console.log('Sign out successful');
+      return { error: null };
+      
     } catch (error) {
       console.error('Sign out exception:', error);
+      // Clear state anyway to prevent stuck auth state
+      clearAuthState();
       return { error };
     } finally {
       setSigningOut(false);

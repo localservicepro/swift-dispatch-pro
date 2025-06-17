@@ -1,140 +1,109 @@
 
-import { useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Customer, CustomerType } from "@/types";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useGHLSync } from "@/hooks/useGHLSync";
-
-const customerFormSchema = z.object({
-  first_name: z.string().min(2, {
-    message: "First name must be at least 2 characters.",
-  }),
-  last_name: z.string().min(2, {
-    message: "Last name must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  phone: z.string().min(10, {
-    message: "Phone number must be at least 10 digits.",
-  }).max(15, {
-    message: "Phone number cannot exceed 15 digits.",
-  }),
-  full_address: z.string().min(1, {
-    message: "Address is required.",
-  }),
-  customer_type: z.enum(["account", "trade"]).default("account"),
-  suburb_id: z.string().uuid().optional(),
-});
-
-interface CustomerFormData extends z.infer<typeof customerFormSchema> {}
+import { Switch } from "@/components/ui/switch";
+import { SuburbSelector } from "@/components/order/SuburbSelector";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface CustomerDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  customer?: Customer;
-  onSave?: () => void;
+  isOpen: boolean;
+  onClose: () => void;
+  customer?: any;
+  isEditMode: boolean;
+  onSuccess: () => void;
 }
 
-export function CustomerDialog({ open, onOpenChange, customer, onSave }: CustomerDialogProps) {
+export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSuccess }: CustomerDialogProps) {
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    full_address: "",
+    customer_type: "trade" as "trade" | "account",
+    is_active: true,
+    suburb_id: "",
+  });
+  const [deliveryRate, setDeliveryRate] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { syncCustomer } = useGHLSync();
 
-  const form = useForm<CustomerFormData>({
-    resolver: zodResolver(customerFormSchema),
-    defaultValues: {
-      first_name: customer?.first_name || "",
-      last_name: customer?.last_name || "",
-      email: customer?.email || "",
-      phone: customer?.phone || "",
-      full_address: customer?.full_address || "",
-      customer_type: (customer?.customer_type as CustomerType) || "account",
-      suburb_id: customer?.suburb_id || undefined,
-    },
-  });
+  useEffect(() => {
+    if (customer && isEditMode) {
+      setFormData({
+        first_name: customer.first_name || "",
+        last_name: customer.last_name || "",
+        email: customer.email || "",
+        phone: customer.phone || "",
+        full_address: customer.full_address || "",
+        customer_type: customer.customer_type || "trade",
+        is_active: customer.is_active ?? true,
+        suburb_id: customer.suburb_id || "",
+      });
+    } else {
+      setFormData({
+        first_name: "",
+        last_name: "",
+        email: "",
+        phone: "",
+        full_address: "",
+        customer_type: "trade",
+        is_active: true,
+        suburb_id: "",
+      });
+      setDeliveryRate(0);
+    }
+  }, [customer, isEditMode, isOpen]);
 
-  const handleSubmit = async (data: CustomerFormData) => {
+  const handleSuburbChange = (suburbId: string, rate: number) => {
+    setFormData({ ...formData, suburb_id: suburbId });
+    setDeliveryRate(rate);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
     try {
-      setIsLoading(true);
-      
-      let savedCustomer;
-      if (customer) {
-        // Update existing customer
-        const { data: updatedCustomer, error } = await supabase
-          .from('customers')
+      if (isEditMode && customer) {
+        const { error } = await supabase
+          .from("customers")
           .update({
-            ...data,
+            ...formData,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', customer.id)
-          .select()
-          .single();
+          .eq("id", customer.id);
 
         if (error) throw error;
-        savedCustomer = updatedCustomer;
+
+        toast({
+          title: "Customer Updated",
+          description: "Customer information has been successfully updated.",
+        });
       } else {
-        // Create new customer - ensure all required fields are present
-        const customerData = {
-          first_name: data.first_name,
-          last_name: data.last_name,
-          email: data.email,
-          phone: data.phone,
-          full_address: data.full_address,
-          customer_type: data.customer_type,
-          suburb_id: data.suburb_id || null,
-        };
-
-        const { data: newCustomer, error } = await supabase
-          .from('customers')
-          .insert(customerData)
-          .select()
-          .single();
+        const { error } = await supabase
+          .from("customers")
+          .insert([formData]);
 
         if (error) throw error;
-        savedCustomer = newCustomer;
+
+        toast({
+          title: "Customer Created",
+          description: "New customer has been successfully created.",
+        });
       }
 
-      // Sync to GoHighLevel
-      await syncCustomer(savedCustomer);
-
-      toast({
-        title: "Success",
-        description: customer ? "Customer updated successfully" : "Customer created successfully",
-      });
-      form.reset();
-      onOpenChange(false);
-      onSave?.();
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
-    } catch (error: any) {
+      onSuccess();
+    } catch (error) {
+      console.error("Error saving customer:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to save customer. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -143,111 +112,113 @@ export function CustomerDialog({ open, onOpenChange, customer, onSave }: Custome
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{customer ? "Edit Customer" : "Create New Customer"}</DialogTitle>
-          <DialogDescription>
-            {customer ? "Update customer information here." : "Add a new customer to the system."}
-          </DialogDescription>
+          <DialogTitle>
+            {isEditMode ? "Edit Customer" : "Add New Customer"}
+          </DialogTitle>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="first_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>First Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="first_name">First Name</Label>
+              <Input
+                id="first_name"
+                value={formData.first_name}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="last_name">Last Name</Label>
+              <Input
+                id="last_name"
+                value={formData.last_name}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
             />
-            <FormField
-              control={form.control}
-              name="last_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Last Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Doe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+
+          <div>
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="john.doe@example.com" type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+
+          <div>
+            <Label htmlFor="full_address">Full Address</Label>
+            <Input
+              id="full_address"
+              value={formData.full_address}
+              onChange={(e) => setFormData({ ...formData, full_address: e.target.value })}
+              required
             />
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone Number</FormLabel>
-                  <FormControl>
-                    <Input placeholder="555-123-4567" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+
+          <SuburbSelector
+            selectedSuburbId={formData.suburb_id}
+            onSuburbChange={handleSuburbChange}
+          />
+
+          {deliveryRate > 0 && (
+            <div className="text-sm text-gray-600">
+              Delivery Rate: ${deliveryRate.toFixed(2)}
+            </div>
+          )}
+
+          <div>
+            <Label htmlFor="customer_type">Customer Type</Label>
+            <Select
+              value={formData.customer_type}
+              onValueChange={(value: "trade" | "account") => 
+                setFormData({ ...formData, customer_type: value })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="trade">Trade</SelectItem>
+                <SelectItem value="account">Account</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="is_active"
+              checked={formData.is_active}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
             />
-            <FormField
-              control={form.control}
-              name="full_address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Address</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="123 Main St, Anytown, USA"
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="customer_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Customer Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="account">Account</SelectItem>
-                      <SelectItem value="trade">Trade</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Saving..." : "Save Customer"}
+            <Label htmlFor="is_active">Active Customer</Label>
+          </div>
+
+          <div className="flex gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancel
             </Button>
-          </form>
-        </Form>
+            <Button type="submit" disabled={isLoading} className="flex-1">
+              {isLoading ? "Saving..." : isEditMode ? "Update" : "Create"}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
