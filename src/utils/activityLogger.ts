@@ -11,28 +11,33 @@ interface LogActivityParams {
   description: string;
 }
 
-// Sanitize data to ensure it's safe for JSON serialization
-const sanitizeForJson = (data: any): any => {
-  if (data === null || data === undefined) {
+// Completely safe JSON sanitizer that removes all problematic data
+const createSafeJsonData = (data: any): any => {
+  if (!data) return null;
+  
+  try {
+    // Convert to string first, then parse to ensure clean JSON
+    const stringified = JSON.stringify(data, (key, value) => {
+      // Remove any functions, undefined values, or circular references
+      if (typeof value === 'function' || value === undefined) {
+        return null;
+      }
+      // Convert all values to simple strings or numbers
+      if (typeof value === 'object' && value !== null) {
+        return String(value);
+      }
+      if (typeof value === 'string') {
+        // Remove any control characters and non-printable characters
+        return value.replace(/[\u0000-\u001F\u007F-\u009F\u2000-\u200F\uFEFF]/g, '').trim();
+      }
+      return value;
+    });
+    
+    return JSON.parse(stringified);
+  } catch (error) {
+    console.warn('Failed to create safe JSON data:', error);
     return null;
   }
-  
-  if (typeof data === 'string') {
-    // Remove or escape problematic characters that can break JSON
-    return data.replace(/[\u0000-\u001F\u007F-\u009F]/g, ''); // Remove control characters
-  }
-  
-  if (typeof data === 'object') {
-    const sanitized: any = {};
-    for (const key in data) {
-      if (data.hasOwnProperty(key)) {
-        sanitized[key] = sanitizeForJson(data[key]);
-      }
-    }
-    return sanitized;
-  }
-  
-  return data;
 };
 
 export const logActivity = async ({
@@ -47,25 +52,39 @@ export const logActivity = async ({
   try {
     console.log('Logging activity:', { actionType, targetType, description });
     
-    // Sanitize all data before sending to database
-    const sanitizedTargetDetails = sanitizeForJson(targetDetails);
-    const sanitizedOldValues = sanitizeForJson(oldValues);
-    const sanitizedNewValues = sanitizeForJson(newValues);
-    const sanitizedDescription = sanitizeForJson(description);
+    // Create completely safe, minimal data structures
+    const safeTargetDetails = targetDetails ? {
+      order_number: String(targetDetails.order_number || '').slice(0, 50),
+      customer_name: String(targetDetails.customer_name || '').slice(0, 100)
+    } : null;
+    
+    const safeOldValues = oldValues ? {
+      status: String(oldValues.status || '').slice(0, 50)
+    } : null;
+    
+    const safeNewValues = newValues ? {
+      status: String(newValues.status || '').slice(0, 50)
+    } : null;
+    
+    const safeDescription = String(description || '').slice(0, 500);
+    
+    // Double-check by creating safe JSON
+    const finalTargetDetails = createSafeJsonData(safeTargetDetails);
+    const finalOldValues = createSafeJsonData(safeOldValues);
+    const finalNewValues = createSafeJsonData(safeNewValues);
     
     const { data, error } = await supabase.rpc('log_admin_activity', {
       p_action_type: actionType,
       p_target_type: targetType,
       p_target_id: targetId || null,
-      p_target_details: sanitizedTargetDetails || null,
-      p_old_values: sanitizedOldValues || null,
-      p_new_values: sanitizedNewValues || null,
-      p_description: sanitizedDescription
+      p_target_details: finalTargetDetails,
+      p_old_values: finalOldValues,
+      p_new_values: finalNewValues,
+      p_description: safeDescription
     });
 
     if (error) {
       console.error('Error logging activity:', error);
-      // Don't throw error to avoid breaking main functionality
       return null;
     }
 
@@ -73,110 +92,154 @@ export const logActivity = async ({
     return data;
   } catch (error) {
     console.error('Failed to log activity:', error);
-    // Don't throw error to avoid breaking main functionality
     return null;
   }
 };
 
-// Helper functions for common activities with simplified data structures
+// Simplified helper functions that only pass essential data
 export const activityLogger = {
-  orderStatusUpdate: (orderId: string, orderNumber: string, customerName: string, oldStatus: string, newStatus: string, adminName: string) =>
-    logActivity({
+  orderStatusUpdate: (orderId: string, orderNumber: string, customerName: string, oldStatus: string, newStatus: string, adminName: string) => {
+    // Create completely safe strings
+    const safeOrderNumber = String(orderNumber || 'Unknown').replace(/[^\w\s-]/g, '').slice(0, 50);
+    const safeCustomerName = String(customerName || 'Unknown Customer').replace(/[^\w\s-]/g, '').slice(0, 100);
+    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
+    const safeOldStatus = String(oldStatus || '').replace(/[^\w\s-]/g, '').slice(0, 50);
+    const safeNewStatus = String(newStatus || '').replace(/[^\w\s-]/g, '').slice(0, 50);
+    
+    return logActivity({
       actionType: 'status_update',
       targetType: 'order',
       targetId: orderId,
       targetDetails: { 
-        order_number: sanitizeForJson(orderNumber), 
-        customer_name: sanitizeForJson(customerName) 
+        order_number: safeOrderNumber, 
+        customer_name: safeCustomerName 
       },
-      oldValues: { status: oldStatus },
-      newValues: { status: newStatus },
-      description: `${sanitizeForJson(adminName)} updated order ${sanitizeForJson(orderNumber)} status from ${oldStatus} to ${newStatus}`
-    }),
+      oldValues: { status: safeOldStatus },
+      newValues: { status: safeNewStatus },
+      description: `${safeAdminName} updated order ${safeOrderNumber} status from ${safeOldStatus} to ${safeNewStatus}`
+    });
+  },
 
-  orderCancel: (orderId: string, orderNumber: string, customerName: string, adminName: string) =>
-    logActivity({
+  orderCancel: (orderId: string, orderNumber: string, customerName: string, adminName: string) => {
+    const safeOrderNumber = String(orderNumber || 'Unknown').replace(/[^\w\s-]/g, '').slice(0, 50);
+    const safeCustomerName = String(customerName || 'Unknown Customer').replace(/[^\w\s-]/g, '').slice(0, 100);
+    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
+    
+    return logActivity({
       actionType: 'order_cancel',
       targetType: 'order',
       targetId: orderId,
       targetDetails: { 
-        order_number: sanitizeForJson(orderNumber), 
-        customer_name: sanitizeForJson(customerName) 
+        order_number: safeOrderNumber, 
+        customer_name: safeCustomerName 
       },
-      description: `${sanitizeForJson(adminName)} cancelled order ${sanitizeForJson(orderNumber)} for ${sanitizeForJson(customerName)}`
-    }),
+      description: `${safeAdminName} cancelled order ${safeOrderNumber} for ${safeCustomerName}`
+    });
+  },
 
-  orderCreate: (orderId: string, orderNumber: string, customerName: string, totalAmount: number, adminName: string) =>
-    logActivity({
+  orderCreate: (orderId: string, orderNumber: string, customerName: string, totalAmount: number, adminName: string) => {
+    const safeOrderNumber = String(orderNumber || 'Unknown').replace(/[^\w\s-]/g, '').slice(0, 50);
+    const safeCustomerName = String(customerName || 'Unknown Customer').replace(/[^\w\s-]/g, '').slice(0, 100);
+    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
+    const safeTotalAmount = Number(totalAmount) || 0;
+    
+    return logActivity({
       actionType: 'order_create',
       targetType: 'order',
       targetId: orderId,
       targetDetails: { 
-        order_number: sanitizeForJson(orderNumber), 
-        customer_name: sanitizeForJson(customerName), 
-        total_amount: totalAmount 
+        order_number: safeOrderNumber, 
+        customer_name: safeCustomerName,
+        total_amount: safeTotalAmount
       },
-      description: `${sanitizeForJson(adminName)} created order ${sanitizeForJson(orderNumber)} for ${sanitizeForJson(customerName)} ($${totalAmount})`
-    }),
+      description: `${safeAdminName} created order ${safeOrderNumber} for ${safeCustomerName} ($${safeTotalAmount})`
+    });
+  },
 
-  orderEdit: (orderId: string, orderNumber: string, customerName: string, changes: any, adminName: string) =>
-    logActivity({
+  orderEdit: (orderId: string, orderNumber: string, customerName: string, changes: any, adminName: string) => {
+    const safeOrderNumber = String(orderNumber || 'Unknown').replace(/[^\w\s-]/g, '').slice(0, 50);
+    const safeCustomerName = String(customerName || 'Unknown Customer').replace(/[^\w\s-]/g, '').slice(0, 100);
+    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
+    
+    return logActivity({
       actionType: 'order_edit',
       targetType: 'order',
       targetId: orderId,
       targetDetails: { 
-        order_number: sanitizeForJson(orderNumber), 
-        customer_name: sanitizeForJson(customerName) 
+        order_number: safeOrderNumber, 
+        customer_name: safeCustomerName 
       },
-      oldValues: sanitizeForJson(changes.oldValues),
-      newValues: sanitizeForJson(changes.newValues),
-      description: `${sanitizeForJson(adminName)} edited order ${sanitizeForJson(orderNumber)} for ${sanitizeForJson(customerName)}`
-    }),
+      oldValues: changes?.oldValues ? { summary: 'Order details changed' } : null,
+      newValues: changes?.newValues ? { summary: 'Order details updated' } : null,
+      description: `${safeAdminName} edited order ${safeOrderNumber} for ${safeCustomerName}`
+    });
+  },
 
-  invoiceSend: (invoiceId: string, orderNumber: string, customerEmail: string, amount: number, adminName: string) =>
-    logActivity({
+  invoiceSend: (invoiceId: string, orderNumber: string, customerEmail: string, amount: number, adminName: string) => {
+    const safeOrderNumber = String(orderNumber || 'Unknown').replace(/[^\w\s-]/g, '').slice(0, 50);
+    const safeCustomerEmail = String(customerEmail || '').replace(/[^\w\s@.-]/g, '').slice(0, 100);
+    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
+    const safeAmount = Number(amount) || 0;
+    
+    return logActivity({
       actionType: 'invoice_send',
       targetType: 'invoice',
       targetId: invoiceId,
       targetDetails: { 
-        order_number: sanitizeForJson(orderNumber), 
-        customer_email: sanitizeForJson(customerEmail), 
-        amount 
+        order_number: safeOrderNumber, 
+        customer_email: safeCustomerEmail,
+        amount: safeAmount
       },
-      description: `${sanitizeForJson(adminName)} sent invoice for order ${sanitizeForJson(orderNumber)} to ${sanitizeForJson(customerEmail)} ($${amount})`
-    }),
+      description: `${safeAdminName} sent invoice for order ${safeOrderNumber} to ${safeCustomerEmail} ($${safeAmount})`
+    });
+  },
 
-  paymentUpdate: (orderId: string, orderNumber: string, oldStatus: string, newStatus: string, adminName: string) =>
-    logActivity({
+  paymentUpdate: (orderId: string, orderNumber: string, oldStatus: string, newStatus: string, adminName: string) => {
+    const safeOrderNumber = String(orderNumber || 'Unknown').replace(/[^\w\s-]/g, '').slice(0, 50);
+    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
+    const safeOldStatus = String(oldStatus || '').replace(/[^\w\s-]/g, '').slice(0, 50);
+    const safeNewStatus = String(newStatus || '').replace(/[^\w\s-]/g, '').slice(0, 50);
+    
+    return logActivity({
       actionType: 'payment_update',
       targetType: 'payment',
       targetId: orderId,
-      targetDetails: { order_number: sanitizeForJson(orderNumber) },
-      oldValues: { payment_status: oldStatus },
-      newValues: { payment_status: newStatus },
-      description: `${sanitizeForJson(adminName)} updated payment status for order ${sanitizeForJson(orderNumber)} from ${oldStatus} to ${newStatus}`
-    }),
+      targetDetails: { order_number: safeOrderNumber },
+      oldValues: { payment_status: safeOldStatus },
+      newValues: { payment_status: safeNewStatus },
+      description: `${safeAdminName} updated payment status for order ${safeOrderNumber} from ${safeOldStatus} to ${safeNewStatus}`
+    });
+  },
 
-  customerCreate: (customerId: string, customerName: string, customerEmail: string, adminName: string) =>
-    logActivity({
+  customerCreate: (customerId: string, customerName: string, customerEmail: string, adminName: string) => {
+    const safeCustomerName = String(customerName || 'Unknown Customer').replace(/[^\w\s-]/g, '').slice(0, 100);
+    const safeCustomerEmail = String(customerEmail || '').replace(/[^\w\s@.-]/g, '').slice(0, 100);
+    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
+    
+    return logActivity({
       actionType: 'customer_create',
       targetType: 'customer',
       targetId: customerId,
       targetDetails: { 
-        customer_name: sanitizeForJson(customerName), 
-        customer_email: sanitizeForJson(customerEmail) 
+        customer_name: safeCustomerName, 
+        customer_email: safeCustomerEmail 
       },
-      description: `${sanitizeForJson(adminName)} created customer ${sanitizeForJson(customerName)} (${sanitizeForJson(customerEmail)})`
-    }),
+      description: `${safeAdminName} created customer ${safeCustomerName} (${safeCustomerEmail})`
+    });
+  },
 
-  customerEdit: (customerId: string, customerName: string, changes: any, adminName: string) =>
-    logActivity({
+  customerEdit: (customerId: string, customerName: string, changes: any, adminName: string) => {
+    const safeCustomerName = String(customerName || 'Unknown Customer').replace(/[^\w\s-]/g, '').slice(0, 100);
+    const safeAdminName = String(adminName || 'Unknown Admin').replace(/[^\w\s-]/g, '').slice(0, 100);
+    
+    return logActivity({
       actionType: 'customer_edit',
       targetType: 'customer',
       targetId: customerId,
-      targetDetails: { customer_name: sanitizeForJson(customerName) },
-      oldValues: sanitizeForJson(changes.oldValues),
-      newValues: sanitizeForJson(changes.newValues),
-      description: `${sanitizeForJson(adminName)} edited customer ${sanitizeForJson(customerName)}`
-    })
+      targetDetails: { customer_name: safeCustomerName },
+      oldValues: changes?.oldValues ? { summary: 'Customer details changed' } : null,
+      newValues: changes?.newValues ? { summary: 'Customer details updated' } : null,
+      description: `${safeAdminName} edited customer ${safeCustomerName}`
+    });
+  }
 };

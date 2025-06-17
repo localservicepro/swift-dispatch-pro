@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -333,13 +332,16 @@ export function OrderManagement() {
     return 'Products listed';
   };
 
-  // Simplified status update function with better error handling
+  // Simplified status update function with isolated error handling
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: OrderRecord) => {
+    let statusUpdateSuccess = false;
+    
     try {
       const oldStatus = currentOrder.status;
       
       console.log(`Updating order ${currentOrder.order_number} from ${oldStatus} to ${newStatus}`);
 
+      // First, update the order status - this is the critical operation
       const { error } = await supabase
         .from('orders')
         .update({ 
@@ -353,43 +355,15 @@ export function OrderManagement() {
         throw error;
       }
 
-      // Log the activity with proper error handling
-      if (profile?.full_name) {
-        try {
-          // Sanitize the data before logging
-          const sanitizedOrderNumber = currentOrder.order_number || 'Unknown';
-          const sanitizedCustomerName = currentOrder.customer_name || 'Unknown Customer';
-          const sanitizedAdminName = profile.full_name || 'Unknown Admin';
-          
-          if (newStatus === 'cancelled') {
-            await activityLogger.orderCancel(
-              orderId,
-              sanitizedOrderNumber,
-              sanitizedCustomerName,
-              sanitizedAdminName
-            );
-          } else {
-            await activityLogger.orderStatusUpdate(
-              orderId,
-              sanitizedOrderNumber,
-              sanitizedCustomerName,
-              oldStatus,
-              newStatus,
-              sanitizedAdminName
-            );
-          }
-        } catch (logError) {
-          console.warn('Activity logging failed but order was updated successfully:', logError);
-          // Don't throw - activity logging failure shouldn't block status update
-        }
-      }
+      statusUpdateSuccess = true;
+      console.log('Order status updated successfully');
 
       toast({
         title: "Status Updated",
         description: `Order ${currentOrder.order_number} status updated to ${newStatus.replace('_', ' ')}`,
       });
 
-      // Refresh orders
+      // Refresh orders immediately after successful update
       refetch();
 
     } catch (error: any) {
@@ -399,6 +373,36 @@ export function OrderManagement() {
         description: `Failed to update order status: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
+      return; // Exit early if status update failed
+    }
+
+    // Activity logging happens AFTER successful status update and in isolation
+    if (statusUpdateSuccess && profile?.full_name) {
+      try {
+        console.log('Attempting to log activity...');
+        
+        // Ensure we have clean, simple data for logging
+        const cleanOrderNumber = String(currentOrder.order_number || 'Unknown').trim();
+        const cleanCustomerName = String(currentOrder.customer_name || 'Unknown Customer').trim();
+        const cleanAdminName = String(profile.full_name || 'Unknown Admin').trim();
+        
+        // Log activity with timeout to prevent hanging
+        const logPromise = newStatus === 'cancelled' 
+          ? activityLogger.orderCancel(orderId, cleanOrderNumber, cleanCustomerName, cleanAdminName)
+          : activityLogger.orderStatusUpdate(orderId, cleanOrderNumber, cleanCustomerName, currentOrder.status, newStatus, cleanAdminName);
+        
+        // Set a timeout for activity logging
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Activity logging timeout')), 5000)
+        );
+        
+        await Promise.race([logPromise, timeoutPromise]);
+        console.log('Activity logged successfully');
+        
+      } catch (logError) {
+        console.warn('Activity logging failed but order was updated successfully:', logError);
+        // Don't show error to user since the main operation succeeded
+      }
     }
   };
 
