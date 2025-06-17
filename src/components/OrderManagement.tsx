@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search, Filter, Edit, Trash2, Calendar, User, Phone, MapPin, DollarSign, Clock, Truck, Package } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Calendar, User, Phone, MapPin, DollarSign, Clock, Truck, Package, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { MultiStepOrderForm } from "./order/MultiStepOrderForm";
 import { OrderEditDialog } from "./order/OrderEditDialog";
 import { getTruckInfo } from "@/utils/truckUtils";
@@ -16,12 +17,26 @@ import { Database } from "@/integrations/supabase/types";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
+interface Order {
+  id: string;
+  order_number: string;
+  customer_name: string;
+  customer_phone?: string;
+  customer_address: string;
+  total_amount: number;
+  status: OrderStatus;
+  created_at: string;
+  delivery_date?: string;
+  delivery_time?: string;
+  truck_type?: string;
+}
+
 export function OrderManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
   const [isCreateOrderDialogOpen, setIsCreateOrderDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const { toast } = useToast();
 
   const {
@@ -29,25 +44,28 @@ export function OrderManagement() {
     isLoading,
     error,
     refetch,
-  } = useQuery("orders", async () => {
-    let query = supabase.from("orders").select("*");
+  } = useQuery({
+    queryKey: ["orders", searchQuery, statusFilter],
+    queryFn: async () => {
+      let query = supabase.from("orders").select("*");
 
-    if (searchQuery) {
-      query = query.ilike("order_number", `%${searchQuery}%`);
-    }
+      if (searchQuery) {
+        query = query.ilike("order_number", `%${searchQuery}%`);
+      }
 
-    if (statusFilter !== "all") {
-      query = query.eq("status", statusFilter);
-    }
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter);
+      }
 
-    const { data, error } = await query;
-    if (error) throw error;
-    return data;
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as Order[];
+    },
   });
 
   useEffect(() => {
     refetch(); // Refresh data when component mounts
-  }, []);
+  }, [refetch]);
 
   const openCreateOrderDialog = () => {
     setIsCreateOrderDialogOpen(true);
@@ -58,7 +76,7 @@ export function OrderManagement() {
     refetch(); // Refresh data after closing the dialog
   };
 
-  const openEditDialog = (order: any) => {
+  const openEditDialog = (order: Order) => {
     setSelectedOrder(order);
     setIsEditDialogOpen(true);
   };
@@ -172,7 +190,7 @@ export function OrderManagement() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-full text-red-500">
-        Error: {error.message}
+        Error: {(error as Error).message}
       </div>
     );
   }
@@ -194,7 +212,7 @@ export function OrderManagement() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="text-lg font-semibold text-slate-800">
-              {orders?.length} Orders
+              {orders?.length || 0} Orders
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
@@ -343,7 +361,9 @@ export function OrderManagement() {
         </CardContent>
       </Card>
 
-      <MultiStepOrderForm open={isCreateOrderDialogOpen} onClose={closeCreateOrderDialog} />
+      {isCreateOrderDialogOpen && (
+        <MultiStepOrderForm onClose={closeCreateOrderDialog} />
+      )}
 
       {selectedOrder && (
         <OrderEditDialog
