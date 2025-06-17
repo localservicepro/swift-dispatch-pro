@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -241,11 +240,10 @@ export function CustomerManagement() {
       </Card>
 
       <CustomerDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
         customer={selectedCustomer}
-        isEditMode={isEditMode}
-        onSuccess={() => {
+        onSave={() => {
           queryClient.invalidateQueries({ queryKey: ["customers"] });
           setIsDialogOpen(false);
         }}

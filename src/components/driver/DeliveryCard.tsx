@@ -1,5 +1,5 @@
-
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { DeliveryActionDialog } from "./DeliveryActionDialog";
 import { OrderDetailsCard } from "./OrderDetailsCard";
 import { Database } from "@/integrations/supabase/types";
-import { updateOrderStatus, validateOrderStatus } from "@/services/orderStatusService";
 import { 
   MapPin, 
   Phone, 
@@ -78,21 +77,14 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
   };
 
   const updateStatus = async (newStatus: OrderStatus) => {
-    console.log(`DeliveryCard: Updating order ${order.id} to status: ${newStatus}`);
-    
-    // Validate status before proceeding
-    if (!validateOrderStatus(newStatus)) {
-      toast({
-        title: "Error",
-        description: `Invalid order status: ${newStatus}`,
-        variant: "destructive",
-      });
-      return;
-    }
-
     setUpdating(true);
     try {
-      await updateOrderStatus(order.id, newStatus);
+      const { error } = await supabase.rpc('update_order_status', {
+        order_id: order.id,
+        new_status: newStatus
+      });
+
+      if (error) throw error;
 
       toast({
         title: "Status Updated",
@@ -101,10 +93,9 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
 
       onStatusUpdate();
     } catch (error: any) {
-      console.error('Error updating order status:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update order status",
+        description: error.message,
         variant: "destructive",
       });
     } finally {

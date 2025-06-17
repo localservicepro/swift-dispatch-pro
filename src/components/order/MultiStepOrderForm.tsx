@@ -10,8 +10,12 @@ import { OrderReviewStep } from "./OrderReviewStep";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { useOrderFormState } from "./hooks/useOrderFormState";
 import { useDriverManager } from "./hooks/useDriverManager";
-import { createOrder } from "./services/orderCreationService";
-import { Truck } from "./types";
+import { orderCreationService } from "./services/orderCreationService";
+import { Truck, Split } from "./types";
+import { Database } from "@/integrations/supabase/types";
+import { SplitOrderData } from "@/types";
+
+type OrderStatus = Database["public"]["Enums"]["order_status"];
 
 interface MultiStepOrderFormProps {
   onOrderCreated: () => void;
@@ -65,144 +69,102 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setSelectedTruck(truckDetails);
   };
 
-  // Frontend validation before order creation
-  const validateOrderData = () => {
-    console.log('Validating order data on frontend...');
+  const handleCreateSplitOrder = async () => {
+    if (!selectedCustomer) return;
 
-    if (!selectedCustomer) {
-      throw new Error('Please select a customer');
-    }
-
-    if (!cart || cart.length === 0) {
-      throw new Error('Please add at least one product to the cart');
-    }
-
-    if (!paymentMethod) {
-      throw new Error('Please select a payment method');
-    }
-
-    if (orderType === 'single') {
-      if (!deliveryDate) {
-        throw new Error('Please select a delivery date');
-      }
-      if (!deliveryTime) {
-        throw new Error('Please select a delivery time');
-      }
-      if (!truckType) {
-        throw new Error('Please select a truck type');
-      }
-    } else if (orderType === 'split') {
-      if (!splits || splits.length === 0) {
-        throw new Error('Please configure at least one split delivery');
-      }
-      for (let i = 0; i < splits.length; i++) {
-        const split = splits[i];
-        if (!split.deliveryDate) {
-          throw new Error(`Please set delivery date for split ${i + 1}`);
-        }
-        if (!split.deliveryTime) {
-          throw new Error(`Please set delivery time for split ${i + 1}`);
-        }
-      }
-    }
-
-    // Validate cart items have required fields
-    for (let i = 0; i < cart.length; i++) {
-      const item = cart[i];
-      if (!item.product || !item.product.id) {
-        throw new Error(`Product ${i + 1} is missing required information`);
-      }
-      if (!item.product.name) {
-        throw new Error(`Product ${i + 1} is missing a name`);
-      }
-      if (typeof item.unit_price !== 'number' || item.unit_price < 0) {
-        throw new Error(`Product ${i + 1} has an invalid price`);
-      }
-      if (typeof item.quantity !== 'number' || item.quantity <= 0) {
-        throw new Error(`Product ${i + 1} has an invalid quantity`);
-      }
-    }
-
-    console.log('Frontend validation passed');
-  };
-
-  const handleCreateOrder = async () => {
-    if (!selectedCustomer) {
-      toast({
-        title: "Error",
-        description: "Please select a customer",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsCreating(true);
-    
     try {
-      // Frontend validation
-      validateOrderData();
-
-      // Transform CartItem[] to Product[] for order creation
-      const products = cart.map(cartItem => ({
-        id: cartItem.product.id,
-        name: cartItem.product.name,
-        price: cartItem.unit_price,
-        quantity: cartItem.quantity
-      }));
-
-      // Ensure truckType is not empty string - use default for split orders
-      const validTruckType = (orderType === 'single' && truckType) ? truckType : "small";
-
-      console.log('Submitting order creation with validated data:', {
-        customerName: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`,
-        productCount: products.length,
-        orderType,
-        totalAmount: subtotal + adjustments + deliveryFee
-      });
-
-      const result = await createOrder({
-        selectedCustomer,
-        cart: products,
-        subtotal,
+      const splitOrderData: SplitOrderData = {
+        customer_id: selectedCustomer.id,
+        customer_name: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`,
+        customer_address: selectedCustomer.full_address,
+        payment_method: paymentMethod,
+        splits: splits.map(split => ({
+          ...split,
+          truckType: split.truckType as Database["public"]["Enums"]["truck_type"]
+        })),
         adjustments,
         deliveryFee,
-        orderType,
-        splits,
-        deliveryDate,
-        deliveryTime,
-        truckType: validTruckType,
-        truckId: truckId || '', // Convert null to empty string if needed
-        driverId: driverId || '', // Convert null to empty string if needed
-        specialInstructions: specialInstructions || '',
-        paymentMethod
+      };
+
+      console.log('Creating split order with data:', splitOrderData);
+
+      const result = await orderCreationService.createSplitOrder(splitOrderData);
+
+      toast({
+        title: "Success",
+        description: `Split order created successfully with ${result.length} parts!`,
       });
-
-      console.log('Order creation successful:', result);
-
-      if (result.type === 'single') {
-        toast({
-          title: "Success",
-          description: `Order ${result.orderNumber} created successfully!`,
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: `Split order ${result.orderNumber} created with ${result.splitCount} parts!`,
-        });
-      }
 
       onOrderCreated();
       onClose();
-
     } catch (error: any) {
-      console.error('Order creation failed:', error);
-      
-      // Show specific error message to user
-      const errorMessage = error.message || "Failed to create order due to an unexpected error";
-      
+      console.error("Split order creation error:", error);
+      throw error;
+    }
+  };
+
+  const handleCreateSingleOrder = async () => {
+    if (!selectedCustomer) return;
+
+    try {
+      // Transform CartItem[] to OrderItem[] for order creation
+      const orderItems = cart.map(cartItem => ({
+        product_id: cartItem.product.id,
+        quantity: cartItem.quantity,
+        price: cartItem.unit_price,
+        total: cartItem.total_price
+      }));
+
+      const orderData = {
+        customer_id: selectedCustomer.id,
+        customer_name: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`,
+        delivery_date: deliveryDate,
+        customer_address: selectedCustomer.full_address,
+        total_amount: subtotal + adjustments + deliveryFee,
+        payment_status: 'pending',
+        status: 'requested' as OrderStatus,
+        notes: specialInstructions,
+        items: orderItems,
+        truck_type: truckType as Database["public"]["Enums"]["truck_type"],
+        truck_id: truckId,
+        driver_id: driverId,
+        delivery_time: deliveryTime,
+        special_instructions: specialInstructions,
+        payment_method: paymentMethod,
+      };
+
+      console.log('Creating single order with data:', orderData);
+
+      const result = await orderCreationService.createOrder(orderData);
+
       toast({
-        title: "Order Creation Failed",
-        description: errorMessage,
+        title: "Success",
+        description: `Order ${result.order_number} created successfully!`,
+      });
+
+      onOrderCreated();
+      onClose();
+    } catch (error: any) {
+      console.error("Single order creation error:", error);
+      throw error;
+    }
+  };
+
+  const handleCreateOrder = async () => {
+    if (!selectedCustomer) return;
+
+    setIsCreating(true);
+    try {
+      if (orderType === "split") {
+        await handleCreateSplitOrder();
+      } else {
+        await handleCreateSingleOrder();
+      }
+    } catch (error: any) {
+      console.error("Order creation error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create order",
         variant: "destructive",
       });
     } finally {
@@ -210,11 +172,18 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     }
   };
 
+  // Convert SplitConfig[] to Split[] for OrderReviewStep
+  const reviewSplits: Split[] = splits
+    .filter(split => split.truckType !== "") // Only include splits with valid truck types
+    .map(split => ({
+      ...split,
+      truckType: split.truckType as Database["public"]["Enums"]["truck_type"]
+    }));
+
   return (
     <div className="space-y-6">
       <ProgressIndicator currentStep={currentStep} />
 
-      
       {currentStep === 1 && (
         <CustomerSearchStep
           selectedCustomer={selectedCustomer}
@@ -297,9 +266,13 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           specialInstructions={orderType === "single" ? specialInstructions : `Split order with ${splits.length} parts`}
           paymentMethod={paymentMethod}
           selectedTruck={orderType === "single" ? selectedTruck : null}
+          orderType={orderType}
+          splits={reviewSplits}
           onBack={prevStep}
           onConfirm={handleCreateOrder}
           isCreating={isCreating}
+          onSpecialInstructionsChange={orderType === "single" ? setSpecialInstructions : undefined}
+          onSplitsChange={orderType === "split" ? setSplits : undefined}
         />
       )}
     </div>
