@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,6 @@ import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Filter, X, MapPin, Truck, FileText } from "lucide-react";
 import { emailService } from "@/utils/emailService";
-import { activityLogger } from "@/utils/activityLogger";
 import { useAuth } from "./auth/AuthProvider";
 import { getTruckInfo } from "@/utils/truckUtils";
 
@@ -320,13 +318,12 @@ export function OrderManagement() {
     return 'Products listed';
   };
 
-  // Completely isolated order status update function
+  // Simplified order status update function without activity logging
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
     try {
       console.log(`Updating order ${orderId} status to ${newStatus}`);
-      const oldStatus = currentOrder.status;
       
-      // PRIMARY OPERATION: Update order status (isolated from logging)
+      // Update order status
       const { error: updateError } = await supabase
         .from('orders')
         .update({ 
@@ -342,7 +339,7 @@ export function OrderManagement() {
 
       console.log(`Order ${orderId} status successfully updated to ${newStatus}`);
 
-      // SUCCESS: Show user feedback immediately
+      // Show user feedback immediately
       toast({
         title: "Status Updated",
         description: `Order ${currentOrder.order_number} status updated to ${newStatus.replace('_', ' ')}`,
@@ -350,32 +347,6 @@ export function OrderManagement() {
 
       // Refresh orders immediately
       refetch();
-
-      // SECONDARY OPERATION: Activity logging (completely isolated, non-blocking)
-      if (profile?.full_name) {
-        try {
-          if (newStatus === 'cancelled') {
-            activityLogger.orderCancel(
-              orderId,
-              currentOrder.order_number,
-              currentOrder.customer_name,
-              profile.full_name
-            );
-          } else {
-            activityLogger.orderStatusUpdate(
-              orderId,
-              currentOrder.order_number,
-              currentOrder.customer_name,
-              oldStatus,
-              newStatus,
-              profile.full_name
-            );
-          }
-        } catch (loggingError) {
-          console.warn('Activity logging failed (non-critical):', loggingError);
-          // Activity logging failure should not affect the main operation
-        }
-      }
 
     } catch (error: any) {
       console.error('Order status update failed:', error);
