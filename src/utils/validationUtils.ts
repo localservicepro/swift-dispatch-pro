@@ -43,22 +43,55 @@ export const validateOptionalNumber = (value: number | null | undefined): number
   return value;
 };
 
-// Validate and clean product data for JSON storage
+// Validate and clean product data for JSON storage - this is critical for fixing the JSON error
 export const validateProductsForDatabase = (products: any[]): any[] => {
+  console.log('=== PRODUCT VALIDATION START ===');
+  console.log('Raw products input:', JSON.stringify(products, null, 2));
+
   if (!Array.isArray(products) || products.length === 0) {
     throw new Error('At least one product is required');
   }
 
-  return products.map((product, index) => {
+  const validatedProducts = products.map((product, index) => {
+    console.log(`Validating product ${index + 1}:`, product);
+
     if (!product || typeof product !== 'object') {
       throw new Error(`Product at index ${index} is invalid`);
     }
 
-    return {
-      id: validateRequiredString(product.id, `Product ${index + 1} ID`),
-      name: validateRequiredString(product.name, `Product ${index + 1} name`),
-      price: validateNumber(product.price, `Product ${index + 1} price`),
+    // Handle the case where product might be nested inside a 'product' property (from CartItem)
+    const productData = product.product || product;
+    
+    console.log(`Product data for validation:`, productData);
+
+    if (!productData || typeof productData !== 'object') {
+      throw new Error(`Product data at index ${index} is invalid`);
+    }
+
+    // Create a clean product object for database storage
+    const cleanProduct = {
+      id: validateRequiredString(productData.id, `Product ${index + 1} ID`),
+      name: validateRequiredString(productData.name, `Product ${index + 1} name`),
+      price: validateNumber(product.unit_price || productData.price, `Product ${index + 1} price`),
       quantity: validateNumber(product.quantity, `Product ${index + 1} quantity`)
     };
+
+    console.log(`Clean product ${index + 1}:`, cleanProduct);
+    return cleanProduct;
   });
+
+  console.log('=== PRODUCT VALIDATION COMPLETED ===');
+  console.log('Final validated products:', JSON.stringify(validatedProducts, null, 2));
+
+  // Test JSON serialization to catch any issues early
+  try {
+    const testJson = JSON.stringify(validatedProducts);
+    JSON.parse(testJson); // Verify it can be parsed back
+    console.log('✅ JSON serialization test passed');
+  } catch (jsonError) {
+    console.error('❌ JSON serialization test failed:', jsonError);
+    throw new Error(`Product data cannot be serialized to JSON: ${jsonError}`);
+  }
+
+  return validatedProducts;
 };

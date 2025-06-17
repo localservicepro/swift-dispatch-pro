@@ -72,15 +72,19 @@ const generateOrderNumber = async (): Promise<string> => {
 
 // Validate and prepare order data for database insertion
 const validateAndPrepareOrderData = (orderData: CreateOrderParams) => {
-  console.log('Validating order data:', orderData);
+  console.log('=== ORDER DATA VALIDATION START ===');
+  console.log('Raw order data:', JSON.stringify(orderData, null, 2));
 
   // Validate customer
   if (!orderData.selectedCustomer || !orderData.selectedCustomer.id) {
     throw new Error('Valid customer is required');
   }
 
-  // Validate and clean products
+  // Validate and clean products - this is the critical part for the JSON error
+  console.log('Raw cart data before validation:', JSON.stringify(orderData.cart, null, 2));
+  
   const validatedProducts = validateProductsForDatabase(orderData.cart);
+  console.log('Validated products for database:', JSON.stringify(validatedProducts, null, 2));
   
   // Validate required fields
   const customerName = validateRequiredString(
@@ -89,9 +93,16 @@ const validateAndPrepareOrderData = (orderData: CreateOrderParams) => {
   );
   const customerAddress = validateRequiredString(orderData.selectedCustomer.full_address, 'Customer address');
   
-  // Validate and clean optional UUID fields
+  // Validate and clean optional UUID fields - convert empty strings to null
   const validatedTruckId = validateUUID(orderData.truckId);
   const validatedDriverId = validateUUID(orderData.driverId);
+  
+  console.log('UUID validation results:', {
+    originalTruckId: orderData.truckId,
+    validatedTruckId,
+    originalDriverId: orderData.driverId,
+    validatedDriverId
+  });
   
   // Validate numbers
   const subtotal = validateNumber(orderData.subtotal, 'Subtotal');
@@ -105,10 +116,12 @@ const validateAndPrepareOrderData = (orderData: CreateOrderParams) => {
     throw new Error(`Invalid truck type: ${orderData.truckType}`);
   }
 
-  console.log('Validation successful. Validated data:', {
+  console.log('=== VALIDATION COMPLETED SUCCESSFULLY ===');
+  console.log('Final validated data:', {
     customerId: orderData.selectedCustomer.id,
     customerName,
     productsCount: validatedProducts.length,
+    productsData: validatedProducts,
     totalAmount,
     truckId: validatedTruckId,
     driverId: validatedDriverId
@@ -150,13 +163,17 @@ const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCrea
     const splitOrderNumber = `${masterOrderNumber}-${i + 1}`;
     totalSplitAmount += totalAmount;
 
+    // Ensure the products JSON is properly formatted for PostgreSQL
+    const productsJson = JSON.stringify(validatedProducts);
+    console.log(`Split ${i + 1} products JSON:`, productsJson);
+
     const orderInsertData = {
       order_number: splitOrderNumber,
       customer_id: orderData.selectedCustomer.id,
       customer_name: customerName,
       customer_address: customerAddress,
       customer_phone: validateOptionalString(orderData.selectedCustomer.phone),
-      products: validatedProducts,
+      products: validatedProducts, // Let Supabase handle JSON conversion
       subtotal,
       adjustments,
       delivery_fee: deliveryFee,
@@ -174,7 +191,7 @@ const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCrea
       status: 'preparing' as const,
     };
 
-    console.log(`Inserting split order ${i + 1}:`, orderInsertData);
+    console.log(`Inserting split order ${i + 1} with data:`, JSON.stringify(orderInsertData, null, 2));
 
     const { data: order, error: orderError } = await supabase
       .from('orders')
@@ -183,7 +200,13 @@ const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCrea
       .single();
 
     if (orderError) {
-      console.error(`Error creating split order ${i + 1}:`, orderError);
+      console.error(`ERROR creating split order ${i + 1}:`, {
+        error: orderError,
+        message: orderError.message,
+        details: orderError.details,
+        hint: orderError.hint,
+        code: orderError.code
+      });
       throw new Error(`Failed to create split order ${i + 1}: ${orderError.message}`);
     }
 
@@ -219,12 +242,11 @@ const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCrea
 };
 
 export async function createOrder(orderData: CreateOrderParams): Promise<OrderCreationResult> {
-  console.log('Starting order creation process:', {
-    orderType: orderData.orderType,
-    customerName: `${orderData.selectedCustomer.first_name} ${orderData.selectedCustomer.last_name}`,
-    productCount: orderData.cart.length,
-    totalAmount: orderData.subtotal + orderData.adjustments + orderData.deliveryFee
-  });
+  console.log('=== ORDER CREATION START ===');
+  console.log('Order type:', orderData.orderType);
+  console.log('Customer:', `${orderData.selectedCustomer.first_name} ${orderData.selectedCustomer.last_name}`);
+  console.log('Product count:', orderData.cart.length);
+  console.log('Total amount:', orderData.subtotal + orderData.adjustments + orderData.deliveryFee);
 
   try {
     if (orderData.orderType === "split") {
@@ -248,6 +270,9 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
     const orderNumber = await generateOrderNumber();
     console.log(`Creating single order with number: ${orderNumber}`);
 
+    // Ensure the products JSON is properly formatted for PostgreSQL
+    console.log('Products for database insertion:', JSON.stringify(validatedProducts, null, 2));
+
     // Create order data
     const orderInsertData = {
       order_number: orderNumber,
@@ -255,7 +280,7 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
       customer_name: customerName,
       customer_address: customerAddress,
       customer_phone: validateOptionalString(orderData.selectedCustomer.phone),
-      products: validatedProducts,
+      products: validatedProducts, // Let Supabase handle JSON conversion
       subtotal,
       adjustments,
       delivery_fee: deliveryFee,
@@ -270,7 +295,7 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
       status: 'preparing' as const,
     };
 
-    console.log('Inserting single order:', orderInsertData);
+    console.log('Final order insert data:', JSON.stringify(orderInsertData, null, 2));
 
     // Insert the order
     const { data: order, error: orderError } = await supabase
@@ -280,7 +305,14 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
       .single();
 
     if (orderError) {
-      console.error('Error creating single order:', orderError);
+      console.error('ERROR creating single order:', {
+        error: orderError,
+        message: orderError.message,
+        details: orderError.details,
+        hint: orderError.hint,
+        code: orderError.code,
+        orderData: orderInsertData
+      });
       throw new Error(`Failed to create order: ${orderError.message}`);
     }
 
@@ -357,13 +389,16 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
     };
 
   } catch (error: any) {
-    console.error('Order creation failed:', {
+    console.error('=== ORDER CREATION FAILED ===');
+    console.error('Error details:', {
       error: error,
       message: error?.message,
+      stack: error?.stack,
       orderData: {
         orderType: orderData.orderType,
         customerId: orderData.selectedCustomer?.id,
-        productCount: orderData.cart?.length
+        productCount: orderData.cart?.length,
+        cart: orderData.cart
       }
     });
     
