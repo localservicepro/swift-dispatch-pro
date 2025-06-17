@@ -319,11 +319,14 @@ export function OrderManagement() {
     return 'Products listed';
   };
 
-  // Quick status update function for admin with activity logging
+  // Fixed quick status update function for admin with proper error handling
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
     try {
+      console.log(`Attempting to update order ${orderId} from ${currentOrder.status} to ${newStatus}`);
+      
       const oldStatus = currentOrder.status;
       
+      // Direct database update without using the orderStatusService to avoid parameter conflicts
       const { error } = await supabase
         .from('orders')
         .update({ 
@@ -332,7 +335,57 @@ export function OrderManagement() {
         })
         .eq('id', orderId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database update error:', error);
+        throw error;
+      }
+
+      console.log(`Successfully updated order ${orderId} to status ${newStatus}`);
+
+      // Send email notification if status changed and customer email exists
+      if (oldStatus !== newStatus) {
+        try {
+          // Get customer email
+          const { data: orderWithCustomer } = await supabase
+            .from('orders')
+            .select(`
+              *,
+              customers!orders_customer_id_fkey(email, first_name, last_name)
+            `)
+            .eq('id', orderId)
+            .single();
+
+          if (orderWithCustomer?.customers?.email) {
+            // Get driver name if driver is assigned
+            let driverName = 'Unassigned';
+            if (orderWithCustomer.driver_id) {
+              const { data: driverProfile } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', orderWithCustomer.driver_id)
+                .single();
+              
+              if (driverProfile?.full_name) {
+                driverName = driverProfile.full_name;
+              }
+            }
+
+            await emailService.sendDeliveryStatusUpdate({
+              customerName: orderWithCustomer.customer_name,
+              customerEmail: orderWithCustomer.customers.email,
+              orderNumber: orderWithCustomer.order_number,
+              oldStatus,
+              newStatus,
+              driverName
+            });
+
+            console.log('Status update email sent successfully');
+          }
+        } catch (emailError) {
+          console.error('Failed to send status update email:', emailError);
+          // Don't throw error to prevent status update failure
+        }
+      }
 
       // Log the activity
       if (profile?.full_name) {
@@ -363,9 +416,10 @@ export function OrderManagement() {
       // Refresh orders
       refetch();
     } catch (error: any) {
+      console.error('Error updating order status:', error);
       toast({
         title: "Error",
-        description: "Failed to update order status",
+        description: error.message || "Failed to update order status",
         variant: "destructive",
       });
     }
