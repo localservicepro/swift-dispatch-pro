@@ -48,6 +48,9 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Use the secure API key from secrets
+    const ghlApiKey = Deno.env.get('GHL_API_KEY') || ghlSettings.api_key
+
     // Map customer data to GHL format
     const fieldMappings = ghlSettings.customer_field_mappings || {}
     const ghlCustomer: GHLCustomer = {
@@ -86,7 +89,7 @@ Deno.serve(async (req) => {
         ghlResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${ghlContactId}`, {
           method: 'PUT',
           headers: {
-            'Authorization': `Bearer ${ghlSettings.api_key}`,
+            'Authorization': `Bearer ${ghlApiKey}`,
             'Content-Type': 'application/json',
             'Version': '2021-07-28'
           },
@@ -97,7 +100,7 @@ Deno.serve(async (req) => {
         ghlResponse = await fetch(`https://services.leadconnectorhq.com/contacts/`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${ghlSettings.api_key}`,
+            'Authorization': `Bearer ${ghlApiKey}`,
             'Content-Type': 'application/json',
             'Version': '2021-07-28'
           },

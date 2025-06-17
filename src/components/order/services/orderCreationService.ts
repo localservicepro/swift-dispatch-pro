@@ -1,280 +1,202 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
-import { chargeCardOnFile } from "./cardOnFileService";
+import { OrderFormData, OrderItem } from "@/types";
+import { OrderWithItems } from '../OrderManagement';
+import { ghlService } from "@/utils/ghlService";
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-}
+export const orderCreationService = {
+  async validateOrderData(formData: OrderFormData): Promise<string[]> {
+    const errors: string[] = [];
 
-type OrderType = "single" | "split";
-type TruckType = "small" | "medium" | "large" | "crane";
-
-interface Split {
-  deliveryDate: string;
-  deliveryTime: string;
-}
-
-interface Truck {
-  id: string;
-  registration_number: string;
-  truck_type: TruckType;
-}
-
-interface Customer {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string | null;
-  full_address: string;
-}
-
-interface CreateOrderParams {
-  selectedCustomer: Customer;
-  cart: Product[];
-  subtotal: number;
-  adjustments: number;
-  deliveryFee: number;
-  orderType: OrderType;
-  splits: Split[];
-  deliveryDate: string;
-  deliveryTime: string;
-  truckType: TruckType;
-  truckId: string;
-  driverId: string;
-  specialInstructions: string;
-  paymentMethod: string;
-}
-
-interface OrderCreationResult {
-  type: OrderType;
-  orderNumber: string;
-  orderId: string;
-  splitCount?: number;
-}
-
-const generateOrderNumber = async (): Promise<string> => {
-  const newUuid = uuidv4();
-  const shortUuid = newUuid.substring(0, 8);
-  return `ORD-${shortUuid.toUpperCase()}`;
-};
-
-const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCreationResult> => {
-  const {
-    selectedCustomer,
-    cart,
-    subtotal,
-    adjustments,
-    deliveryFee,
-    splits,
-    truckType,
-    truckId,
-    driverId,
-    specialInstructions,
-    paymentMethod
-  } = orderData;
-
-  const masterOrderNumber = await generateOrderNumber();
-  let totalSplitAmount = 0;
-
-  for (let i = 0; i < splits.length; i++) {
-    const split = splits[i];
-    const splitOrderNumber = `${masterOrderNumber}-${i + 1}`;
-    const totalAmount = subtotal + adjustments + deliveryFee;
-    totalSplitAmount += totalAmount;
-
-    const orderInsertData = {
-      order_number: splitOrderNumber,
-      customer_id: selectedCustomer.id,
-      customer_name: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`,
-      customer_address: selectedCustomer.full_address,
-      customer_phone: selectedCustomer.phone,
-      products: cart as any, // Cast to any for JSON storage
-      subtotal,
-      adjustments,
-      delivery_fee: deliveryFee,
-      total_amount: totalAmount,
-      delivery_date: split.deliveryDate,
-      delivery_time: split.deliveryTime,
-      truck_type: truckType,
-      truck_id: truckId,
-      driver_id: driverId,
-      special_instructions: specialInstructions,
-      payment_method: paymentMethod,
-      is_split_order: true,
-      master_order_id: masterOrderNumber,
-      split_number: i + 1,
-      status: 'preparing' as const,
-    };
-
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert(orderInsertData)
-      .select()
-      .single();
-
-    if (orderError) {
-      console.error(`Error creating split order ${i + 1}:`, orderError);
-      throw new Error(`Failed to create split order ${i + 1}`);
+    if (!formData.customer_id) {
+      errors.push("Customer is required.");
     }
 
-    const orderItems = cart.map((item) => ({
-      order_id: order.id,
-      product_id: item.id,
+    if (!formData.delivery_date) {
+      errors.push("Delivery date is required.");
+    }
+
+    if (!formData.customer_address) {
+      errors.push("Delivery address is required.");
+    }
+
+    if (formData.items && formData.items.length === 0) {
+      errors.push("At least one item is required.");
+    }
+
+    return errors;
+  },
+
+  async createOrderItems(orderId: string, items: OrderItem[]) {
+    const orderItemsToInsert = items.map(item => ({
+      id: uuidv4(),
+      order_id: orderId,
+      product_id: item.product_id,
       quantity: item.quantity,
-      unit_price: item.price,
-      total_price: item.price * item.quantity,
-      price_adjustment: 0,
+      price: item.price,
+      total: item.total,
+      created_at: new Date().toISOString(),
     }));
 
-    const { error: itemsError } = await supabase
+    const { data, error } = await supabase
       .from('order_items')
-      .insert(orderItems);
+      .insert(orderItemsToInsert)
+      .select();
 
-    if (itemsError) {
-      console.error(`Error creating order items for split order ${i + 1}:`, itemsError);
+    if (error) {
+      throw new Error(`Failed to create order items: ${error.message}`);
     }
-  }
 
-  return {
-    type: "split",
-    orderNumber: masterOrderNumber,
-    orderId: masterOrderNumber,
-    splitCount: splits.length
-  };
-};
+    return data;
+  },
+  
+  async createOrder(formData: OrderFormData): Promise<OrderWithItems> {
+    const errors = await this.validateOrderData(formData);
+    if (errors.length > 0) {
+      throw new Error(`Validation failed: ${errors.join(', ')}`);
+    }
 
-export async function createOrder(orderData: CreateOrderParams): Promise<OrderCreationResult> {
-  const {
-    selectedCustomer,
-    cart,
-    subtotal,
-    adjustments,
-    deliveryFee,
-    orderType,
-    splits,
-    deliveryDate,
-    deliveryTime,
-    truckType,
-    truckId,
-    driverId,
-    specialInstructions,
-    paymentMethod
-  } = orderData;
+    const orderId = uuidv4();
+    const orderData = {
+      id: orderId,
+      customer_id: formData.customer_id,
+      order_number: formData.order_number,
+      order_date: new Date().toISOString(),
+      delivery_date: formData.delivery_date,
+      customer_address: formData.customer_address,
+      total_amount: formData.total_amount,
+      payment_status: formData.payment_status,
+      status: formData.status,
+      notes: formData.notes,
+      created_at: new Date().toISOString(),
+    };
 
-  console.log('Creating order with data:', orderData);
-
-  if (orderType === "split") {
-    return await createSplitOrder(orderData);
-  }
-
-  // Generate order number
-  const orderNumber = await generateOrderNumber();
-  const totalAmount = subtotal + adjustments + deliveryFee;
-
-  // Create order data
-  const orderInsertData = {
-    order_number: orderNumber,
-    customer_id: selectedCustomer.id,
-    customer_name: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`,
-    customer_address: selectedCustomer.full_address,
-    customer_phone: selectedCustomer.phone,
-    products: cart as any, // Cast to any for JSON storage
-    subtotal,
-    adjustments,
-    delivery_fee: deliveryFee,
-    total_amount: totalAmount,
-    delivery_date: deliveryDate,
-    delivery_time: deliveryTime,
-    truck_type: truckType,
-    truck_id: truckId,
-    driver_id: driverId,
-    special_instructions: specialInstructions,
-    payment_method: paymentMethod,
-    status: 'preparing' as const,
-  };
-
-  // Insert the order
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert(orderInsertData)
-    .select()
-    .single();
-
-  if (orderError) {
-    console.error('Error creating order:', orderError);
-    throw new Error('Failed to create order');
-  }
-
-  console.log('Order created:', order);
-
-  // Handle card on file payment
-  if (paymentMethod === 'card_on_file') {
     try {
-      console.log('Processing card on file payment...');
-      const paymentResult = await chargeCardOnFile({
-        customerId: selectedCustomer.id,
-        amount: totalAmount,
-        orderNumber: orderNumber,
-        description: `Order ${orderNumber} - ${selectedCustomer.first_name} ${selectedCustomer.last_name}`
-      });
-
-      console.log('Card on file payment result:', paymentResult);
-
-      // Update order with payment status
-      const { error: updateError } = await supabase
+      const { data: newOrderData, error: orderError } = await supabase
         .from('orders')
-        .update({
-          payment_status: 'completed',
-          payment_date: new Date().toISOString()
-        })
-        .eq('id', order.id);
+        .insert([orderData])
+        .select()
+        .single();
 
-      if (updateError) {
-        console.error('Error updating order payment status:', updateError);
-        // Don't throw here as the order was created successfully
+      if (orderError) {
+        throw new Error(`Failed to create order: ${orderError.message}`);
       }
-    } catch (paymentError: any) {
-      console.error('Card on file payment failed:', paymentError);
+
+      const orderItems = await this.createOrderItems(orderId, formData.items);
+
+      const newOrder = {
+        ...newOrderData,
+        order_items: orderItems,
+      } as OrderWithItems;
       
-      // Update order with failed payment status
-      await supabase
-        .from('orders')
-        .update({
-          payment_status: 'failed'
-        })
-        .eq('id', order.id);
+      // After successful order creation, sync to GoHighLevel
+      try {
+        const settings = await ghlService.getSettings();
+        if (settings.auto_sync_orders && settings.connection_status === 'connected') {
+          await ghlService.syncOrder(newOrder);
+          console.log('Order synced to GHL successfully');
+        }
+      } catch (ghlError) {
+        console.error('Failed to sync order to GHL:', ghlError);
+        // Don't fail the order creation if GHL sync fails
+      }
 
-      throw new Error(`Order created but payment failed: ${paymentError.message}`);
+      return newOrder;
+    } catch (error) {
+      console.error("Error creating order:", error);
+      throw error;
     }
-  }
+  },
 
-  // Create order items
-  const orderItems = cart.map((item) => ({
-    order_id: order.id,
-    product_id: item.id,
-    quantity: item.quantity,
-    unit_price: item.price,
-    total_price: item.price * item.quantity,
-    price_adjustment: 0,
-  }));
+  async updateOrder(orderId: string, formData: OrderFormData): Promise<OrderWithItems> {
+    const errors = await this.validateOrderData(formData);
+    if (errors.length > 0) {
+      throw new Error(`Validation failed: ${errors.join(', ')}`);
+    }
 
-  const { error: itemsError } = await supabase
-    .from('order_items')
-    .insert(orderItems);
+    const orderData = {
+      customer_id: formData.customer_id,
+      order_number: formData.order_number,
+      delivery_date: formData.delivery_date,
+      customer_address: formData.customer_address,
+      total_amount: formData.total_amount,
+      payment_status: formData.payment_status,
+      status: formData.status,
+      notes: formData.notes,
+      updated_at: new Date().toISOString(),
+    };
 
-  if (itemsError) {
-    console.error('Error creating order items:', itemsError);
-    // Don't throw here as the main order was created
-  }
+    try {
+      const { data: updatedOrderData, error: orderError } = await supabase
+        .from('orders')
+        .update(orderData)
+        .eq('id', orderId)
+        .select()
+        .single();
 
-  return {
-    type: 'single',
-    orderNumber,
-    orderId: order.id
-  };
-}
+      if (orderError) {
+        throw new Error(`Failed to update order: ${orderError.message}`);
+      }
+
+      // Fetch existing order items
+      const { data: existingOrderItems, error: fetchError } = await supabase
+        .from('order_items')
+        .select('*')
+        .eq('order_id', orderId);
+
+      if (fetchError) {
+        throw new Error(`Failed to fetch existing order items: ${fetchError.message}`);
+      }
+
+      // Delete existing order items
+      const { error: deleteError } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', orderId);
+
+      if (deleteError) {
+        throw new Error(`Failed to delete existing order items: ${deleteError.message}`);
+      }
+
+      // Create new order items
+      const orderItems = await this.createOrderItems(orderId, formData.items);
+
+      const updatedOrder = {
+        ...updatedOrderData,
+        order_items: orderItems,
+      } as OrderWithItems;
+
+      return updatedOrder;
+    } catch (error) {
+      console.error("Error updating order:", error);
+      throw error;
+    }
+  },
+
+  async deleteOrder(orderId: string): Promise<void> {
+    try {
+      // Delete order items associated with the order
+      const { error: deleteItemsError } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', orderId);
+
+      if (deleteItemsError) {
+        throw new Error(`Failed to delete order items: ${deleteItemsError.message}`);
+      }
+
+      // Delete the order
+      const { error: deleteOrderError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (deleteOrderError) {
+        throw new Error(`Failed to delete order: ${deleteOrderError.message}`);
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      throw error;
+    }
+  },
+};

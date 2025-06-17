@@ -45,6 +45,9 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Use the secure API key from secrets
+    const ghlApiKey = Deno.env.get('GHL_API_KEY') || ghlSettings.api_key
+
     // Get customer's GHL contact ID
     const { data: customer } = await supabaseClient
       .from('customers')
@@ -104,7 +107,7 @@ Deno.serve(async (req) => {
         ghlResponse = await fetch(`https://services.leadconnectorhq.com/opportunities/${ghlOpportunityId}`, {
           method: 'PUT',
           headers: {
-            'Authorization': `Bearer ${ghlSettings.api_key}`,
+            'Authorization': `Bearer ${ghlApiKey}`,
             'Content-Type': 'application/json',
             'Version': '2021-07-28'
           },
@@ -115,7 +118,7 @@ Deno.serve(async (req) => {
         ghlResponse = await fetch(`https://services.leadconnectorhq.com/opportunities/`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${ghlSettings.api_key}`,
+            'Authorization': `Bearer ${ghlApiKey}`,
             'Content-Type': 'application/json',
             'Version': '2021-07-28'
           },
