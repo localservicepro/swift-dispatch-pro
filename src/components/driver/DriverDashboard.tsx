@@ -26,7 +26,7 @@ interface Order {
   delivery_time: string | null;
   status: OrderStatus;
   special_instructions: string | null;
-  products: any;
+  products: any[];
   truck_type: string | null;
 }
 
@@ -39,6 +39,7 @@ interface DriverDashboardProps {
 export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
+  const [actionType, setActionType] = useState<"delivered" | "cancelled">("delivered");
   const [currentDriverId, setCurrentDriverId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -54,7 +55,7 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
     getCurrentDriver();
   }, []);
 
-  // Fetch orders assigned to current driver
+  // Fetch orders assigned to current driver - using correct database enum values
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['driver-orders', currentDriverId],
     queryFn: async () => {
@@ -64,7 +65,7 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
         .from('orders')
         .select('*')
         .eq('driver_id', currentDriverId)
-        .in('status', ['preparing', 'ready', 'dispatched', 'in_transit', 'delivered'])
+        .in('status', ['preparing', 'loading', 'en_route', 'delivered'])
         .order('delivery_date', { ascending: true });
 
       if (error) {
@@ -107,22 +108,33 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'preparing': return 'bg-yellow-100 text-yellow-800';
-      case 'ready': return 'bg-blue-100 text-blue-800';
-      case 'dispatched': return 'bg-purple-100 text-purple-800';
-      case 'in_transit': return 'bg-orange-100 text-orange-800';
+      case 'loading': return 'bg-blue-100 text-blue-800';
+      case 'en_route': return 'bg-orange-100 text-orange-800';
       case 'delivered': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getNextStatus = (currentStatus: string): OrderStatus | null => {
     switch (currentStatus) {
-      case 'preparing': return 'ready';
-      case 'ready': return 'dispatched';  
-      case 'dispatched': return 'in_transit';
-      case 'in_transit': return 'delivered';
+      case 'preparing': return 'loading';
+      case 'loading': return 'en_route';
+      case 'en_route': return 'delivered';
       default: return null;
     }
+  };
+
+  const handleDeliveryAction = (order: Order, action: "delivered" | "cancelled") => {
+    setSelectedOrder(order);
+    setActionType(action);
+    setIsActionDialogOpen(true);
+  };
+
+  const handleDeliveryComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ['driver-orders'] });
+    setIsActionDialogOpen(false);
+    setSelectedOrder(null);
   };
 
   if (isLoading) {
@@ -215,7 +227,7 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
                       ${order.total_amount.toFixed(2)}
                     </span>
                     <span className="text-sm text-slate-600">
-                      ({Array.isArray(order.products) ? order.products.length : 0} items)
+                      ({order.products.length} items)
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -230,14 +242,35 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
                       <Button
                         size="sm"
                         onClick={() => {
-                          setSelectedOrder(order);
-                          setIsActionDialogOpen(true);
+                          const nextStatus = getNextStatus(order.status);
+                          if (nextStatus) {
+                            handleStatusUpdate(order.id, nextStatus);
+                          }
                         }}
                         className="bg-blue-600 hover:bg-blue-700"
                       >
                         <CheckCircle className="w-4 h-4 mr-2" />
-                        Update Status
+                        Mark as {getNextStatus(order.status)?.replace('_', ' ')}
                       </Button>
+                    )}
+                    {order.status === 'en_route' && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => handleDeliveryAction(order, "delivered")}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          Complete Delivery
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeliveryAction(order, "cancelled")}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          Cancel Delivery
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -253,12 +286,11 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
 
       {selectedOrder && isActionDialogOpen && (
         <DeliveryActionDialog
-          isOpen={isActionDialogOpen}
-          onClose={() => setIsActionDialogOpen(false)}
+          open={isActionDialogOpen}
+          onOpenChange={setIsActionDialogOpen}
           order={selectedOrder}
-          onStatusUpdate={(newStatus, notes) => 
-            handleStatusUpdate(selectedOrder.id, newStatus, notes)
-          }
+          action={actionType}
+          onStatusUpdate={handleDeliveryComplete}
         />
       )}
     </div>
