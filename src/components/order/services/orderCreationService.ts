@@ -1,7 +1,7 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { OrderFormData, OrderItem, SplitOrderData } from "@/types";
-import { ghlService } from "@/utils/ghlService";
 import { Database } from "@/integrations/supabase/types";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -220,19 +220,6 @@ export const orderCreationService = {
         } as OrderWithItems);
       }
 
-      // Try to sync to GoHighLevel
-      try {
-        const settings = await ghlService.getSettings();
-        if (settings.auto_sync_orders && settings.connection_status === 'connected') {
-          // Sync master order to GHL
-          await ghlService.syncOrder(masterOrder as OrderWithItems);
-          console.log('Split order synced to GHL successfully');
-        }
-      } catch (ghlError) {
-        console.error('Failed to sync split order to GHL:', ghlError);
-        // Don't fail the order creation if GHL sync fails
-      }
-
       console.log('Split order creation completed successfully:', splitOrders);
       return splitOrders;
     } catch (error) {
@@ -286,18 +273,6 @@ export const orderCreationService = {
         ...newOrderData,
         order_items: orderItems,
       } as OrderWithItems;
-      
-      // After successful order creation, sync to GoHighLevel
-      try {
-        const settings = await ghlService.getSettings();
-        if (settings.auto_sync_orders && settings.connection_status === 'connected') {
-          await ghlService.syncOrder(newOrder);
-          console.log('Order synced to GHL successfully');
-        }
-      } catch (ghlError) {
-        console.error('Failed to sync order to GHL:', ghlError);
-        // Don't fail the order creation if GHL sync fails
-      }
 
       return newOrder;
     } catch (error) {

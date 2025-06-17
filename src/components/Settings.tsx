@@ -10,8 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { ActivityLog } from "./settings/ActivityLog";
 import { PaymentSettings } from "./settings/PaymentSettings";
 import { EmailSettings } from "./settings/EmailSettings";
-import { GHLSettings } from "./settings/GHLSettings";
-import { GHLSyncLogs } from "./settings/GHLSyncLogs";
 
 export function Settings() {
   const [businessInfo, setBusinessInfo] = useState({
@@ -123,12 +121,6 @@ export function Settings() {
 
       {/* Email Configuration */}
       <EmailSettings />
-
-      {/* GoHighLevel Integration */}
-      <GHLSettings />
-
-      {/* GoHighLevel Sync Logs */}
-      <GHLSyncLogs />
 
       {/* Email Notification Preferences */}
       <Card className="hover:shadow-lg transition-shadow">
