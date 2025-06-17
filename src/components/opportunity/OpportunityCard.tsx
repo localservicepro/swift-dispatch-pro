@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,6 @@ import {
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { useAuth } from "../auth/AuthProvider";
-import { activityLogger } from "@/utils/activityLogger";
 
 interface OpportunityCardProps {
   order: any;
@@ -82,29 +82,6 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
         .eq('id', order.id);
 
       if (error) throw error;
-
-      // Log the activity
-      if (profile?.full_name) {
-        if (nextStage === 'preparing') {
-          await activityLogger.orderStatusUpdate(
-            order.id,
-            order.order_number,
-            order.customer_name,
-            'requested',
-            'preparing',
-            profile.full_name
-          );
-        } else {
-          await activityLogger.orderStatusUpdate(
-            order.id,
-            order.order_number,
-            order.customer_name,
-            order.status,
-            updateData.status,
-            profile.full_name
-          );
-        }
-      }
 
       const actionText = getNextStageAction(currentStage);
       toast({
