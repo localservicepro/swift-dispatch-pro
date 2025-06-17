@@ -6,6 +6,7 @@ import { getTruckInfo } from "@/utils/truckUtils";
 import { OrderStatusButtons } from "./OrderStatusButtons";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
+type TruckType = Database["public"]["Enums"]["truck_type"];
 
 interface Order {
   id: string;
@@ -75,7 +76,21 @@ export function OrderCard({ order, onEdit, onStatusUpdate }: OrderCardProps) {
     return 'Products listed';
   };
 
-  const truckInfo = getTruckInfo(order.truck_type_from_truck || order.truck_type);
+  // Helper function to check if a string is a valid truck type
+  const isValidTruckType = (type: string | null | undefined): type is TruckType => {
+    return type === 'small' || type === 'medium' || type === 'large' || type === 'crane';
+  };
+
+  // Get truck info with proper type checking
+  const getTruckTypeInfo = () => {
+    const truckType = order.truck_type_from_truck || order.truck_type;
+    if (isValidTruckType(truckType)) {
+      return getTruckInfo(truckType);
+    }
+    return null;
+  };
+
+  const truckInfo = getTruckTypeInfo();
 
   return (
     <div className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
