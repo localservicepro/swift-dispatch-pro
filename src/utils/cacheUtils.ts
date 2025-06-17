@@ -4,6 +4,18 @@
  * Handles clearing browser-side caches during development
  */
 
+// Type definitions for custom window properties
+declare global {
+  interface Window {
+    __REACT_QUERY_CACHE__?: {
+      clear(): void;
+    };
+    __clearCache?: () => Promise<CacheStats>;
+    __clearLocalStorage?: () => boolean;
+    __clearSupabaseCache?: () => boolean;
+  }
+}
+
 export interface CacheStats {
   localStorage: boolean;
   sessionStorage: boolean;
@@ -189,7 +201,7 @@ export const browserCacheManager = BrowserCacheManager.getInstance();
 
 // Development-only global access
 if (process.env.NODE_ENV === 'development') {
-  (window as any).__clearCache = () => browserCacheManager.clearAll();
-  (window as any).__clearLocalStorage = () => browserCacheManager.clearLocalStorage();
-  (window as any).__clearSupabaseCache = () => browserCacheManager.clearSupabaseCache();
+  window.__clearCache = () => browserCacheManager.clearAll();
+  window.__clearLocalStorage = () => browserCacheManager.clearLocalStorage();
+  window.__clearSupabaseCache = () => browserCacheManager.clearSupabaseCache();
 }
