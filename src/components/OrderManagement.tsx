@@ -17,8 +17,9 @@ import { useAuth } from "./auth/AuthProvider";
 import { getTruckInfo } from "@/utils/truckUtils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
+type TruckType = Database["public"]["Enums"]["truck_type"];
 
-interface Order {
+interface OrderRecord {
   id: string;
   order_number: string;
   customer_name: string;
@@ -36,7 +37,7 @@ interface Order {
   suburb_id?: string;
   delivery_fee?: number;
   subtotal?: number;
-  truck_type?: string;
+  truck_type?: TruckType;
   truck_id?: string;
   // Enhanced fields populated separately
   suburb_name?: string;
@@ -75,7 +76,7 @@ const safeProcessProducts = (products: any): any[] => {
 
 export function OrderManagement() {
   const [isCreating, setIsCreating] = useState(false);
-  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [editingOrder, setEditingOrder] = useState<OrderRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
@@ -161,7 +162,7 @@ export function OrderManagement() {
         console.log('Related data fetched:', { customers: customers.length, drivers: drivers.length, trucks: trucks.length });
 
         // Step 4: Map orders with related data
-        const mappedOrders = ordersData.map(order => {
+        const mappedOrders: OrderRecord[] = ordersData.map(order => {
           // Safely process products
           const processedProducts = safeProcessProducts(order.products);
           
@@ -170,16 +171,16 @@ export function OrderManagement() {
           const driver = drivers.find(d => d.id === order.driver_id);
           const truck = trucks.find(t => t.id === order.truck_id);
           
-          const mappedOrder: Order = {
+          const mappedOrder: OrderRecord = {
             ...order,
             products: processedProducts,
-            suburb_id: customer?.suburb_id || null,
-            suburb_name: customer?.suburbs?.name || null,
-            suburb_state: customer?.suburbs?.state || null,
-            suburb_postcode: customer?.suburbs?.postcode || null,
+            suburb_id: customer?.suburb_id || undefined,
+            suburb_name: customer?.suburbs?.name || undefined,
+            suburb_state: customer?.suburbs?.state || undefined,
+            suburb_postcode: customer?.suburbs?.postcode || undefined,
             driver_name: driver?.full_name || 'Not Assigned',
-            truck_registration: truck?.registration_number || null,
-            truck_type: truck?.truck_type || order.truck_type
+            truck_registration: truck?.registration_number || undefined,
+            truck_type: (truck?.truck_type || order.truck_type) as TruckType
           };
 
           return mappedOrder;
@@ -333,7 +334,7 @@ export function OrderManagement() {
   };
 
   // Simplified status update function with better error handling
-  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: OrderRecord) => {
     try {
       const oldStatus = currentOrder.status;
       
@@ -549,7 +550,7 @@ export function OrderManagement() {
           ) : (
             <div className="space-y-4">
               {filteredOrders.map((order) => {
-                const truckInfo = getTruckInfo(order.truck_type);
+                const truckInfo = order.truck_type ? getTruckInfo(order.truck_type) : null;
                 
                 return (
                   <div key={order.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
