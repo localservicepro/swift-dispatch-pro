@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,36 +51,32 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
 
     setIsMoving(true);
     try {
-      let updateData: any = {};
+      console.log(`Moving order ${order.order_number} from ${currentStage} to ${nextStage}`);
       
-      switch (nextStage) {
-        case 'preparing':
-          // When confirming an order from requested, set payment status to paid and status to preparing
-          updateData = { 
-            payment_status: 'paid',
-            status: 'preparing'
-          };
-          break;
-        case 'loading':
-          updateData = { status: 'loading' };
-          break;
-        case 'en_route':
-          updateData = { status: 'en_route' };
-          break;
-        case 'delivered':
-          updateData = { status: 'delivered' };
-          break;
+      // Use the RPC function for consistent status updates
+      const { error } = await supabase.rpc('update_order_status', {
+        order_id: order.id,
+        new_status: nextStage,
+        notes: `Status updated from opportunity card: ${currentStage} to ${nextStage}`
+      });
+
+      if (error) {
+        console.error('RPC error details:', error);
+        throw new Error(`Database error: ${error.message}`);
       }
 
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          ...updateData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', order.id);
+      // Update payment status if moving to preparing stage
+      if (nextStage === 'preparing') {
+        const { error: paymentError } = await supabase
+          .from('orders')
+          .update({ payment_status: 'paid' })
+          .eq('id', order.id);
 
-      if (error) throw error;
+        if (paymentError) {
+          console.error('Payment status update error:', paymentError);
+          // Don't throw here as main status was already updated
+        }
+      }
 
       const actionText = getNextStageAction(currentStage);
       toast({
@@ -91,9 +86,10 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
 
       onOrderMove();
     } catch (error: any) {
+      console.error('OpportunityCard status update error:', error);
       toast({
-        title: "Error",
-        description: "Failed to update order status",
+        title: "Update Failed",
+        description: error.message || "Failed to update order status. Please try again.",
         variant: "destructive",
       });
     } finally {

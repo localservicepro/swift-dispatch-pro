@@ -168,20 +168,17 @@ export function OpportunityPipeline() {
       setDraggedOrder(order);
     }
   };
+
   const handleDragEnd = async (event: DragEndEvent) => {
-    const {
-      active,
-      over
-    } = event;
+    const { active, over } = event;
     setActiveId(null);
     setDraggedOrder(null);
+    
     if (!over || !active.data.current) {
       return;
     }
-    const {
-      order,
-      currentStage
-    } = active.data.current;
+    
+    const { order, currentStage } = active.data.current;
     const newStage = over.id as string;
 
     // If dropping in the same stage, do nothing
@@ -213,54 +210,47 @@ export function OpportunityPipeline() {
       });
       return;
     }
-    try {
-      let updateData: any = {};
-      switch (newStage) {
-        case 'preparing':
-          updateData = {
-            payment_status: 'paid',
-            status: 'preparing'
-          };
-          break;
-        case 'loading':
-          updateData = {
-            status: 'loading'
-          };
-          break;
-        case 'en_route':
-          updateData = {
-            status: 'en_route'
-          };
-          break;
-        case 'delivered':
-          updateData = {
-            status: 'delivered'
-          };
-          break;
-        default:
-          updateData = {
-            status: newStage
-          };
-      }
-      const {
-        error
-      } = await supabase.from('orders').update({
-        ...updateData,
-        updated_at: new Date().toISOString()
-      }).eq('id', order.id);
-      if (error) throw error;
 
-      // Log the activity
-      toast({
-        title: "Order Moved",
-        description: `Order ${order.order_number} moved to ${PIPELINE_STAGES.find(s => s.id === newStage)?.title}`
+    try {
+      console.log(`Updating order ${order.order_number} from ${currentStage} to ${newStage}`);
+      
+      // Use the RPC function for consistent status updates
+      const { error } = await supabase.rpc('update_order_status', {
+        order_id: order.id,
+        new_status: newStage,
+        notes: `Status updated via pipeline from ${currentStage} to ${newStage}`
       });
+
+      if (error) {
+        console.error('RPC error details:', error);
+        throw new Error(`Database error: ${error.message}`);
+      }
+
+      // Update payment status if moving to preparing stage
+      if (newStage === 'preparing' && order.payment_status !== 'paid') {
+        const { error: paymentError } = await supabase
+          .from('orders')
+          .update({ payment_status: 'paid' })
+          .eq('id', order.id);
+
+        if (paymentError) {
+          console.error('Payment status update error:', paymentError);
+          // Don't throw here as status was already updated
+        }
+      }
+
+      toast({
+        title: "Order Updated",
+        description: `Order ${order.order_number} moved to ${PIPELINE_STAGES.find(s => s.id === newStage)?.title}`,
+      });
+
       refetch();
     } catch (error: any) {
+      console.error('Pipeline drag update error:', error);
       toast({
-        title: "Error",
-        description: "Failed to move order",
-        variant: "destructive"
+        title: "Update Failed",
+        description: error.message || "Failed to update order status. Please try again.",
+        variant: "destructive",
       });
     }
   };
@@ -283,6 +273,7 @@ export function OpportunityPipeline() {
       mainScrollElement.removeEventListener('scroll', handleMainScroll);
     };
   }, [isLoading]);
+
   if (error) {
     return <div className="space-y-6">
         <div className="flex items-center justify-between">
