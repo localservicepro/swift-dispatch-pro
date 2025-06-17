@@ -46,20 +46,6 @@ interface InvoiceData {
 }
 
 export const emailService = {
-  async getEmailSettings() {
-    try {
-      const { data: emailSettings } = await supabase
-        .from('email_settings')
-        .select('*')
-        .single();
-      
-      return emailSettings;
-    } catch (error) {
-      console.error('Error fetching email settings:', error);
-      return null;
-    }
-  },
-
   async getCustomerEmail(orderId: string): Promise<string | null> {
     try {
       // First try to get email from customer_id if it exists
@@ -88,15 +74,10 @@ export const emailService = {
 
   async sendOrderConfirmation(data: OrderConfirmationData) {
     console.log('Sending order confirmation email:', data);
-    
-    // Get email settings to include sender information
-    const emailSettings = await this.getEmailSettings();
-    
     const { error } = await supabase.functions.invoke('send-emails', {
       body: {
         type: 'order-confirmation',
-        data,
-        emailSettings
+        data
       }
     });
     
@@ -108,15 +89,10 @@ export const emailService = {
 
   async sendDeliveryStatusUpdate(data: DeliveryStatusUpdateData) {
     console.log('Sending delivery status update email:', data);
-    
-    // Get email settings to include sender information
-    const emailSettings = await this.getEmailSettings();
-    
     const { error } = await supabase.functions.invoke('send-emails', {
       body: {
         type: 'delivery-status-update',
-        data,
-        emailSettings
+        data
       }
     });
     
@@ -169,15 +145,10 @@ export const emailService = {
 
   async sendInvoice(data: InvoiceData) {
     console.log('Sending invoice email:', data);
-    
-    // Get email settings to include sender information
-    const emailSettings = await this.getEmailSettings();
-    
     const { error } = await supabase.functions.invoke('send-emails', {
       body: {
         type: 'invoice',
-        data,
-        emailSettings
+        data
       }
     });
     

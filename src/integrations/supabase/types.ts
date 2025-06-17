@@ -124,14 +124,10 @@ export type Database = {
           email: string
           first_name: string
           full_address: string
-          ghl_contact_id: string | null
           id: string
           is_active: boolean
           last_name: string
-          last_synced_to_ghl: string | null
           phone: string | null
-          sms_notifications_enabled: boolean
-          sms_opt_out_date: string | null
           stripe_customer_id: string | null
           suburb_id: string | null
           updated_at: string
@@ -144,14 +140,10 @@ export type Database = {
           email: string
           first_name: string
           full_address: string
-          ghl_contact_id?: string | null
           id?: string
           is_active?: boolean
           last_name: string
-          last_synced_to_ghl?: string | null
           phone?: string | null
-          sms_notifications_enabled?: boolean
-          sms_opt_out_date?: string | null
           stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
@@ -164,14 +156,10 @@ export type Database = {
           email?: string
           first_name?: string
           full_address?: string
-          ghl_contact_id?: string | null
           id?: string
           is_active?: boolean
           last_name?: string
-          last_synced_to_ghl?: string | null
           phone?: string | null
-          sms_notifications_enabled?: boolean
-          sms_opt_out_date?: string | null
           stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
@@ -438,147 +426,6 @@ export type Database = {
         }
         Relationships: []
       }
-      email_settings: {
-        Row: {
-          connection_status: string
-          created_at: string
-          email_provider: string
-          id: string
-          last_tested_at: string | null
-          reply_to_email: string | null
-          resend_api_key: string | null
-          sender_email: string
-          sender_name: string
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          connection_status?: string
-          created_at?: string
-          email_provider?: string
-          id?: string
-          last_tested_at?: string | null
-          reply_to_email?: string | null
-          resend_api_key?: string | null
-          sender_email?: string
-          sender_name?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          connection_status?: string
-          created_at?: string
-          email_provider?: string
-          id?: string
-          last_tested_at?: string | null
-          reply_to_email?: string | null
-          resend_api_key?: string | null
-          sender_email?: string
-          sender_name?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
-      ghl_settings: {
-        Row: {
-          api_key: string | null
-          auto_sync_customers: boolean
-          auto_sync_orders: boolean
-          connection_status: string
-          created_at: string
-          customer_field_mappings: Json | null
-          ghl_pipeline_id: string | null
-          id: string
-          last_tested_at: string | null
-          location_id: string | null
-          order_field_mappings: Json | null
-          stage_mappings: Json | null
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          api_key?: string | null
-          auto_sync_customers?: boolean
-          auto_sync_orders?: boolean
-          connection_status?: string
-          created_at?: string
-          customer_field_mappings?: Json | null
-          ghl_pipeline_id?: string | null
-          id?: string
-          last_tested_at?: string | null
-          location_id?: string | null
-          order_field_mappings?: Json | null
-          stage_mappings?: Json | null
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          api_key?: string | null
-          auto_sync_customers?: boolean
-          auto_sync_orders?: boolean
-          connection_status?: string
-          created_at?: string
-          customer_field_mappings?: Json | null
-          ghl_pipeline_id?: string | null
-          id?: string
-          last_tested_at?: string | null
-          location_id?: string | null
-          order_field_mappings?: Json | null
-          stage_mappings?: Json | null
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
-      ghl_sync_logs: {
-        Row: {
-          completed_at: string | null
-          created_at: string
-          error_message: string | null
-          ghl_contact_id: string | null
-          ghl_opportunity_id: string | null
-          id: string
-          local_record_id: string
-          operation: string
-          request_payload: Json | null
-          response_payload: Json | null
-          retry_count: number | null
-          status: string
-          sync_type: string
-        }
-        Insert: {
-          completed_at?: string | null
-          created_at?: string
-          error_message?: string | null
-          ghl_contact_id?: string | null
-          ghl_opportunity_id?: string | null
-          id?: string
-          local_record_id: string
-          operation: string
-          request_payload?: Json | null
-          response_payload?: Json | null
-          retry_count?: number | null
-          status?: string
-          sync_type: string
-        }
-        Update: {
-          completed_at?: string | null
-          created_at?: string
-          error_message?: string | null
-          ghl_contact_id?: string | null
-          ghl_opportunity_id?: string | null
-          id?: string
-          local_record_id?: string
-          operation?: string
-          request_payload?: Json | null
-          response_payload?: Json | null
-          retry_count?: number | null
-          status?: string
-          sync_type?: string
-        }
-        Relationships: []
-      }
       invoices: {
         Row: {
           amount: number
@@ -693,10 +540,8 @@ export type Database = {
           delivery_fee: number | null
           delivery_time: string | null
           driver_id: string | null
-          ghl_opportunity_id: string | null
           id: string
           is_split_order: boolean | null
-          last_synced_to_ghl: string | null
           master_order_id: string | null
           order_number: string
           payment_date: string | null
@@ -724,10 +569,8 @@ export type Database = {
           delivery_fee?: number | null
           delivery_time?: string | null
           driver_id?: string | null
-          ghl_opportunity_id?: string | null
           id?: string
           is_split_order?: boolean | null
-          last_synced_to_ghl?: string | null
           master_order_id?: string | null
           order_number: string
           payment_date?: string | null
@@ -755,10 +598,8 @@ export type Database = {
           delivery_fee?: number | null
           delivery_time?: string | null
           driver_id?: string | null
-          ghl_opportunity_id?: string | null
           id?: string
           is_split_order?: boolean | null
-          last_synced_to_ghl?: string | null
           master_order_id?: string | null
           order_number?: string
           payment_date?: string | null
@@ -972,120 +813,6 @@ export type Database = {
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      sms_logs: {
-        Row: {
-          created_at: string
-          customer_id: string | null
-          delivered_at: string | null
-          error_message: string | null
-          id: string
-          message_content: string
-          message_type: string
-          order_id: string | null
-          recipient_phone: string
-          sent_at: string | null
-          status: string
-          twilio_message_sid: string | null
-        }
-        Insert: {
-          created_at?: string
-          customer_id?: string | null
-          delivered_at?: string | null
-          error_message?: string | null
-          id?: string
-          message_content: string
-          message_type: string
-          order_id?: string | null
-          recipient_phone: string
-          sent_at?: string | null
-          status?: string
-          twilio_message_sid?: string | null
-        }
-        Update: {
-          created_at?: string
-          customer_id?: string | null
-          delivered_at?: string | null
-          error_message?: string | null
-          id?: string
-          message_content?: string
-          message_type?: string
-          order_id?: string | null
-          recipient_phone?: string
-          sent_at?: string | null
-          status?: string
-          twilio_message_sid?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sms_logs_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sms_logs_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      sms_settings: {
-        Row: {
-          connection_status: string
-          created_at: string
-          delivery_status_enabled: boolean
-          driver_assignment_enabled: boolean
-          id: string
-          last_tested_at: string | null
-          order_confirmation_enabled: boolean
-          payment_confirmation_enabled: boolean
-          sender_name: string
-          sms_provider: string
-          twilio_account_sid: string | null
-          twilio_auth_token: string | null
-          twilio_phone_number: string | null
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          connection_status?: string
-          created_at?: string
-          delivery_status_enabled?: boolean
-          driver_assignment_enabled?: boolean
-          id?: string
-          last_tested_at?: string | null
-          order_confirmation_enabled?: boolean
-          payment_confirmation_enabled?: boolean
-          sender_name?: string
-          sms_provider?: string
-          twilio_account_sid?: string | null
-          twilio_auth_token?: string | null
-          twilio_phone_number?: string | null
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          connection_status?: string
-          created_at?: string
-          delivery_status_enabled?: boolean
-          driver_assignment_enabled?: boolean
-          id?: string
-          last_tested_at?: string | null
-          order_confirmation_enabled?: boolean
-          payment_confirmation_enabled?: boolean
-          sender_name?: string
-          sms_provider?: string
-          twilio_account_sid?: string | null
-          twilio_auth_token?: string | null
-          twilio_phone_number?: string | null
-          updated_at?: string
-          updated_by?: string | null
         }
         Relationships: []
       }
