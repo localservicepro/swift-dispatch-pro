@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,6 @@ import { OrderEditDialog } from "./order/OrderEditDialog";
 import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Filter, X, MapPin, Truck, FileText } from "lucide-react";
-import { emailService } from "@/utils/emailService";
 import { activityLogger } from "@/utils/activityLogger";
 import { useAuth } from "./auth/AuthProvider";
 import { getTruckInfo } from "@/utils/truckUtils";
@@ -36,7 +36,42 @@ interface Order {
   suburb_id?: string;
   delivery_fee?: number;
   subtotal?: number;
+  truck_type?: string;
+  truck_id?: string;
+  // Enhanced fields populated separately
+  suburb_name?: string;
+  suburb_state?: string;
+  suburb_postcode?: string;
+  driver_name?: string;
+  truck_registration?: string;
 }
+
+// Safe JSON parser with fallback
+const safeParseJSON = (jsonString: any, fallback: any = []) => {
+  if (!jsonString) return fallback;
+  
+  try {
+    if (typeof jsonString === 'string') {
+      return JSON.parse(jsonString);
+    }
+    return jsonString; // Already parsed object
+  } catch (error) {
+    console.warn('JSON parsing error:', error);
+    return fallback;
+  }
+};
+
+// Safe products processor
+const safeProcessProducts = (products: any): any[] => {
+  const processedProducts = safeParseJSON(products, []);
+  
+  if (!Array.isArray(processedProducts)) {
+    console.warn('Products is not an array, converting:', products);
+    return [];
+  }
+  
+  return processedProducts;
+};
 
 export function OrderManagement() {
   const [isCreating, setIsCreating] = useState(false);
@@ -47,119 +82,119 @@ export function OrderManagement() {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
 
-  // Fetch orders from database with enhanced suburb retrieval
+  // Simplified orders fetch with error handling
   const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
-      console.log('Fetching orders from database with enhanced suburb lookup...');
+      console.log('Fetching orders with simplified query...');
       
-      // First, get all orders with their basic relationships
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          order_number,
-          customer_name,
-          customer_phone,
-          customer_address,
-          products,
-          total_amount,
-          status,
-          driver_id,
-          created_at,
-          delivery_date,
-          delivery_time,
-          special_instructions,
-          customer_id,
-          delivery_fee,
-          subtotal,
-          truck_type,
-          truck_id,
-          customers!orders_customer_id_fkey(
-            id,
-            suburb_id,
-            suburbs(id, name, state, postcode)
-          ),
-          profiles!orders_driver_id_fkey(full_name),
-          trucks!orders_truck_id_fkey(registration_number, truck_type)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (ordersError) {
-        console.error('Error fetching orders:', ordersError);
-        throw ordersError;
-      }
-
-      console.log('Raw orders data:', ordersData);
-
-      // Now get all unique customer IDs that might be missing suburb data
-      const customerIds = ordersData
-        ?.filter(order => order.customer_id && (!order.customers?.suburbs || !order.customers.suburb_id))
-        .map(order => order.customer_id)
-        .filter(Boolean) as string[];
-
-      // Fetch additional customer data for those missing suburb info
-      let additionalCustomerData: any[] = [];
-      if (customerIds.length > 0) {
-        console.log('Fetching additional customer data for:', customerIds);
-        const { data: customerData, error: customerError } = await supabase
-          .from('customers')
+      try {
+        // Step 1: Fetch basic orders data
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
           .select(`
             id,
-            suburb_id,
-            suburbs(id, name, state, postcode)
+            order_number,
+            customer_name,
+            customer_phone,
+            customer_address,
+            products,
+            total_amount,
+            status,
+            driver_id,
+            created_at,
+            delivery_date,
+            delivery_time,
+            special_instructions,
+            customer_id,
+            delivery_fee,
+            subtotal,
+            truck_type,
+            truck_id
           `)
-          .in('id', customerIds);
+          .order('created_at', { ascending: false });
 
-        if (!customerError) {
-          additionalCustomerData = customerData || [];
-          console.log('Additional customer data:', additionalCustomerData);
+        if (ordersError) {
+          console.error('Error fetching orders:', ordersError);
+          throw ordersError;
         }
+
+        if (!ordersData || ordersData.length === 0) {
+          console.log('No orders found');
+          return [];
+        }
+
+        console.log(`Found ${ordersData.length} orders, processing...`);
+
+        // Step 2: Get unique customer IDs, driver IDs, and truck IDs for separate queries
+        const customerIds = [...new Set(ordersData.map(o => o.customer_id).filter(Boolean))];
+        const driverIds = [...new Set(ordersData.map(o => o.driver_id).filter(Boolean))];
+        const truckIds = [...new Set(ordersData.map(o => o.truck_id).filter(Boolean))];
+
+        // Step 3: Fetch related data separately
+        const [customersData, driversData, trucksData] = await Promise.allSettled([
+          customerIds.length > 0 ? supabase
+            .from('customers')
+            .select(`
+              id,
+              suburb_id,
+              suburbs(id, name, state, postcode)
+            `)
+            .in('id', customerIds) : Promise.resolve({ data: [] }),
+          
+          driverIds.length > 0 ? supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', driverIds) : Promise.resolve({ data: [] }),
+          
+          truckIds.length > 0 ? supabase
+            .from('trucks')
+            .select('id, registration_number, truck_type')
+            .in('id', truckIds) : Promise.resolve({ data: [] })
+        ]);
+
+        // Extract data from settled promises
+        const customers = customersData.status === 'fulfilled' ? customersData.value.data || [] : [];
+        const drivers = driversData.status === 'fulfilled' ? driversData.value.data || [] : [];
+        const trucks = trucksData.status === 'fulfilled' ? trucksData.value.data || [] : [];
+
+        console.log('Related data fetched:', { customers: customers.length, drivers: drivers.length, trucks: trucks.length });
+
+        // Step 4: Map orders with related data
+        const mappedOrders = ordersData.map(order => {
+          // Safely process products
+          const processedProducts = safeProcessProducts(order.products);
+          
+          // Find related data
+          const customer = customers.find(c => c.id === order.customer_id);
+          const driver = drivers.find(d => d.id === order.driver_id);
+          const truck = trucks.find(t => t.id === order.truck_id);
+          
+          const mappedOrder: Order = {
+            ...order,
+            products: processedProducts,
+            suburb_id: customer?.suburb_id || null,
+            suburb_name: customer?.suburbs?.name || null,
+            suburb_state: customer?.suburbs?.state || null,
+            suburb_postcode: customer?.suburbs?.postcode || null,
+            driver_name: driver?.full_name || 'Not Assigned',
+            truck_registration: truck?.registration_number || null,
+            truck_type: truck?.truck_type || order.truck_type
+          };
+
+          return mappedOrder;
+        });
+
+        console.log('Orders successfully mapped and processed');
+        return mappedOrders;
+
+      } catch (error) {
+        console.error('Critical error in orders query:', error);
+        throw error;
       }
-
-      // Map the data with enhanced suburb resolution
-      const mappedOrders = ordersData?.map(order => {
-        // Primary suburb source: from the main query
-        let suburbData = order.customers?.suburbs;
-        let suburbId = order.customers?.suburb_id;
-
-        // Fallback: check additional customer data if primary is missing
-        if (!suburbData && order.customer_id) {
-          const additionalCustomer = additionalCustomerData.find(c => c.id === order.customer_id);
-          if (additionalCustomer?.suburbs) {
-            suburbData = additionalCustomer.suburbs;
-            suburbId = additionalCustomer.suburb_id;
-            console.log(`Found suburb data for order ${order.order_number} via fallback:`, suburbData);
-          }
-        }
-
-        const mappedOrder = {
-          ...order,
-          suburb_id: suburbId || null,
-          suburb_name: suburbData?.name || null,
-          suburb_state: suburbData?.state || null,
-          suburb_postcode: suburbData?.postcode || null,
-          driver_name: order.profiles?.full_name || 'Not Assigned',
-          truck_registration: order.trucks?.registration_number || null,
-          truck_type_from_truck: order.trucks?.truck_type || order.truck_type
-        };
-
-        // Debug logging for orders without suburb data
-        if (!suburbData && order.customer_id) {
-          console.warn(`Order ${order.order_number} missing suburb data:`, {
-            customer_id: order.customer_id,
-            has_customer_relation: !!order.customers,
-            customer_suburb_id: order.customers?.suburb_id,
-            has_suburb_relation: !!order.customers?.suburbs
-          });
-        }
-
-        return mappedOrder;
-      }) || [];
-
-      console.log('Final mapped orders:', mappedOrders);
-      return mappedOrders;
     },
+    retry: 2,
+    retryDelay: 1000,
   });
 
   // Filter orders based on search query and status
@@ -193,9 +228,9 @@ export function OrderManagement() {
   // Check if any filters are active
   const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all";
 
-  // Set up real-time subscription for order updates with email notifications
+  // Set up real-time subscription for order updates (simplified)
   useEffect(() => {
-    console.log('Setting up real-time subscription for orders...');
+    console.log('Setting up simplified real-time subscription...');
     
     const channel = supabase
       .channel('orders-realtime')
@@ -212,7 +247,7 @@ export function OrderManagement() {
           // Invalidate and refetch orders when any change occurs
           queryClient.invalidateQueries({ queryKey: ['orders'] });
           
-          // Handle status updates with email notifications
+          // Simple status update notification
           if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
             const oldStatus = payload.old.status;
             const newStatus = payload.new.status;
@@ -222,30 +257,6 @@ export function OrderManagement() {
                 title: "Order Status Updated",
                 description: `Order ${payload.new.order_number} changed from ${oldStatus} to ${newStatus}`,
               });
-
-              // Send email notification to customer
-              try {
-                // Get driver name if driver_id exists
-                let driverName;
-                if (payload.new.driver_id) {
-                  const { data: driver } = await supabase
-                    .from('profiles')
-                    .select('full_name')
-                    .eq('id', payload.new.driver_id)
-                    .single();
-                  driverName = driver?.full_name;
-                }
-
-                await emailService.sendOrderStatusUpdate(
-                  payload.new.id,
-                  oldStatus,
-                  newStatus,
-                  driverName
-                );
-              } catch (error) {
-                console.error('Failed to send status update email:', error);
-                // Don't show error toast to admin as email is background process
-              }
             }
           }
           
@@ -267,7 +278,6 @@ export function OrderManagement() {
   }, [queryClient, toast]);
 
   const handleOrderCreated = () => {
-    // Refresh orders list from database
     refetch();
     toast({
       title: "Success",
@@ -276,7 +286,6 @@ export function OrderManagement() {
   };
 
   const handleOrderUpdated = () => {
-    // Refresh orders list from database
     refetch();
     setEditingOrder(null);
     toast({
@@ -309,21 +318,27 @@ export function OrderManagement() {
 
   const formatProducts = (products: any) => {
     if (!products) return 'No products';
-    if (Array.isArray(products)) {
-      return products.map(p => {
+    
+    const processedProducts = safeProcessProducts(products);
+    
+    if (Array.isArray(processedProducts) && processedProducts.length > 0) {
+      return processedProducts.map(p => {
         const name = p.name || p.product_name || 'Product';
         const quantity = p.quantity || 1;
         return `${name} (Qty: ${quantity})`;
       }).join(', ');
     }
+    
     return 'Products listed';
   };
 
-  // Quick status update function for admin with activity logging
+  // Simplified status update function with better error handling
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
     try {
       const oldStatus = currentOrder.status;
       
+      console.log(`Updating order ${currentOrder.order_number} from ${oldStatus} to ${newStatus}`);
+
       const { error } = await supabase
         .from('orders')
         .update({ 
@@ -332,26 +347,34 @@ export function OrderManagement() {
         })
         .eq('id', orderId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Order status update error:', error);
+        throw error;
+      }
 
       // Log the activity
       if (profile?.full_name) {
-        if (newStatus === 'cancelled') {
-          await activityLogger.orderCancel(
-            orderId,
-            currentOrder.order_number,
-            currentOrder.customer_name,
-            profile.full_name
-          );
-        } else {
-          await activityLogger.orderStatusUpdate(
-            orderId,
-            currentOrder.order_number,
-            currentOrder.customer_name,
-            oldStatus,
-            newStatus,
-            profile.full_name
-          );
+        try {
+          if (newStatus === 'cancelled') {
+            await activityLogger.orderCancel(
+              orderId,
+              currentOrder.order_number,
+              currentOrder.customer_name,
+              profile.full_name
+            );
+          } else {
+            await activityLogger.orderStatusUpdate(
+              orderId,
+              currentOrder.order_number,
+              currentOrder.customer_name,
+              oldStatus,
+              newStatus,
+              profile.full_name
+            );
+          }
+        } catch (logError) {
+          console.warn('Activity logging failed:', logError);
+          // Don't throw - activity logging failure shouldn't block status update
         }
       }
 
@@ -362,10 +385,12 @@ export function OrderManagement() {
 
       // Refresh orders
       refetch();
+
     } catch (error: any) {
+      console.error('Failed to update order status:', error);
       toast({
         title: "Error",
-        description: "Failed to update order status",
+        description: `Failed to update order status: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     }
@@ -391,7 +416,7 @@ export function OrderManagement() {
         <Card>
           <CardContent className="p-6">
             <div className="text-center text-red-600">
-              <p>Error loading orders. Please try again.</p>
+              <p>Error loading orders: {error.message || 'Unknown error'}</p>
               <Button onClick={() => refetch()} className="mt-2">Retry</Button>
             </div>
           </CardContent>
@@ -470,7 +495,6 @@ export function OrderManagement() {
             )}
           </div>
           
-          {/* Search and Filter Controls */}
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -525,7 +549,7 @@ export function OrderManagement() {
           ) : (
             <div className="space-y-4">
               {filteredOrders.map((order) => {
-                const truckInfo = getTruckInfo(order.truck_type_from_truck || order.truck_type);
+                const truckInfo = getTruckInfo(order.truck_type);
                 
                 return (
                   <div key={order.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
