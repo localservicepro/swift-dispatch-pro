@@ -11,6 +11,9 @@ import { OrderDetailsCard } from "./OrderDetailsCard";
 import { DeliveryActionDialog } from "./DeliveryActionDialog";
 import { updateOrderStatus } from "@/utils/orderStatusService";
 import { Package, MapPin, Clock, User, Truck, CheckCircle } from "lucide-react";
+import { Database } from "@/integrations/supabase/types";
+
+type OrderStatus = Database["public"]["Enums"]["order_status"];
 
 interface Order {
   id: string;
@@ -21,13 +24,19 @@ interface Order {
   total_amount: number;
   delivery_date: string | null;
   delivery_time: string | null;
-  status: string;
+  status: OrderStatus;
   special_instructions: string | null;
-  products: any[];
+  products: any;
   truck_type: string | null;
 }
 
-export function DriverDashboard() {
+interface DriverDashboardProps {
+  user: any;
+  profile: any;
+  onLogout: () => Promise<void>;
+}
+
+export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
   const [currentDriverId, setCurrentDriverId] = useState<string | null>(null);
@@ -63,12 +72,16 @@ export function DriverDashboard() {
         throw error;
       }
 
-      return data || [];
+      // Transform the data to match our Order interface
+      return (data || []).map(order => ({
+        ...order,
+        products: Array.isArray(order.products) ? order.products : []
+      })) as Order[];
     },
     enabled: !!currentDriverId,
   });
 
-  const handleStatusUpdate = async (orderId: string, newStatus: string, notes?: string) => {
+  const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus, notes?: string) => {
     try {
       await updateOrderStatus(orderId, newStatus, currentDriverId || undefined, notes);
       
@@ -102,7 +115,7 @@ export function DriverDashboard() {
     }
   };
 
-  const getNextStatus = (currentStatus: string) => {
+  const getNextStatus = (currentStatus: string): OrderStatus | null => {
     switch (currentStatus) {
       case 'preparing': return 'ready';
       case 'ready': return 'dispatched';  
@@ -124,9 +137,14 @@ export function DriverDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-slate-800">Driver Dashboard</h1>
-        <Badge variant="outline" className="text-sm">
-          {orders.length} Active Orders
-        </Badge>
+        <div className="flex items-center gap-4">
+          <Badge variant="outline" className="text-sm">
+            {orders.length} Active Orders
+          </Badge>
+          <Button variant="outline" onClick={onLogout}>
+            Logout
+          </Button>
+        </div>
       </div>
 
       {orders.length === 0 ? (
@@ -197,7 +215,7 @@ export function DriverDashboard() {
                       ${order.total_amount.toFixed(2)}
                     </span>
                     <span className="text-sm text-slate-600">
-                      ({order.products?.length || 0} items)
+                      ({Array.isArray(order.products) ? order.products.length : 0} items)
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -230,10 +248,7 @@ export function DriverDashboard() {
       )}
 
       {selectedOrder && !isActionDialogOpen && (
-        <OrderDetailsCard
-          order={selectedOrder}
-          onClose={() => setSelectedOrder(null)}
-        />
+        <OrderDetailsCard order={selectedOrder} />
       )}
 
       {selectedOrder && isActionDialogOpen && (

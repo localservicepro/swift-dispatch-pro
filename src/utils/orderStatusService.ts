@@ -1,10 +1,13 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { emailService } from "@/utils/emailService";
+import { Database } from "@/integrations/supabase/types";
+
+type OrderStatus = Database["public"]["Enums"]["order_status"];
 
 export async function updateOrderStatus(
   orderId: string, 
-  newStatus: string, 
+  newStatus: OrderStatus, 
   driverId?: string,
   notes?: string
 ) {
