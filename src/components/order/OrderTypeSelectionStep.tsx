@@ -1,8 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { Package, Split, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -32,66 +30,48 @@ export function OrderTypeSelectionStep({
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
-          <Label className="text-base font-medium mb-4 block">Select Order Type</Label>
-          <RadioGroup 
-            value={orderType} 
-            onValueChange={(value) => onOrderTypeChange(value as "single" | "split")}
-            className="grid grid-cols-1 md:grid-cols-2 gap-4"
-          >
+          <label className="text-base font-medium mb-4 block">Select Order Type</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Single Order Option */}
-            <div
-              className={`flex items-start space-x-3 rounded-lg border p-4 hover:border-blue-300 hover:bg-blue-50 ${
+            <button
+              onClick={() => onOrderTypeChange("single")}
+              className={`flex items-start space-x-3 rounded-lg border p-4 text-left transition-all hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                 orderType === "single" ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
               }`}
             >
-              <RadioGroupItem
-                value="single"
-                id="single"
-                className="mt-1"
-              />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <Package className="w-4 h-4 text-gray-600" />
-                  <Label
-                    htmlFor="single"
-                    className="font-medium cursor-pointer text-gray-900"
-                  >
+                  <span className="font-medium text-gray-900">
                     Single Order
-                  </Label>
+                  </span>
                 </div>
                 <p className="text-sm text-gray-600">
                   Create one order with all products assigned to a single truck and driver.
                 </p>
               </div>
-            </div>
+            </button>
 
             {/* Split Order Option */}
-            <div
-              className={`flex items-start space-x-3 rounded-lg border p-4 hover:border-blue-300 hover:bg-blue-50 ${
+            <button
+              onClick={() => onOrderTypeChange("split")}
+              className={`flex items-start space-x-3 rounded-lg border p-4 text-left transition-all hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                 orderType === "split" ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
               }`}
             >
-              <RadioGroupItem
-                value="split"
-                id="split"
-                className="mt-1"
-              />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <Split className="w-4 h-4 text-gray-600" />
-                  <Label
-                    htmlFor="split"
-                    className="font-medium cursor-pointer text-gray-900"
-                  >
+                  <span className="font-medium text-gray-900">
                     Split Order
-                  </Label>
+                  </span>
                 </div>
                 <p className="text-sm text-gray-600">
                   Split products into multiple orders with different trucks, drivers, or delivery times.
                 </p>
               </div>
-            </div>
-          </RadioGroup>
+            </button>
+          </div>
         </div>
 
         {/* Information about split orders */}
