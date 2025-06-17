@@ -12,10 +12,8 @@ import { DroppablePipelineColumn } from "./opportunity/DroppablePipelineColumn";
 import { useOpportunityData } from "./opportunity/useOpportunityData";
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { OpportunityCard } from "./opportunity/OpportunityCard";
-import { useAuth } from "@/components/auth/AuthProvider";
-import { updateOrderStatus, validateOrderStatus } from "@/services/orderStatusService";
+import { useAuth } from "./auth/AuthProvider";
 import { activityLogger } from "@/utils/activityLogger";
-
 const PIPELINE_STAGES = [{
   id: 'requested',
   title: 'Order Requested',
@@ -42,16 +40,19 @@ const PIPELINE_STAGES = [{
   color: 'bg-green-100 border-green-300',
   textColor: 'text-green-700'
 }];
-
 export function OpportunityPipeline() {
   const [searchQuery, setSearchQuery] = useState("");
   const [customerFilter, setCustomerFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draggedOrder, setDraggedOrder] = useState<any>(null);
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const queryClient = useQueryClient();
-  const { profile } = useAuth();
+  const {
+    profile
+  } = useAuth();
 
   // Refs for scroll synchronization
   const topScrollRef = useRef<HTMLDivElement>(null);
@@ -166,17 +167,20 @@ export function OpportunityPipeline() {
       setDraggedOrder(order);
     }
   };
-
   const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
+    const {
+      active,
+      over
+    } = event;
     setActiveId(null);
     setDraggedOrder(null);
-
     if (!over || !active.data.current) {
       return;
     }
-
-    const { order, currentStage } = active.data.current;
+    const {
+      order,
+      currentStage
+    } = active.data.current;
     const newStage = over.id as string;
 
     // If dropping in the same stage, do nothing
@@ -208,63 +212,56 @@ export function OpportunityPipeline() {
       });
       return;
     }
-
     try {
-      // Determine the order status based on the stage
-      let orderStatus: string;
+      let updateData: any = {};
       switch (newStage) {
         case 'preparing':
-          orderStatus = 'preparing';
+          updateData = {
+            payment_status: 'paid',
+            status: 'preparing'
+          };
           break;
         case 'loading':
-          orderStatus = 'loading';
+          updateData = {
+            status: 'loading'
+          };
           break;
         case 'en_route':
-          orderStatus = 'en_route';
+          updateData = {
+            status: 'en_route'
+          };
           break;
         case 'delivered':
-          orderStatus = 'delivered';
+          updateData = {
+            status: 'delivered'
+          };
           break;
         default:
-          orderStatus = newStage;
+          updateData = {
+            status: newStage
+          };
       }
+      const {
+        error
+      } = await supabase.from('orders').update({
+        ...updateData,
+        updated_at: new Date().toISOString()
+      }).eq('id', order.id);
+      if (error) throw error;
 
-      // Validate status before proceeding
-      if (!validateOrderStatus(orderStatus)) {
-        throw new Error(`Invalid order status: ${orderStatus}`);
+      // Log the activity
+      if (profile?.full_name) {
+        await activityLogger.orderStatusUpdate(order.id, order.order_number, order.customer_name, currentStage, newStage, profile.full_name);
       }
-
-      // Update order status using centralized service
-      const result = await updateOrderStatus(
-        order.id,
-        orderStatus as any,
-        profile?.full_name
-      );
-
-      // Update payment status if moving to preparing stage
-      if (newStage === 'preparing') {
-        const { error: paymentError } = await supabase
-          .from('orders')
-          .update({ payment_status: 'paid' })
-          .eq('id', order.id);
-
-        if (paymentError) {
-          console.error('Error updating payment status:', paymentError);
-          // Don't throw here as the main status update succeeded
-        }
-      }
-
       toast({
         title: "Order Moved",
         description: `Order ${order.order_number} moved to ${PIPELINE_STAGES.find(s => s.id === newStage)?.title}`
       });
-
       refetch();
     } catch (error: any) {
-      console.error('Failed to move order:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to move order",
+        description: "Failed to move order",
         variant: "destructive"
       });
     }
@@ -274,29 +271,22 @@ export function OpportunityPipeline() {
   useEffect(() => {
     const topScrollElement = topScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
     const mainScrollElement = mainScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-
     if (!topScrollElement || !mainScrollElement) return;
-
     const handleTopScroll = () => {
       mainScrollElement.scrollLeft = topScrollElement.scrollLeft;
     };
-
     const handleMainScroll = () => {
       topScrollElement.scrollLeft = mainScrollElement.scrollLeft;
     };
-
     topScrollElement.addEventListener('scroll', handleTopScroll);
     mainScrollElement.addEventListener('scroll', handleMainScroll);
-
     return () => {
       topScrollElement.removeEventListener('scroll', handleTopScroll);
       mainScrollElement.removeEventListener('scroll', handleMainScroll);
     };
   }, [isLoading]);
-
   if (error) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold text-slate-800">Jobs Management</h2>
@@ -312,17 +302,10 @@ export function OpportunityPipeline() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
 
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
+  return <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -353,24 +336,17 @@ export function OpportunityPipeline() {
               <div className="text-lg font-semibold text-slate-800">
                 {isLoading && <span className="text-sm font-normal text-slate-500">(Loading...)</span>}
               </div>
-              {hasActiveFilters && (
-                <Button variant="outline" size="sm" onClick={clearFilters} className="flex items-center gap-2">
+              {hasActiveFilters && <Button variant="outline" size="sm" onClick={clearFilters} className="flex items-center gap-2">
                   <X className="h-4 w-4" />
                   Clear Filters
-                </Button>
-              )}
+                </Button>}
             </div>
             
             {/* Search and Filter Controls */}
             <div className="flex flex-col sm:flex-row gap-4 mt-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search by order number or customer name..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
+                <Input placeholder="Search by order number or customer name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
               </div>
               <div className="flex items-center gap-2 sm:w-48">
                 <Filter className="h-4 w-4 text-slate-400" />
@@ -389,29 +365,18 @@ export function OpportunityPipeline() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="text-center py-8">
+            {isLoading ? <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                 <p className="mt-2 text-slate-600">Loading pipeline...</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
+              </div> : <div className="space-y-4">
                 {/* Top Scroll Bar */}
                 <div className="border-b border-slate-200 pb-2">
                   <p className="text-xs text-slate-500 mb-2">Scroll to navigate pipeline stages • Drag cards to move between stages</p>
                   <ScrollArea ref={topScrollRef} className="w-full">
-                    <div
-                      className="flex gap-4"
-                      style={{
-                        width: `${PIPELINE_STAGES.length * 320 + (PIPELINE_STAGES.length - 1) * 16}px`,
-                      }}
-                    >
-                      {PIPELINE_STAGES.map(stage => (
-                        <div
-                          key={`top-${stage.id}`}
-                          className="w-80 h-4 bg-slate-100 rounded-sm opacity-60"
-                        />
-                      ))}
+                    <div className="flex gap-4" style={{
+                  width: `${PIPELINE_STAGES.length * 320 + (PIPELINE_STAGES.length - 1) * 16}px`
+                }}>
+                      {PIPELINE_STAGES.map(stage => <div key={`top-${stage.id}`} className="w-80 h-4 bg-slate-100 rounded-sm opacity-60" />)}
                     </div>
                     <ScrollBar orientation="horizontal" />
                   </ScrollArea>
@@ -420,35 +385,20 @@ export function OpportunityPipeline() {
                 {/* Main Pipeline */}
                 <ScrollArea ref={mainScrollRef} className="w-full">
                   <div className="flex gap-4 pb-4 min-h-[600px]">
-                    {PIPELINE_STAGES.map(stage => (
-                      <DroppablePipelineColumn
-                        key={stage.id}
-                        stage={stage}
-                        orders={ordersByStage[stage.id] || []}
-                        onOrderMove={refetch}
-                      />
-                    ))}
+                    {PIPELINE_STAGES.map(stage => <DroppablePipelineColumn key={stage.id} stage={stage} orders={ordersByStage[stage.id] || []} onOrderMove={refetch} />)}
                   </div>
                   <ScrollBar orientation="horizontal" />
                 </ScrollArea>
-              </div>
-            )}
+              </div>}
           </CardContent>
         </Card>
       </div>
 
       {/* Drag Overlay */}
       <DragOverlay>
-        {activeId && draggedOrder ? (
-          <div className="rotate-6 scale-105">
-            <OpportunityCard
-              order={draggedOrder}
-              currentStage={draggedOrder.status}
-              onOrderMove={() => {}}
-            />
-          </div>
-        ) : null}
+        {activeId && draggedOrder ? <div className="rotate-6 scale-105">
+            <OpportunityCard order={draggedOrder} currentStage={draggedOrder.status} onOrderMove={() => {}} />
+          </div> : null}
       </DragOverlay>
-    </DndContext>
-  );
+    </DndContext>;
 }
