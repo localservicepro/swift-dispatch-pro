@@ -49,7 +49,7 @@ export function Settings() {
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold text-slate-800">Settings</h2>
-        <p className="text-slate-600 mt-1">Manage your business profile, preferences, and integrations</p>
+        <p className="text-slate-600 mt-1">Manage your business profile, preferences, and activity logs</p>
       </div>
 
       {/* Business Profile */}
