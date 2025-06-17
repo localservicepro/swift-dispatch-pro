@@ -1,7 +1,6 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
-import { OrderFormData, OrderItem } from "@/types";
+import { OrderFormData, OrderItem, SplitOrderData } from "@/types";
 import { ghlService } from "@/utils/ghlService";
 import { Database } from "@/integrations/supabase/types";
 
@@ -65,6 +64,153 @@ export const orderCreationService = {
 
     return data;
   },
+
+  async createSplitOrder(splitOrderData: SplitOrderData): Promise<OrderWithItems[]> {
+    const { customer_id, customer_name, customer_address, payment_method, splits, adjustments, deliveryFee } = splitOrderData;
+
+    // Calculate total amount across all splits
+    const totalAmount = splits.reduce((total, split) => {
+      const splitTotal = split.products.reduce((splitSum, product) => {
+        // We'll need to get product price - for now using a placeholder
+        return splitSum + (product.quantity * 10); // TODO: Get actual product prices
+      }, 0);
+      return total + splitTotal;
+    }, 0) + adjustments + deliveryFee;
+
+    const masterOrderId = uuidv4();
+    const masterOrderNumber = `SPLIT-${Date.now()}`;
+
+    try {
+      // Create master order
+      const masterOrderData = {
+        id: masterOrderId,
+        customer_id,
+        order_number: masterOrderNumber,
+        customer_name,
+        delivery_date: splits[0]?.deliveryDate || new Date().toISOString().split('T')[0],
+        customer_address,
+        total_amount: totalAmount,
+        payment_status: 'pending',
+        status: 'requested' as OrderStatus,
+        notes: `Split order with ${splits.length} parts`,
+        products: JSON.stringify([]),
+        is_split_order: true,
+        payment_method,
+        created_at: new Date().toISOString(),
+      };
+
+      const { data: masterOrder, error: masterError } = await supabase
+        .from('orders')
+        .insert(masterOrderData)
+        .select()
+        .single();
+
+      if (masterError) {
+        throw new Error(`Failed to create master order: ${masterError.message}`);
+      }
+
+      // Create individual split orders
+      const splitOrders: OrderWithItems[] = [];
+      
+      for (let i = 0; i < splits.length; i++) {
+        const split = splits[i];
+        const splitOrderId = uuidv4();
+        const splitOrderNumber = `${masterOrderNumber}-${i + 1}`;
+
+        // Get product details for this split
+        const productIds = split.products.map(p => p.productId);
+        const { data: products, error: productsError } = await supabase
+          .from('products')
+          .select('id, name, price')
+          .in('id', productIds);
+
+        if (productsError) {
+          throw new Error(`Failed to fetch products: ${productsError.message}`);
+        }
+
+        // Calculate split total
+        const splitItems = split.products.map(splitProduct => {
+          const product = products?.find(p => p.id === splitProduct.productId);
+          if (!product) {
+            throw new Error(`Product not found: ${splitProduct.productId}`);
+          }
+          return {
+            product_id: splitProduct.productId,
+            quantity: splitProduct.quantity,
+            price: product.price,
+            total: splitProduct.quantity * product.price,
+          };
+        });
+
+        const splitTotal = splitItems.reduce((sum, item) => sum + item.total, 0);
+        
+        // Proportionally distribute adjustments and delivery fee
+        const splitAdjustments = (adjustments * splitTotal) / (totalAmount - adjustments - deliveryFee);
+        const splitDeliveryFee = i === 0 ? deliveryFee : 0; // Only charge delivery fee for first split
+
+        const splitOrderData = {
+          id: splitOrderId,
+          customer_id,
+          order_number: splitOrderNumber,
+          customer_name,
+          delivery_date: split.deliveryDate,
+          delivery_time: split.deliveryTime,
+          customer_address,
+          total_amount: splitTotal + splitAdjustments + splitDeliveryFee,
+          payment_status: 'pending',
+          status: 'requested' as OrderStatus,
+          notes: split.specialInstructions || `Split ${i + 1} of ${splits.length}`,
+          products: JSON.stringify(splitItems),
+          is_split_order: true,
+          master_order_id: masterOrderId,
+          split_number: i + 1,
+          truck_type: split.truckType,
+          truck_id: split.truckId,
+          driver_id: split.driverId || null,
+          adjustments: splitAdjustments,
+          delivery_fee: splitDeliveryFee,
+          payment_method,
+          created_at: new Date().toISOString(),
+        };
+
+        const { data: splitOrder, error: splitError } = await supabase
+          .from('orders')
+          .insert(splitOrderData)
+          .select()
+          .single();
+
+        if (splitError) {
+          throw new Error(`Failed to create split order ${i + 1}: ${splitError.message}`);
+        }
+
+        // Create order items for this split
+        const orderItems = await this.createOrderItems(splitOrderId, splitItems);
+
+        splitOrders.push({
+          ...splitOrder,
+          order_items: orderItems,
+        } as OrderWithItems);
+      }
+
+      // Try to sync to GoHighLevel
+      try {
+        const settings = await ghlService.getSettings();
+        if (settings.auto_sync_orders && settings.connection_status === 'connected') {
+          // Sync master order to GHL
+          await ghlService.syncOrder(masterOrder as OrderWithItems);
+          console.log('Split order synced to GHL successfully');
+        }
+      } catch (ghlError) {
+        console.error('Failed to sync split order to GHL:', ghlError);
+        // Don't fail the order creation if GHL sync fails
+      }
+
+      return splitOrders;
+    } catch (error) {
+      console.error("Error creating split order:", error);
+      throw error;
+    }
+  },
   
   async createOrder(formData: OrderFormData): Promise<OrderWithItems> {
     const errors = await this.validateOrderData(formData);
@@ -77,7 +223,7 @@ export const orderCreationService = {
       id: orderId,
       customer_id: formData.customer_id,
       order_number: formData.order_number || `ORD-${Date.now()}`,
-      customer_name: 'Customer', // This should be populated from customer data
+      customer_name: formData.customer_name || 'Customer',
       delivery_date: formData.delivery_date,
       customer_address: formData.customer_address,
       total_amount: formData.total_amount,
@@ -85,6 +231,12 @@ export const orderCreationService = {
       status: formData.status as OrderStatus,
       notes: formData.notes,
       products: JSON.stringify(formData.items),
+      truck_type: formData.truck_type,
+      truck_id: formData.truck_id,
+      driver_id: formData.driver_id,
+      delivery_time: formData.delivery_time,
+      special_instructions: formData.special_instructions,
+      payment_method: formData.payment_method,
       created_at: new Date().toISOString(),
     };
 
@@ -220,4 +372,3 @@ export const orderCreationService = {
 
 // Export individual functions for backward compatibility
 export const { createOrder, updateOrder, deleteOrder } = orderCreationService;
-

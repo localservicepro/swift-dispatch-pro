@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
@@ -14,6 +13,7 @@ import { useDriverManager } from "./hooks/useDriverManager";
 import { orderCreationService } from "./services/orderCreationService";
 import { Truck } from "./types";
 import { Database } from "@/integrations/supabase/types";
+import { SplitOrderData } from "@/types";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -69,10 +69,41 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setSelectedTruck(truckDetails);
   };
 
-  const handleCreateOrder = async () => {
+  const handleCreateSplitOrder = async () => {
     if (!selectedCustomer) return;
 
-    setIsCreating(true);
+    try {
+      const splitOrderData: SplitOrderData = {
+        customer_id: selectedCustomer.id,
+        customer_name: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`,
+        customer_address: selectedCustomer.full_address,
+        payment_method: paymentMethod,
+        splits: splits.map(split => ({
+          ...split,
+          truckType: split.truckType as Database["public"]["Enums"]["truck_type"]
+        })),
+        adjustments,
+        deliveryFee,
+      };
+
+      const result = await orderCreationService.createSplitOrder(splitOrderData);
+
+      toast({
+        title: "Success",
+        description: `Split order created successfully with ${result.length} parts!`,
+      });
+
+      onOrderCreated();
+      onClose();
+    } catch (error: any) {
+      console.error("Split order creation error:", error);
+      throw error;
+    }
+  };
+
+  const handleCreateSingleOrder = async () => {
+    if (!selectedCustomer) return;
+
     try {
       // Transform CartItem[] to OrderItem[] for order creation
       const orderItems = cart.map(cartItem => ({
@@ -84,13 +115,20 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
       const orderData = {
         customer_id: selectedCustomer.id,
+        customer_name: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`,
         delivery_date: deliveryDate,
         customer_address: selectedCustomer.full_address,
         total_amount: subtotal + adjustments + deliveryFee,
         payment_status: 'pending',
-        status: 'preparing' as OrderStatus,
+        status: 'requested' as OrderStatus,
         notes: specialInstructions,
-        items: orderItems
+        items: orderItems,
+        truck_type: truckType as Database["public"]["Enums"]["truck_type"],
+        truck_id: truckId,
+        driver_id: driverId,
+        delivery_time: deliveryTime,
+        special_instructions: specialInstructions,
+        payment_method: paymentMethod,
       };
 
       const result = await orderCreationService.createOrder(orderData);
@@ -102,6 +140,22 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
       onOrderCreated();
       onClose();
+    } catch (error: any) {
+      console.error("Single order creation error:", error);
+      throw error;
+    }
+  };
+
+  const handleCreateOrder = async () => {
+    if (!selectedCustomer) return;
+
+    setIsCreating(true);
+    try {
+      if (orderType === "split") {
+        await handleCreateSplitOrder();
+      } else {
+        await handleCreateSingleOrder();
+      }
     } catch (error: any) {
       toast({
         title: "Error",
