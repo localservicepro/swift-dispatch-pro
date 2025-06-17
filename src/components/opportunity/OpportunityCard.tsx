@@ -20,6 +20,8 @@ import { getTruckInfo } from "@/utils/truckUtils";
 import { useAuth } from "../auth/AuthProvider";
 import { Database } from "@/integrations/supabase/types";
 
+type OrderStatus = Database['public']['Enums']['order_status'];
+
 interface OpportunityCardProps {
   order: any;
   currentStage: string;
@@ -31,9 +33,9 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
   const { toast } = useToast();
   const { profile } = useAuth();
 
-  const getNextStage = (current: string) => {
-    const stages = ['requested', 'preparing', 'loading', 'en_route', 'delivered'];
-    const currentIndex = stages.indexOf(current);
+  const getNextStage = (current: string): OrderStatus | null => {
+    const stages: OrderStatus[] = ['requested', 'preparing', 'loading', 'en_route', 'delivered'];
+    const currentIndex = stages.indexOf(current as OrderStatus);
     return currentIndex < stages.length - 1 ? stages[currentIndex + 1] : null;
   };
 
@@ -55,17 +57,16 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
     try {
       console.log(`Moving order ${order.order_number} from ${currentStage} to ${nextStage}`);
       
-      // Use the RPC function with proper parameter handling
       const { error } = await supabase.rpc('update_order_status', {
         order_id: order.id,
-        new_status: nextStage as Database['public']['Enums']['order_status'],
+        new_status: nextStage,
         notes: `Status updated from opportunity card: ${currentStage} to ${nextStage}`,
-        location: null // Explicitly pass null instead of undefined
+        location: JSON.stringify(null) // Convert null to JSON string
       });
 
       if (error) {
-        console.error('RPC error details:', error);
-        throw new Error(`Database error: ${error.message}`);
+        console.error('OpportunityCard RPC error:', error);
+        throw new Error(`Failed to update order status: ${error.message}`);
       }
 
       // Update payment status if moving to preparing stage
@@ -77,7 +78,6 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
 
         if (paymentError) {
           console.error('Payment status update error:', paymentError);
-          // Don't throw here as main status was already updated
         }
       }
 

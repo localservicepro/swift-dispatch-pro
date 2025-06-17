@@ -1,341 +1,118 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { Plus, Search, Filter, Edit, Trash2, Calendar, User, Phone, MapPin, DollarSign, Clock, Truck, Package } from "lucide-react";
 import { MultiStepOrderForm } from "./order/MultiStepOrderForm";
 import { OrderEditDialog } from "./order/OrderEditDialog";
-import { Database } from "@/integrations/supabase/types";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Filter, X, MapPin, Truck, FileText } from "lucide-react";
-import { emailService } from "@/utils/emailService";
-import { useAuth } from "./auth/AuthProvider";
 import { getTruckInfo } from "@/utils/truckUtils";
+import { Database } from "@/integrations/supabase/types";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
-interface Order {
-  id: string;
-  order_number: string;
-  customer_name: string;
-  customer_phone?: string;
-  customer_address: string;
-  products: any;
-  total_amount: number;
-  status: OrderStatus;
-  driver_id?: string;
-  created_at: string;
-  delivery_date?: string;
-  delivery_time?: string;
-  special_instructions?: string;
-  customer_id?: string;
-  suburb_id?: string;
-  delivery_fee?: number;
-  subtotal?: number;
-}
-
 export function OrderManagement() {
-  const [isCreating, setIsCreating] = useState(false);
-  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
+  const [isCreateOrderDialogOpen, setIsCreateOrderDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { profile } = useAuth();
 
-  // Fetch orders from database with enhanced suburb retrieval
-  const { data: orders = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['orders'],
-    queryFn: async () => {
-      console.log('Fetching orders from database with enhanced suburb lookup...');
-      
-      // First, get all orders with their basic relationships
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          order_number,
-          customer_name,
-          customer_phone,
-          customer_address,
-          products,
-          total_amount,
-          status,
-          driver_id,
-          created_at,
-          delivery_date,
-          delivery_time,
-          special_instructions,
-          customer_id,
-          delivery_fee,
-          subtotal,
-          truck_type,
-          truck_id,
-          customers!orders_customer_id_fkey(
-            id,
-            suburb_id,
-            suburbs(id, name, state, postcode)
-          ),
-          profiles!orders_driver_id_fkey(full_name),
-          trucks!orders_truck_id_fkey(registration_number, truck_type)
-        `)
-        .order('created_at', { ascending: false });
+  const {
+    data: orders,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery("orders", async () => {
+    let query = supabase.from("orders").select("*");
 
-      if (ordersError) {
-        console.error('Error fetching orders:', ordersError);
-        throw ordersError;
-      }
+    if (searchQuery) {
+      query = query.ilike("order_number", `%${searchQuery}%`);
+    }
 
-      console.log('Raw orders data:', ordersData);
+    if (statusFilter !== "all") {
+      query = query.eq("status", statusFilter);
+    }
 
-      // Now get all unique customer IDs that might be missing suburb data
-      const customerIds = ordersData
-        ?.filter(order => order.customer_id && (!order.customers?.suburbs || !order.customers.suburb_id))
-        .map(order => order.customer_id)
-        .filter(Boolean) as string[];
-
-      // Fetch additional customer data for those missing suburb info
-      let additionalCustomerData: any[] = [];
-      if (customerIds.length > 0) {
-        console.log('Fetching additional customer data for:', customerIds);
-        const { data: customerData, error: customerError } = await supabase
-          .from('customers')
-          .select(`
-            id,
-            suburb_id,
-            suburbs(id, name, state, postcode)
-          `)
-          .in('id', customerIds);
-
-        if (!customerError) {
-          additionalCustomerData = customerData || [];
-          console.log('Additional customer data:', additionalCustomerData);
-        }
-      }
-
-      // Map the data with enhanced suburb resolution
-      const mappedOrders = ordersData?.map(order => {
-        // Primary suburb source: from the main query
-        let suburbData = order.customers?.suburbs;
-        let suburbId = order.customers?.suburb_id;
-
-        // Fallback: check additional customer data if primary is missing
-        if (!suburbData && order.customer_id) {
-          const additionalCustomer = additionalCustomerData.find(c => c.id === order.customer_id);
-          if (additionalCustomer?.suburbs) {
-            suburbData = additionalCustomer.suburbs;
-            suburbId = additionalCustomer.suburb_id;
-            console.log(`Found suburb data for order ${order.order_number} via fallback:`, suburbData);
-          }
-        }
-
-        const mappedOrder = {
-          ...order,
-          suburb_id: suburbId || null,
-          suburb_name: suburbData?.name || null,
-          suburb_state: suburbData?.state || null,
-          suburb_postcode: suburbData?.postcode || null,
-          driver_name: order.profiles?.full_name || 'Not Assigned',
-          truck_registration: order.trucks?.registration_number || null,
-          truck_type_from_truck: order.trucks?.truck_type || order.truck_type
-        };
-
-        // Debug logging for orders without suburb data
-        if (!suburbData && order.customer_id) {
-          console.warn(`Order ${order.order_number} missing suburb data:`, {
-            customer_id: order.customer_id,
-            has_customer_relation: !!order.customers,
-            customer_suburb_id: order.customers?.suburb_id,
-            has_suburb_relation: !!order.customers?.suburbs
-          });
-        }
-
-        return mappedOrder;
-      }) || [];
-
-      console.log('Final mapped orders:', mappedOrders);
-      return mappedOrders;
-    },
+    const { data, error } = await query;
+    if (error) throw error;
+    return data;
   });
 
-  // Filter orders based on search query and status
-  const filteredOrders = useMemo(() => {
-    let filtered = orders;
-
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(order => 
-        order.order_number.toLowerCase().includes(query) ||
-        order.customer_name.toLowerCase().includes(query) ||
-        (order.customer_phone && order.customer_phone.toLowerCase().includes(query))
-      );
-    }
-
-    // Apply status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(order => order.status === statusFilter);
-    }
-
-    return filtered;
-  }, [orders, searchQuery, statusFilter]);
-
-  // Clear all filters
-  const clearFilters = () => {
-    setSearchQuery("");
-    setStatusFilter("all");
-  };
-
-  // Check if any filters are active
-  const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all";
-
-  // Set up real-time subscription for order updates with email notifications
   useEffect(() => {
-    console.log('Setting up real-time subscription for orders...');
-    
-    const channel = supabase
-      .channel('orders-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders'
-        },
-        async (payload) => {
-          console.log('Real-time order update received:', payload);
-          
-          // Invalidate and refetch orders when any change occurs
-          queryClient.invalidateQueries({ queryKey: ['orders'] });
-          
-          // Handle status updates with email notifications
-          if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
-            const oldStatus = payload.old.status;
-            const newStatus = payload.new.status;
-            
-            if (oldStatus !== newStatus) {
-              toast({
-                title: "Order Status Updated",
-                description: `Order ${payload.new.order_number} changed from ${oldStatus} to ${newStatus}`,
-              });
+    refetch(); // Refresh data when component mounts
+  }, []);
 
-              // Send email notification to customer
-              try {
-                // Get driver name if driver_id exists
-                let driverName;
-                if (payload.new.driver_id) {
-                  const { data: driver } = await supabase
-                    .from('profiles')
-                    .select('full_name')
-                    .eq('id', payload.new.driver_id)
-                    .single();
-                  driverName = driver?.full_name;
-                }
-
-                await emailService.sendOrderStatusUpdate(
-                  payload.new.id,
-                  oldStatus,
-                  newStatus,
-                  driverName
-                );
-              } catch (error) {
-                console.error('Failed to send status update email:', error);
-                // Don't show error toast to admin as email is background process
-              }
-            }
-          }
-          
-          // Show toast for new orders
-          if (payload.eventType === 'INSERT' && payload.new) {
-            toast({
-              title: "New Order Created",
-              description: `Order ${payload.new.order_number} has been created`,
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('Cleaning up real-time subscription...');
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient, toast]);
-
-  const handleOrderCreated = () => {
-    // Refresh orders list from database
-    refetch();
-    toast({
-      title: "Success",
-      description: "Order created successfully!",
-    });
+  const openCreateOrderDialog = () => {
+    setIsCreateOrderDialogOpen(true);
   };
 
-  const handleOrderUpdated = () => {
-    // Refresh orders list from database
-    refetch();
-    setEditingOrder(null);
-    toast({
-      title: "Success",
-      description: "Order updated successfully!",
-    });
+  const closeCreateOrderDialog = () => {
+    setIsCreateOrderDialogOpen(false);
+    refetch(); // Refresh data after closing the dialog
   };
 
-  const getStatusColor = (status: OrderStatus) => {
-    switch (status) {
-      case "delivered": return "bg-green-100 text-green-800";
-      case "en_route": return "bg-blue-100 text-blue-800";
-      case "loading": return "bg-orange-100 text-orange-800";
-      case "preparing": return "bg-yellow-100 text-yellow-800";
-      case "cancelled": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
+  const openEditDialog = (order: any) => {
+    setSelectedOrder(order);
+    setIsEditDialogOpen(true);
+  };
+
+  const closeEditDialog = () => {
+    setSelectedOrder(null);
+    setIsEditDialogOpen(false);
+    refetch(); // Refresh data after closing the dialog
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    if (
+      window.confirm("Are you sure you want to delete this order? This action cannot be undone.")
+    ) {
+      try {
+        const { error } = await supabase.from("orders").delete().eq("id", orderId);
+        if (error) throw error;
+        toast({
+          title: "Order Deleted",
+          description: "The order has been successfully deleted.",
+        });
+        refetch(); // Refresh data after deletion
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const getStatusLabel = (status: OrderStatus) => {
-    switch (status) {
-      case "en_route": return "En Route";
-      case "delivered": return "Delivered";
-      case "loading": return "Loading";
-      case "preparing": return "Preparing";
-      case "cancelled": return "Cancelled";
-      default: return status;
-    }
-  };
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    const currentOrder = orders?.find(order => order.id === orderId);
+    if (!currentOrder) return;
 
-  const formatProducts = (products: any) => {
-    if (!products) return 'No products';
-    if (Array.isArray(products)) {
-      return products.map(p => {
-        const name = p.name || p.product_name || 'Product';
-        const quantity = p.quantity || 1;
-        return `${name} (Qty: ${quantity})`;
-      }).join(', ');
-    }
-    return 'Products listed';
-  };
-
-  // Quick status update function for admin without activity logging
-  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
     try {
       const oldStatus = currentOrder.status;
       
-      // Use RPC function instead of direct table update for consistency
       const { error } = await supabase.rpc('update_order_status', {
         order_id: orderId,
         new_status: newStatus,
         notes: `Status updated by admin from ${oldStatus} to ${newStatus}`,
-        location: null // Explicitly pass null instead of undefined
+        location: JSON.stringify(null) // Convert null to JSON string
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('OrderManagement RPC error:', error);
+        throw new Error(`Failed to update order status: ${error.message}`);
+      }
 
       toast({
         title: "Status Updated",
-        description: `Order ${currentOrder.order_number} status updated to ${newStatus.replace('_', ' ')}`,
+        description: `Order status changed to ${newStatus.replace('_', ' ')}`,
       });
 
       // Refresh orders
@@ -350,31 +127,52 @@ export function OrderManagement() {
     }
   };
 
-  if (error) {
-    console.error('Orders query error:', error);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "preparing":
+        return "bg-orange-100 text-orange-800";
+      case "loading":
+        return "bg-blue-100 text-blue-800";
+      case "en_route":
+        return "bg-purple-100 text-purple-800";
+      case "delivered":
+        return "bg-green-100 text-green-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "preparing":
+        return <Package className="w-4 h-4" />;
+      case "loading":
+        return <Clock className="w-4 h-4" />;
+      case "en_route":
+        return <Truck className="w-4 h-4" />;
+      case "delivered":
+        return <CheckCircle className="w-4 h-4" />;
+      case "cancelled":
+        return <XCircle className="w-4 h-4" />;
+      default:
+        return <AlertCircle className="w-4 h-4" />;
+    }
+  };
+
+  if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-800">Order Management</h2>
-            <p className="text-slate-600 mt-1">Create and manage customer orders</p>
-          </div>
-          <Button 
-            onClick={() => setIsCreating(true)} 
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-          >
-            Create New Order
-          </Button>
-        </div>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center text-red-600">
-              <p>Error loading orders. Please try again.</p>
-              <Button onClick={() => refetch()} className="mt-2">Retry</Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full text-red-500">
+        Error: {error.message}
       </div>
     );
   }
@@ -384,77 +182,26 @@ export function OrderManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-slate-800">Order Management</h2>
-          <p className="text-slate-600 mt-1">Create and manage customer orders • Real-time updates enabled</p>
+          <p className="text-slate-600 mt-1">Manage and track all your orders</p>
         </div>
-        <Button 
-          onClick={() => setIsCreating(true)} 
-          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-        >
-          Create New Order
+        <Button onClick={openCreateOrderDialog} className="bg-green-600 hover:bg-green-700 text-white">
+          <Plus className="w-4 h-4 mr-2" />
+          Create Order
         </Button>
       </div>
 
-      {isCreating && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Create New Order</h2>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsCreating(false)}
-                >
-                  Close
-                </Button>
-              </div>
-              <MultiStepOrderForm
-                onOrderCreated={handleOrderCreated}
-                onClose={() => setIsCreating(false)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {editingOrder && (
-        <OrderEditDialog
-          order={editingOrder}
-          onOrderUpdated={handleOrderUpdated}
-          onClose={() => setEditingOrder(null)}
-        />
-      )}
-
-      <Card className="hover:shadow-lg transition-shadow">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-slate-800">
-              Recent Orders 
-              {isLoading && <span className="text-sm font-normal text-slate-500">(Loading...)</span>}
-              {!isLoading && (
-                <span className="text-sm font-normal text-slate-500">
-                  ({filteredOrders.length} of {orders.length} orders)
-                </span>
-              )}
-            </CardTitle>
-            {hasActiveFilters && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearFilters}
-                className="flex items-center gap-2"
-              >
-                <X className="h-4 w-4" />
-                Clear Filters
-              </Button>
-            )}
+            <div className="text-lg font-semibold text-slate-800">
+              {orders?.length} Orders
+            </div>
           </div>
-          
-          {/* Search and Filter Controls */}
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Search by order number, customer name, or phone..."
+                placeholder="Search by order number..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -462,12 +209,13 @@ export function OrderManagement() {
             </div>
             <div className="flex items-center gap-2 sm:w-48">
               <Filter className="h-4 w-4 text-slate-400" />
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as OrderStatus | "all")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="requested">Requested</SelectItem>
                   <SelectItem value="preparing">Preparing</SelectItem>
                   <SelectItem value="loading">Loading</SelectItem>
                   <SelectItem value="en_route">En Route</SelectItem>
@@ -479,183 +227,131 @@ export function OrderManagement() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-slate-600">Loading orders...</p>
-            </div>
-          ) : filteredOrders.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              {hasActiveFilters ? (
-                <div>
-                  <p>No orders match your current filters.</p>
-                  <Button
-                    variant="outline"
-                    onClick={clearFilters}
-                    className="mt-2"
-                  >
-                    Clear Filters
-                  </Button>
-                </div>
-              ) : (
-                <p>No orders found. Create your first order to get started!</p>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredOrders.map((order) => {
-                const truckInfo = getTruckInfo(order.truck_type_from_truck || order.truck_type);
-                
-                return (
-                  <div key={order.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-semibold text-slate-800">{order.order_number}</h3>
-                        <Badge className={getStatusColor(order.status)}>
-                          {getStatusLabel(order.status)}
-                        </Badge>
-                      </div>
-                      <span className="text-lg font-bold text-green-600">
-                        ${order.total_amount.toFixed(2)}
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-3">
-                      <div>
-                        <p className="text-slate-500">Customer</p>
-                        <p className="font-medium">{order.customer_name}</p>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                    Order #
+                  </th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {orders?.map((order) => {
+                  const truckInfo = getTruckInfo(order.truck_type);
+                  return (
+                    <tr key={order.id}>
+                      <td className="px-6 py-4 whitespace-no-wrap text-sm leading-5 font-medium text-gray-900">
+                        {order.order_number}
+                      </td>
+                      <td className="px-6 py-4 whitespace-no-wrap text-sm leading-5 text-gray-500">
+                        <div className="flex items-center">
+                          <User className="w-4 h-4 mr-2" />
+                          {order.customer_name}
+                        </div>
                         {order.customer_phone && (
-                          <p className="text-xs text-slate-400">{order.customer_phone}</p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-slate-500">Products</p>
-                        <p className="font-medium">{formatProducts(order.products)}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500">Driver</p>
-                        <p className="font-medium">{order.driver_name || 'Not Assigned'}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          Suburb
-                        </p>
-                        <p className="font-medium">
-                          {order.suburb_name ? 
-                            `${order.suburb_name}, ${order.suburb_state}${order.suburb_postcode ? ` (${order.suburb_postcode})` : ''}` : 
-                            'Not specified'
-                          }
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Truck Information */}
-                    {(order.truck_type || order.truck_registration) && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
-                        <div>
-                          <p className="text-slate-500 flex items-center gap-1">
-                            <Truck className="w-3 h-3" />
-                            Truck Type
-                          </p>
-                          <div className="flex items-center gap-2">
-                            {truckInfo && (
-                              <>
-                                <truckInfo.icon className={`w-4 h-4 ${truckInfo.colorClass}`} />
-                                <span className="font-medium">{truckInfo.label}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        {order.truck_registration && (
-                          <div>
-                            <p className="text-slate-500">Selected Truck</p>
-                            <p className="font-medium">{order.truck_registration}</p>
+                          <div className="flex items-center">
+                            <Phone className="w-4 h-4 mr-2" />
+                            {order.customer_phone}
                           </div>
                         )}
-                      </div>
-                    )}
-
-                    {/* Special Instructions */}
-                    {order.special_instructions && (
-                      <div className="mb-3">
-                        <p className="text-slate-500 flex items-center gap-1 mb-1">
-                          <FileText className="w-3 h-3" />
-                          Notes
-                        </p>
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2">
-                          <p className="text-sm text-yellow-800">{order.special_instructions}</p>
+                        <div className="flex items-center">
+                          <MapPin className="w-4 h-4 mr-2" />
+                          {order.customer_address}
                         </div>
-                      </div>
-                    )}
-
-                    <div className="mt-3 text-xs text-slate-400">
-                      <p>Address: {order.customer_address}</p>
-                      <p>Created: {new Date(order.created_at).toLocaleDateString()}</p>
-                      {order.delivery_date && (
-                        <p>Delivery: {order.delivery_date} {order.delivery_time && `at ${order.delivery_time}`}</p>
-                      )}
-                    </div>
-                    
-                    <div className="flex gap-2 mt-4">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => setEditingOrder(order)}
-                      >
-                        Edit
-                      </Button>
-                      
-                      {/* Quick status update buttons for admin */}
-                      {order.status === 'preparing' && (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => updateOrderStatus(order.id, 'loading', order)}
-                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                        >
-                          Mark Loading
-                        </Button>
-                      )}
-                      
-                      {order.status === 'loading' && (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => updateOrderStatus(order.id, 'en_route', order)}
-                          className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                        >
-                          Mark En Route
-                        </Button>
-                      )}
-                      
-                      {order.status === 'en_route' && (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => updateOrderStatus(order.id, 'delivered', order)}
-                          className="text-green-600 border-green-200 hover:bg-green-50"
-                        >
-                          Mark Delivered
-                        </Button>
-                      )}
-                      
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                        onClick={() => updateOrderStatus(order.id, 'cancelled', order)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-no-wrap text-sm leading-5 text-gray-500">
+                        <div className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-2" />
+                          {new Date(order.created_at).toLocaleDateString()}
+                        </div>
+                        {order.delivery_date && (
+                          <div className="flex items-center">
+                            <Clock className="w-4 h-4 mr-2" />
+                            {order.delivery_date} {order.delivery_time}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-no-wrap text-sm leading-5 text-gray-500">
+                        <div className="flex items-center">
+                          <DollarSign className="w-4 h-4 mr-2" />
+                          {order.total_amount.toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-no-wrap text-sm leading-5 text-gray-500">
+                        <Badge className={getStatusColor(order.status)}>
+                          <div className="flex items-center gap-1">
+                            {getStatusIcon(order.status)}
+                            {order.status.replace("_", " ").toUpperCase()}
+                          </div>
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-no-wrap text-right text-sm leading-5 font-medium">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            onClick={() => openEditDialog(order)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="destructive"
+                            onClick={() => deleteOrder(order.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                          <Select
+                            value={order.status}
+                            onValueChange={(value) => updateOrderStatus(order.id, value as OrderStatus)}
+                          >
+                            <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder={order.status} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="preparing">Preparing</SelectItem>
+                              <SelectItem value="loading">Loading</SelectItem>
+                              <SelectItem value="en_route">En Route</SelectItem>
+                              <SelectItem value="delivered">Delivered</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
+
+      <MultiStepOrderForm open={isCreateOrderDialogOpen} onClose={closeCreateOrderDialog} />
+
+      {selectedOrder && (
+        <OrderEditDialog
+          order={selectedOrder}
+          onOrderUpdated={closeEditDialog}
+          onClose={closeEditDialog}
+        />
+      )}
     </div>
   );
 }

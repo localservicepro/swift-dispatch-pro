@@ -43,6 +43,8 @@ const PIPELINE_STAGES = [{
   textColor: 'text-green-700'
 }];
 
+type OrderStatus = Database['public']['Enums']['order_status'];
+
 export function OpportunityPipeline() {
   const [searchQuery, setSearchQuery] = useState("");
   const [customerFilter, setCustomerFilter] = useState<string>("all");
@@ -216,17 +218,19 @@ export function OpportunityPipeline() {
     try {
       console.log(`Updating order ${order.order_number} from ${currentStage} to ${newStage}`);
       
-      // Use the RPC function with proper parameter handling
+      // Properly cast the status and handle parameters
+      const statusUpdate: OrderStatus = newStage as OrderStatus;
+      
       const { error } = await supabase.rpc('update_order_status', {
         order_id: order.id,
-        new_status: newStage as Database['public']['Enums']['order_status'],
+        new_status: statusUpdate,
         notes: `Status updated via pipeline from ${currentStage} to ${newStage}`,
-        location: null // Explicitly pass null instead of undefined
+        location: JSON.stringify(null) // Convert null to JSON string
       });
 
       if (error) {
-        console.error('RPC error details:', error);
-        throw new Error(`Database error: ${error.message}`);
+        console.error('Pipeline RPC error:', error);
+        throw new Error(`Failed to update order status: ${error.message}`);
       }
 
       // Update payment status if moving to preparing stage
@@ -238,7 +242,6 @@ export function OpportunityPipeline() {
 
         if (paymentError) {
           console.error('Payment status update error:', paymentError);
-          // Don't throw here as status was already updated
         }
       }
 

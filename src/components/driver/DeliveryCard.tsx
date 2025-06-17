@@ -84,10 +84,13 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
         order_id: order.id,
         new_status: newStatus,
         notes: `Status updated by driver to ${newStatus}`,
-        location: null // Explicitly pass null instead of undefined
+        location: JSON.stringify(null) // Convert null to JSON string
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('DeliveryCard RPC error:', error);
+        throw new Error(`Failed to update order status: ${error.message}`);
+      }
 
       toast({
         title: "Status Updated",
@@ -96,9 +99,10 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
 
       onStatusUpdate();
     } catch (error: any) {
+      console.error('DeliveryCard status update error:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to update order status",
         variant: "destructive",
       });
     } finally {
