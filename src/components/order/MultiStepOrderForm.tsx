@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
@@ -12,7 +11,7 @@ import { ProgressIndicator } from "./ProgressIndicator";
 import { useOrderFormState } from "./hooks/useOrderFormState";
 import { useDriverManager } from "./hooks/useDriverManager";
 import { orderCreationService } from "./services/orderCreationService";
-import { Truck } from "./types";
+import { Truck, Split } from "./types";
 import { Database } from "@/integrations/supabase/types";
 import { SplitOrderData } from "@/types";
 
@@ -173,6 +172,14 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     }
   };
 
+  // Convert SplitConfig[] to Split[] for OrderReviewStep
+  const reviewSplits: Split[] = splits
+    .filter(split => split.truckType !== "") // Only include splits with valid truck types
+    .map(split => ({
+      ...split,
+      truckType: split.truckType as Database["public"]["Enums"]["truck_type"]
+    }));
+
   return (
     <div className="space-y-6">
       <ProgressIndicator currentStep={currentStep} />
@@ -260,11 +267,12 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           paymentMethod={paymentMethod}
           selectedTruck={orderType === "single" ? selectedTruck : null}
           orderType={orderType}
-          splits={splits}
+          splits={reviewSplits}
           onBack={prevStep}
           onConfirm={handleCreateOrder}
           isCreating={isCreating}
           onSpecialInstructionsChange={orderType === "single" ? setSpecialInstructions : undefined}
+          onSplitsChange={orderType === "split" ? setSplits : undefined}
         />
       )}
     </div>
