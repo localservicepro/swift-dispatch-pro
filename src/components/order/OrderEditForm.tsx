@@ -16,6 +16,7 @@ import { ProductEditSection } from "./ProductEditSection";
 import { useOrderFormData, OrderFormData } from "./hooks/useOrderFormData";
 import { useConflictDetection } from "./hooks/useConflictDetection";
 import { OrderEditFooter } from "./OrderEditFooter";
+import { ConflictResult } from "@/utils/conflictDetection";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -47,6 +48,40 @@ interface OrderEditFormProps {
   onOrderUpdated: () => void;
   onClose: () => void;
 }
+
+interface ConflictInfo {
+  hasConflict: boolean;
+  conflictType?: 'exact' | 'overlap' | 'adjacent';
+}
+
+// Helper function to convert ConflictResult to ConflictInfo
+const convertToConflictInfo = (conflictResult?: ConflictResult): ConflictInfo => {
+  if (!conflictResult || !conflictResult.hasConflict) {
+    return { hasConflict: false };
+  }
+
+  // Map conflict types from ConflictResult to ConflictInfo format
+  let conflictType: 'exact' | 'overlap' | 'adjacent';
+  switch (conflictResult.conflictType) {
+    case 'exact':
+      conflictType = 'exact';
+      break;
+    case 'overlap':
+      conflictType = 'overlap';
+      break;
+    case 'same-day':
+      conflictType = 'adjacent'; // Map same-day to adjacent
+      break;
+    default:
+      conflictType = 'adjacent'; // Default fallback
+      break;
+  }
+
+  return {
+    hasConflict: conflictResult.hasConflict,
+    conflictType
+  };
+};
 
 export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormProps) {
   const [isUpdating, setIsUpdating] = useState(false);
@@ -194,6 +229,10 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
     }
   };
 
+  // Convert conflict results to the format expected by OrderEditFooter
+  const driverConflictInfo = convertToConflictInfo(driverConflict);
+  const truckConflictInfo = convertToConflictInfo(truckConflict);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <ProductEditSection
@@ -271,8 +310,8 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
       <OrderEditFooter
         isUpdating={isUpdating}
         onClose={onClose}
-        driverConflict={driverConflict}
-        truckConflict={truckConflict}
+        driverConflict={driverConflictInfo}
+        truckConflict={truckConflictInfo}
         hasAnyConflict={hasAnyConflict}
       />
     </form>
