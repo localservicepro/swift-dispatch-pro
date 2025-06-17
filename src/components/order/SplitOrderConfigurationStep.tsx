@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Split, Plus, Minus, Calendar } from "lucide-react";
+import { Split, Plus, Minus, Calendar, CalendarDays } from "lucide-react";
 import { CartItem, SplitConfig } from "./types";
 import { ProductAllocationCard } from "./ProductAllocationCard";
 import { SplitSummaryCard } from "./SplitSummaryCard";
@@ -71,6 +70,19 @@ export function SplitOrderConfigurationStep({
         ...split,
         deliveryDate: commonDeliveryDate,
         deliveryTime: commonDeliveryTime
+      }));
+      onSplitsChange(updatedSplits);
+    }
+  };
+
+  const handleSeparateDeliveryDates = () => {
+    setUseSameDateForAll(false);
+    // Preserve current common date/time values in all splits
+    if (commonDeliveryDate || commonDeliveryTime) {
+      const updatedSplits = splits.map(split => ({
+        ...split,
+        deliveryDate: commonDeliveryDate || split.deliveryDate,
+        deliveryTime: commonDeliveryTime || split.deliveryTime
       }));
       onSplitsChange(updatedSplits);
     }
@@ -239,25 +251,36 @@ export function SplitOrderConfigurationStep({
           </div>
           
           {useSameDateForAll && (
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label className="text-xs font-medium mb-1 block">Common Delivery Date</Label>
-                <Input
-                  type="date"
-                  value={commonDeliveryDate}
-                  onChange={(e) => handleCommonDateChange(e.target.value)}
-                  className="h-7 text-xs"
-                />
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Common Delivery Date</Label>
+                  <Input
+                    type="date"
+                    value={commonDeliveryDate}
+                    onChange={(e) => handleCommonDateChange(e.target.value)}
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Common Delivery Time</Label>
+                  <Input
+                    type="time"
+                    value={commonDeliveryTime}
+                    onChange={(e) => handleCommonTimeChange(e.target.value)}
+                    className="h-7 text-xs"
+                  />
+                </div>
               </div>
-              <div>
-                <Label className="text-xs font-medium mb-1 block">Common Delivery Time</Label>
-                <Input
-                  type="time"
-                  value={commonDeliveryTime}
-                  onChange={(e) => handleCommonTimeChange(e.target.value)}
-                  className="h-7 text-xs"
-                />
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSeparateDeliveryDates}
+                className="text-xs"
+              >
+                <CalendarDays className="w-3 h-3 mr-1" />
+                Separate Delivery Dates
+              </Button>
             </div>
           )}
         </div>
