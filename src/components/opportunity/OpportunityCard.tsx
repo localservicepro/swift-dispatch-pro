@@ -55,11 +55,12 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
     try {
       console.log(`Moving order ${order.order_number} from ${currentStage} to ${nextStage}`);
       
-      // Use the RPC function for consistent status updates - cast to proper type
+      // Use the RPC function with proper parameter handling
       const { error } = await supabase.rpc('update_order_status', {
         order_id: order.id,
         new_status: nextStage as Database['public']['Enums']['order_status'],
-        notes: `Status updated from opportunity card: ${currentStage} to ${nextStage}`
+        notes: `Status updated from opportunity card: ${currentStage} to ${nextStage}`,
+        location: null // Explicitly pass null instead of undefined
       });
 
       if (error) {

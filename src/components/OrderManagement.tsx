@@ -323,13 +323,13 @@ export function OrderManagement() {
     try {
       const oldStatus = currentOrder.status;
       
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
+      // Use RPC function instead of direct table update for consistency
+      const { error } = await supabase.rpc('update_order_status', {
+        order_id: orderId,
+        new_status: newStatus,
+        notes: `Status updated by admin from ${oldStatus} to ${newStatus}`,
+        location: null // Explicitly pass null instead of undefined
+      });
 
       if (error) throw error;
 
@@ -341,9 +341,10 @@ export function OrderManagement() {
       // Refresh orders
       refetch();
     } catch (error: any) {
+      console.error('OrderManagement status update error:', error);
       toast({
         title: "Error",
-        description: "Failed to update order status",
+        description: error.message || "Failed to update order status",
         variant: "destructive",
       });
     }

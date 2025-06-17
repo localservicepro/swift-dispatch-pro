@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -215,11 +216,12 @@ export function OpportunityPipeline() {
     try {
       console.log(`Updating order ${order.order_number} from ${currentStage} to ${newStage}`);
       
-      // Use the RPC function for consistent status updates - cast to proper type
+      // Use the RPC function with proper parameter handling
       const { error } = await supabase.rpc('update_order_status', {
         order_id: order.id,
         new_status: newStage as Database['public']['Enums']['order_status'],
-        notes: `Status updated via pipeline from ${currentStage} to ${newStage}`
+        notes: `Status updated via pipeline from ${currentStage} to ${newStage}`,
+        location: null // Explicitly pass null instead of undefined
       });
 
       if (error) {

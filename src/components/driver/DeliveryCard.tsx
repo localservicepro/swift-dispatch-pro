@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -81,7 +82,9 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
     try {
       const { error } = await supabase.rpc('update_order_status', {
         order_id: order.id,
-        new_status: newStatus
+        new_status: newStatus,
+        notes: `Status updated by driver to ${newStatus}`,
+        location: null // Explicitly pass null instead of undefined
       });
 
       if (error) throw error;
