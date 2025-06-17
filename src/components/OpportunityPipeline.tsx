@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { useOpportunityData } from "./opportunity/useOpportunityData";
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { OpportunityCard } from "./opportunity/OpportunityCard";
 import { useAuth } from "./auth/AuthProvider";
+import { Database } from "@/integrations/supabase/types";
 
 const PIPELINE_STAGES = [{
   id: 'requested',
