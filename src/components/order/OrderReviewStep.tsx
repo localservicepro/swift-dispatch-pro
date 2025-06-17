@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +7,7 @@ import { CheckCircle, User, Package, Truck, Calendar, MapPin, FileText, DollarSi
 import { Database } from "@/integrations/supabase/types";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { useState } from "react";
+import { SplitConfig } from "./types";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
 
@@ -93,6 +93,7 @@ interface OrderReviewStepProps {
   onConfirm: () => void;
   isCreating: boolean;
   onSpecialInstructionsChange?: (instructions: string) => void;
+  onSplitsChange?: (splits: SplitConfig[]) => void;
 }
 
 export function OrderReviewStep({
@@ -113,7 +114,8 @@ export function OrderReviewStep({
   onBack,
   onConfirm,
   isCreating,
-  onSpecialInstructionsChange
+  onSpecialInstructionsChange,
+  onSplitsChange
 }: OrderReviewStepProps) {
   const [isEditingInstructions, setIsEditingInstructions] = useState(false);
   const [tempInstructions, setTempInstructions] = useState(specialInstructions);
