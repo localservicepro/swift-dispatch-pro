@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -78,13 +79,21 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
 
   const updateStatus = async (newStatus: OrderStatus) => {
     setUpdating(true);
+    console.log(`Attempting to update order ${order.id} status from ${order.status} to ${newStatus}`);
+    
     try {
+      // Use the updated RPC function that handles both admin and driver permissions
       const { error } = await supabase.rpc('update_order_status', {
         order_id: order.id,
         new_status: newStatus
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Status update error:', error);
+        throw error;
+      }
+
+      console.log(`Order ${order.id} status updated successfully to ${newStatus}`);
 
       toast({
         title: "Status Updated",
@@ -93,9 +102,10 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
 
       onStatusUpdate();
     } catch (error: any) {
+      console.error('Error updating order status:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || 'Failed to update order status',
         variant: "destructive",
       });
     } finally {
@@ -221,6 +231,7 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
                 <Button
                   onClick={() => openActionDialog('delivered')}
                   className="bg-green-600 hover:bg-green-700"
+                  disabled={updating}
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Delivered
@@ -228,6 +239,7 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
                 <Button
                   onClick={() => openActionDialog('cancelled')}
                   variant="destructive"
+                  disabled={updating}
                 >
                   <XCircle className="w-4 h-4 mr-2" />
                   Cancel
