@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { chargeCardOnFile } from "./cardOnFileService";
@@ -12,6 +13,7 @@ interface Product {
 
 type OrderType = "single" | "split";
 type TruckType = "small" | "medium" | "large" | "crane";
+type DeliveryMethod = "delivery" | "pickup";
 
 interface Split {
   deliveryDate: string;
@@ -33,6 +35,7 @@ interface CreateOrderParams {
   subtotal: number;
   adjustments: number;
   deliveryFee: number;
+  deliveryMethod: DeliveryMethod;
   orderType: OrderType;
   splits: Split[];
   deliveryDate: string;
@@ -73,13 +76,20 @@ const validateOrderData = (orderData: CreateOrderParams): void => {
   if (orderData.subtotal <= 0) {
     throw new Error('Order subtotal must be greater than 0');
   }
-  
-  if (orderData.truckType === "" || !orderData.truckType) {
-    throw new Error('Truck type is required');
+
+  if (!orderData.deliveryMethod) {
+    throw new Error('Delivery method is required');
   }
   
-  if (!orderData.truckId || orderData.truckId === 'none') {
-    throw new Error('Truck selection is required');
+  // Only validate delivery-specific fields for delivery orders
+  if (orderData.deliveryMethod === "delivery") {
+    if (orderData.truckType === "" || !orderData.truckType) {
+      throw new Error('Truck type is required for delivery orders');
+    }
+    
+    if (!orderData.truckId || orderData.truckId === 'none') {
+      throw new Error('Truck selection is required for delivery orders');
+    }
   }
   
   // Validate cart items
@@ -237,6 +247,7 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
       subtotal,
       adjustments,
       deliveryFee,
+      deliveryMethod,
       orderType,
       deliveryDate,
       deliveryTime,
@@ -265,7 +276,7 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
       quantity: item.quantity
     }));
 
-    // Create order data with proper null handling
+    // Create order data with proper null handling for pickup orders
     const orderInsertData = {
       order_number: orderNumber,
       customer_id: selectedCustomer.id,
@@ -277,11 +288,12 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
       adjustments,
       delivery_fee: deliveryFee,
       total_amount: totalAmount,
-      delivery_date: deliveryDate || null,
-      delivery_time: deliveryTime || null,
-      truck_type: truckType !== "" ? truckType : null,
-      truck_id: truckId === 'none' ? null : truckId,
-      driver_id: driverId === 'unassigned' ? null : driverId,
+      delivery_method: deliveryMethod,
+      delivery_date: deliveryMethod === "pickup" ? null : (deliveryDate || null),
+      delivery_time: deliveryMethod === "pickup" ? null : (deliveryTime || null),
+      truck_type: deliveryMethod === "pickup" ? null : (truckType !== "" ? truckType : null),
+      truck_id: deliveryMethod === "pickup" ? null : (truckId === 'none' ? null : truckId),
+      driver_id: deliveryMethod === "pickup" ? null : (driverId === 'unassigned' ? null : driverId),
       special_instructions: specialInstructions || null,
       payment_method: paymentMethod,
       status: 'preparing' as const,
@@ -379,8 +391,8 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
           })),
           totalAmount: totalAmount,
           deliveryAddress: selectedCustomer.full_address,
-          deliveryDate: deliveryDate,
-          deliveryTime: deliveryTime,
+          deliveryDate: deliveryMethod === "pickup" ? "" : deliveryDate,
+          deliveryTime: deliveryMethod === "pickup" ? "" : deliveryTime,
           specialInstructions: specialInstructions
         });
       }

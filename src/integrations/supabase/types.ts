@@ -595,6 +595,7 @@ export type Database = {
           delivery_address: string
           delivery_date: string | null
           delivery_fee: number | null
+          delivery_method: Database["public"]["Enums"]["delivery_method"] | null
           delivery_time: string | null
           driver_id: string | null
           ghl_opportunity_id: string | null
@@ -630,6 +631,9 @@ export type Database = {
           delivery_address: string
           delivery_date?: string | null
           delivery_fee?: number | null
+          delivery_method?:
+            | Database["public"]["Enums"]["delivery_method"]
+            | null
           delivery_time?: string | null
           driver_id?: string | null
           ghl_opportunity_id?: string | null
@@ -665,6 +669,9 @@ export type Database = {
           delivery_address?: string
           delivery_date?: string | null
           delivery_fee?: number | null
+          delivery_method?:
+            | Database["public"]["Enums"]["delivery_method"]
+            | null
           delivery_time?: string | null
           driver_id?: string | null
           ghl_opportunity_id?: string | null
@@ -1064,6 +1071,7 @@ export type Database = {
       }
     }
     Enums: {
+      delivery_method: "delivery" | "pickup"
       order_status:
         | "requested"
         | "preparing"
@@ -1188,6 +1196,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      delivery_method: ["delivery", "pickup"],
       order_status: [
         "requested",
         "preparing",

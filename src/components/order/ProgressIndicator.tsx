@@ -1,25 +1,47 @@
 
 interface ProgressIndicatorProps {
   currentStep: number;
+  deliveryMethod?: "delivery" | "pickup" | "";
   totalSteps?: number;
 }
 
-const stepLabels = {
-  1: "Customer",
-  2: "Products", 
-  3: "Order Type",
-  4: "Address",
-  5: "Details",
-  6: "Payment",
-  7: "Review"
+const getStepLabels = (deliveryMethod: "delivery" | "pickup" | "" = "") => {
+  if (deliveryMethod === "pickup") {
+    return {
+      1: "Customer",
+      2: "Products", 
+      3: "Method",
+      4: "Order Type",
+      5: "Payment",
+      6: "Review"
+    };
+  }
+  
+  return {
+    1: "Customer",
+    2: "Products", 
+    3: "Method",
+    4: "Order Type",
+    5: "Address",
+    6: "Details",
+    7: "Payment",
+    8: "Review"
+  };
 };
 
-export function ProgressIndicator({ currentStep, totalSteps = 7 }: ProgressIndicatorProps) {
+export function ProgressIndicator({ 
+  currentStep, 
+  deliveryMethod = "", 
+  totalSteps 
+}: ProgressIndicatorProps) {
+  const steps = totalSteps || (deliveryMethod === "pickup" ? 6 : 8);
+  const stepLabels = getStepLabels(deliveryMethod);
+
   return (
     <div className="mb-8">
       {/* Progress bar */}
       <div className="flex items-center justify-center space-x-4 mb-4">
-        {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
+        {Array.from({ length: steps }, (_, i) => i + 1).map((step) => (
           <div key={step} className="flex items-center">
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -30,7 +52,7 @@ export function ProgressIndicator({ currentStep, totalSteps = 7 }: ProgressIndic
             >
               {step}
             </div>
-            {step < totalSteps && (
+            {step < steps && (
               <div
                 className={`w-16 h-1 mx-2 ${
                   step < currentStep ? 'bg-blue-600' : 'bg-gray-200'
@@ -43,7 +65,7 @@ export function ProgressIndicator({ currentStep, totalSteps = 7 }: ProgressIndic
       
       {/* Step labels */}
       <div className="flex items-center justify-center space-x-4">
-        {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
+        {Array.from({ length: steps }, (_, i) => i + 1).map((step) => (
           <div key={step} className="flex items-center">
             <div className="w-20 text-center">
               <span className={`text-xs font-medium ${
@@ -52,7 +74,7 @@ export function ProgressIndicator({ currentStep, totalSteps = 7 }: ProgressIndic
                 {stepLabels[step as keyof typeof stepLabels]}
               </span>
             </div>
-            {step < totalSteps && <div className="w-16" />}
+            {step < steps && <div className="w-16" />}
           </div>
         ))}
       </div>

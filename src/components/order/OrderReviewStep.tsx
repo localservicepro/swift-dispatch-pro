@@ -1,60 +1,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, User, Package, Truck, Calendar, MapPin, FileText, DollarSign, CreditCard } from "lucide-react";
-import { Database } from "@/integrations/supabase/types";
-import { getTruckInfo } from "@/utils/truckUtils";
-
-type TruckType = Database["public"]["Enums"]["truck_type"];
-
-interface Customer {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string | null;
-  full_address: string;
-  customer_type: string;
-  suburb_id: string;
-  suburb?: {
-    name: string;
-    state: string;
-    delivery_rate: number;
-  };
-}
-
-interface Product {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  stock_quantity: number;
-  sku: string | null;
-  images: string[];
-  category?: {
-    name: string;
-  };
-}
-
-interface CartItem {
-  product: Product;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-}
-
-interface Truck {
-  id: string;
-  registration_number: string;
-  truck_type: TruckType;
-  status: string;
-  capacity_tons: number | null;
-  fuel_type: string | null;
-  year_manufactured: number | null;
-  last_maintenance_date: string | null;
-  next_maintenance_due: string | null;
-}
+import { CheckCircle, Package, User, MapPin, Clock, Truck, CreditCard, Store } from "lucide-react";
+import { Customer, CartItem, Truck as TruckType } from "./types";
 
 interface OrderReviewStepProps {
   customer: Customer;
@@ -62,13 +12,14 @@ interface OrderReviewStepProps {
   subtotal: number;
   adjustments: number;
   deliveryFee: number;
+  deliveryMethod: "delivery" | "pickup";
   deliveryDate: string;
   deliveryTime: string;
-  truckType: TruckType;
+  truckType: string;
   driverName: string;
   specialInstructions: string;
   paymentMethod: string;
-  selectedTruck?: Truck | null;
+  selectedTruck: TruckType | null;
   onBack: () => void;
   onConfirm: () => void;
   isCreating: boolean;
@@ -80,6 +31,7 @@ export function OrderReviewStep({
   subtotal,
   adjustments,
   deliveryFee,
+  deliveryMethod,
   deliveryDate,
   deliveryTime,
   truckType,
@@ -92,167 +44,128 @@ export function OrderReviewStep({
   isCreating
 }: OrderReviewStepProps) {
   const total = subtotal + adjustments + deliveryFee;
-  const truckInfo = getTruckInfo(truckType);
-
-  const getPaymentMethodDisplay = (method: string) => {
-    const methods = {
-      'account': { label: 'Account', description: 'Monthly billing cycle', color: 'bg-purple-100 text-purple-800' },
-      'card_on_file': { label: 'Card On File', description: 'Saved payment card', color: 'bg-blue-100 text-blue-800' },
-      '7_day_invoice': { label: '7 Day Invoice', description: 'Payment due in 7 days', color: 'bg-orange-100 text-orange-800' },
-      'in_yard': { label: 'In Yard', description: 'Pay on-site during delivery', color: 'bg-green-100 text-green-800' }
-    };
-    return methods[method as keyof typeof methods] || { label: method, description: '', color: 'bg-gray-100 text-gray-800' };
-  };
-
-  const paymentMethodInfo = getPaymentMethodDisplay(paymentMethod);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CheckCircle className="w-5 h-5" />
-          Step 5: Create Order
+          Step {deliveryMethod === "pickup" ? "6" : "8"}: Review Order
         </CardTitle>
-        <p className="text-sm text-gray-600">
-          Review the order details below. Once created, the order will enter the pipeline as "requested" and await confirmation.
-        </p>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Customer Information */}
-        <div className="border rounded-lg p-4">
-          <h3 className="font-medium flex items-center gap-2 mb-3">
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 font-semibold">
             <User className="w-4 h-4" />
             Customer Information
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-            <div><strong>Name:</strong> {customer.first_name} {customer.last_name}</div>
-            <div><strong>Email:</strong> {customer.email}</div>
-            {customer.phone && <div><strong>Phone:</strong> {customer.phone}</div>}
-            <div><strong>Type:</strong> <Badge variant="outline">{customer.customer_type}</Badge></div>
-            <div className="md:col-span-2"><strong>Address:</strong> {customer.full_address}</div>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <p className="font-medium">{customer.first_name} {customer.last_name}</p>
+            <p className="text-sm text-muted-foreground">{customer.email}</p>
+            {customer.phone && (
+              <p className="text-sm text-muted-foreground">{customer.phone}</p>
+            )}
+            <p className="text-sm text-muted-foreground mt-1">{customer.full_address}</p>
           </div>
         </div>
 
         {/* Products */}
-        <div className="border rounded-lg p-4">
-          <h3 className="font-medium flex items-center gap-2 mb-3">
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 font-semibold">
             <Package className="w-4 h-4" />
-            Products ({cart.length} items)
+            Products
           </h3>
           <div className="space-y-2">
             {cart.map((item, index) => (
-              <div key={index} className="flex justify-between items-center text-sm">
+              <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                 <div>
-                  <span className="font-medium">{item.product.name}</span>
-                  <span className="text-gray-500 ml-2">× {item.quantity}</span>
+                  <p className="font-medium">{item.product.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    ${item.unit_price.toFixed(2)} × {item.quantity}
+                  </p>
                 </div>
-                <span>${item.total_price.toFixed(2)}</span>
+                <p className="font-semibold">${item.total_price.toFixed(2)}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Payment Method */}
-        <div className="border rounded-lg p-4">
-          <h3 className="font-medium flex items-center gap-2 mb-3">
-            <CreditCard className="w-4 h-4" />
-            Payment Method
+        {/* Delivery Method */}
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 font-semibold">
+            {deliveryMethod === "delivery" ? <Truck className="w-4 h-4" /> : <Store className="w-4 h-4" />}
+            Delivery Method
           </h3>
-          <div className="flex items-center gap-3">
-            <Badge className={paymentMethodInfo.color}>
-              {paymentMethodInfo.label}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <Badge variant={deliveryMethod === "delivery" ? "default" : "secondary"}>
+              {deliveryMethod === "delivery" ? "Delivery" : "Yard Sale / Pickup"}
             </Badge>
-            <span className="text-sm text-gray-600">{paymentMethodInfo.description}</span>
-          </div>
-          {paymentMethod === 'account' && (
-            <div className="mt-2 text-xs text-purple-600 bg-purple-50 p-2 rounded">
-              This order will be added to the monthly billing cycle for account customer.
-            </div>
-          )}
-        </div>
-
-        {/* Delivery Information */}
-        <div className="border rounded-lg p-4">
-          <h3 className="font-medium flex items-center gap-2 mb-3">
-            <Calendar className="w-4 h-4" />
-            Delivery Information
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <strong>Date:</strong> {new Date(deliveryDate).toLocaleDateString()}
-            </div>
-            <div>
-              <strong>Time:</strong> {deliveryTime}
-            </div>
-            <div>
-              <strong>Driver:</strong> {driverName || 'Not assigned'}
-            </div>
-          </div>
-        </div>
-
-        {/* Truck Information */}
-        <div className="border rounded-lg p-4">
-          <h3 className="font-medium flex items-center gap-2 mb-3">
-            <Truck className="w-4 h-4" />
-            Truck Assignment
-          </h3>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              {truckInfo && (
-                <div className={`p-2 rounded-lg ${truckInfo.bgClass}`}>
-                  <truckInfo.icon className={`w-5 h-5 ${truckInfo.colorClass}`} />
-                </div>
-              )}
-              <div>
-                <div className="font-medium">{truckInfo?.label}</div>
-                <div className="text-sm text-gray-600">{truckInfo?.capacity}</div>
-              </div>
-            </div>
-            
-            {selectedTruck && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="font-semibold text-blue-900">
-                    {selectedTruck.registration_number}
-                  </div>
-                  <Badge className="bg-green-100 text-green-800">
-                    {selectedTruck.status.replace('_', ' ').toUpperCase()}
-                  </Badge>
-                </div>
-                <div className="text-sm text-blue-700 space-y-1">
-                  {selectedTruck.capacity_tons && (
-                    <div>Capacity: {selectedTruck.capacity_tons} tons</div>
-                  )}
-                  {selectedTruck.fuel_type && (
-                    <div>Fuel Type: {selectedTruck.fuel_type}</div>
-                  )}
-                  {selectedTruck.year_manufactured && (
-                    <div>Year: {selectedTruck.year_manufactured}</div>
-                  )}
-                </div>
-              </div>
+            {deliveryMethod === "pickup" && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Customer will pick up from our yard
+              </p>  
             )}
           </div>
         </div>
 
-        {/* Special Instructions */}
-        {specialInstructions && (
-          <div className="border rounded-lg p-4">
-            <h3 className="font-medium flex items-center gap-2 mb-3">
-              <FileText className="w-4 h-4" />
-              Special Instructions
+        {/* Delivery Details - Only show for delivery orders */}
+        {deliveryMethod === "delivery" && deliveryDate && (
+          <div className="space-y-3">
+            <h3 className="flex items-center gap-2 font-semibold">
+              <Clock className="w-4 h-4" />
+              Delivery Details
             </h3>
-            <p className="text-sm text-gray-700">{specialInstructions}</p>
+            <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm">
+                  {deliveryDate} at {deliveryTime}
+                </span>
+              </div>
+              {selectedTruck && (
+                <div className="flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm">
+                    {selectedTruck.registration_number} ({truckType})
+                  </span>
+                </div>
+              )}
+              {driverName && driverName !== "Multiple drivers" && (
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm">Driver: {driverName}</span>
+                </div>
+              )}
+              {specialInstructions && (
+                <div className="mt-2">
+                  <p className="text-sm font-medium">Special Instructions:</p>
+                  <p className="text-sm text-muted-foreground">{specialInstructions}</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Order Summary */}
-        <div className="border rounded-lg p-4 bg-gray-50">
-          <h3 className="font-medium flex items-center gap-2 mb-3">
-            <DollarSign className="w-4 h-4" />
-            Order Summary
+        {/* Payment Method */}
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 font-semibold">
+            <CreditCard className="w-4 h-4" />
+            Payment Method
           </h3>
-          <div className="space-y-2 text-sm">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <Badge variant="outline">
+              {paymentMethod === 'cash' ? 'Cash' : 
+               paymentMethod === 'card_on_file' ? 'Card on File' : 
+               paymentMethod === 'invoice' ? 'Invoice' : paymentMethod}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Order Summary */}
+        <div className="space-y-3">
+          <h3 className="font-semibold">Order Summary</h3>
+          <div className="bg-gray-50 p-4 rounded-lg space-y-2">
             <div className="flex justify-between">
               <span>Subtotal:</span>
               <span>${subtotal.toFixed(2)}</span>
@@ -260,41 +173,27 @@ export function OrderReviewStep({
             {adjustments !== 0 && (
               <div className="flex justify-between">
                 <span>Adjustments:</span>
-                <span>${adjustments.toFixed(2)}</span>
+                <span className={adjustments > 0 ? "text-green-600" : "text-red-600"}>
+                  ${adjustments > 0 ? '+' : ''}${adjustments.toFixed(2)}
+                </span>
               </div>
             )}
-            <div className="flex justify-between">
-              <span>Delivery Fee:</span>
-              <span>${deliveryFee.toFixed(2)}</span>
-            </div>
-            <div className="border-t pt-2 flex justify-between font-semibold text-base">
+            {deliveryMethod === "delivery" && (
+              <div className="flex justify-between">
+                <span>Delivery Fee:</span>
+                <span>${deliveryFee.toFixed(2)}</span>
+              </div>
+            )}
+            <Separator />
+            <div className="flex justify-between font-semibold text-lg">
               <span>Total:</span>
               <span>${total.toFixed(2)}</span>
             </div>
           </div>
         </div>
 
-        {/* Order Status Notice */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-            <div>
-              <h4 className="font-medium text-blue-900 mb-1">Order Status</h4>
-              <p className="text-sm text-blue-700">
-                This order will be created with "requested" status and will appear in the opportunity pipeline. 
-                {paymentMethod === 'account' 
-                  ? ' It will be added to the monthly billing cycle for this account customer.'
-                  : paymentMethod === '7_day_invoice'
-                  ? ' An invoice will be automatically generated with 7-day payment terms.'
-                  : ' It will need to be confirmed by an admin or when payment is received before processing begins.'
-                }
-              </p>
-            </div>
-          </div>
-        </div>
-
         <div className="flex gap-2 pt-4">
-          <Button variant="outline" onClick={onBack}>
+          <Button variant="outline" onClick={onBack} disabled={isCreating}>
             Back
           </Button>
           <Button 

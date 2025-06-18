@@ -1,9 +1,9 @@
 
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
 import { ProductSelectionStep } from "./ProductSelectionStep";
+import { DeliveryMethodSelectionStep } from "./DeliveryMethodSelectionStep";
 import { OrderTypeSelectionStep } from "./OrderTypeSelectionStep";
 import { DeliveryAddressStep } from "./DeliveryAddressStep";
 import { SplitOrderConfigurationStep } from "./SplitOrderConfigurationStep";
@@ -30,6 +30,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     selectedCustomer,
     cart,
     adjustments,
+    deliveryMethod,
     orderType,
     splits,
     deliveryDate,
@@ -49,6 +50,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setSelectedCustomer,
     setCart,
     setAdjustments,
+    setDeliveryMethod,
     setOrderType,
     setSplits,
     setDeliveryDate,
@@ -64,7 +66,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setSameAsBilling,
     setUseGlobalDeliveryAddress,
     nextStep,
-    prevStep
+    prevStep,
+    getTotalSteps
   } = useOrderFormState();
 
   const { handleDriverChange } = useDriverManager(setDriverId, setDriverName);
@@ -87,8 +90,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         quantity: cartItem.quantity
       }));
 
-      // Ensure truckType is not empty string
-      const validTruckType = truckType || "small";
+      // For pickup orders, we don't need truck/driver details
+      const validTruckType = deliveryMethod === "pickup" ? "" : (truckType || "small");
 
       const result = await createOrder({
         selectedCustomer,
@@ -96,13 +99,14 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         subtotal,
         adjustments,
         deliveryFee,
+        deliveryMethod: deliveryMethod || "delivery",
         orderType,
         splits,
-        deliveryDate,
-        deliveryTime,
+        deliveryDate: deliveryMethod === "pickup" ? "" : deliveryDate,
+        deliveryTime: deliveryMethod === "pickup" ? "" : deliveryTime,
         truckType: validTruckType,
-        truckId,
-        driverId,
+        truckId: deliveryMethod === "pickup" ? "" : truckId,
+        driverId: deliveryMethod === "pickup" ? "" : driverId,
         specialInstructions,
         paymentMethod,
         deliveryAddress,
@@ -134,9 +138,15 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     }
   };
 
+  const currentTotalSteps = getTotalSteps();
+
   return (
     <div className="space-y-6">
-      <ProgressIndicator currentStep={currentStep} totalSteps={7} />
+      <ProgressIndicator 
+        currentStep={currentStep} 
+        deliveryMethod={deliveryMethod}
+        totalSteps={currentTotalSteps} 
+      />
 
       {currentStep === 1 && (
         <CustomerSearchStep
@@ -159,6 +169,15 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       )}
 
       {currentStep === 3 && (
+        <DeliveryMethodSelectionStep
+          deliveryMethod={deliveryMethod}
+          onDeliveryMethodChange={setDeliveryMethod}
+          onBack={prevStep}
+          onNext={nextStep}
+        />
+      )}
+
+      {currentStep === 4 && (
         <OrderTypeSelectionStep
           orderType={orderType}
           onOrderTypeChange={setOrderType}
@@ -167,7 +186,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {currentStep === 4 && selectedCustomer && (
+      {currentStep === 5 && selectedCustomer && deliveryMethod === "delivery" && (
         <DeliveryAddressStep
           customer={selectedCustomer}
           orderType={orderType}
@@ -184,7 +203,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {currentStep === 5 && orderType === "split" && (
+      {currentStep === 6 && orderType === "split" && deliveryMethod === "delivery" && (
         <SplitOrderConfigurationStep
           cart={cart}
           splits={splits}
@@ -194,7 +213,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {currentStep === 5 && orderType === "single" && (
+      {currentStep === 6 && orderType === "single" && deliveryMethod === "delivery" && (
         <DeliveryDetailsStep
           deliveryDate={deliveryDate}
           deliveryTime={deliveryTime}
@@ -213,7 +232,9 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {currentStep === 6 && selectedCustomer && (
+      {/* Payment step - different step numbers based on delivery method */}
+      {((currentStep === 5 && deliveryMethod === "pickup") || 
+        (currentStep === 7 && deliveryMethod === "delivery")) && selectedCustomer && (
         <PaymentMethodStep
           customer={selectedCustomer}
           paymentMethod={paymentMethod}
@@ -223,13 +244,16 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {currentStep === 7 && selectedCustomer && (
+      {/* Review step - different step numbers based on delivery method */}
+      {((currentStep === 6 && deliveryMethod === "pickup") || 
+        (currentStep === 8 && deliveryMethod === "delivery")) && selectedCustomer && (
         <OrderReviewStep
           customer={selectedCustomer}
           cart={cart}
           subtotal={subtotal}
           adjustments={adjustments}
           deliveryFee={deliveryFee}
+          deliveryMethod={deliveryMethod || "delivery"}
           deliveryDate={orderType === "single" ? deliveryDate : splits[0]?.deliveryDate || ""}
           deliveryTime={orderType === "single" ? deliveryTime : splits[0]?.deliveryTime || ""}
           truckType={orderType === "single" ? truckType : ("split" as any)}
