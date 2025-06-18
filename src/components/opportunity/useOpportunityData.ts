@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +8,7 @@ export function useOpportunityData() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Fetch orders for pipeline
+  // Fetch orders for pipeline (excluding soft-deleted orders)
   const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ['opportunity-orders'],
     queryFn: async () => {
@@ -43,6 +44,7 @@ export function useOpportunityData() {
           profiles!orders_driver_id_fkey(full_name),
           trucks!orders_truck_id_fkey(registration_number, truck_type)
         `)
+        .is('deleted_at', null) // Exclude soft-deleted orders
         .order('created_at', { ascending: false });
 
       if (ordersError) {

@@ -590,6 +590,8 @@ export type Database = {
           customer_id: string | null
           customer_name: string
           customer_phone: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           delivery_date: string | null
           delivery_fee: number | null
           delivery_time: string | null
@@ -621,6 +623,8 @@ export type Database = {
           customer_id?: string | null
           customer_name: string
           customer_phone?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           delivery_date?: string | null
           delivery_fee?: number | null
           delivery_time?: string | null
@@ -652,6 +656,8 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string
           customer_phone?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           delivery_date?: string | null
           delivery_fee?: number | null
           delivery_time?: string | null
@@ -688,6 +694,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1025,6 +1038,14 @@ export type Database = {
               p_description?: string
             }
         Returns: string
+      }
+      restore_order: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
+      soft_delete_order: {
+        Args: { p_order_id: string; p_reason?: string }
+        Returns: undefined
       }
       update_order_status: {
         Args: {

@@ -68,6 +68,24 @@ export const activityLogger = {
       description: `${adminName} cancelled order ${orderNumber} for ${customerName}`
     }),
 
+  orderSoftDelete: (orderId: string, orderNumber: string, customerName: string, reason: string, adminName: string) =>
+    logActivity({
+      actionType: 'order_soft_delete',
+      targetType: 'order',
+      targetId: orderId,
+      targetDetails: { order_number: orderNumber, customer_name: customerName, reason },
+      description: `${adminName} soft deleted order ${orderNumber} for ${customerName} - Reason: ${reason}`
+    }),
+
+  orderRestore: (orderId: string, orderNumber: string, customerName: string, adminName: string) =>
+    logActivity({
+      actionType: 'order_restore',
+      targetType: 'order',
+      targetId: orderId,
+      targetDetails: { order_number: orderNumber, customer_name: customerName },
+      description: `${adminName} restored order ${orderNumber} for ${customerName} from deleted orders`
+    }),
+
   orderCreate: (orderId: string, orderNumber: string, customerName: string, totalAmount: number, adminName: string) =>
     logActivity({
       actionType: 'order_create',

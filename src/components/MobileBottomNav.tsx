@@ -1,58 +1,66 @@
 
-import { Calendar, Settings, Users, FileText, ChartBar, UserCheck, BarChart3 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  BarChart3,
+  Package,
+  ShoppingCart,
+  Users,
+  CreditCard,
+  Mail,
+  Settings,
+  Truck,
+  Target,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useState } from "react";
+
+const menuItems = [
+  { title: "Dashboard", icon: BarChart3, id: "dashboard" },
+  { title: "Pipeline", icon: Target, id: "opportunities" },
+  { title: "Orders", icon: ShoppingCart, id: "orders" },
+  { title: "Deleted", icon: Trash2, id: "deleted-orders" },
+  { title: "Products", icon: Package, id: "products" },
+  { title: "Customers", icon: Users, id: "customers" },
+  { title: "Payments", icon: CreditCard, id: "payments" },
+  { title: "Team", icon: Truck, id: "drivers" },
+  { title: "Emails", icon: Mail, id: "emails" },
+  { title: "Settings", icon: Settings, id: "settings" },
+];
 
 interface MobileBottomNavProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }
 
-const navItems = [
-  {
-    title: "Dashboard",
-    icon: ChartBar,
-    key: "dashboard",
-  },
-  {
-    title: "Pipeline",
-    icon: BarChart3,
-    key: "opportunities",
-  },
-  {
-    title: "Orders",
-    icon: FileText,
-    key: "orders",
-  },
-  {
-    title: "Products",
-    icon: Calendar,
-    key: "products",
-  },
-  {
-    title: "Team",
-    icon: Users,
-    key: "drivers",
-  },
-];
-
 export function MobileBottomNav({ activeTab, setActiveTab }: MobileBottomNavProps) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 md:hidden z-50">
-      <div className="flex items-center justify-around px-2 py-2">
-        {navItems.map((item) => (
-          <button
-            key={item.key}
-            onClick={() => setActiveTab(item.key)}
-            className={`flex flex-col items-center justify-center min-w-0 flex-1 py-2 px-1 rounded-lg transition-colors ${
-              activeTab === item.key
-                ? "bg-primary/10 text-primary"
-                : "text-slate-600 hover:text-slate-800"
-            }`}
-          >
-            <item.icon className="w-5 h-5 mb-1" />
-            <span className="text-xs font-medium truncate">{item.title}</span>
-          </button>
-        ))}
-      </div>
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-area-bottom">
+      <ScrollArea className="w-full">
+        <div className="flex items-center px-2 py-2">
+          {menuItems.map((item) => (
+            <Button
+              key={item.id}
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab(item.id)}
+              className={cn(
+                "flex-shrink-0 flex-col gap-1 h-16 px-3 text-xs",
+                activeTab === item.id
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <item.icon className="h-5 w-5" />
+              <span className="leading-tight">{item.title}</span>
+            </Button>
+          ))}
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </div>
   );
 }
