@@ -10,7 +10,7 @@ import { CustomerDialog } from "@/components/customer/CustomerDialog";
 import { CustomerOrders } from "@/components/customer/CustomerOrders";
 import { CustomerStats } from "@/components/customer/CustomerStats";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Search, Eye, Edit, Trash2, MapPin } from "lucide-react";
+import { UserPlus, Search, Eye, Edit, Trash2, MapPin, Bell, BellOff } from "lucide-react";
 
 export function CustomerManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -177,6 +177,17 @@ export function CustomerManagement() {
                         </Badge>
                         {!customer.is_active && (
                           <Badge variant="destructive">Inactive</Badge>
+                        )}
+                        {customer.sms_notifications_enabled ? (
+                          <Badge variant="outline" className="flex items-center gap-1 text-green-600 border-green-200 bg-green-50">
+                            <Bell className="w-3 h-3" />
+                            <span>Notifications On</span>
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="flex items-center gap-1 text-amber-600 border-amber-200 bg-amber-50">
+                            <BellOff className="w-3 h-3" />
+                            <span>Notifications Off</span>
+                          </Badge>
                         )}
                       </div>
                       <div className="text-sm text-slate-600 space-y-1">

@@ -27,6 +27,7 @@ export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSucces
     full_address: "",
     customer_type: "trade" as "trade" | "account",
     is_active: true,
+    sms_notifications_enabled: true,
     suburb_id: "",
   });
   const [deliveryRate, setDeliveryRate] = useState(0);
@@ -43,6 +44,7 @@ export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSucces
         full_address: customer.full_address || "",
         customer_type: customer.customer_type || "trade",
         is_active: customer.is_active ?? true,
+        sms_notifications_enabled: customer.sms_notifications_enabled ?? true,
         suburb_id: customer.suburb_id || "",
       });
     } else {
@@ -54,6 +56,7 @@ export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSucces
         full_address: "",
         customer_type: "trade",
         is_active: true,
+        sms_notifications_enabled: true,
         suburb_id: "",
       });
       setDeliveryRate(0);
@@ -208,6 +211,26 @@ export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSucces
               onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
             />
             <Label htmlFor="is_active">Active Customer</Label>
+          </div>
+
+          <div className="flex items-start space-x-2">
+            <div className="mt-1">
+              <Switch
+                id="sms_notifications_enabled"
+                checked={formData.sms_notifications_enabled}
+                onCheckedChange={(checked) => 
+                  setFormData({ ...formData, sms_notifications_enabled: checked })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="sms_notifications_enabled" className="block">
+                Order Status Notifications
+              </Label>
+              <p className="text-xs text-gray-500 mt-1">
+                Receive notifications when order status changes. Invoice notifications will still be sent regardless of this setting.
+              </p>
+            </div>
           </div>
 
           <div className="flex gap-2 pt-4">
