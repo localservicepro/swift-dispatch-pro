@@ -2,13 +2,11 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { SuburbSelector } from "@/components/order/SuburbSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { CustomerPersonalInfoForm } from "./CustomerPersonalInfoForm";
+import { CustomerAddressForm } from "./CustomerAddressForm";
+import { CustomerPreferencesForm } from "./CustomerPreferencesForm";
 
 interface CustomerDialogProps {
   isOpen: boolean;
@@ -63,8 +61,12 @@ export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSucces
     }
   }, [customer, isEditMode, isOpen]);
 
+  const handleFormDataChange = (updates: Partial<typeof formData>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+  };
+
   const handleSuburbChange = (suburbId: string, rate: number) => {
-    setFormData({ ...formData, suburb_id: suburbId });
+    setFormData(prev => ({ ...prev, suburb_id: suburbId }));
     setDeliveryRate(rate);
   };
 
@@ -124,114 +126,34 @@ export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSucces
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="first_name">First Name</Label>
-              <Input
-                id="first_name"
-                value={formData.first_name}
-                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="last_name">Last Name</Label>
-              <Input
-                id="last_name"
-                value={formData.last_name}
-                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                required
-              />
-            </div>
-          </div>
+          <CustomerPersonalInfoForm
+            formData={{
+              first_name: formData.first_name,
+              last_name: formData.last_name,
+              email: formData.email,
+              phone: formData.phone,
+            }}
+            onFormDataChange={handleFormDataChange}
+          />
 
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="full_address">Full Address</Label>
-            <Input
-              id="full_address"
-              value={formData.full_address}
-              onChange={(e) => setFormData({ ...formData, full_address: e.target.value })}
-              required
-            />
-          </div>
-
-          <SuburbSelector
-            selectedSuburbId={formData.suburb_id}
+          <CustomerAddressForm
+            formData={{
+              full_address: formData.full_address,
+              suburb_id: formData.suburb_id,
+            }}
+            deliveryRate={deliveryRate}
+            onFormDataChange={handleFormDataChange}
             onSuburbChange={handleSuburbChange}
           />
 
-          {deliveryRate > 0 && (
-            <div className="text-sm text-gray-600">
-              Delivery Rate: ${deliveryRate.toFixed(2)}
-            </div>
-          )}
-
-          <div>
-            <Label htmlFor="customer_type">Customer Type</Label>
-            <Select
-              value={formData.customer_type}
-              onValueChange={(value: "trade" | "account") => 
-                setFormData({ ...formData, customer_type: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="trade">Trade</SelectItem>
-                <SelectItem value="account">Account</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="is_active"
-              checked={formData.is_active}
-              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-            />
-            <Label htmlFor="is_active">Active Customer</Label>
-          </div>
-
-          <div className="flex items-start space-x-2">
-            <div className="mt-1">
-              <Switch
-                id="sms_notifications_enabled"
-                checked={formData.sms_notifications_enabled}
-                onCheckedChange={(checked) => 
-                  setFormData({ ...formData, sms_notifications_enabled: checked })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="sms_notifications_enabled" className="block">
-                Order Status Notifications
-              </Label>
-              <p className="text-xs text-gray-500 mt-1">
-                Receive notifications when order status changes. Invoice notifications will still be sent regardless of this setting.
-              </p>
-            </div>
-          </div>
+          <CustomerPreferencesForm
+            formData={{
+              customer_type: formData.customer_type,
+              is_active: formData.is_active,
+              sms_notifications_enabled: formData.sms_notifications_enabled,
+            }}
+            onFormDataChange={handleFormDataChange}
+          />
 
           <div className="flex gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
