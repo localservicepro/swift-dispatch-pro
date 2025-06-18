@@ -15,9 +15,10 @@ interface PipelineColumnProps {
   stage: PipelineStage;
   orders: any[];
   onOrderMove: () => void;
+  onOrderClick: (order: any) => void;
 }
 
-export function PipelineColumn({ stage, orders, onOrderMove }: PipelineColumnProps) {
+export function PipelineColumn({ stage, orders, onOrderMove, onOrderClick }: PipelineColumnProps) {
   const totalValue = orders.reduce((sum, order) => sum + order.total_amount, 0);
 
   return (
@@ -53,6 +54,7 @@ export function PipelineColumn({ stage, orders, onOrderMove }: PipelineColumnPro
                 order={order}
                 currentStage={stage.id}
                 onOrderMove={onOrderMove}
+                onOrderClick={onOrderClick}
               />
             ))
           )}

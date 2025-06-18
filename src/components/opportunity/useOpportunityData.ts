@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,7 +50,7 @@ export function useOpportunityData() {
         throw ordersError;
       }
 
-      // Map the data similar to OrderManagement
+      // Map the data and sort by time (newest first)
       const mappedOrders = ordersData?.map(order => ({
         ...order,
         suburb_id: order.customers?.suburb_id || null,
@@ -63,8 +62,13 @@ export function useOpportunityData() {
         truck_type_from_truck: order.trucks?.truck_type || order.truck_type
       })) || [];
 
-      console.log('Opportunity orders mapped:', mappedOrders);
-      return mappedOrders;
+      // Sort orders by creation time (newest first)
+      const sortedOrders = mappedOrders.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      console.log('Opportunity orders mapped and sorted by time:', sortedOrders);
+      return sortedOrders;
     },
   });
 
@@ -84,10 +88,8 @@ export function useOpportunityData() {
         async (payload) => {
           console.log('Real-time pipeline update received:', payload);
           
-          // Invalidate and refetch orders when any change occurs
           queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] });
           
-          // Show toast for status updates
           if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
             const oldStatus = payload.old.status;
             const newStatus = payload.new.status;
@@ -111,7 +113,6 @@ export function useOpportunityData() {
             }
           }
           
-          // Show toast for new orders
           if (payload.eventType === 'INSERT' && payload.new) {
             toast({
               title: "New Opportunity",

@@ -174,6 +174,16 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
   const nextAction = getNextStageAction(currentStage);
   const canMove = canMoveToNextStage(currentStage);
 
+  // Format time for display
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
   return (
     <Card 
       className="hover:shadow-md transition-all cursor-pointer border border-slate-200 hover:border-slate-300 group"
@@ -209,11 +219,15 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
           <span className="font-bold text-green-600">${order.total_amount.toFixed(2)}</span>
         </div>
 
-        {/* Additional Info */}
+        {/* Date and Time Information */}
         <div className="space-y-1 mb-3 text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <Calendar className="w-3 h-3" />
             <span>{new Date(order.created_at).toLocaleDateString()}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="w-3 h-3" />
+            <span>{formatTime(order.created_at)}</span>
           </div>
           
           {order.suburb_name && (
