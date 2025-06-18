@@ -1,15 +1,16 @@
-
 import { useState } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { MobileHeader } from "@/components/MobileHeader";
 import { DashboardOverview } from "@/components/DashboardOverview";
+import { OpportunityPipeline } from "@/components/OpportunityPipeline";
 import { OrderManagement } from "@/components/OrderManagement";
 import { ProductManagement } from "@/components/ProductManagement";
 import { PaymentManagement } from "@/components/PaymentManagement";
 import { DriverManagement } from "@/components/DriverManagement";
 import { EmailManagement } from "@/components/EmailManagement";
+import { CustomerManagement } from "@/components/CustomerManagement";
 import { Settings } from "@/components/Settings";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -42,10 +43,14 @@ const Index = () => {
     switch (activeTab) {
       case "dashboard":
         return <DashboardOverview />;
+      case "opportunities":
+        return <OpportunityPipeline />;
       case "orders":
         return <OrderManagement />;
       case "products":
         return <ProductManagement />;
+      case "customers":
+        return <CustomerManagement />;
       case "payments":
         return <PaymentManagement />;
       case "drivers":

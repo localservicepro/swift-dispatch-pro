@@ -18,14 +18,20 @@ const getPageTitle = (activeTab: string) => {
   switch (activeTab) {
     case "dashboard":
       return "Dashboard";
+    case "opportunities":
+      return "Opportunity Pipeline";
     case "orders":
       return "Order Management";
     case "products":
       return "Product Management";
+    case "customers":
+      return "Customer Management";
     case "payments":
       return "Payment Management";
     case "drivers":
       return "Driver Management";
+    case "emails":
+      return "Email Management";
     case "settings":
       return "Settings";
     default:

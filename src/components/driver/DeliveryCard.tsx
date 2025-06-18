@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,8 +15,10 @@ import {
   XCircle,
   Truck,
   Clock,
-  Package
+  Package,
+  FileText
 } from "lucide-react";
+import { getTruckInfo } from "@/utils/truckUtils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -113,6 +114,8 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
   const nextStatus = getNextStatus(order.status);
   const statusLabel = getStatusLabel(order.status);
 
+  const truckInfo = getTruckInfo(order.truck_type);
+
   return (
     <>
       <Card className="overflow-hidden">
@@ -137,6 +140,11 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
               <div className="flex-1">
                 <div className="font-medium">{order.customer_name}</div>
                 <div className="text-sm text-slate-600">{order.customer_address}</div>
+                {order.suburb_name && (
+                  <div className="text-xs text-slate-500">
+                    {order.suburb_name}, {order.suburb_state}
+                  </div>
+                )}
               </div>
             </div>
             
@@ -153,14 +161,39 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
             )}
           </div>
 
+          {/* Truck Information */}
+          {(order.truck_type || order.truck_registration) && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Truck className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">Truck Assignment</span>
+              </div>
+              <div className="space-y-1">
+                {truckInfo && (
+                  <div className="flex items-center gap-2">
+                    <truckInfo.icon className={`w-4 h-4 ${truckInfo.colorClass}`} />
+                    <span className="text-sm font-medium">{truckInfo.label}</span>
+                    <span className="text-xs text-blue-600">({truckInfo.capacity})</span>
+                  </div>
+                )}
+                {order.truck_registration && (
+                  <div className="text-sm text-blue-700">
+                    Vehicle: {order.truck_registration}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Order Details */}
           <OrderDetailsCard order={order} />
 
           {/* Special Instructions */}
           {order.special_instructions && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <div className="text-sm font-medium text-yellow-800 mb-1">
-                Special Instructions:
+              <div className="flex items-center gap-2 mb-1">
+                <FileText className="w-4 h-4 text-yellow-600" />
+                <span className="text-sm font-medium text-yellow-800">Special Instructions:</span>
               </div>
               <div className="text-sm text-yellow-700">
                 {order.special_instructions}

@@ -23,24 +23,42 @@ export function ProductImageUpload({
   const { toast } = useToast();
 
   const uploadImage = async (file: File): Promise<string | null> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${fileName}`;
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('product-images')
-      .upload(filePath, file);
+      console.log('Uploading image to product-images bucket:', filePath);
 
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        toast({
+          title: "Upload failed",
+          description: `Failed to upload ${file.name}: ${uploadError.message}`,
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      const { data } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      console.log('Upload successful, public URL:', data.publicUrl);
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Unexpected upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: `Unexpected error uploading ${file.name}`,
+        variant: "destructive",
+      });
       return null;
     }
-
-    const { data } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(filePath);
-
-    return data.publicUrl;
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,12 +76,13 @@ export function ProductImageUpload({
 
     setUploading(true);
     const newImages: string[] = [];
+    let successCount = 0;
 
     for (const file of Array.from(files)) {
       if (!file.type.startsWith('image/')) {
         toast({
           title: "Invalid file type",
-          description: "Please select only image files",
+          description: `${file.name} is not an image file`,
           variant: "destructive",
         });
         continue;
@@ -72,7 +91,7 @@ export function ProductImageUpload({
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         toast({
           title: "File too large",
-          description: "Please select images smaller than 5MB",
+          description: `${file.name} is larger than 5MB`,
           variant: "destructive",
         });
         continue;
@@ -81,6 +100,7 @@ export function ProductImageUpload({
       const imageUrl = await uploadImage(file);
       if (imageUrl) {
         newImages.push(imageUrl);
+        successCount++;
       }
     }
 
@@ -89,8 +109,8 @@ export function ProductImageUpload({
       onImagesChange(updatedImages);
       
       toast({
-        title: "Success",
-        description: `${newImages.length} image(s) uploaded successfully!`,
+        title: "Upload successful",
+        description: `${successCount} image(s) uploaded successfully!`,
       });
     }
 
@@ -110,11 +130,15 @@ export function ProductImageUpload({
       const pathParts = url.pathname.split('/');
       const fileName = pathParts[pathParts.length - 1];
       
-      await supabase.storage
+      const { error } = await supabase.storage
         .from('product-images')
         .remove([fileName]);
+
+      if (error) {
+        console.error('Error removing image from storage:', error);
+      }
     } catch (error) {
-      console.error('Error removing image from storage:', error);
+      console.error('Error parsing image URL for deletion:', error);
     }
 
     toast({
@@ -156,6 +180,10 @@ export function ProductImageUpload({
                 src={imageUrl}
                 alt={`Product image ${index + 1}`}
                 className="w-full h-32 object-cover rounded-lg border"
+                onError={(e) => {
+                  console.error('Failed to load image:', imageUrl);
+                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiA5VjEzTTEyIDE3SDE2TTggMTdIMTJNMTIgOUgxNk04IDE5SDE2QzE3LjEwNDYgMTkgMTggMTguMTA0NiAxOCAxN1Y3QzE4IDUuODk1NDMgMTcuMTA0NiA1IDE2IDVIOEMGLjg5NTQzIDUgNiA1Ljg5NTQzIDYgN1YxN0M2IDE4LjEwNDYgNi44OTU0MyAxOSA4IDE5WiIgc3Ryb2tlPSIjOUI5Qjk4IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K';
+                }}
               />
               <Button
                 type="button"
