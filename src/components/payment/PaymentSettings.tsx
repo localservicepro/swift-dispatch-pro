@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,16 +57,16 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
   });
 
   const [formData, setFormData] = useState<PaymentSettingsData>({
-    gst_rate: settings?.gst_rate || 10.00,
-    service_charge_rate: settings?.service_charge_rate || 0.00,
-    gst_label: settings?.gst_label || 'GST',
-    include_gst_in_prices: settings?.include_gst_in_prices ?? true,
-    currency: settings?.currency || 'AUD',
-    default_delivery_fee: settings?.default_delivery_fee || 0.00
+    gst_rate: 10.00,
+    service_charge_rate: 0.00,
+    gst_label: 'GST',
+    include_gst_in_prices: true,
+    currency: 'AUD',
+    default_delivery_fee: 0.00
   });
 
   // Update form data when settings are loaded
-  useState(() => {
+  useEffect(() => {
     if (settings) {
       setFormData({
         gst_rate: settings.gst_rate,
