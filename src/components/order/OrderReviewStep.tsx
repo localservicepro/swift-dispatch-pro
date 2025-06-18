@@ -1,10 +1,12 @@
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Package, User, MapPin, Clock, Truck, CreditCard, Store } from "lucide-react";
-import { Customer, CartItem, Truck as TruckType } from "./types";
+import { ShoppingCart, User, MapPin, Calendar, Truck, CreditCard, Receipt, Loader2 } from "lucide-react";
+import { CartItem, Customer, Truck as TruckType } from "./types";
+import { supabase } from "@/integrations/supabase/client";
 
 interface OrderReviewStepProps {
   customer: Customer;
@@ -25,6 +27,14 @@ interface OrderReviewStepProps {
   isCreating: boolean;
 }
 
+interface PaymentSettings {
+  gst_rate: number;
+  service_charge_rate: number;
+  gst_label: string;
+  include_gst_in_prices: boolean;
+  currency: string;
+}
+
 export function OrderReviewStep({
   customer,
   cart,
@@ -43,152 +53,212 @@ export function OrderReviewStep({
   onConfirm,
   isCreating
 }: OrderReviewStepProps) {
-  const total = subtotal + adjustments + deliveryFee;
-  const stepNumber = deliveryMethod === "pickup" ? "5" : "8";
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({
+    gst_rate: 10.00,
+    service_charge_rate: 2.50,
+    gst_label: 'GST',
+    include_gst_in_prices: true,
+    currency: 'AUD'
+  });
+
+  useEffect(() => {
+    const fetchPaymentSettings = async () => {
+      const { data, error } = await supabase
+        .from('payment_settings')
+        .select('*')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching payment settings:', error);
+        return;
+      }
+
+      if (data) {
+        setPaymentSettings({
+          gst_rate: data.gst_rate,
+          service_charge_rate: data.service_charge_rate,
+          gst_label: data.gst_label,
+          include_gst_in_prices: data.include_gst_in_prices,
+          currency: data.currency
+        });
+      }
+    };
+
+    fetchPaymentSettings();
+  }, []);
+
+  const baseTotal = subtotal + adjustments + deliveryFee;
+  const gstAmount = (baseTotal * paymentSettings.gst_rate) / 100;
+  
+  // Apply surcharge only for credit card payments
+  const surchargeAmount = (paymentMethod === 'card_on_file' || paymentMethod === 'credit_card') 
+    ? (baseTotal * paymentSettings.service_charge_rate) / 100 
+    : 0;
+  
+  const totalAmount = baseTotal + gstAmount + surchargeAmount;
+
+  const formatCurrency = (amount: number) => {
+    const symbol = paymentSettings.currency === 'AUD' ? '$' : paymentSettings.currency;
+    return `${symbol}${amount.toFixed(2)}`;
+  };
+
+  const getPaymentMethodLabel = (method: string) => {
+    switch (method) {
+      case 'card_on_file':
+        return 'Card on File';
+      case '7_day_invoice':
+        return '7 Day Invoice';
+      case 'in_yard':
+        return 'In Yard';
+      case 'account':
+        return 'Account';
+      default:
+        return method;
+    }
+  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CheckCircle className="w-5 h-5" />
-          Step {stepNumber}: Review Order
+          <Receipt className="w-5 h-5" />
+          Order Review
         </CardTitle>
+        <p className="text-sm text-gray-600">
+          Please review your order details before confirming.
+        </p>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Customer Information */}
         <div className="space-y-3">
-          <h3 className="flex items-center gap-2 font-semibold">
-            <User className="w-4 h-4" />
-            Customer Information
-          </h3>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="font-medium">{customer.first_name} {customer.last_name}</p>
-            <p className="text-sm text-muted-foreground">{customer.email}</p>
-            {customer.phone && (
-              <p className="text-sm text-muted-foreground">{customer.phone}</p>
-            )}
-            <p className="text-sm text-muted-foreground mt-1">{customer.full_address}</p>
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-blue-600" />
+            <h3 className="font-semibold">Customer Information</h3>
+          </div>
+          <div className="pl-6 space-y-1">
+            <p><span className="font-medium">Name:</span> {customer.first_name} {customer.last_name}</p>
+            <p><span className="font-medium">Email:</span> {customer.email}</p>
+            {customer.phone && <p><span className="font-medium">Phone:</span> {customer.phone}</p>}
+            <p><span className="font-medium">Address:</span> {customer.full_address}</p>
           </div>
         </div>
 
-        {/* Products */}
+        <Separator />
+
+        {/* Order Items */}
         <div className="space-y-3">
-          <h3 className="flex items-center gap-2 font-semibold">
-            <Package className="w-4 h-4" />
-            Products
-          </h3>
-          <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="w-4 h-4 text-green-600" />
+            <h3 className="font-semibold">Order Items</h3>
+          </div>
+          <div className="pl-6 space-y-2">
             {cart.map((item, index) => (
-              <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div key={index} className="flex justify-between items-center">
                 <div>
-                  <p className="font-medium">{item.product.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    ${item.unit_price.toFixed(2)} × {item.quantity}
-                  </p>
+                  <span className="font-medium">{item.product.name}</span>
+                  <span className="text-sm text-gray-500 ml-2">× {item.quantity}</span>
                 </div>
-                <p className="font-semibold">${item.total_price.toFixed(2)}</p>
+                <span className="font-medium">{formatCurrency(item.total_price)}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Delivery Method */}
+        <Separator />
+
+        {/* Delivery Information */}
+        {deliveryMethod === "delivery" && (
+          <>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-orange-600" />
+                <h3 className="font-semibold">Delivery Information</h3>
+              </div>
+              <div className="pl-6 space-y-1">
+                {deliveryDate && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    <span><span className="font-medium">Date:</span> {new Date(deliveryDate).toLocaleDateString()}</span>
+                  </div>
+                )}
+                {deliveryTime && (
+                  <p><span className="font-medium">Time:</span> {deliveryTime}</p>
+                )}
+                {truckType && truckType !== "split" && (
+                  <div className="flex items-center gap-2">
+                    <Truck className="w-4 h-4" />
+                    <span><span className="font-medium">Truck:</span> {truckType}</span>
+                    {selectedTruck && (
+                      <Badge variant="outline">{selectedTruck.registration_number}</Badge>
+                    )}
+                  </div>
+                )}
+                {driverName && driverName !== "Multiple drivers" && (
+                  <p><span className="font-medium">Driver:</span> {driverName}</p>
+                )}
+                {specialInstructions && (
+                  <p><span className="font-medium">Instructions:</span> {specialInstructions}</p>
+                )}
+              </div>
+            </div>
+            <Separator />
+          </>
+        )}
+
+        {/* Payment Information */}
         <div className="space-y-3">
-          <h3 className="flex items-center gap-2 font-semibold">
-            {deliveryMethod === "delivery" ? <Truck className="w-4 h-4" /> : <Store className="w-4 h-4" />}
-            Delivery Method
-          </h3>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <Badge variant={deliveryMethod === "delivery" ? "default" : "secondary"}>
-              {deliveryMethod === "delivery" ? "Delivery" : "Yard Sale / Pickup"}
-            </Badge>
-            {deliveryMethod === "pickup" && (
-              <p className="text-sm text-muted-foreground mt-2">
-                Customer will pick up from our yard
-              </p>  
+          <div className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-purple-600" />
+            <h3 className="font-semibold">Payment Method</h3>
+          </div>
+          <div className="pl-6">
+            <Badge variant="outline">{getPaymentMethodLabel(paymentMethod)}</Badge>
+            {surchargeAmount > 0 && (
+              <p className="text-sm text-orange-600 mt-1">
+                A {paymentSettings.service_charge_rate}% surcharge applies for credit card payments
+              </p>
             )}
           </div>
         </div>
 
-        {/* Delivery Details - Only show for delivery orders */}
-        {deliveryMethod === "delivery" && deliveryDate && (
-          <div className="space-y-3">
-            <h3 className="flex items-center gap-2 font-semibold">
-              <Clock className="w-4 h-4" />
-              Delivery Details
-            </h3>
-            <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">
-                  {deliveryDate} at {deliveryTime}
-                </span>
-              </div>
-              {selectedTruck && (
-                <div className="flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    {selectedTruck.registration_number} ({truckType})
-                  </span>
-                </div>
-              )}
-              {driverName && driverName !== "Multiple drivers" && (
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">Driver: {driverName}</span>
-                </div>
-              )}
-              {specialInstructions && (
-                <div className="mt-2">
-                  <p className="text-sm font-medium">Special Instructions:</p>
-                  <p className="text-sm text-muted-foreground">{specialInstructions}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Payment Method */}
-        <div className="space-y-3">
-          <h3 className="flex items-center gap-2 font-semibold">
-            <CreditCard className="w-4 h-4" />
-            Payment Method
-          </h3>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <Badge variant="outline">
-              {paymentMethod === 'cash' ? 'Cash' : 
-               paymentMethod === 'card_on_file' ? 'Card on File' : 
-               paymentMethod === 'invoice' ? 'Invoice' : paymentMethod}
-            </Badge>
-          </div>
-        </div>
+        <Separator />
 
         {/* Order Summary */}
         <div className="space-y-3">
           <h3 className="font-semibold">Order Summary</h3>
-          <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+          <div className="space-y-2">
             <div className="flex justify-between">
               <span>Subtotal:</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>{formatCurrency(subtotal)}</span>
             </div>
             {adjustments !== 0 && (
               <div className="flex justify-between">
                 <span>Adjustments:</span>
                 <span className={adjustments > 0 ? "text-green-600" : "text-red-600"}>
-                  ${adjustments > 0 ? '+' : ''}${adjustments.toFixed(2)}
+                  {adjustments > 0 ? "+" : ""}{formatCurrency(adjustments)}
                 </span>
               </div>
             )}
-            {deliveryMethod === "delivery" && (
+            {deliveryMethod === "delivery" && deliveryFee > 0 && (
               <div className="flex justify-between">
                 <span>Delivery Fee:</span>
-                <span>${deliveryFee.toFixed(2)}</span>
+                <span>{formatCurrency(deliveryFee)}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span>{paymentSettings.gst_label} ({paymentSettings.gst_rate}%):</span>
+              <span>{formatCurrency(gstAmount)}</span>
+            </div>
+            {surchargeAmount > 0 && (
+              <div className="flex justify-between text-orange-600">
+                <span>Credit Card Surcharge ({paymentSettings.service_charge_rate}%):</span>
+                <span>{formatCurrency(surchargeAmount)}</span>
               </div>
             )}
             <Separator />
-            <div className="flex justify-between font-semibold text-lg">
+            <div className="flex justify-between text-lg font-bold">
               <span>Total:</span>
-              <span>${total.toFixed(2)}</span>
+              <span>{formatCurrency(totalAmount)}</span>
             </div>
           </div>
         </div>
@@ -198,11 +268,18 @@ export function OrderReviewStep({
             Back
           </Button>
           <Button 
-            onClick={onConfirm}
+            onClick={onConfirm} 
             disabled={isCreating}
             className="ml-auto"
           >
-            {isCreating ? "Creating Order..." : "Create Order"}
+            {isCreating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Creating Order...
+              </>
+            ) : (
+              'Create Order'
+            )}
           </Button>
         </div>
       </CardContent>

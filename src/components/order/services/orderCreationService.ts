@@ -56,6 +56,51 @@ interface OrderCreationResult {
   splitCount?: number;
 }
 
+// Get payment settings for GST and surcharge calculations
+const getPaymentSettings = async () => {
+  const { data, error } = await supabase
+    .from('payment_settings')
+    .select('*')
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error fetching payment settings:', error);
+  }
+
+  // Return default values if no settings exist
+  return data || {
+    gst_rate: 10.00,
+    service_charge_rate: 2.50,
+    gst_label: 'GST',
+    include_gst_in_prices: true,
+    currency: 'AUD',
+    default_delivery_fee: 0.00
+  };
+};
+
+// Calculate GST and surcharge
+const calculateOrderTotals = async (subtotal: number, adjustments: number, deliveryFee: number, paymentMethod: string) => {
+  const settings = await getPaymentSettings();
+  
+  const baseTotal = subtotal + adjustments + deliveryFee;
+  const gstAmount = (baseTotal * settings.gst_rate) / 100;
+  
+  // Apply surcharge only for credit card payments
+  const surchargeAmount = (paymentMethod === 'card_on_file' || paymentMethod === 'credit_card') 
+    ? (baseTotal * settings.service_charge_rate) / 100 
+    : 0;
+  
+  const totalAmount = baseTotal + gstAmount + surchargeAmount;
+  
+  return {
+    baseTotal,
+    gstAmount,
+    surchargeAmount,
+    totalAmount,
+    settings
+  };
+};
+
 const generateOrderNumber = async (): Promise<string> => {
   const newUuid = uuidv4();
   const shortUuid = newUuid.substring(0, 8);
@@ -132,11 +177,15 @@ const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCrea
   const masterOrderNumber = await generateOrderNumber();
   const createdOrders: string[] = [];
 
+  // Calculate totals with GST and surcharge
+  const { totalAmount, gstAmount, surchargeAmount } = await calculateOrderTotals(
+    subtotal, adjustments, deliveryFee, paymentMethod
+  );
+
   try {
     for (let i = 0; i < splits.length; i++) {
       const split = splits[i];
       const splitOrderNumber = `${masterOrderNumber}-${i + 1}`;
-      const totalAmount = subtotal + adjustments + deliveryFee;
 
       // Prepare clean product data for JSON storage
       const cleanProducts = cart.map(item => ({
@@ -266,7 +315,11 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
 
     // Generate order number
     const orderNumber = await generateOrderNumber();
-    const totalAmount = subtotal + adjustments + deliveryFee;
+    
+    // Calculate totals with GST and surcharge
+    const { totalAmount, gstAmount, surchargeAmount } = await calculateOrderTotals(
+      subtotal, adjustments, deliveryFee, paymentMethod
+    );
 
     // Prepare clean product data for JSON storage
     const cleanProducts = cart.map(item => ({
