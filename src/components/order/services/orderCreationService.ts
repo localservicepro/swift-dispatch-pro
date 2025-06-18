@@ -59,6 +59,8 @@ const generateOrderNumber = async (): Promise<string> => {
 };
 
 const validateOrderData = (orderData: CreateOrderParams): void => {
+  console.log('Validating order data:', orderData);
+  
   if (!orderData.selectedCustomer) {
     throw new Error('Customer is required');
   }
@@ -71,6 +73,14 @@ const validateOrderData = (orderData: CreateOrderParams): void => {
     throw new Error('Order subtotal must be greater than 0');
   }
   
+  if (!orderData.truckType || orderData.truckType === "") {
+    throw new Error('Truck type is required');
+  }
+  
+  if (!orderData.truckId || orderData.truckId === 'none') {
+    throw new Error('Truck selection is required');
+  }
+  
   // Validate cart items
   orderData.cart.forEach((item, index) => {
     if (!item.id || !item.name) {
@@ -79,10 +89,12 @@ const validateOrderData = (orderData: CreateOrderParams): void => {
     if (!item.quantity || item.quantity <= 0) {
       throw new Error(`Invalid quantity for product: ${item.name}`);
     }
-    if (!item.price || item.price < 0) {
+    if (item.price === undefined || item.price < 0) {
       throw new Error(`Invalid price for product: ${item.name}`);
     }
   });
+  
+  console.log('Order data validation passed');
 };
 
 const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCreationResult> => {
@@ -134,7 +146,7 @@ const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCrea
         total_amount: totalAmount,
         delivery_date: split.deliveryDate,
         delivery_time: split.deliveryTime,
-        truck_type: truckType && truckType !== "" ? truckType : null,
+        truck_type: truckType !== "" ? truckType : null,
         truck_id: truckId === 'none' ? null : truckId,
         driver_id: driverId === 'unassigned' ? null : driverId,
         special_instructions: specialInstructions || null,
@@ -260,7 +272,7 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
       total_amount: totalAmount,
       delivery_date: deliveryDate || null,
       delivery_time: deliveryTime || null,
-      truck_type: truckType && truckType !== "" ? truckType : null,
+      truck_type: truckType !== "" ? truckType : null,
       truck_id: truckId === 'none' ? null : truckId,
       driver_id: driverId === 'unassigned' ? null : driverId,
       special_instructions: specialInstructions || null,
