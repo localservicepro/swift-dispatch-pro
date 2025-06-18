@@ -7,11 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ActivityLog } from "./settings/ActivityLog";
-import { PaymentSettings } from "./settings/PaymentSettings";
-import { EmailSettings } from "./settings/EmailSettings";
-import { GHLSettings } from "./settings/GHLSettings";
-import { GHLSyncLogs } from "./settings/GHLSyncLogs";
 
 export function Settings() {
   const [businessInfo, setBusinessInfo] = useState({
@@ -51,7 +46,7 @@ export function Settings() {
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold text-slate-800">Settings</h2>
-        <p className="text-slate-600 mt-1">Manage your business profile, preferences, and integrations</p>
+        <p className="text-slate-600 mt-1">Manage your business profile and preferences</p>
       </div>
 
       {/* Business Profile */}
@@ -117,18 +112,6 @@ export function Settings() {
           </Button>
         </CardContent>
       </Card>
-
-      {/* Payment Settings */}
-      <PaymentSettings />
-
-      {/* Email Configuration */}
-      <EmailSettings />
-
-      {/* GoHighLevel Integration */}
-      <GHLSettings />
-
-      {/* GoHighLevel Sync Logs */}
-      <GHLSyncLogs />
 
       {/* Email Notification Preferences */}
       <Card className="hover:shadow-lg transition-shadow">
@@ -218,9 +201,6 @@ export function Settings() {
           </Button>
         </CardContent>
       </Card>
-
-      {/* Activity Log */}
-      <ActivityLog />
 
       {/* System Information */}
       <Card className="hover:shadow-lg transition-shadow">

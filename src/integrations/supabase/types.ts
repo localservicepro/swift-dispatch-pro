@@ -9,112 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      activity_logs: {
-        Row: {
-          action_type: string
-          admin_id: string
-          created_at: string
-          description: string
-          id: string
-          ip_address: unknown | null
-          new_values: Json | null
-          old_values: Json | null
-          target_details: Json | null
-          target_id: string | null
-          target_type: string
-          user_agent: string | null
-        }
-        Insert: {
-          action_type: string
-          admin_id: string
-          created_at?: string
-          description: string
-          id?: string
-          ip_address?: unknown | null
-          new_values?: Json | null
-          old_values?: Json | null
-          target_details?: Json | null
-          target_id?: string | null
-          target_type: string
-          user_agent?: string | null
-        }
-        Update: {
-          action_type?: string
-          admin_id?: string
-          created_at?: string
-          description?: string
-          id?: string
-          ip_address?: unknown | null
-          new_values?: Json | null
-          old_values?: Json | null
-          target_details?: Json | null
-          target_id?: string | null
-          target_type?: string
-          user_agent?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "activity_logs_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      customer_payment_methods: {
-        Row: {
-          card_brand: string
-          card_exp_month: number
-          card_exp_year: number
-          card_last_four: string
-          created_at: string
-          customer_id: string
-          id: string
-          is_active: boolean
-          is_default: boolean
-          stripe_customer_id: string
-          stripe_payment_method_id: string
-          updated_at: string
-        }
-        Insert: {
-          card_brand: string
-          card_exp_month: number
-          card_exp_year: number
-          card_last_four: string
-          created_at?: string
-          customer_id: string
-          id?: string
-          is_active?: boolean
-          is_default?: boolean
-          stripe_customer_id: string
-          stripe_payment_method_id: string
-          updated_at?: string
-        }
-        Update: {
-          card_brand?: string
-          card_exp_month?: number
-          card_exp_year?: number
-          card_last_four?: string
-          created_at?: string
-          customer_id?: string
-          id?: string
-          is_active?: boolean
-          is_default?: boolean
-          stripe_customer_id?: string
-          stripe_payment_method_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "customer_payment_methods_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       customers: {
         Row: {
           auth_user_id: string | null
@@ -124,15 +18,10 @@ export type Database = {
           email: string
           first_name: string
           full_address: string
-          ghl_contact_id: string | null
           id: string
           is_active: boolean
           last_name: string
-          last_synced_to_ghl: string | null
           phone: string | null
-          sms_notifications_enabled: boolean
-          sms_opt_out_date: string | null
-          stripe_customer_id: string | null
           suburb_id: string | null
           updated_at: string
         }
@@ -144,15 +33,10 @@ export type Database = {
           email: string
           first_name: string
           full_address: string
-          ghl_contact_id?: string | null
           id?: string
           is_active?: boolean
           last_name: string
-          last_synced_to_ghl?: string | null
           phone?: string | null
-          sms_notifications_enabled?: boolean
-          sms_opt_out_date?: string | null
-          stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
         }
@@ -164,15 +48,10 @@ export type Database = {
           email?: string
           first_name?: string
           full_address?: string
-          ghl_contact_id?: string | null
           id?: string
           is_active?: boolean
           last_name?: string
-          last_synced_to_ghl?: string | null
           phone?: string | null
-          sms_notifications_enabled?: boolean
-          sms_opt_out_date?: string | null
-          stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
         }
@@ -438,48 +317,6 @@ export type Database = {
         }
         Relationships: []
       }
-      email_settings: {
-        Row: {
-          connection_status: string
-          created_at: string
-          email_provider: string
-          id: string
-          last_tested_at: string | null
-          reply_to_email: string | null
-          resend_api_key: string | null
-          sender_email: string
-          sender_name: string
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          connection_status?: string
-          created_at?: string
-          email_provider?: string
-          id?: string
-          last_tested_at?: string | null
-          reply_to_email?: string | null
-          resend_api_key?: string | null
-          sender_email?: string
-          sender_name?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          connection_status?: string
-          created_at?: string
-          email_provider?: string
-          id?: string
-          last_tested_at?: string | null
-          reply_to_email?: string | null
-          resend_api_key?: string | null
-          sender_email?: string
-          sender_name?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
       invoices: {
         Row: {
           amount: number
@@ -594,22 +431,16 @@ export type Database = {
           delivery_fee: number | null
           delivery_time: string | null
           driver_id: string | null
-          ghl_opportunity_id: string | null
           id: string
-          is_split_order: boolean | null
-          last_synced_to_ghl: string | null
-          master_order_id: string | null
           order_number: string
           payment_date: string | null
           payment_method: string | null
           payment_status: string | null
           products: Json
           special_instructions: string | null
-          split_number: number | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number | null
           total_amount: number
-          truck_id: string | null
           truck_type: Database["public"]["Enums"]["truck_type"] | null
           updated_at: string | null
         }
@@ -625,22 +456,16 @@ export type Database = {
           delivery_fee?: number | null
           delivery_time?: string | null
           driver_id?: string | null
-          ghl_opportunity_id?: string | null
           id?: string
-          is_split_order?: boolean | null
-          last_synced_to_ghl?: string | null
-          master_order_id?: string | null
           order_number: string
           payment_date?: string | null
           payment_method?: string | null
           payment_status?: string | null
           products: Json
           special_instructions?: string | null
-          split_number?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number | null
           total_amount: number
-          truck_id?: string | null
           truck_type?: Database["public"]["Enums"]["truck_type"] | null
           updated_at?: string | null
         }
@@ -656,22 +481,16 @@ export type Database = {
           delivery_fee?: number | null
           delivery_time?: string | null
           driver_id?: string | null
-          ghl_opportunity_id?: string | null
           id?: string
-          is_split_order?: boolean | null
-          last_synced_to_ghl?: string | null
-          master_order_id?: string | null
           order_number?: string
           payment_date?: string | null
           payment_method?: string | null
           payment_status?: string | null
           products?: Json
           special_instructions?: string | null
-          split_number?: number | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number | null
           total_amount?: number
-          truck_id?: string | null
           truck_type?: Database["public"]["Enums"]["truck_type"] | null
           updated_at?: string | null
         }
@@ -697,60 +516,7 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "orders_master_order_id_fkey"
-            columns: ["master_order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_truck_id_fkey"
-            columns: ["truck_id"]
-            isOneToOne: false
-            referencedRelation: "trucks"
-            referencedColumns: ["id"]
-          },
         ]
-      }
-      payment_settings: {
-        Row: {
-          created_at: string
-          currency: string
-          default_delivery_fee: number
-          gst_label: string
-          gst_rate: number
-          id: string
-          include_gst_in_prices: boolean
-          service_charge_rate: number
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          currency?: string
-          default_delivery_fee?: number
-          gst_label?: string
-          gst_rate?: number
-          id?: string
-          include_gst_in_prices?: boolean
-          service_charge_rate?: number
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          currency?: string
-          default_delivery_fee?: number
-          gst_label?: string
-          gst_rate?: number
-          id?: string
-          include_gst_in_prices?: boolean
-          service_charge_rate?: number
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
       }
       product_categories: {
         Row: {
@@ -876,48 +642,6 @@ export type Database = {
         }
         Relationships: []
       }
-      stripe_settings: {
-        Row: {
-          connection_status: string
-          created_at: string
-          id: string
-          is_live_mode: boolean
-          last_tested_at: string | null
-          live_publishable_key: string | null
-          live_secret_key: string | null
-          test_publishable_key: string | null
-          test_secret_key: string | null
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          connection_status?: string
-          created_at?: string
-          id?: string
-          is_live_mode?: boolean
-          last_tested_at?: string | null
-          live_publishable_key?: string | null
-          live_secret_key?: string | null
-          test_publishable_key?: string | null
-          test_secret_key?: string | null
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          connection_status?: string
-          created_at?: string
-          id?: string
-          is_live_mode?: boolean
-          last_tested_at?: string | null
-          live_publishable_key?: string | null
-          live_secret_key?: string | null
-          test_publishable_key?: string | null
-          test_secret_key?: string | null
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
       suburbs: {
         Row: {
           created_at: string
@@ -951,54 +675,6 @@ export type Database = {
         }
         Relationships: []
       }
-      trucks: {
-        Row: {
-          capacity_tons: number | null
-          created_at: string
-          fuel_type: string | null
-          id: string
-          is_active: boolean
-          last_maintenance_date: string | null
-          next_maintenance_due: string | null
-          notes: string | null
-          registration_number: string
-          status: string
-          truck_type: Database["public"]["Enums"]["truck_type"]
-          updated_at: string
-          year_manufactured: number | null
-        }
-        Insert: {
-          capacity_tons?: number | null
-          created_at?: string
-          fuel_type?: string | null
-          id?: string
-          is_active?: boolean
-          last_maintenance_date?: string | null
-          next_maintenance_due?: string | null
-          notes?: string | null
-          registration_number: string
-          status?: string
-          truck_type: Database["public"]["Enums"]["truck_type"]
-          updated_at?: string
-          year_manufactured?: number | null
-        }
-        Update: {
-          capacity_tons?: number | null
-          created_at?: string
-          fuel_type?: string | null
-          id?: string
-          is_active?: boolean
-          last_maintenance_date?: string | null
-          next_maintenance_due?: string | null
-          notes?: string | null
-          registration_number?: string
-          status?: string
-          truck_type?: Database["public"]["Enums"]["truck_type"]
-          updated_at?: string
-          year_manufactured?: number | null
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -1012,20 +688,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
-      log_admin_activity: {
-        Args:
-          | Record<PropertyKey, never>
-          | {
-              p_action_type: string
-              p_target_type: string
-              p_target_id?: string
-              p_target_details?: Json
-              p_old_values?: Json
-              p_new_values?: Json
-              p_description?: string
-            }
-        Returns: string
-      }
       update_order_status: {
         Args: {
           order_id: string
@@ -1038,7 +700,6 @@ export type Database = {
     }
     Enums: {
       order_status:
-        | "requested"
         | "preparing"
         | "loading"
         | "en_route"
@@ -1162,7 +823,6 @@ export const Constants = {
   public: {
     Enums: {
       order_status: [
-        "requested",
         "preparing",
         "loading",
         "en_route",

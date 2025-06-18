@@ -6,37 +6,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Truck } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { TruckTypeSelector } from "./TruckTypeSelector";
-import { SpecificTruckSelector } from "./SpecificTruckSelector";
 import { DriverSelector } from "./DriverSelector";
 import { DeliveryScheduler } from "./DeliveryScheduler";
-import { ConflictWarning } from "./ConflictWarning";
-import { useConflictDetection } from "./hooks/useConflictDetection";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
-
-interface Truck {
-  id: string;
-  registration_number: string;
-  truck_type: TruckType;
-  status: string;
-  capacity_tons: number | null;
-  fuel_type: string | null;
-  year_manufactured: number | null;
-  last_maintenance_date: string | null;
-  next_maintenance_due: string | null;
-}
 
 interface DeliveryDetailsStepProps {
   deliveryDate: string;
   deliveryTime: string;
   truckType: TruckType | "";
-  truckId: string;
   driverId: string;
   specialInstructions: string;
   onDeliveryDateChange: (date: string) => void;
   onDeliveryTimeChange: (time: string) => void;
   onTruckTypeChange: (truckType: TruckType | "") => void;
-  onTruckSelect: (truckId: string, truckDetails: Truck | null) => void;
   onDriverChange: (driverId: string) => void;
   onSpecialInstructionsChange: (instructions: string) => void;
   onBack: () => void;
@@ -47,65 +30,16 @@ export function DeliveryDetailsStep({
   deliveryDate,
   deliveryTime,
   truckType,
-  truckId,
   driverId,
   specialInstructions,
   onDeliveryDateChange,
   onDeliveryTimeChange,
   onTruckTypeChange,
-  onTruckSelect,
   onDriverChange,
   onSpecialInstructionsChange,
   onBack,
   onNext
 }: DeliveryDetailsStepProps) {
-  const handleTruckTypeChange = (newTruckType: TruckType | "") => {
-    onTruckTypeChange(newTruckType);
-    // Reset specific truck selection when truck type changes
-    if (truckId) {
-      onTruckSelect("", null);
-    }
-  };
-
-  // Use conflict detection hook
-  const {
-    driverConflict,
-    truckConflict,
-    isChecking,
-    hasAnyConflict
-  } = useConflictDetection(
-    deliveryDate,
-    deliveryTime,
-    driverId,
-    truckId
-  );
-
-  const getButtonText = () => {
-    if (hasAnyConflict) {
-      const criticalConflicts = [driverConflict, truckConflict].filter(
-        conflict => conflict?.hasConflict && (conflict.conflictType === 'exact' || conflict.conflictType === 'overlap')
-      );
-      
-      if (criticalConflicts.length > 0) {
-        return "Continue Despite Conflicts";
-      }
-    }
-    return "Review Order";
-  };
-
-  const getButtonStyle = () => {
-    if (hasAnyConflict) {
-      const criticalConflicts = [driverConflict, truckConflict].filter(
-        conflict => conflict?.hasConflict && (conflict.conflictType === 'exact' || conflict.conflictType === 'overlap')
-      );
-      
-      if (criticalConflicts.length > 0) {
-        return "bg-orange-600 hover:bg-orange-700";
-      }
-    }
-    return "";
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -124,36 +58,13 @@ export function DeliveryDetailsStep({
 
         <TruckTypeSelector
           selectedTruckType={truckType}
-          onTruckTypeChange={handleTruckTypeChange}
-        />
-
-        <SpecificTruckSelector
-          selectedTruckType={truckType}
-          selectedTruckId={truckId}
-          deliveryDate={deliveryDate}
-          deliveryTime={deliveryTime}
-          onTruckSelect={onTruckSelect}
+          onTruckTypeChange={onTruckTypeChange}
         />
 
         <DriverSelector
           selectedDriverId={driverId}
           onDriverChange={onDriverChange}
         />
-
-        {/* Conflict Warning Section */}
-        {(deliveryDate && deliveryTime) && (
-          <div className="space-y-2">
-            <ConflictWarning 
-              driverConflict={driverConflict}
-              truckConflict={truckConflict}
-            />
-            {isChecking && (
-              <div className="text-sm text-muted-foreground">
-                Checking for conflicts...
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Special Instructions */}
         <div className="space-y-2">
@@ -173,10 +84,10 @@ export function DeliveryDetailsStep({
           </Button>
           <Button 
             onClick={onNext}
-            disabled={!deliveryDate || !deliveryTime || !truckType || !truckId}
-            className={`ml-auto ${getButtonStyle()}`}
+            disabled={!deliveryDate || !deliveryTime || !truckType}
+            className="ml-auto"
           >
-            {getButtonText()}
+            Review Order
           </Button>
         </div>
       </CardContent>

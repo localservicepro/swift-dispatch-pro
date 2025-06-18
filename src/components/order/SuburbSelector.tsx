@@ -27,7 +27,6 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
 
   const fetchSuburbs = async () => {
     try {
-      console.log('Fetching suburbs...');
       const { data, error } = await supabase
         .from('suburbs')
         .select('id, name, state, postcode, delivery_rate')
@@ -35,7 +34,6 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
         .order('state, name');
 
       if (error) throw error;
-      console.log('Fetched suburbs:', data?.length, 'total');
       setSuburbs(data || []);
     } catch (error) {
       console.error('Error fetching suburbs:', error);
@@ -46,7 +44,6 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
 
   const handleSuburbChange = (suburbId: string) => {
     const selectedSuburb = suburbs.find(s => s.id === suburbId);
-    console.log('Suburb selected:', selectedSuburb);
     if (selectedSuburb) {
       onSuburbChange(suburbId, selectedSuburb.delivery_rate);
     }
@@ -55,14 +52,6 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
   const getSuburbLabel = (suburb: Suburb) => {
     return `${suburb.name}, ${suburb.state} (${suburb.postcode}) - $${suburb.delivery_rate.toFixed(2)}`;
   };
-
-  // Debug the selected suburb
-  useEffect(() => {
-    if (selectedSuburbId) {
-      const selectedSuburb = suburbs.find(s => s.id === selectedSuburbId);
-      console.log('SuburbSelector - selectedSuburbId:', selectedSuburbId, 'found suburb:', selectedSuburb);
-    }
-  }, [selectedSuburbId, suburbs]);
 
   if (loading) {
     return (
@@ -78,7 +67,7 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
   return (
     <div>
       <Label htmlFor="suburb">Suburb</Label>
-      <Select value={selectedSuburbId || ""} onValueChange={handleSuburbChange}>
+      <Select value={selectedSuburbId} onValueChange={handleSuburbChange}>
         <SelectTrigger>
           <SelectValue placeholder="Select a suburb" />
         </SelectTrigger>
