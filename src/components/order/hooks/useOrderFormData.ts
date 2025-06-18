@@ -1,7 +1,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Database } from "@/integrations/supabase/types";
-import { calculateOrderTotals } from "../utils/paymentCalculations";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -26,7 +25,6 @@ interface Order {
   subtotal?: number;
   truck_type?: TruckType;
   truck_id?: string;
-  payment_method?: string;
 }
 
 export interface OrderFormData {
@@ -45,8 +43,6 @@ export interface OrderFormData {
   truck_type: TruckType | 'none';
   truck_id: string;
   products: any[];
-  payment_method: string;
-  adjustments: number;
 }
 
 export function useOrderFormData(order: Order) {
@@ -66,8 +62,6 @@ export function useOrderFormData(order: Order) {
     truck_type: (order.truck_type || 'none') as TruckType | 'none',
     truck_id: order.truck_id || 'none',
     products: Array.isArray(order.products) ? order.products : [],
-    payment_method: order.payment_method || 'in_yard_cash',
-    adjustments: 0, // Calculate from existing data if needed
   }), [order]);
 
   const [formData, setFormData] = useState<OrderFormData>(initialFormData);
@@ -116,43 +110,6 @@ export function useOrderFormData(order: Order) {
     });
   }, []);
 
-  const handlePaymentMethodChange = useCallback(async (paymentMethod: string) => {
-    setFormData(prev => {
-      // Recalculate totals with new payment method
-      const recalculateAsync = async () => {
-        try {
-          const { totalAmount } = await calculateOrderTotals(
-            prev.subtotal, 
-            prev.adjustments, 
-            prev.delivery_fee, 
-            paymentMethod
-          );
-          
-          setFormData(current => ({
-            ...current,
-            payment_method: paymentMethod,
-            total_amount: totalAmount.toString()
-          }));
-        } catch (error) {
-          console.error('Error recalculating totals:', error);
-          // Fallback to basic calculation without async payment settings
-          setFormData(current => ({
-            ...current,
-            payment_method: paymentMethod
-          }));
-        }
-      };
-      
-      recalculateAsync();
-      
-      // Return immediate update for payment method
-      return {
-        ...prev,
-        payment_method: paymentMethod
-      };
-    });
-  }, []);
-
   return {
     formData,
     setFormData,
@@ -161,6 +118,5 @@ export function useOrderFormData(order: Order) {
     handleSuburbChange,
     handleProductsChange,
     handleSubtotalChange,
-    handlePaymentMethodChange,
   };
 }
