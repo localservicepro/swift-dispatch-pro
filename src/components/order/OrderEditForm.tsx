@@ -13,6 +13,7 @@ import { OrderTruckSelectionForm } from "./OrderTruckSelectionForm";
 import { OrderDeliveryForm } from "./OrderDeliveryForm";
 import { ConflictWarning } from "./ConflictWarning";
 import { ProductEditSection } from "./ProductEditSection";
+import { PaymentMethodSelector } from "./PaymentMethodSelector";
 import { useOrderFormData, OrderFormData } from "./hooks/useOrderFormData";
 import { useConflictDetection } from "./hooks/useConflictDetection";
 import { OrderEditFooter } from "./OrderEditFooter";
@@ -41,6 +42,7 @@ interface Order {
   subtotal?: number;
   truck_type?: TruckType;
   truck_id?: string;
+  payment_method?: string;
 }
 
 interface OrderEditFormProps {
@@ -95,6 +97,7 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
     handleSuburbChange,
     handleProductsChange,
     handleSubtotalChange,
+    handlePaymentMethodChange,
   } = useOrderFormData(order);
 
   // Use conflict detection hook
@@ -110,6 +113,12 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
     formData.truck_id,
     order.id
   );
+
+  // Create customer object for payment method selector
+  const customer = {
+    id: order.customer_id || '',
+    customer_type: 'regular' // Default, could be enhanced to fetch actual customer type
+  };
 
   // Reset truck selection when truck type changes
   useEffect(() => {
@@ -160,6 +169,7 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
           delivery_fee: formData.delivery_fee,
           truck_type: formData.truck_type === 'none' ? null : formData.truck_type as TruckType,
           truck_id: formData.truck_id === 'none' ? null : formData.truck_id,
+          payment_method: formData.payment_method,
           updated_at: new Date().toISOString(),
         })
         .eq('id', order.id);
@@ -233,6 +243,9 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
   const driverConflictInfo = convertToConflictInfo(driverConflict);
   const truckConflictInfo = convertToConflictInfo(truckConflict);
 
+  // Check if payment method changes are allowed based on order status
+  const isPaymentMethodEditable = !['delivered', 'cancelled'].includes(formData.status);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <ProductEditSection
@@ -257,6 +270,16 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
         formData={formData}
         onInputChange={handleInputChange}
       />
+
+      {/* Payment Method Selection */}
+      {order.customer_id && (
+        <PaymentMethodSelector
+          customer={customer}
+          currentPaymentMethod={formData.payment_method}
+          onPaymentMethodChange={handlePaymentMethodChange}
+          disabled={!isPaymentMethodEditable}
+        />
+      )}
 
       <div>
         <Label htmlFor="status">Status</Label>
