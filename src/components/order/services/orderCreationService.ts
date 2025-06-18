@@ -2,12 +2,14 @@
 import { supabase } from "@/integrations/supabase/client";
 import { OrderFormData } from "@/types/index";
 import { Database } from "@/integrations/supabase/types";
+import { smsService } from "@/utils/smsService";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
 interface OrderCreationResult {
   success: boolean;
   orderId?: string;
+  orderNumber?: string;
   error?: string;
 }
 
@@ -39,13 +41,20 @@ export const orderCreationService = {
       // Generate order number if not provided
       const orderNumber = orderData.order_number || `ORD-${Date.now()}`;
 
+      // Get customer details for notifications
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('first_name, last_name, phone')
+        .eq('id', orderData.customer_id)
+        .single();
+
       // Prepare order data for insertion
       const orderInsertData = {
         order_number: orderNumber,
         customer_id: orderData.customer_id,
-        customer_name: orderData.customer_name || '',
+        customer_name: orderData.customer_name || (customer ? `${customer.first_name} ${customer.last_name}` : ''),
         customer_address: orderData.customer_address || '',
-        customer_phone: orderData.customer_phone || null,
+        customer_phone: orderData.customer_phone || customer?.phone || null,
         products: cleanProducts,
         total_amount: orderData.total_amount,
         subtotal: orderData.subtotal || orderData.total_amount,
@@ -57,7 +66,7 @@ export const orderCreationService = {
         delivery_time: orderData.delivery_time || null,
         special_instructions: orderData.special_instructions || null,
         driver_id: orderData.driver_id === 'unassigned' ? null : orderData.driver_id,
-        truck_type: orderData.truck_type === 'none' ? null : orderData.truck_type,
+        truck_type: orderData.truck_type && orderData.truck_type !== 'none' ? orderData.truck_type : null,
         truck_id: orderData.truck_id === 'none' ? null : orderData.truck_id,
         is_split_order: orderData.is_split_order || false,
         master_order_id: orderData.master_order_id || null,
@@ -129,9 +138,24 @@ export const orderCreationService = {
         }
       }
 
+      // Send SMS notification if customer phone is available
+      if (orderInsertData.customer_phone && orderInsertData.customer_name) {
+        try {
+          await smsService.sendOrderConfirmation(
+            orderInsertData.customer_name,
+            orderInsertData.customer_phone,
+            orderNumber
+          );
+        } catch (smsError) {
+          console.error('SMS notification failed:', smsError);
+          // Don't throw as order creation was successful
+        }
+      }
+
       return {
         success: true,
-        orderId: orderResult.id
+        orderId: orderResult.id,
+        orderNumber: orderNumber
       };
 
     } catch (error: any) {
@@ -172,7 +196,8 @@ export const orderCreationService = {
           is_split_order: true,
           split_number: index + 1,
           delivery_fee: index === 0 ? splitOrderData.deliveryFee : 0,
-          adjustments: index === 0 ? splitOrderData.adjustments : 0
+          adjustments: index === 0 ? splitOrderData.adjustments : 0,
+          payment_status: 'pending'
         };
 
         const result = await this.createOrder(orderData);
@@ -193,7 +218,8 @@ export const orderCreationService = {
       
       return {
         success: true,
-        orderId: results[0]?.orderId
+        orderId: results[0]?.orderId,
+        orderNumber: results[0]?.orderNumber
       };
 
     } catch (error: any) {

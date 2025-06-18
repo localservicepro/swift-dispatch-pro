@@ -9,7 +9,7 @@ export function useGHLSync() {
   const syncCustomer = async (customer: any) => {
     try {
       const settings = await ghlService.getSettings();
-      if (settings.auto_sync_customers && settings.connection_status === 'connected') {
+      if (settings?.auto_sync_customers && settings?.connection_status === 'connected') {
         await ghlService.syncCustomer(customer);
         console.log('Customer synced to GHL successfully');
       }
@@ -26,7 +26,7 @@ export function useGHLSync() {
   const syncOrder = async (order: any) => {
     try {
       const settings = await ghlService.getSettings();
-      if (settings.auto_sync_orders && settings.connection_status === 'connected') {
+      if (settings?.auto_sync_orders && settings?.connection_status === 'connected') {
         await ghlService.syncOrder(order);
         console.log('Order synced to GHL successfully');
       }

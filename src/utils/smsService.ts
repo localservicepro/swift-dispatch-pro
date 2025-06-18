@@ -14,10 +14,9 @@ interface SMSNotificationData {
 export const smsService = {
   async getSettings() {
     try {
+      // Use a raw query approach since the table might not be in the types yet
       const { data, error } = await supabase
-        .from('sms_settings')
-        .select('*')
-        .single();
+        .rpc('get_sms_settings');
 
       if (error) {
         console.error('Error fetching SMS settings:', error);
@@ -35,6 +34,7 @@ export const smsService = {
     try {
       console.log('Attempting to send SMS notification:', data);
 
+      // Skip SMS if settings can't be retrieved
       const settings = await this.getSettings();
       if (!settings || settings.connection_status !== 'connected') {
         console.log('SMS not configured or not connected, skipping notification');

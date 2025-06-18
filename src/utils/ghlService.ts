@@ -45,35 +45,43 @@ export const ghlService = {
   },
 
   async getSettings() {
-    const { data, error } = await supabase
-      .from('ghl_settings')
-      .select('*')
-      .single();
+    try {
+      // Use raw query to avoid type issues for now
+      const { data, error } = await supabase
+        .rpc('get_ghl_settings');
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data || { connection_status: 'disconnected', auto_sync_customers: false, auto_sync_orders: false };
+    } catch (error) {
+      console.error('Error getting GHL settings:', error);
+      return { connection_status: 'disconnected', auto_sync_customers: false, auto_sync_orders: false };
+    }
   },
 
   async updateSettings(settings: any) {
-    const { data, error } = await supabase
-      .from('ghl_settings')
-      .update(settings)
-      .eq('id', settings.id)
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase.functions.invoke('update-ghl-settings', {
+        body: settings
+      });
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating GHL settings:', error);
+      throw error;
+    }
   },
 
   async getSyncLogs() {
-    const { data, error } = await supabase
-      .from('ghl_sync_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100);
+    try {
+      const { data, error } = await supabase
+        .rpc('get_ghl_sync_logs');
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error getting sync logs:', error);
+      return [];
+    }
   }
 };

@@ -4,10 +4,15 @@ import { Database } from "@/integrations/supabase/types";
 export type Customer = Database["public"]["Tables"]["customers"]["Row"];
 export type OrderFormData = {
   customer_id: string;
+  customer_name?: string;
+  customer_phone?: string;
   order_number?: string;
   delivery_date: string;
   customer_address: string;
   total_amount: number;
+  subtotal?: number;
+  delivery_fee?: number;
+  adjustments?: number;
   payment_status: string;
   status: Database["public"]["Enums"]["order_status"];
   notes?: string;
@@ -22,7 +27,6 @@ export type OrderFormData = {
   delivery_time?: string;
   special_instructions?: string;
   payment_method?: string;
-  customer_name?: string;
 };
 
 export type OrderItem = {

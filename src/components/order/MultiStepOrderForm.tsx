@@ -90,13 +90,17 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
       const result = await orderCreationService.createSplitOrder(splitOrderData);
 
-      toast({
-        title: "Success",
-        description: `Split order created successfully with ${result.length} parts!`,
-      });
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `Split order ${result.orderNumber} created successfully with ${splits.length} parts!`,
+        });
 
-      onOrderCreated();
-      onClose();
+        onOrderCreated();
+        onClose();
+      } else {
+        throw new Error(result.error || 'Failed to create split order');
+      }
     } catch (error: any) {
       console.error("Split order creation error:", error);
       throw error;
@@ -115,12 +119,16 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         total: cartItem.total_price
       }));
 
-      const orderData = {
+      const orderData: OrderFormData = {
         customer_id: selectedCustomer.id,
         customer_name: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`,
+        customer_phone: selectedCustomer.phone,
         delivery_date: deliveryDate,
         customer_address: selectedCustomer.full_address,
         total_amount: subtotal + adjustments + deliveryFee,
+        subtotal: subtotal,
+        delivery_fee: deliveryFee,
+        adjustments: adjustments,
         payment_status: 'pending',
         status: 'requested' as OrderStatus,
         notes: specialInstructions,
@@ -137,13 +145,17 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
       const result = await orderCreationService.createOrder(orderData);
 
-      toast({
-        title: "Success",
-        description: `Order ${result.order_number} created successfully!`,
-      });
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `Order ${result.orderNumber} created successfully!`,
+        });
 
-      onOrderCreated();
-      onClose();
+        onOrderCreated();
+        onClose();
+      } else {
+        throw new Error(result.error || 'Failed to create order');
+      }
     } catch (error: any) {
       console.error("Single order creation error:", error);
       throw error;
