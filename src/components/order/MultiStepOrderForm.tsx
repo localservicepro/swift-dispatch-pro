@@ -93,6 +93,12 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       // For pickup orders, we don't need truck/driver details
       const validTruckType = deliveryMethod === "pickup" ? "" : (truckType || "small");
 
+      // Map new payment method IDs to backend compatible values
+      let backendPaymentMethod = paymentMethod;
+      if (paymentMethod === 'in_yard_cash' || paymentMethod === 'in_yard_card') {
+        backendPaymentMethod = 'in_yard';
+      }
+
       const result = await createOrder({
         selectedCustomer,
         cart: products,
@@ -108,7 +114,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         truckId: deliveryMethod === "pickup" ? "" : truckId,
         driverId: deliveryMethod === "pickup" ? "" : driverId,
         specialInstructions,
-        paymentMethod,
+        paymentMethod: backendPaymentMethod,
         deliveryAddress,
         sameAsBilling
       });

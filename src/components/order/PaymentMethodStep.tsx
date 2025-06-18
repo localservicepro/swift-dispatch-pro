@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { CreditCard, Calendar, Building2, MapPin, AlertCircle, Check } from "lucide-react";
+import { CreditCard, Calendar, Building2, MapPin, AlertCircle, Check, Banknote } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCustomerPaymentMethods } from "@/hooks/useCustomerPaymentMethods";
 
@@ -32,28 +32,40 @@ const PAYMENT_METHODS = [
     label: 'Card On File',
     description: 'Use saved payment card',
     icon: CreditCard,
-    available: false // Will be set based on saved cards
+    available: false, // Will be set based on saved cards
+    hasSurcharge: true
   },
   {
     id: '7_day_invoice',
     label: '7 Day Invoice',
-    description: 'Payment due within 7 days',
+    description: 'Payment due within 7 days via credit card',
     icon: Calendar,
-    available: true
+    available: true,
+    hasSurcharge: true
   },
   {
-    id: 'in_yard',
-    label: 'In Yard',
-    description: 'Pay on-site during delivery',
-    icon: MapPin,
-    available: true
+    id: 'in_yard_cash',
+    label: 'In Yard - Cash',
+    description: 'Pay with cash on-site during pickup/delivery',
+    icon: Banknote,
+    available: true,
+    hasSurcharge: false
+  },
+  {
+    id: 'in_yard_card',
+    label: 'In Yard - Card',
+    description: 'Pay with credit card on-site during pickup/delivery',
+    icon: CreditCard,
+    available: true,
+    hasSurcharge: true
   },
   {
     id: 'account',
     label: 'Account',
     description: 'Monthly billing for account customers',
     icon: Building2,
-    available: false // Will be set based on customer type
+    available: false, // Will be set based on customer type
+    hasSurcharge: false
   }
 ];
 
@@ -77,6 +89,8 @@ export function PaymentMethodStep({
                method.id === 'card_on_file' ? hasCardOnFile : 
                true
   }));
+
+  const selectedMethod = availablePaymentMethods.find(m => m.id === paymentMethod);
 
   const handleNext = () => {
     if (!paymentMethod) {
@@ -138,6 +152,14 @@ export function PaymentMethodStep({
           </Alert>
         )}
 
+        {/* Surcharge Information */}
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            A credit card surcharge applies to: Card on File, 7 Day Invoice, and In Yard - Card payments.
+          </AlertDescription>
+        </Alert>
+
         {/* Payment Method Selection */}
         <div>
           <Label className="text-base font-medium mb-4 block">Select Payment Method</Label>
@@ -174,6 +196,11 @@ export function PaymentMethodStep({
                       >
                         {method.label}
                       </Label>
+                      {method.hasSurcharge && (
+                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
+                          Surcharge applies
+                        </span>
+                      )}
                       {!method.available && method.id === 'account' && (
                         <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">
                           Account customers only
@@ -211,14 +238,14 @@ export function PaymentMethodStep({
         </div>
 
         {/* Selected Payment Method Details */}
-        {paymentMethod && (
+        {paymentMethod && selectedMethod && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="w-2 h-2 bg-green-500 rounded-full"></span>
               <span className="font-medium text-green-900">Selected Payment Method</span>
             </div>
             <p className="text-sm text-green-700">
-              {PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label}
+              {selectedMethod.label}
             </p>
             {paymentMethod === 'account' && (
               <p className="text-xs text-green-600 mt-1">
@@ -227,12 +254,22 @@ export function PaymentMethodStep({
             )}
             {paymentMethod === '7_day_invoice' && (
               <p className="text-xs text-green-600 mt-1">
-                An invoice will be sent with 7-day payment terms.
+                An invoice will be sent with 7-day payment terms. Credit card surcharge will be applied.
               </p>
             )}
             {paymentMethod === 'card_on_file' && defaultCard && (
               <p className="text-xs text-green-600 mt-1">
                 Charge will be processed using your {formatCardBrand(defaultCard.card_brand)} ending in {defaultCard.card_last_four}.
+              </p>
+            )}
+            {paymentMethod === 'in_yard_card' && (
+              <p className="text-xs text-green-600 mt-1">
+                Credit card payment will be processed on-site. Surcharge will be applied.
+              </p>
+            )}
+            {paymentMethod === 'in_yard_cash' && (
+              <p className="text-xs text-green-600 mt-1">
+                Cash payment will be collected on-site. No surcharge applies.
               </p>
             )}
           </div>

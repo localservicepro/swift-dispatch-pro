@@ -85,8 +85,8 @@ const calculateOrderTotals = async (subtotal: number, adjustments: number, deliv
   const baseTotal = subtotal + adjustments + deliveryFee;
   const gstAmount = (baseTotal * settings.gst_rate) / 100;
   
-  // Apply surcharge only for credit card payments
-  const surchargeAmount = (paymentMethod === 'card_on_file' || paymentMethod === 'credit_card') 
+  // Apply surcharge for credit card payments
+  const surchargeAmount = (paymentMethod === 'card_on_file' || paymentMethod === 'credit_card' || paymentMethod === '7_day_invoice' || paymentMethod === 'in_yard_card') 
     ? (baseTotal * settings.service_charge_rate) / 100 
     : 0;
   

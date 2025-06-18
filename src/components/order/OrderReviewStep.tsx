@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,8 +89,9 @@ export function OrderReviewStep({
   const baseTotal = subtotal + adjustments + deliveryFee;
   const gstAmount = (baseTotal * paymentSettings.gst_rate) / 100;
   
-  // Apply surcharge only for credit card payments
-  const surchargeAmount = (paymentMethod === 'card_on_file' || paymentMethod === 'credit_card') 
+  // Apply surcharge for credit card payments
+  const surchargeAmount = (paymentMethod === 'card_on_file' || paymentMethod === 'credit_card' || 
+                          paymentMethod === '7_day_invoice' || paymentMethod === 'in_yard_card') 
     ? (baseTotal * paymentSettings.service_charge_rate) / 100 
     : 0;
   
@@ -108,8 +108,10 @@ export function OrderReviewStep({
         return 'Card on File';
       case '7_day_invoice':
         return '7 Day Invoice';
-      case 'in_yard':
-        return 'In Yard';
+      case 'in_yard_cash':
+        return 'In Yard - Cash';
+      case 'in_yard_card':
+        return 'In Yard - Card';
       case 'account':
         return 'Account';
       default:
