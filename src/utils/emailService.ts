@@ -74,36 +74,54 @@ export const emailService = {
 
   async sendOrderConfirmation(data: OrderConfirmationData) {
     console.log('Sending order confirmation email:', data);
-    const { error } = await supabase.functions.invoke('send-emails', {
-      body: {
-        type: 'order-confirmation',
-        data
-      }
-    });
     
-    if (error) {
-      console.error('Error sending order confirmation:', error);
-      throw error;
+    try {
+      const { error } = await supabase.functions.invoke('send-emails', {
+        body: {
+          type: 'order-confirmation',
+          data
+        }
+      });
+      
+      if (error) {
+        console.error('Error sending order confirmation:', error);
+        throw new Error(`Email service error: ${error.message}`);
+      }
+      
+      console.log('Order confirmation email sent successfully');
+    } catch (error: any) {
+      console.error('Failed to send order confirmation email:', error);
+      throw new Error(`Failed to send order confirmation: ${error.message}`);
     }
   },
 
   async sendDeliveryStatusUpdate(data: DeliveryStatusUpdateData) {
     console.log('Sending delivery status update email:', data);
-    const { error } = await supabase.functions.invoke('send-emails', {
-      body: {
-        type: 'delivery-status-update',
-        data
-      }
-    });
     
-    if (error) {
-      console.error('Error sending delivery status update:', error);
-      throw error;
+    try {
+      const { error } = await supabase.functions.invoke('send-emails', {
+        body: {
+          type: 'delivery-status-update',
+          data
+        }
+      });
+      
+      if (error) {
+        console.error('Error sending delivery status update:', error);
+        throw new Error(`Email service error: ${error.message}`);
+      }
+      
+      console.log('Delivery status update email sent successfully');
+    } catch (error: any) {
+      console.error('Failed to send delivery status update email:', error);
+      throw new Error(`Failed to send status update: ${error.message}`);
     }
   },
 
   async sendOrderStatusUpdate(orderId: string, oldStatus: string, newStatus: string, driverName?: string) {
     try {
+      console.log(`Sending order status update email for order: ${orderId}`);
+      
       // Get order details
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -118,13 +136,13 @@ export const emailService = {
 
       if (orderError) {
         console.error('Error fetching order for status update email:', orderError);
-        return;
+        throw new Error(`Failed to fetch order: ${orderError.message}`);
       }
 
       const customerEmail = order?.customers?.email;
       if (!customerEmail) {
         console.warn('No customer email found for order status update:', orderId);
-        return;
+        return; // Don't throw error, just skip email
       }
 
       await this.sendDeliveryStatusUpdate({
@@ -137,24 +155,33 @@ export const emailService = {
       });
 
       console.log('Order status update email sent successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending order status update email:', error);
       // Don't throw error to avoid blocking the status update
+      // Just log the error for monitoring
     }
   },
 
   async sendInvoice(data: InvoiceData) {
     console.log('Sending invoice email:', data);
-    const { error } = await supabase.functions.invoke('send-emails', {
-      body: {
-        type: 'invoice',
-        data
-      }
-    });
     
-    if (error) {
-      console.error('Error sending invoice:', error);
-      throw error;
+    try {
+      const { error } = await supabase.functions.invoke('send-emails', {
+        body: {
+          type: 'invoice',
+          data
+        }
+      });
+      
+      if (error) {
+        console.error('Error sending invoice:', error);
+        throw new Error(`Email service error: ${error.message}`);
+      }
+      
+      console.log('Invoice email sent successfully');
+    } catch (error: any) {
+      console.error('Failed to send invoice email:', error);
+      throw new Error(`Failed to send invoice: ${error.message}`);
     }
   }
 };

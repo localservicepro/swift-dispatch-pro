@@ -124,10 +124,14 @@ export type Database = {
           email: string
           first_name: string
           full_address: string
+          ghl_contact_id: string | null
           id: string
           is_active: boolean
           last_name: string
+          last_synced_to_ghl: string | null
           phone: string | null
+          sms_notifications_enabled: boolean
+          sms_opt_out_date: string | null
           stripe_customer_id: string | null
           suburb_id: string | null
           updated_at: string
@@ -140,10 +144,14 @@ export type Database = {
           email: string
           first_name: string
           full_address: string
+          ghl_contact_id?: string | null
           id?: string
           is_active?: boolean
           last_name: string
+          last_synced_to_ghl?: string | null
           phone?: string | null
+          sms_notifications_enabled?: boolean
+          sms_opt_out_date?: string | null
           stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
@@ -156,10 +164,14 @@ export type Database = {
           email?: string
           first_name?: string
           full_address?: string
+          ghl_contact_id?: string | null
           id?: string
           is_active?: boolean
           last_name?: string
+          last_synced_to_ghl?: string | null
           phone?: string | null
+          sms_notifications_enabled?: boolean
+          sms_opt_out_date?: string | null
           stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
@@ -426,6 +438,48 @@ export type Database = {
         }
         Relationships: []
       }
+      email_settings: {
+        Row: {
+          connection_status: string
+          created_at: string
+          email_provider: string
+          id: string
+          last_tested_at: string | null
+          reply_to_email: string | null
+          resend_api_key: string | null
+          sender_email: string
+          sender_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          connection_status?: string
+          created_at?: string
+          email_provider?: string
+          id?: string
+          last_tested_at?: string | null
+          reply_to_email?: string | null
+          resend_api_key?: string | null
+          sender_email?: string
+          sender_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          connection_status?: string
+          created_at?: string
+          email_provider?: string
+          id?: string
+          last_tested_at?: string | null
+          reply_to_email?: string | null
+          resend_api_key?: string | null
+          sender_email?: string
+          sender_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           amount: number
@@ -540,8 +594,10 @@ export type Database = {
           delivery_fee: number | null
           delivery_time: string | null
           driver_id: string | null
+          ghl_opportunity_id: string | null
           id: string
           is_split_order: boolean | null
+          last_synced_to_ghl: string | null
           master_order_id: string | null
           order_number: string
           payment_date: string | null
@@ -569,8 +625,10 @@ export type Database = {
           delivery_fee?: number | null
           delivery_time?: string | null
           driver_id?: string | null
+          ghl_opportunity_id?: string | null
           id?: string
           is_split_order?: boolean | null
+          last_synced_to_ghl?: string | null
           master_order_id?: string | null
           order_number: string
           payment_date?: string | null
@@ -598,8 +656,10 @@ export type Database = {
           delivery_fee?: number | null
           delivery_time?: string | null
           driver_id?: string | null
+          ghl_opportunity_id?: string | null
           id?: string
           is_split_order?: boolean | null
+          last_synced_to_ghl?: string | null
           master_order_id?: string | null
           order_number?: string
           payment_date?: string | null
@@ -652,6 +712,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payment_settings: {
+        Row: {
+          created_at: string
+          currency: string
+          default_delivery_fee: number
+          gst_label: string
+          gst_rate: number
+          id: string
+          include_gst_in_prices: boolean
+          service_charge_rate: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          default_delivery_fee?: number
+          gst_label?: string
+          gst_rate?: number
+          id?: string
+          include_gst_in_prices?: boolean
+          service_charge_rate?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          default_delivery_fee?: number
+          gst_label?: string
+          gst_rate?: number
+          id?: string
+          include_gst_in_prices?: boolean
+          service_charge_rate?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       product_categories: {
         Row: {
@@ -777,6 +876,48 @@ export type Database = {
         }
         Relationships: []
       }
+      stripe_settings: {
+        Row: {
+          connection_status: string
+          created_at: string
+          id: string
+          is_live_mode: boolean
+          last_tested_at: string | null
+          live_publishable_key: string | null
+          live_secret_key: string | null
+          test_publishable_key: string | null
+          test_secret_key: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          connection_status?: string
+          created_at?: string
+          id?: string
+          is_live_mode?: boolean
+          last_tested_at?: string | null
+          live_publishable_key?: string | null
+          live_secret_key?: string | null
+          test_publishable_key?: string | null
+          test_secret_key?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          connection_status?: string
+          created_at?: string
+          id?: string
+          is_live_mode?: boolean
+          last_tested_at?: string | null
+          live_publishable_key?: string | null
+          live_secret_key?: string | null
+          test_publishable_key?: string | null
+          test_secret_key?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       suburbs: {
         Row: {
           created_at: string
@@ -872,15 +1013,17 @@ export type Database = {
         Returns: boolean
       }
       log_admin_activity: {
-        Args: {
-          p_action_type: string
-          p_target_type: string
-          p_target_id?: string
-          p_target_details?: Json
-          p_old_values?: Json
-          p_new_values?: Json
-          p_description?: string
-        }
+        Args:
+          | Record<PropertyKey, never>
+          | {
+              p_action_type: string
+              p_target_type: string
+              p_target_id?: string
+              p_target_details?: Json
+              p_old_values?: Json
+              p_new_values?: Json
+              p_description?: string
+            }
         Returns: string
       }
       update_order_status: {

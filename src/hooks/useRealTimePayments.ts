@@ -25,52 +25,60 @@ export function useRealTimePayments(onPaymentUpdate?: (update: PaymentUpdate | I
   const handleOrderUpdate = useCallback((payload: any) => {
     console.log('Real-time order update received:', payload);
     
-    const { new: newRecord, old: oldRecord, eventType } = payload;
-    
-    if (eventType === 'UPDATE' && oldRecord?.payment_status !== newRecord?.payment_status) {
-      const update: PaymentUpdate = {
-        id: newRecord.id,
-        payment_status: newRecord.payment_status,
-        order_number: newRecord.order_number,
-        customer_name: newRecord.customer_name,
-        total_amount: newRecord.total_amount
-      };
+    try {
+      const { new: newRecord, old: oldRecord, eventType } = payload;
+      
+      if (eventType === 'UPDATE' && oldRecord?.payment_status !== newRecord?.payment_status) {
+        const update: PaymentUpdate = {
+          id: newRecord.id,
+          payment_status: newRecord.payment_status,
+          order_number: newRecord.order_number,
+          customer_name: newRecord.customer_name,
+          total_amount: newRecord.total_amount
+        };
 
-      if (newRecord.payment_status === 'paid') {
-        toast({
-          title: "Payment Received!",
-          description: `Order ${newRecord.order_number} has been paid by ${newRecord.customer_name}`,
-          duration: 5000,
-        });
+        if (newRecord.payment_status === 'paid') {
+          toast({
+            title: "Payment Received!",
+            description: `Order ${newRecord.order_number} has been paid by ${newRecord.customer_name}`,
+            duration: 5000,
+          });
+        }
+
+        onPaymentUpdate?.(update);
       }
-
-      onPaymentUpdate?.(update);
+    } catch (error) {
+      console.error('Error handling real-time order update:', error);
     }
   }, [toast, onPaymentUpdate]);
 
   const handleInvoiceUpdate = useCallback((payload: any) => {
     console.log('Real-time invoice update received:', payload);
     
-    const { new: newRecord, old: oldRecord, eventType } = payload;
-    
-    if (eventType === 'UPDATE' && oldRecord?.status !== newRecord?.status) {
-      const update: InvoiceUpdate = {
-        id: newRecord.id,
-        status: newRecord.status,
-        invoice_number: newRecord.invoice_number,
-        amount: newRecord.amount,
-        order_id: newRecord.order_id
-      };
+    try {
+      const { new: newRecord, old: oldRecord, eventType } = payload;
+      
+      if (eventType === 'UPDATE' && oldRecord?.status !== newRecord?.status) {
+        const update: InvoiceUpdate = {
+          id: newRecord.id,
+          status: newRecord.status,
+          invoice_number: newRecord.invoice_number,
+          amount: newRecord.amount,
+          order_id: newRecord.order_id
+        };
 
-      if (newRecord.status === 'paid') {
-        toast({
-          title: "Invoice Paid!",
-          description: `Invoice ${newRecord.invoice_number} has been paid`,
-          duration: 5000,
-        });
+        if (newRecord.status === 'paid') {
+          toast({
+            title: "Invoice Paid!",
+            description: `Invoice ${newRecord.invoice_number} has been paid`,
+            duration: 5000,
+          });
+        }
+
+        onPaymentUpdate?.(update);
       }
-
-      onPaymentUpdate?.(update);
+    } catch (error) {
+      console.error('Error handling real-time invoice update:', error);
     }
   }, [toast, onPaymentUpdate]);
 
@@ -90,7 +98,9 @@ export function useRealTimePayments(onPaymentUpdate?: (update: PaymentUpdate | I
         },
         handleOrderUpdate
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Orders subscription status:', status);
+      });
 
     // Subscribe to invoice status changes
     const invoicesChannel = supabase
@@ -105,7 +115,9 @@ export function useRealTimePayments(onPaymentUpdate?: (update: PaymentUpdate | I
         },
         handleInvoiceUpdate
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Invoices subscription status:', status);
+      });
 
     return () => {
       console.log('Cleaning up real-time payment subscriptions...');
