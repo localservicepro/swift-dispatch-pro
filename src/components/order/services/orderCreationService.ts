@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { chargeCardOnFile } from "./cardOnFileService";
@@ -43,6 +42,8 @@ interface CreateOrderParams {
   driverId: string;
   specialInstructions: string;
   paymentMethod: string;
+  deliveryAddress: string;
+  sameAsBilling: boolean;
 }
 
 interface OrderCreationResult {
@@ -113,7 +114,9 @@ const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCrea
     truckId,
     driverId,
     specialInstructions,
-    paymentMethod
+    paymentMethod,
+    deliveryAddress,
+    sameAsBilling
   } = orderData;
 
   const masterOrderNumber = await generateOrderNumber();
@@ -155,6 +158,8 @@ const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCrea
         master_order_id: masterOrderNumber,
         split_number: i + 1,
         status: 'preparing' as const,
+        delivery_address: sameAsBilling ? selectedCustomer.full_address : (deliveryAddress || selectedCustomer.full_address),
+        same_as_billing: sameAsBilling
       };
 
       console.log(`Creating split order ${i + 1}:`, orderInsertData);
@@ -239,7 +244,9 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
       truckId,
       driverId,
       specialInstructions,
-      paymentMethod
+      paymentMethod,
+      deliveryAddress,
+      sameAsBilling
     } = orderData;
 
     if (orderType === "split") {
@@ -278,6 +285,8 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
       special_instructions: specialInstructions || null,
       payment_method: paymentMethod,
       status: 'preparing' as const,
+      delivery_address: sameAsBilling ? selectedCustomer.full_address : (deliveryAddress || selectedCustomer.full_address),
+      same_as_billing: sameAsBilling
     };
 
     console.log('Inserting order:', orderInsertData);
