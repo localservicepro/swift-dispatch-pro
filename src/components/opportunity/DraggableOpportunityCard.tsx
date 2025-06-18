@@ -8,9 +8,10 @@ interface DraggableOpportunityCardProps {
   order: any;
   currentStage: string;
   onOrderMove: () => void;
+  onOrderClick: (order: any) => void;
 }
 
-export function DraggableOpportunityCard({ order, currentStage, onOrderMove }: DraggableOpportunityCardProps) {
+export function DraggableOpportunityCard({ order, currentStage, onOrderMove, onOrderClick }: DraggableOpportunityCardProps) {
   const {
     attributes,
     listeners,
@@ -49,6 +50,7 @@ export function DraggableOpportunityCard({ order, currentStage, onOrderMove }: D
           order={order}
           currentStage={currentStage}
           onOrderMove={onOrderMove}
+          onOrderClick={onOrderClick}
         />
       </div>
     </div>

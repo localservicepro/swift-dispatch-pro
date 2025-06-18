@@ -16,9 +16,10 @@ interface DroppablePipelineColumnProps {
   stage: PipelineStage;
   orders: any[];
   onOrderMove: () => void;
+  onOrderClick: (order: any) => void;
 }
 
-export function DroppablePipelineColumn({ stage, orders, onOrderMove }: DroppablePipelineColumnProps) {
+export function DroppablePipelineColumn({ stage, orders, onOrderMove, onOrderClick }: DroppablePipelineColumnProps) {
   const {
     isOver,
     setNodeRef
@@ -70,6 +71,7 @@ export function DroppablePipelineColumn({ stage, orders, onOrderMove }: Droppabl
                   order={order}
                   currentStage={stage.id}
                   onOrderMove={onOrderMove}
+                  onOrderClick={onOrderClick}
                 />
               ))
             )}

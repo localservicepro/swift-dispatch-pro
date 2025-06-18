@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +14,8 @@ import {
   ArrowRight,
   Clock,
   CheckCircle,
-  CreditCard
+  CreditCard,
+  Eye
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { useAuth } from "../auth/AuthProvider";
@@ -25,9 +25,10 @@ interface OpportunityCardProps {
   order: any;
   currentStage: string;
   onOrderMove: () => void;
+  onOrderClick: (order: any) => void;
 }
 
-export function OpportunityCard({ order, currentStage, onOrderMove }: OpportunityCardProps) {
+export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick }: OpportunityCardProps) {
   const [isMoving, setIsMoving] = useState(false);
   const { toast } = useToast();
   const { profile } = useAuth();
@@ -161,16 +162,30 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
     return null;
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger card click if clicking on action buttons
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    onOrderClick(order);
+  };
+
   const truckInfo = getTruckInfo(order.truck_type_from_truck || order.truck_type);
   const nextAction = getNextStageAction(currentStage);
   const canMove = canMoveToNextStage(currentStage);
 
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer border border-slate-200">
+    <Card 
+      className="hover:shadow-md transition-all cursor-pointer border border-slate-200 hover:border-slate-300 group"
+      onClick={handleCardClick}
+    >
       <CardContent className="p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-slate-800 text-sm">{order.order_number}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-slate-800 text-sm">{order.order_number}</h3>
+            <Eye className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
           {getStatusBadge()}
         </div>
 
@@ -266,6 +281,11 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
             Completed
           </div>
         )}
+
+        {/* Click hint */}
+        <div className="text-xs text-slate-400 text-center mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          Click to view details
+        </div>
       </CardContent>
     </Card>
   );
