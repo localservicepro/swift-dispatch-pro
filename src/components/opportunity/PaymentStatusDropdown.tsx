@@ -80,12 +80,6 @@ export function PaymentStatusDropdown({ order, onStatusUpdate }: PaymentStatusDr
     }
   };
 
-  // Quick action for marking as paid
-  const markAsPaid = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    updatePaymentStatus('paid');
-  };
-
   if (order.payment_status === 'paid') {
     return (
       <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
@@ -96,62 +90,38 @@ export function PaymentStatusDropdown({ order, onStatusUpdate }: PaymentStatusDr
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`p-1 h-auto ${currentStatus?.color || 'bg-yellow-100 text-yellow-800'} hover:opacity-80`}
-            disabled={isUpdating}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <CurrentIcon className="w-3 h-3 mr-1" />
-            {currentStatus?.label || 'Payment Pending'}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-          {PAYMENT_STATUSES.map((status) => {
-            const StatusIcon = status.icon;
-            return (
-              <DropdownMenuItem
-                key={status.value}
-                onClick={() => updatePaymentStatus(status.value)}
-                disabled={isUpdating || status.value === order.payment_status}
-                className="flex items-center gap-2"
-              >
-                <StatusIcon className="w-4 h-4" />
-                {status.label}
-                {status.value === order.payment_status && (
-                  <CheckCircle className="w-3 h-3 ml-auto text-green-600" />
-                )}
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Quick "Mark as Paid" button for pending payments */}
-      {order.payment_status === 'pending' && (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
+          variant="ghost"
           size="sm"
-          onClick={markAsPaid}
+          className={`p-1 h-auto ${currentStatus?.color || 'bg-yellow-100 text-yellow-800'} hover:opacity-80`}
           disabled={isUpdating}
-          className="text-xs bg-green-600 hover:bg-green-700 text-white"
+          onClick={(e) => e.stopPropagation()}
         >
-          {isUpdating ? (
-            <div className="flex items-center gap-1">
-              <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
-              Updating...
-            </div>
-          ) : (
-            <>
-              <CheckCircle className="w-3 h-3 mr-1" />
-              Mark Paid
-            </>
-          )}
+          <CurrentIcon className="w-3 h-3 mr-1" />
+          {currentStatus?.label || 'Payment Pending'}
         </Button>
-      )}
-    </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
+        {PAYMENT_STATUSES.map((status) => {
+          const StatusIcon = status.icon;
+          return (
+            <DropdownMenuItem
+              key={status.value}
+              onClick={() => updatePaymentStatus(status.value)}
+              disabled={isUpdating || status.value === order.payment_status}
+              className="flex items-center gap-2"
+            >
+              <StatusIcon className="w-4 h-4" />
+              {status.label}
+              {status.value === order.payment_status && (
+                <CheckCircle className="w-3 h-3 ml-auto text-green-600" />
+              )}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
