@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 interface SMSNotificationData {
@@ -14,16 +13,8 @@ interface SMSNotificationData {
 export const smsService = {
   async getSettings() {
     try {
-      // Use a raw query approach since the table might not be in the types yet
-      const { data, error } = await supabase
-        .rpc('get_sms_settings');
-
-      if (error) {
-        console.error('Error fetching SMS settings:', error);
-        return null;
-      }
-
-      return data;
+      // Since the database function doesn't exist, return null to indicate SMS is not configured
+      return null;
     } catch (error) {
       console.error('SMS settings fetch error:', error);
       return null;

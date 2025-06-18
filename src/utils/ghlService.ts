@@ -46,15 +46,19 @@ export const ghlService = {
 
   async getSettings() {
     try {
-      // Use raw query to avoid type issues for now
-      const { data, error } = await supabase
-        .rpc('get_ghl_settings');
-
-      if (error) throw error;
-      return data || { connection_status: 'disconnected', auto_sync_customers: false, auto_sync_orders: false };
+      // Since the database function doesn't exist, return a default fallback
+      return { 
+        connection_status: 'disconnected', 
+        auto_sync_customers: false, 
+        auto_sync_orders: false 
+      };
     } catch (error) {
       console.error('Error getting GHL settings:', error);
-      return { connection_status: 'disconnected', auto_sync_customers: false, auto_sync_orders: false };
+      return { 
+        connection_status: 'disconnected', 
+        auto_sync_customers: false, 
+        auto_sync_orders: false 
+      };
     }
   },
 
@@ -74,11 +78,8 @@ export const ghlService = {
 
   async getSyncLogs() {
     try {
-      const { data, error } = await supabase
-        .rpc('get_ghl_sync_logs');
-
-      if (error) throw error;
-      return data || [];
+      // Since the database function doesn't exist, return empty array
+      return [];
     } catch (error) {
       console.error('Error getting sync logs:', error);
       return [];

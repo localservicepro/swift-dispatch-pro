@@ -17,9 +17,11 @@ export function GHLSyncLogs() {
   const loadLogs = async () => {
     try {
       const data = await ghlService.getSyncLogs();
-      setLogs(data || []);
+      // Ensure we set an array, handling the case where data might be a string or other type
+      setLogs(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error loading sync logs:', error);
+      setLogs([]);
     } finally {
       setIsLoading(false);
     }

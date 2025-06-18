@@ -5,6 +5,7 @@ import { Database } from "@/integrations/supabase/types";
 import { smsService } from "@/utils/smsService";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
+type TruckType = Database["public"]["Enums"]["truck_type"];
 
 interface OrderCreationResult {
   success: boolean;
@@ -66,7 +67,7 @@ export const orderCreationService = {
         delivery_time: orderData.delivery_time || null,
         special_instructions: orderData.special_instructions || null,
         driver_id: orderData.driver_id === 'unassigned' ? null : orderData.driver_id,
-        truck_type: orderData.truck_type && orderData.truck_type !== 'none' ? orderData.truck_type : null,
+        truck_type: orderData.truck_type && orderData.truck_type !== "" ? orderData.truck_type as TruckType : null,
         truck_id: orderData.truck_id === 'none' ? null : orderData.truck_id,
         is_split_order: orderData.is_split_order || false,
         master_order_id: orderData.master_order_id || null,

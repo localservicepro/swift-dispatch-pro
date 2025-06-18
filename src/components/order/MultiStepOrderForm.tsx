@@ -13,7 +13,7 @@ import { useDriverManager } from "./hooks/useDriverManager";
 import { orderCreationService } from "./services/orderCreationService";
 import { Truck, Split } from "./types";
 import { Database } from "@/integrations/supabase/types";
-import { SplitOrderData } from "@/types";
+import { SplitOrderData, OrderFormData } from "@/types";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
