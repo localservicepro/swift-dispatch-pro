@@ -5,10 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Receipt, Bell, RefreshCw } from "lucide-react";
+import { Loader2, Receipt, Bell, Settings, RefreshCw } from "lucide-react";
 import { useRealTimePayments } from "@/hooks/useRealTimePayments";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PaymentSearchFilters } from "@/components/payment/PaymentSearchFilters";
+import { PaymentSettings } from "@/components/payment/PaymentSettings";
 import { usePaymentFilters } from "@/hooks/usePaymentFilters";
 
 interface PaymentOrder {
@@ -33,6 +34,7 @@ export function PaymentManagement() {
   const [sendingInvoices, setSendingInvoices] = useState<string[]>([]);
   const [generatingInvoices, setGeneratingInvoices] = useState<string[]>([]);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
+  const [showSettings, setShowSettings] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -426,12 +428,22 @@ export function PaymentManagement() {
             {selectedPayments.some(id => sendingInvoices.includes(id)) && <Loader2 className="w-4 h-4 animate-spin" />}
             Batch Invoice ({selectedPayments.length})
           </Button>
-          <Button onClick={() => refetch()} className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Refresh Data
+          <Button 
+            onClick={() => setShowSettings(true)} 
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            Settings
           </Button>
         </div>
       </div>
+
+      {/* Payment Settings Modal */}
+      <PaymentSettings 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)} 
+      />
 
       {/* Search and Filter Controls */}
       <PaymentSearchFilters
