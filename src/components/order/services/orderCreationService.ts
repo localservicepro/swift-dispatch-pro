@@ -73,7 +73,7 @@ const validateOrderData = (orderData: CreateOrderParams): void => {
     throw new Error('Order subtotal must be greater than 0');
   }
   
-  if (!orderData.truckType || orderData.truckType === "") {
+  if (orderData.truckType === "" || !orderData.truckType) {
     throw new Error('Truck type is required');
   }
   
@@ -391,3 +391,126 @@ export async function createOrder(orderData: CreateOrderParams): Promise<OrderCr
     throw new Error(error.message || 'Failed to create order');
   }
 }
+
+const createSplitOrder = async (orderData: CreateOrderParams): Promise<OrderCreationResult> => {
+  console.log('Creating split order with data:', orderData);
+  
+  validateOrderData(orderData);
+  
+  const {
+    selectedCustomer,
+    cart,
+    subtotal,
+    adjustments,
+    deliveryFee,
+    splits,
+    truckType,
+    truckId,
+    driverId,
+    specialInstructions,
+    paymentMethod
+  } = orderData;
+
+  const masterOrderNumber = await generateOrderNumber();
+  const createdOrders: string[] = [];
+
+  try {
+    for (let i = 0; i < splits.length; i++) {
+      const split = splits[i];
+      const splitOrderNumber = `${masterOrderNumber}-${i + 1}`;
+      const totalAmount = subtotal + adjustments + deliveryFee;
+
+      // Prepare clean product data for JSON storage
+      const cleanProducts = cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+      }));
+
+      const orderInsertData = {
+        order_number: splitOrderNumber,
+        customer_id: selectedCustomer.id,
+        customer_name: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`,
+        customer_address: selectedCustomer.full_address,
+        customer_phone: selectedCustomer.phone,
+        products: cleanProducts,
+        subtotal,
+        adjustments,
+        delivery_fee: deliveryFee,
+        total_amount: totalAmount,
+        delivery_date: split.deliveryDate,
+        delivery_time: split.deliveryTime,
+        truck_type: truckType !== "" ? truckType : null,
+        truck_id: truckId === 'none' ? null : truckId,
+        driver_id: driverId === 'unassigned' ? null : driverId,
+        special_instructions: specialInstructions || null,
+        payment_method: paymentMethod,
+        is_split_order: true,
+        master_order_id: masterOrderNumber,
+        split_number: i + 1,
+        status: 'preparing' as const,
+      };
+
+      console.log(`Creating split order ${i + 1}:`, orderInsertData);
+
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert(orderInsertData)
+        .select()
+        .single();
+
+      if (orderError) {
+        console.error(`Error creating split order ${i + 1}:`, orderError);
+        throw new Error(`Failed to create split order ${i + 1}: ${orderError.message}`);
+      }
+
+      createdOrders.push(order.id);
+
+      // Create order items
+      const orderItems = cart.map((item) => ({
+        order_id: order.id,
+        product_id: item.id,
+        quantity: item.quantity,
+        unit_price: item.price,
+        total_price: item.price * item.quantity,
+        price_adjustment: 0,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error(`Error creating order items for split order ${i + 1}:`, itemsError);
+        // Log but don't fail - the main order was created successfully
+      }
+    }
+
+    console.log(`Split order created successfully: ${masterOrderNumber}`);
+    return {
+      type: "split",
+      orderNumber: masterOrderNumber,
+      orderId: masterOrderNumber,
+      splitCount: splits.length
+    };
+
+  } catch (error: any) {
+    console.error('Split order creation failed:', error);
+    
+    // Cleanup: Try to delete any orders that were created before the failure
+    if (createdOrders.length > 0) {
+      console.log('Cleaning up partial split order creation...');
+      try {
+        await supabase
+          .from('orders')
+          .delete()
+          .in('id', createdOrders);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup partial orders:', cleanupError);
+      }
+    }
+    
+    throw error;
+  }
+};
