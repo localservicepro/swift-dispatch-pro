@@ -51,39 +51,12 @@ export function useOrderFormState() {
     const totalSteps = getTotalSteps();
     setCurrentStep(prev => {
       const next = prev + 1;
-      
-      // Skip Order Type step for pickup orders
-      if (deliveryMethod === "pickup" && next === 4) {
-        return 5; // Skip to Payment step
-      }
-      
-      // Skip delivery-related steps for pickup orders
-      if (deliveryMethod === "pickup") {
-        if (next === 5) return 6; // Skip Address step (5)
-        if (next === 6) return 7; // Skip Details step (6)
-      }
-      
       return Math.min(next, totalSteps);
     });
   };
 
   const prevStep = () => {
-    setCurrentStep(prev => {
-      const previous = prev - 1;
-      
-      // Skip Order Type step for pickup orders when going back
-      if (deliveryMethod === "pickup" && previous === 4) {
-        return 3; // Go back to Method step
-      }
-      
-      // Skip delivery-related steps for pickup orders when going back
-      if (deliveryMethod === "pickup") {
-        if (previous === 6) return 5; // Skip Details step (6)
-        if (previous === 5) return 4; // Skip Address step (5)
-      }
-      
-      return Math.max(previous, 1);
-    });
+    setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
