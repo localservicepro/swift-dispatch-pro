@@ -40,13 +40,24 @@ export function PaymentStatusDropdown({ order, onStatusUpdate }: PaymentStatusDr
 
     setIsUpdating(true);
     try {
+      let updateData: any = {
+        payment_status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+
+      // When marking as paid, also set payment_date
+      if (newStatus === 'paid') {
+        updateData.payment_date = new Date().toISOString();
+        
+        // If order is currently in requested status, move it to preparing
+        if (order.status === 'requested') {
+          updateData.status = 'preparing';
+        }
+      }
+
       const { error } = await supabase
         .from('orders')
-        .update({
-          payment_status: newStatus,
-          updated_at: new Date().toISOString(),
-          ...(newStatus === 'paid' ? { payment_date: new Date().toISOString() } : {})
-        })
+        .update(updateData)
         .eq('id', order.id);
 
       if (error) throw error;
@@ -60,6 +71,18 @@ export function PaymentStatusDropdown({ order, onStatusUpdate }: PaymentStatusDr
           newStatus,
           profile.full_name
         );
+
+        // If we also updated the order status, log that too
+        if (updateData.status && updateData.status !== order.status) {
+          await activityLogger.orderStatusUpdate(
+            order.id,
+            order.order_number,
+            order.customer_name,
+            order.status,
+            updateData.status,
+            profile.full_name
+          );
+        }
       }
 
       const statusLabel = PAYMENT_STATUSES.find(s => s.value === newStatus)?.label || newStatus;
