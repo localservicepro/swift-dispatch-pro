@@ -11,7 +11,7 @@ import { Search, Filter, X, BarChart3 } from "lucide-react";
 import { DroppablePipelineColumn } from "./opportunity/DroppablePipelineColumn";
 import { useOpportunityData } from "./opportunity/useOpportunityData";
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { OpportunityCard } from "./OpportunityCard";
+import { OpportunityCard } from "./opportunity/OpportunityCard";
 import { useAuth } from "./auth/AuthProvider";
 import { activityLogger } from "@/utils/activityLogger";
 
