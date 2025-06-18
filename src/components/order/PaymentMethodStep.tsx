@@ -1,11 +1,15 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroup } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { CreditCard, Calendar, Building2, MapPin, AlertCircle, Check, Banknote } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CreditCard } from "lucide-react";
 import { useCustomerPaymentMethods } from "@/hooks/useCustomerPaymentMethods";
+import { CustomerTypeInfo } from "./components/CustomerTypeInfo";
+import { PaymentMethodAlerts } from "./components/PaymentMethodAlerts";
+import { PaymentMethodCard } from "./components/PaymentMethodCard";
+import { SelectedPaymentInfo } from "./components/SelectedPaymentInfo";
+import { getAvailablePaymentMethods } from "./utils/paymentMethodUtils";
 
 interface Customer {
   id: string;
@@ -26,49 +30,6 @@ interface PaymentMethodStepProps {
   onNext: () => void;
 }
 
-const PAYMENT_METHODS = [
-  {
-    id: 'card_on_file',
-    label: 'Card On File',
-    description: 'Use saved payment card',
-    icon: CreditCard,
-    available: false, // Will be set based on saved cards
-    hasSurcharge: true
-  },
-  {
-    id: '7_day_invoice',
-    label: '7 Day Invoice',
-    description: 'Payment due within 7 days via credit card',
-    icon: Calendar,
-    available: true,
-    hasSurcharge: true
-  },
-  {
-    id: 'in_yard_cash',
-    label: 'In Yard - Cash',
-    description: 'Pay with cash on-site during pickup/delivery',
-    icon: Banknote,
-    available: true,
-    hasSurcharge: false
-  },
-  {
-    id: 'in_yard_card',
-    label: 'In Yard - Card',
-    description: 'Pay with credit card on-site during pickup/delivery',
-    icon: CreditCard,
-    available: true,
-    hasSurcharge: true
-  },
-  {
-    id: 'account',
-    label: 'Account',
-    description: 'Monthly billing for account customers',
-    icon: Building2,
-    available: false, // Will be set based on customer type
-    hasSurcharge: false
-  }
-];
-
 export function PaymentMethodStep({
   customer,
   paymentMethod,
@@ -83,13 +44,7 @@ export function PaymentMethodStep({
   const hasCardOnFile = savedCards.length > 0;
   const defaultCard = savedCards.find(card => card.is_default);
   
-  const availablePaymentMethods = PAYMENT_METHODS.map(method => ({
-    ...method,
-    available: method.id === 'account' ? isAccountCustomer : 
-               method.id === 'card_on_file' ? hasCardOnFile : 
-               true
-  }));
-
+  const availablePaymentMethods = getAvailablePaymentMethods(isAccountCustomer, hasCardOnFile);
   const selectedMethod = availablePaymentMethods.find(m => m.id === paymentMethod);
 
   const handleNext = () => {
@@ -97,10 +52,6 @@ export function PaymentMethodStep({
       return;
     }
     onNext();
-  };
-
-  const formatCardBrand = (brand: string) => {
-    return brand.charAt(0).toUpperCase() + brand.slice(1);
   };
 
   return (
@@ -116,49 +67,18 @@ export function PaymentMethodStep({
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Customer Type Info */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Building2 className="w-4 h-4 text-blue-600" />
-            <span className="font-medium text-blue-900">Customer Type</span>
-          </div>
-          <p className="text-sm text-blue-700">
-            {customer.first_name} {customer.last_name} is an{' '}
-            <span className="font-semibold">{customer.customer_type}</span> customer
-          </p>
-          {hasCardOnFile && (
-            <p className="text-xs text-blue-600 mt-1">
-              • {savedCards.length} saved payment method{savedCards.length !== 1 ? 's' : ''} on file
-            </p>
-          )}
-        </div>
+        <CustomerTypeInfo 
+          customer={customer}
+          hasCardOnFile={hasCardOnFile}
+          savedCardsCount={savedCards.length}
+        />
 
-        {/* Account Customer Special Notice */}
-        {isAccountCustomer && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              As an account customer, you can choose "Account" payment to be billed at the end of the month.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Card on File Notice for new customers */}
-        {!hasCardOnFile && !isLoadingCards && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              No saved payment methods found. Complete an order with card payment to save a card for future "Card on File" orders.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Surcharge Information */}
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            A credit card surcharge applies to: Card on File, 7 Day Invoice, and In Yard - Card payments.
-          </AlertDescription>
-        </Alert>
+        {/* Payment Method Alerts */}
+        <PaymentMethodAlerts 
+          isAccountCustomer={isAccountCustomer}
+          hasCardOnFile={hasCardOnFile}
+          isLoadingCards={isLoadingCards}
+        />
 
         {/* Payment Method Selection */}
         <div>
@@ -168,112 +88,23 @@ export function PaymentMethodStep({
             onValueChange={onPaymentMethodChange}
             className="space-y-3"
           >
-            {availablePaymentMethods.map((method) => {
-              const IconComponent = method.icon;
-              return (
-                <div
-                  key={method.id}
-                  className={`flex items-start space-x-3 rounded-lg border p-4 ${
-                    method.available
-                      ? 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                      : 'border-gray-100 bg-gray-50 opacity-60'
-                  } ${paymentMethod === method.id ? 'border-blue-500 bg-blue-50' : ''}`}
-                >
-                  <RadioGroupItem
-                    value={method.id}
-                    id={method.id}
-                    disabled={!method.available}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <IconComponent className="w-4 h-4 text-gray-600" />
-                      <Label
-                        htmlFor={method.id}
-                        className={`font-medium cursor-pointer ${
-                          method.available ? 'text-gray-900' : 'text-gray-500'
-                        }`}
-                      >
-                        {method.label}
-                      </Label>
-                      {method.hasSurcharge && (
-                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
-                          Surcharge applies
-                        </span>
-                      )}
-                      {!method.available && method.id === 'account' && (
-                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">
-                          Account customers only
-                        </span>
-                      )}
-                      {!method.available && method.id === 'card_on_file' && (
-                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">
-                          No saved cards
-                        </span>
-                      )}
-                    </div>
-                    <p className={`text-sm ${method.available ? 'text-gray-600' : 'text-gray-400'}`}>
-                      {method.description}
-                    </p>
-                    
-                    {/* Show card details when Card on File is selected and available */}
-                    {method.id === 'card_on_file' && method.available && paymentMethod === method.id && defaultCard && (
-                      <div className="mt-2 p-2 bg-white border border-gray-200 rounded text-xs">
-                        <div className="flex items-center gap-2">
-                          <Check className="w-3 h-3 text-green-600" />
-                          <span className="font-medium">
-                            {formatCardBrand(defaultCard.card_brand)} •••• {defaultCard.card_last_four}
-                          </span>
-                          <span className="text-gray-500">
-                            {defaultCard.card_exp_month.toString().padStart(2, '0')}/{defaultCard.card_exp_year}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {availablePaymentMethods.map((method) => (
+              <PaymentMethodCard
+                key={method.id}
+                method={method}
+                paymentMethod={paymentMethod}
+                defaultCard={method.id === 'card_on_file' ? defaultCard : undefined}
+              />
+            ))}
           </RadioGroup>
         </div>
 
         {/* Selected Payment Method Details */}
-        {paymentMethod && selectedMethod && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              <span className="font-medium text-green-900">Selected Payment Method</span>
-            </div>
-            <p className="text-sm text-green-700">
-              {selectedMethod.label}
-            </p>
-            {paymentMethod === 'account' && (
-              <p className="text-xs text-green-600 mt-1">
-                This order will be added to your monthly billing cycle.
-              </p>
-            )}
-            {paymentMethod === '7_day_invoice' && (
-              <p className="text-xs text-green-600 mt-1">
-                An invoice will be sent with 7-day payment terms. Credit card surcharge will be applied.
-              </p>
-            )}
-            {paymentMethod === 'card_on_file' && defaultCard && (
-              <p className="text-xs text-green-600 mt-1">
-                Charge will be processed using your {formatCardBrand(defaultCard.card_brand)} ending in {defaultCard.card_last_four}.
-              </p>
-            )}
-            {paymentMethod === 'in_yard_card' && (
-              <p className="text-xs text-green-600 mt-1">
-                Credit card payment will be processed on-site. Surcharge will be applied.
-              </p>
-            )}
-            {paymentMethod === 'in_yard_cash' && (
-              <p className="text-xs text-green-600 mt-1">
-                Cash payment will be collected on-site. No surcharge applies.
-              </p>
-            )}
-          </div>
-        )}
+        <SelectedPaymentInfo 
+          paymentMethod={paymentMethod}
+          selectedMethod={selectedMethod}
+          defaultCard={defaultCard}
+        />
 
         <div className="flex gap-2 pt-4">
           <Button variant="outline" onClick={onBack}>
