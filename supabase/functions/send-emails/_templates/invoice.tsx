@@ -1,3 +1,4 @@
+
 import {
   Body,
   Container,
@@ -24,16 +25,10 @@ interface InvoiceEmailProps {
   }>
   subtotal: number
   deliveryFee: number
-  serviceCharge?: number
-  gstRate: number
-  gstAmount: number
-  gstLabel?: string
   totalAmount: number
   dueDate: string
   paymentStatus: string
   paymentUrl?: string
-  currency?: string
-  includeGstInPrices?: boolean
 }
 
 export const InvoiceEmail = ({
@@ -43,28 +38,11 @@ export const InvoiceEmail = ({
   orderItems,
   subtotal,
   deliveryFee,
-  serviceCharge = 0,
-  gstRate,
-  gstAmount,
-  gstLabel = 'GST',
   totalAmount,
   dueDate,
   paymentStatus,
   paymentUrl,
-  currency = 'AUD',
-  includeGstInPrices = true,
 }: InvoiceEmailProps) => {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: currency,
-    }).format(amount);
-  };
-
-  const subtotalBeforeGst = includeGstInPrices ? subtotal / (1 + gstRate / 100) : subtotal;
-  const deliveryFeeBeforeGst = includeGstInPrices ? deliveryFee / (1 + gstRate / 100) : deliveryFee;
-  const serviceChargeBeforeGst = includeGstInPrices ? serviceCharge / (1 + gstRate / 100) : serviceCharge;
-
   return (
     <Html>
       <Head />
@@ -87,7 +65,7 @@ export const InvoiceEmail = ({
           {paymentStatus === 'Pending' && paymentUrl && (
             <Section style={paymentButtonSection}>
               <Button href={paymentUrl} style={paymentButton}>
-                Pay Invoice Now - {formatCurrency(totalAmount)}
+                Pay Invoice Now - ${totalAmount.toFixed(2)}
               </Button>
               <Text style={paymentNote}>
                 Click the button above to securely pay your invoice using our payment system.
@@ -107,52 +85,26 @@ export const InvoiceEmail = ({
                   <Text style={itemText}>Qty: {item.quantity}</Text>
                 </Column>
                 <Column>
-                  <Text style={itemText}>{formatCurrency(item.price)}</Text>
+                  <Text style={itemText}>${item.price.toFixed(2)}</Text>
                 </Column>
               </Row>
             ))}
             
             <Row style={totalRow}>
               <Column>
-                <Text style={totalText}>
-                  Subtotal{includeGstInPrices ? '' : ' (ex. GST)'}: {formatCurrency(includeGstInPrices ? subtotal : subtotalBeforeGst)}
-                </Text>
+                <Text style={totalText}>Subtotal: ${subtotal.toFixed(2)}</Text>
               </Column>
             </Row>
             
-            {deliveryFee > 0 && (
-              <Row style={totalRow}>
-                <Column>
-                  <Text style={totalText}>
-                    Delivery Fee{includeGstInPrices ? '' : ' (ex. GST)'}: {formatCurrency(includeGstInPrices ? deliveryFee : deliveryFeeBeforeGst)}
-                  </Text>
-                </Column>
-              </Row>
-            )}
-
-            {serviceCharge > 0 && (
-              <Row style={totalRow}>
-                <Column>
-                  <Text style={totalText}>
-                    Service Charge{includeGstInPrices ? '' : ' (ex. GST)'}: {formatCurrency(includeGstInPrices ? serviceCharge : serviceChargeBeforeGst)}
-                  </Text>
-                </Column>
-              </Row>
-            )}
-
-            {gstAmount > 0 && (
-              <Row style={totalRow}>
-                <Column>
-                  <Text style={totalText}>
-                    {gstLabel} ({gstRate}%): {formatCurrency(gstAmount)}
-                  </Text>
-                </Column>
-              </Row>
-            )}
+            <Row style={totalRow}>
+              <Column>
+                <Text style={totalText}>Delivery Fee: ${deliveryFee.toFixed(2)}</Text>
+              </Column>
+            </Row>
             
             <Row style={totalRow}>
               <Column>
-                <Text style={totalTextBold}>Total Amount: {formatCurrency(totalAmount)}</Text>
+                <Text style={totalTextBold}>Total Amount: ${totalAmount.toFixed(2)}</Text>
               </Column>
             </Row>
           </Section>

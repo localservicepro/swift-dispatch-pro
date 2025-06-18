@@ -65,19 +65,3 @@ export interface SplitConfig {
   deliveryTime: string;
   specialInstructions: string;
 }
-
-// Add Split type that matches the expected interface for OrderReviewStep
-export interface Split {
-  id: string;
-  name: string;
-  products: Array<{
-    productId: string;
-    quantity: number;
-  }>;
-  truckType: TruckType;
-  truckId: string;
-  driverId: string;
-  deliveryDate: string;
-  deliveryTime: string;
-  specialInstructions: string;
-}
