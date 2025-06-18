@@ -1,4 +1,5 @@
 
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -90,7 +91,7 @@ export function DeliveryDetailsStep({
         return "Continue Despite Conflicts";
       }
     }
-    return "Review Order";
+    return "Continue to Payment";
   };
 
   const getButtonStyle = () => {
@@ -111,7 +112,7 @@ export function DeliveryDetailsStep({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Truck className="w-5 h-5" />
-          Step 3: Delivery Details
+          Step 5: Delivery Details
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">

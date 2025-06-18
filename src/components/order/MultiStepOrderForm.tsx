@@ -1,9 +1,11 @@
 
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
 import { ProductSelectionStep } from "./ProductSelectionStep";
 import { OrderTypeSelectionStep } from "./OrderTypeSelectionStep";
+import { DeliveryAddressStep } from "./DeliveryAddressStep";
 import { SplitOrderConfigurationStep } from "./SplitOrderConfigurationStep";
 import { DeliveryDetailsStep } from "./DeliveryDetailsStep";
 import { PaymentMethodStep } from "./PaymentMethodStep";
@@ -41,6 +43,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     paymentMethod,
     deliveryAddress,
     sameAsBilling,
+    useGlobalDeliveryAddress,
     subtotal,
     deliveryFee,
     setSelectedCustomer,
@@ -57,6 +60,9 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setDriverName,
     setSpecialInstructions,
     setPaymentMethod,
+    setDeliveryAddress,
+    setSameAsBilling,
+    setUseGlobalDeliveryAddress,
     nextStep,
     prevStep
   } = useOrderFormState();
@@ -130,7 +136,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
   return (
     <div className="space-y-6">
-      <ProgressIndicator currentStep={currentStep} />
+      <ProgressIndicator currentStep={currentStep} totalSteps={7} />
 
       {currentStep === 1 && (
         <CustomerSearchStep
@@ -161,7 +167,24 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {currentStep === 4 && orderType === "split" && (
+      {currentStep === 4 && selectedCustomer && (
+        <DeliveryAddressStep
+          customer={selectedCustomer}
+          orderType={orderType}
+          deliveryAddress={deliveryAddress}
+          sameAsBilling={sameAsBilling}
+          useGlobalDeliveryAddress={useGlobalDeliveryAddress}
+          splits={splits}
+          onDeliveryAddressChange={setDeliveryAddress}
+          onSameAsBillingChange={setSameAsBilling}
+          onUseGlobalDeliveryAddressChange={setUseGlobalDeliveryAddress}
+          onSplitsChange={setSplits}
+          onBack={prevStep}
+          onNext={nextStep}
+        />
+      )}
+
+      {currentStep === 5 && orderType === "split" && (
         <SplitOrderConfigurationStep
           cart={cart}
           splits={splits}
@@ -171,7 +194,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {currentStep === 4 && orderType === "single" && (
+      {currentStep === 5 && orderType === "single" && (
         <DeliveryDetailsStep
           deliveryDate={deliveryDate}
           deliveryTime={deliveryTime}
@@ -190,7 +213,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {currentStep === 5 && selectedCustomer && (
+      {currentStep === 6 && selectedCustomer && (
         <PaymentMethodStep
           customer={selectedCustomer}
           paymentMethod={paymentMethod}
@@ -200,7 +223,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {currentStep === 6 && selectedCustomer && (
+      {currentStep === 7 && selectedCustomer && (
         <OrderReviewStep
           customer={selectedCustomer}
           cart={cart}

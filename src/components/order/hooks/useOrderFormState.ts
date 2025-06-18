@@ -1,4 +1,5 @@
 
+
 import { useState } from "react";
 import { Customer, CartItem, SplitConfig, TruckType, Truck } from "../types";
 
@@ -28,7 +29,7 @@ export function useOrderFormState() {
   const [sameAsBilling, setSameAsBilling] = useState(true);
   const [useGlobalDeliveryAddress, setUseGlobalDeliveryAddress] = useState(true);
 
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 6));
+  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 7));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
   const subtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
