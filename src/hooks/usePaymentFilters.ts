@@ -57,7 +57,6 @@ export function usePaymentFilters(payments: PaymentOrder[]) {
     // Apply date range filter
     if (filters.dateRange !== 'all') {
       const now = new Date();
-      const paymentDate = new Date(payment => payment.created_at);
       
       filtered = filtered.filter(payment => {
         const createdAt = new Date(payment.created_at);
