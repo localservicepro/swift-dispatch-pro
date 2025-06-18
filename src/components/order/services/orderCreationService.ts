@@ -58,6 +58,11 @@ async function createSingleOrder(params: CreateOrderParams, orderTotals: any, pa
   // Generate unique order number
   const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+  // Convert truck_type to proper enum value or null
+  const validTruckType = params.truckType && ['small', 'medium', 'large', 'crane'].includes(params.truckType) 
+    ? params.truckType as 'small' | 'medium' | 'large' | 'crane'
+    : null;
+
   const orderData = {
     order_number: orderNumber,
     customer_id: params.selectedCustomer.id,
@@ -74,14 +79,13 @@ async function createSingleOrder(params: CreateOrderParams, orderTotals: any, pa
     delivery_method: params.deliveryMethod,
     delivery_date: params.deliveryDate || null,
     delivery_time: params.deliveryTime || null,
-    truck_type: params.truckType || null,
+    truck_type: validTruckType,
     truck_id: params.truckId || null,
     driver_id: params.driverId || null,
     special_instructions: params.specialInstructions,
     payment_method: params.paymentMethod,
     status: 'preparing' as const,
     is_split_order: false,
-    // Store surcharge and GST amounts as metadata
     payment_status: 'pending'
   };
 
@@ -89,7 +93,7 @@ async function createSingleOrder(params: CreateOrderParams, orderTotals: any, pa
 
   const { data: order, error } = await supabase
     .from('orders')
-    .insert([orderData])
+    .insert(orderData)
     .select()
     .single();
 
@@ -136,7 +140,7 @@ async function createSplitOrder(params: CreateOrderParams, orderTotals: any, pay
 
   const { data: masterOrder, error: masterError } = await supabase
     .from('orders')
-    .insert([masterOrderData])
+    .insert(masterOrderData)
     .select()
     .single();
 
@@ -162,6 +166,11 @@ async function createSplitOrder(params: CreateOrderParams, orderTotals: any, pay
       paymentSettings
     );
 
+    // Convert truck_type to proper enum value or null
+    const validSplitTruckType = split.truckType && ['small', 'medium', 'large', 'crane'].includes(split.truckType) 
+      ? split.truckType as 'small' | 'medium' | 'large' | 'crane'
+      : null;
+
     const splitOrderData = {
       order_number: splitOrderNumber,
       customer_id: params.selectedCustomer.id,
@@ -178,7 +187,7 @@ async function createSplitOrder(params: CreateOrderParams, orderTotals: any, pay
       delivery_method: params.deliveryMethod,
       delivery_date: split.deliveryDate,
       delivery_time: split.deliveryTime,
-      truck_type: split.truckType,
+      truck_type: validSplitTruckType,
       truck_id: split.truckId,
       driver_id: split.driverId,
       special_instructions: split.specialInstructions,
@@ -192,7 +201,7 @@ async function createSplitOrder(params: CreateOrderParams, orderTotals: any, pay
 
     const { data: splitOrder, error: splitError } = await supabase
       .from('orders')
-      .insert([splitOrderData])
+      .insert(splitOrderData)
       .select()
       .single();
 
