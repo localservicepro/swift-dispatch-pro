@@ -177,7 +177,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {/* Order Type Selection - Only for delivery orders */}
+      {/* Order Type Selection - Only for delivery orders (Step 4) */}
       {currentStep === 4 && deliveryMethod === "delivery" && (
         <OrderTypeSelectionStep
           orderType={orderType}
@@ -220,7 +220,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {/* Delivery Address Step - Only for delivery orders */}
+      {/* Delivery Address Step - Only for delivery orders (Step 5) */}
       {currentStep === 5 && selectedCustomer && deliveryMethod === "delivery" && (
         <DeliveryAddressStep
           customer={selectedCustomer}
@@ -238,7 +238,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {/* Split Order Configuration - Only for delivery split orders */}
+      {/* Split Order Configuration - Only for delivery split orders (Step 6) */}
       {currentStep === 6 && orderType === "split" && deliveryMethod === "delivery" && (
         <SplitOrderConfigurationStep
           cart={cart}
@@ -249,7 +249,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         />
       )}
 
-      {/* Delivery Details - Only for delivery single orders */}
+      {/* Delivery Details - Only for delivery single orders (Step 6) */}
       {currentStep === 6 && orderType === "single" && deliveryMethod === "delivery" && (
         <DeliveryDetailsStep
           deliveryDate={deliveryDate}
