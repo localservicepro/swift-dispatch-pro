@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,12 +15,12 @@ import {
   ArrowRight,
   Clock,
   CheckCircle,
-  CreditCard,
   Eye
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { useAuth } from "../auth/AuthProvider";
 import { activityLogger } from "@/utils/activityLogger";
+import { PaymentStatusDropdown } from "./PaymentStatusDropdown";
 
 interface OpportunityCardProps {
   order: any;
@@ -149,22 +150,9 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
     }
   };
 
-  const getStatusBadge = () => {
-    if (order.payment_status === 'paid') {
-      return <Badge className="bg-green-100 text-green-800">Paid</Badge>;
-    }
-    if (order.payment_status === 'pending') {
-      return <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1">
-        <CreditCard className="w-3 h-3" />
-        Payment Pending
-      </Badge>;
-    }
-    return null;
-  };
-
   const handleCardClick = (e: React.MouseEvent) => {
-    // Don't trigger card click if clicking on action buttons
-    if ((e.target as HTMLElement).closest('button')) {
+    // Don't trigger card click if clicking on action buttons or payment dropdown
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('[role="menuitem"]')) {
       return;
     }
     onOrderClick(order);
@@ -196,7 +184,7 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
             <h3 className="font-semibold text-slate-800 text-sm">{order.order_number}</h3>
             <Eye className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-          {getStatusBadge()}
+          <PaymentStatusDropdown order={order} onStatusUpdate={onOrderMove} />
         </div>
 
         {/* Customer Info */}
@@ -274,7 +262,7 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
             {currentStage === 'delivered' ? (
               <CheckCircle className="w-3 h-3" />
             ) : !canMove ? (
-              <CreditCard className="w-3 h-3" />
+              <Clock className="w-3 h-3" />
             ) : (
               <ArrowRight className="w-3 h-3" />
             )}
