@@ -271,7 +271,7 @@ export function DashboardOverview() {
       </div>
 
       {/* Key Metrics Cards */}
-      <div className="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-blue-700 flex items-center gap-2">
