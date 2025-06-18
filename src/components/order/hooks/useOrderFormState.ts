@@ -11,7 +11,7 @@ export function useOrderFormState() {
   // Delivery method state
   const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup" | "">("");
   
-  // Order splitting state
+  // Order splitting state - auto-set to "single" for pickup orders
   const [orderType, setOrderType] = useState<"single" | "split">("single");
   const [splits, setSplits] = useState<SplitConfig[]>([]);
   
@@ -34,15 +34,28 @@ export function useOrderFormState() {
   // Dynamic step calculation based on delivery method
   const getTotalSteps = () => {
     if (deliveryMethod === "pickup") {
-      return 6; // Customer → Products → Delivery Method → Order Type → Payment → Review
+      return 5; // Customer → Products → Method → Payment → Review
     }
-    return 8; // Customer → Products → Delivery Method → Order Type → Address → Details → Payment → Review
+    return 8; // Customer → Products → Method → Order Type → Address → Details → Payment → Review
+  };
+
+  // Enhanced delivery method setter to auto-set order type
+  const handleDeliveryMethodChange = (method: "delivery" | "pickup") => {
+    setDeliveryMethod(method);
+    if (method === "pickup") {
+      setOrderType("single"); // Auto-set to single for pickup orders
+    }
   };
 
   const nextStep = () => {
     const totalSteps = getTotalSteps();
     setCurrentStep(prev => {
       const next = prev + 1;
+      
+      // Skip Order Type step for pickup orders
+      if (deliveryMethod === "pickup" && next === 4) {
+        return 5; // Skip to Payment step
+      }
       
       // Skip delivery-related steps for pickup orders
       if (deliveryMethod === "pickup") {
@@ -57,6 +70,11 @@ export function useOrderFormState() {
   const prevStep = () => {
     setCurrentStep(prev => {
       const previous = prev - 1;
+      
+      // Skip Order Type step for pickup orders when going back
+      if (deliveryMethod === "pickup" && previous === 4) {
+        return 3; // Go back to Method step
+      }
       
       // Skip delivery-related steps for pickup orders when going back
       if (deliveryMethod === "pickup") {
@@ -99,7 +117,7 @@ export function useOrderFormState() {
     setSelectedCustomer,
     setCart,
     setAdjustments,
-    setDeliveryMethod,
+    setDeliveryMethod: handleDeliveryMethodChange,
     setOrderType,
     setSplits,
     setDeliveryDate,
