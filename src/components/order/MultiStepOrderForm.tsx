@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
@@ -38,6 +39,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     driverName,
     specialInstructions,
     paymentMethod,
+    deliveryAddress,
+    sameAsBilling,
     subtotal,
     deliveryFee,
     setSelectedCustomer,
@@ -95,7 +98,9 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         truckId,
         driverId,
         specialInstructions,
-        paymentMethod
+        paymentMethod,
+        deliveryAddress,
+        sameAsBilling
       });
 
       if (result.type === 'single') {
