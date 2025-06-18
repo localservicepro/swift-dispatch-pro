@@ -1,4 +1,3 @@
-
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +21,6 @@ const menuItems = [
   { title: "Dashboard", icon: BarChart3, id: "dashboard" },
   { title: "Pipeline", icon: Target, id: "opportunities" },
   { title: "Orders", icon: ShoppingCart, id: "orders" },
-  { title: "Deleted", icon: Trash2, id: "deleted-orders" },
   { title: "Products", icon: Package, id: "products" },
   { title: "Customers", icon: Users, id: "customers" },
   { title: "Payments", icon: CreditCard, id: "payments" },

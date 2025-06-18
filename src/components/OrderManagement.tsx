@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { MultiStepOrderForm } from "./order/MultiStepOrderForm";
 import { OrderEditDialog } from "./order/OrderEditDialog";
+import { DeletedOrdersDialog } from "./order/DeletedOrdersDialog";
 import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Filter, X, MapPin, Truck, FileText } from "lucide-react";
@@ -407,12 +408,15 @@ export function OrderManagement() {
           <h2 className="text-3xl font-bold text-slate-800">Order Management</h2>
           <p className="text-slate-600 mt-1">Create and manage customer orders • Real-time updates enabled</p>
         </div>
-        <Button 
-          onClick={() => setIsCreating(true)} 
-          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-        >
-          Create New Order
-        </Button>
+        <div className="flex items-center gap-3">
+          <DeletedOrdersDialog />
+          <Button 
+            onClick={() => setIsCreating(true)} 
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+          >
+            Create New Order
+          </Button>
+        </div>
       </div>
 
       {isCreating && (

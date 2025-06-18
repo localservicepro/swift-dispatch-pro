@@ -1,4 +1,3 @@
-
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -39,11 +38,6 @@ const menuItems = [
     title: "Order Management",
     icon: ShoppingCart,
     id: "orders",
-  },
-  {
-    title: "Deleted Orders",
-    icon: Trash2,
-    id: "deleted-orders",
   },
   {
     title: "Products",
