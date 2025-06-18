@@ -11,11 +11,21 @@ import { OrderEditDialog } from "./order/OrderEditDialog";
 import { DeletedOrdersDialog } from "./order/DeletedOrdersDialog";
 import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Filter, X, MapPin, Truck, FileText } from "lucide-react";
+import { Search, Filter, X, MapPin, Truck, FileText, Trash2 } from "lucide-react";
 import { emailService } from "@/utils/emailService";
 import { activityLogger } from "@/utils/activityLogger";
 import { useAuth } from "./auth/AuthProvider";
 import { getTruckInfo } from "@/utils/truckUtils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -44,6 +54,8 @@ export function OrderManagement() {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { profile } = useAuth();
@@ -193,6 +205,50 @@ export function OrderManagement() {
 
   // Check if any filters are active
   const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all";
+
+  // Handle soft delete with confirmation
+  const handleDeleteOrder = async () => {
+    if (!deletingOrder || isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.rpc('soft_delete_order', {
+        p_order_id: deletingOrder.id,
+        p_reason: 'Admin deletion'
+      });
+
+      if (error) throw error;
+
+      // Log the activity
+      if (profile?.full_name) {
+        await activityLogger.orderSoftDelete(
+          deletingOrder.id,
+          deletingOrder.order_number,
+          deletingOrder.customer_name,
+          'Admin deletion',
+          profile.full_name
+        );
+      }
+
+      toast({
+        title: "Order Deleted",
+        description: `Order ${deletingOrder.order_number} has been moved to deleted orders`,
+      });
+
+      // Refresh orders
+      refetch();
+      setDeletingOrder(null);
+    } catch (error: any) {
+      console.error('Delete order error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete order. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Set up real-time subscription for order updates with email notifications
   useEffect(() => {
@@ -449,6 +505,48 @@ export function OrderManagement() {
         />
       )}
 
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingOrder} onOpenChange={() => setDeletingOrder(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-600" />
+              Delete Order
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this order? This action will move the order to deleted orders where it can be restored if needed.
+              {deletingOrder && (
+                <div className="mt-3 p-3 bg-slate-50 rounded-lg">
+                  <p><strong>Order:</strong> {deletingOrder.order_number}</p>
+                  <p><strong>Customer:</strong> {deletingOrder.customer_name}</p>
+                  <p><strong>Amount:</strong> ${deletingOrder.total_amount.toFixed(2)}</p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteOrder}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b border-white"></div>
+                  Deleting...
+                </div>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete Order
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -672,6 +770,16 @@ export function OrderManagement() {
                         onClick={() => updateOrderStatus(order.id, 'cancelled', order)}
                       >
                         Cancel
+                      </Button>
+
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => setDeletingOrder(order)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Delete
                       </Button>
                     </div>
                   </div>
