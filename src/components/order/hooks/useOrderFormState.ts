@@ -22,6 +22,11 @@ export function useOrderFormState() {
   const [driverName, setDriverName] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  
+  // Delivery address state
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [sameAsBilling, setSameAsBilling] = useState(true);
+  const [useGlobalDeliveryAddress, setUseGlobalDeliveryAddress] = useState(true);
 
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 6));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
@@ -46,6 +51,9 @@ export function useOrderFormState() {
     driverName,
     specialInstructions,
     paymentMethod,
+    deliveryAddress,
+    sameAsBilling,
+    useGlobalDeliveryAddress,
     subtotal,
     deliveryFee,
     
@@ -64,6 +72,9 @@ export function useOrderFormState() {
     setDriverName,
     setSpecialInstructions,
     setPaymentMethod,
+    setDeliveryAddress,
+    setSameAsBilling,
+    setUseGlobalDeliveryAddress,
     
     // Navigation
     nextStep,

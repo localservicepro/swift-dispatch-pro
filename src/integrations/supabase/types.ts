@@ -592,6 +592,7 @@ export type Database = {
           customer_phone: string | null
           deleted_at: string | null
           deleted_by: string | null
+          delivery_address: string
           delivery_date: string | null
           delivery_fee: number | null
           delivery_time: string | null
@@ -606,6 +607,7 @@ export type Database = {
           payment_method: string | null
           payment_status: string | null
           products: Json
+          same_as_billing: boolean | null
           special_instructions: string | null
           split_number: number | null
           status: Database["public"]["Enums"]["order_status"]
@@ -625,6 +627,7 @@ export type Database = {
           customer_phone?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          delivery_address: string
           delivery_date?: string | null
           delivery_fee?: number | null
           delivery_time?: string | null
@@ -639,6 +642,7 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string | null
           products: Json
+          same_as_billing?: boolean | null
           special_instructions?: string | null
           split_number?: number | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -658,6 +662,7 @@ export type Database = {
           customer_phone?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          delivery_address?: string
           delivery_date?: string | null
           delivery_fee?: number | null
           delivery_time?: string | null
@@ -672,6 +677,7 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string | null
           products?: Json
+          same_as_billing?: boolean | null
           special_instructions?: string | null
           split_number?: number | null
           status?: Database["public"]["Enums"]["order_status"]

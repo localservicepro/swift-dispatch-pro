@@ -64,4 +64,6 @@ export interface SplitConfig {
   deliveryDate: string;
   deliveryTime: string;
   specialInstructions: string;
+  deliveryAddress?: string;
+  sameAsBilling: boolean;
 }

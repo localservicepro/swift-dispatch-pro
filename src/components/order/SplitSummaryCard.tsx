@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Truck, Calendar, Clock, Minus, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Truck, Calendar, Clock, Minus, Plus, ChevronDown, ChevronUp, MapPin } from "lucide-react";
 import { useState } from "react";
-import { CartItem, SplitConfig } from "./types";
+import { CartItem, SplitConfig, Customer } from "./types";
 import { TruckTypeSelector } from "./TruckTypeSelector";
 import { SpecificTruckSelector } from "./SpecificTruckSelector";
 import { DriverSelector } from "./DriverSelector";
@@ -16,6 +17,8 @@ interface SplitSummaryCardProps {
   split: SplitConfig;
   splitIndex: number;
   cart: CartItem[];
+  customer: Customer;
+  useGlobalDeliveryAddress: boolean;
   onUpdateSplit: (splitIndex: number, updates: Partial<SplitConfig>) => void;
   onUpdateQuantity: (splitIndex: number, productId: string, quantity: number) => void;
   onRemoveProduct: (splitIndex: number, productId: string) => void;
@@ -26,6 +29,8 @@ export function SplitSummaryCard({
   split, 
   splitIndex, 
   cart, 
+  customer,
+  useGlobalDeliveryAddress,
   onUpdateSplit, 
   onUpdateQuantity, 
   onRemoveProduct,
@@ -40,7 +45,8 @@ export function SplitSummaryCard({
 
   const totalItems = split.products.reduce((sum, p) => sum + p.quantity, 0);
 
-  const isConfigurationComplete = split.truckType && split.truckId && split.deliveryDate && split.deliveryTime;
+  const isConfigurationComplete = split.truckType && split.truckId && split.deliveryDate && split.deliveryTime &&
+    (useGlobalDeliveryAddress || split.sameAsBilling || (split.deliveryAddress && split.deliveryAddress.trim() !== ""));
 
   const handleTruckSelect = (truckId: string, truckDetails: any) => {
     onUpdateSplit(splitIndex, { truckId });
@@ -48,6 +54,17 @@ export function SplitSummaryCard({
 
   const handleDriverChange = (driverId: string) => {
     onUpdateSplit(splitIndex, { driverId });
+  };
+
+  const handleSameAsBillingChange = (checked: boolean) => {
+    onUpdateSplit(splitIndex, { 
+      sameAsBilling: checked,
+      deliveryAddress: checked ? customer.full_address : split.deliveryAddress
+    });
+  };
+
+  const handleDeliveryAddressChange = (address: string) => {
+    onUpdateSplit(splitIndex, { deliveryAddress: address });
   };
 
   return (
@@ -129,6 +146,42 @@ export function SplitSummaryCard({
               {split.products.length === 0 && (
                 <div className="text-center py-2 text-gray-500 bg-gray-50 rounded text-xs">
                   No products assigned to this split yet
+                </div>
+              )}
+
+              {/* Individual Delivery Address (only show if not using global) */}
+              {!useGlobalDeliveryAddress && (
+                <div className="border rounded-lg p-3 bg-yellow-50">
+                  <Label className="text-xs font-medium mb-2 block flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    Delivery Address for {split.name}
+                  </Label>
+                  
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Checkbox
+                      id={`same-billing-${splitIndex}`}
+                      checked={split.sameAsBilling}
+                      onCheckedChange={handleSameAsBillingChange}
+                    />
+                    <Label htmlFor={`same-billing-${splitIndex}`} className="text-xs">
+                      Same as billing address
+                    </Label>
+                  </div>
+
+                  {!split.sameAsBilling && (
+                    <Input
+                      value={split.deliveryAddress || ""}
+                      onChange={(e) => handleDeliveryAddressChange(e.target.value)}
+                      placeholder="Enter delivery address..."
+                      className="h-7 text-xs"
+                    />
+                  )}
+
+                  {split.sameAsBilling && (
+                    <div className="text-xs text-gray-600 bg-white p-2 rounded border">
+                      {customer.full_address}
+                    </div>
+                  )}
                 </div>
               )}
 
