@@ -50,7 +50,7 @@ const menuItems = [
     key: "payments",
   },
   {
-    title: "Staffs",
+    title: "Team",
     icon: Users,
     key: "drivers",
   },

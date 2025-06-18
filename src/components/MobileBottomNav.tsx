@@ -28,7 +28,7 @@ const navItems = [
     key: "products",
   },
   {
-    title: "Staffs",
+    title: "Team",
     icon: Users,
     key: "drivers",
   },

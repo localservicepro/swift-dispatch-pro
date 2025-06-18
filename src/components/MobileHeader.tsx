@@ -29,7 +29,7 @@ const getPageTitle = (activeTab: string) => {
     case "payments":
       return "Payment Management";
     case "drivers":
-      return "Driver Management";
+      return "Team Management";
     case "emails":
       return "Email Management";
     case "settings":

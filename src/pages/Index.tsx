@@ -8,7 +8,6 @@ import { OpportunityPipeline } from "@/components/OpportunityPipeline";
 import { OrderManagement } from "@/components/OrderManagement";
 import { ProductManagement } from "@/components/ProductManagement";
 import { PaymentManagement } from "@/components/PaymentManagement";
-import { DriverManagement } from "@/components/DriverManagement";
 import { EmailManagement } from "@/components/EmailManagement";
 import { CustomerManagement } from "@/components/CustomerManagement";
 import { Settings } from "@/components/Settings";
@@ -16,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, Loader2 } from "lucide-react";
+import { TeamManagement } from "@/components/TeamManagement";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -54,7 +54,7 @@ const Index = () => {
       case "payments":
         return <PaymentManagement />;
       case "drivers":
-        return <DriverManagement />;
+        return <TeamManagement />;
       case "emails":
         return <EmailManagement />;
       case "settings":
