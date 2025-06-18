@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +14,8 @@ import {
   Truck,
   ArrowRight,
   Clock,
-  CheckCircle
+  CheckCircle,
+  CreditCard
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { useAuth } from "../auth/AuthProvider";
@@ -37,6 +39,10 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
   };
 
   const getNextStageAction = (current: string) => {
+    if (current === 'requested' && order.payment_status === 'pending') {
+      return 'Awaiting Payment';
+    }
+    
     switch (current) {
       case 'requested': return 'Confirm Order';
       case 'preparing': return 'Start Loading';
@@ -46,9 +52,27 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
     }
   };
 
+  const canMoveToNextStage = (current: string) => {
+    // If in requested stage with pending payment, cannot move
+    if (current === 'requested' && order.payment_status === 'pending') {
+      return false;
+    }
+    return true;
+  };
+
   const moveToNextStage = async () => {
     const nextStage = getNextStage(currentStage);
     if (!nextStage || isMoving) return;
+
+    // Check if move is allowed
+    if (!canMoveToNextStage(currentStage)) {
+      toast({
+        title: "Payment Required",
+        description: `Order ${order.order_number} requires payment confirmation before it can be processed`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsMoving(true);
     try {
@@ -129,13 +153,17 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
       return <Badge className="bg-green-100 text-green-800">Paid</Badge>;
     }
     if (order.payment_status === 'pending') {
-      return <Badge className="bg-yellow-100 text-yellow-800">Payment Pending</Badge>;
+      return <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1">
+        <CreditCard className="w-3 h-3" />
+        Payment Pending
+      </Badge>;
     }
     return null;
   };
 
   const truckInfo = getTruckInfo(order.truck_type_from_truck || order.truck_type);
   const nextAction = getNextStageAction(currentStage);
+  const canMove = canMoveToNextStage(currentStage);
 
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer border border-slate-200">
@@ -207,12 +235,17 @@ export function OpportunityCard({ order, currentStage, onOrderMove }: Opportunit
         {nextAction && currentStage !== 'delivered' && (
           <Button
             size="sm"
-            onClick={moveToNextStage}
-            disabled={isMoving}
-            className="w-full flex items-center gap-2 text-xs"
+            onClick={canMove ? moveToNextStage : undefined}
+            disabled={isMoving || !canMove}
+            className={`w-full flex items-center gap-2 text-xs ${
+              !canMove ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border border-yellow-300' : ''
+            }`}
+            variant={!canMove ? 'outline' : 'default'}
           >
             {currentStage === 'delivered' ? (
               <CheckCircle className="w-3 h-3" />
+            ) : !canMove ? (
+              <CreditCard className="w-3 h-3" />
             ) : (
               <ArrowRight className="w-3 h-3" />
             )}
