@@ -5,6 +5,8 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Package, User, MapPin, Clock, Truck, CreditCard, Store } from "lucide-react";
 import { Customer, CartItem, Truck as TruckType } from "./types";
+import { usePaymentSettings } from "@/hooks/usePaymentSettings";
+import { calculateOrderTotals, formatCurrency } from "./utils/paymentCalculations";
 
 interface OrderReviewStepProps {
   customer: Customer;
@@ -43,8 +45,37 @@ export function OrderReviewStep({
   onConfirm,
   isCreating
 }: OrderReviewStepProps) {
-  const total = subtotal + adjustments + deliveryFee;
+  const { data: paymentSettings } = usePaymentSettings();
   const stepNumber = deliveryMethod === "pickup" ? "5" : "8";
+
+  // Calculate totals with payment settings
+  const orderTotals = paymentSettings ? 
+    calculateOrderTotals(subtotal, adjustments, deliveryFee, paymentMethod, paymentSettings) :
+    {
+      subtotal,
+      adjustments,
+      deliveryFee,
+      surchargeAmount: 0,
+      gstAmount: (subtotal + adjustments + deliveryFee) * 0.1,
+      totalAmount: (subtotal + adjustments + deliveryFee) * 1.1,
+      hasSurcharge: false,
+      surchargeRate: 0,
+      gstRate: 10
+    };
+
+  const getPaymentMethodLabel = (method: string) => {
+    const labels: { [key: string]: string } = {
+      'cash': 'Cash',
+      'card_on_file': 'Card on File',
+      'invoice': 'Invoice',
+      '7_day_invoice': '7 Day Invoice',
+      'in_yard_cash': 'In Yard - Cash',
+      'in_yard_card': 'In Yard - Card',
+      'account_cash': 'Account - Cash',
+      'account_card': 'Account - Card'
+    };
+    return labels[method] || method;
+  };
 
   return (
     <Card>
@@ -155,11 +186,16 @@ export function OrderReviewStep({
             Payment Method
           </h3>
           <div className="bg-gray-50 p-4 rounded-lg">
-            <Badge variant="outline">
-              {paymentMethod === 'cash' ? 'Cash' : 
-               paymentMethod === 'card_on_file' ? 'Card on File' : 
-               paymentMethod === 'invoice' ? 'Invoice' : paymentMethod}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">
+                {getPaymentMethodLabel(paymentMethod)}
+              </Badge>
+              {orderTotals.hasSurcharge && paymentSettings && (
+                <Badge variant="secondary" className="text-orange-600 bg-orange-50">
+                  +{paymentSettings.service_charge_rate}% surcharge
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
 
@@ -169,26 +205,36 @@ export function OrderReviewStep({
           <div className="bg-gray-50 p-4 rounded-lg space-y-2">
             <div className="flex justify-between">
               <span>Subtotal:</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>{formatCurrency(orderTotals.subtotal)}</span>
             </div>
-            {adjustments !== 0 && (
+            {orderTotals.adjustments !== 0 && (
               <div className="flex justify-between">
                 <span>Adjustments:</span>
-                <span className={adjustments > 0 ? "text-green-600" : "text-red-600"}>
-                  ${adjustments > 0 ? '+' : ''}${adjustments.toFixed(2)}
+                <span className={orderTotals.adjustments > 0 ? "text-green-600" : "text-red-600"}>
+                  {orderTotals.adjustments > 0 ? '+' : ''}{formatCurrency(orderTotals.adjustments)}
                 </span>
               </div>
             )}
-            {deliveryMethod === "delivery" && (
+            {deliveryMethod === "delivery" && orderTotals.deliveryFee > 0 && (
               <div className="flex justify-between">
                 <span>Delivery Fee:</span>
-                <span>${deliveryFee.toFixed(2)}</span>
+                <span>{formatCurrency(orderTotals.deliveryFee)}</span>
               </div>
             )}
+            {orderTotals.hasSurcharge && orderTotals.surchargeAmount > 0 && (
+              <div className="flex justify-between text-orange-600">
+                <span>Surcharge ({paymentSettings?.service_charge_rate || 0}%):</span>
+                <span>{formatCurrency(orderTotals.surchargeAmount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-blue-600">
+              <span>{paymentSettings?.gst_label || 'GST'} ({paymentSettings?.gst_rate || 10}%):</span>
+              <span>{formatCurrency(orderTotals.gstAmount)}</span>
+            </div>
             <Separator />
             <div className="flex justify-between font-semibold text-lg">
               <span>Total:</span>
-              <span>${total.toFixed(2)}</span>
+              <span>{formatCurrency(orderTotals.totalAmount)}</span>
             </div>
           </div>
         </div>

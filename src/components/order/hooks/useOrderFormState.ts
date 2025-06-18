@@ -1,6 +1,8 @@
 
 import { useState } from "react";
 import { Customer, CartItem, SplitConfig, TruckType, Truck } from "../types";
+import { usePaymentSettings } from "@/hooks/usePaymentSettings";
+import { calculateOrderTotals } from "../utils/paymentCalculations";
 
 export function useOrderFormState() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -31,6 +33,9 @@ export function useOrderFormState() {
   const [sameAsBilling, setSameAsBilling] = useState(true);
   const [useGlobalDeliveryAddress, setUseGlobalDeliveryAddress] = useState(true);
 
+  // Fetch payment settings for calculations
+  const { data: paymentSettings } = usePaymentSettings();
+
   // Dynamic step calculation based on delivery method
   const getTotalSteps = () => {
     if (deliveryMethod === "pickup") {
@@ -59,8 +64,25 @@ export function useOrderFormState() {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
+  // Calculate totals using payment settings
   const subtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
   const deliveryFee = deliveryMethod === "pickup" ? 0 : (selectedCustomer?.suburb?.delivery_rate || 0);
+  
+  // Use dynamic calculation with payment settings
+  const orderTotals = paymentSettings ? 
+    calculateOrderTotals(subtotal, adjustments, deliveryFee, paymentMethod, paymentSettings) :
+    {
+      subtotal,
+      adjustments,
+      deliveryFee,
+      surchargeAmount: 0,
+      gstAmount: (subtotal + adjustments + deliveryFee) * 0.1, // fallback 10% GST
+      totalAmount: (subtotal + adjustments + deliveryFee) * 1.1,
+      baseAmount: subtotal + adjustments + deliveryFee,
+      hasSurcharge: false,
+      surchargeRate: 0,
+      gstRate: 10
+    };
 
   return {
     // State
@@ -83,8 +105,13 @@ export function useOrderFormState() {
     deliveryAddress,
     sameAsBilling,
     useGlobalDeliveryAddress,
-    subtotal,
-    deliveryFee,
+    subtotal: orderTotals.subtotal,
+    deliveryFee: orderTotals.deliveryFee,
+    surchargeAmount: orderTotals.surchargeAmount,
+    gstAmount: orderTotals.gstAmount,
+    totalAmount: orderTotals.totalAmount,
+    orderTotals,
+    paymentSettings,
     
     // Setters
     setSelectedCustomer,
