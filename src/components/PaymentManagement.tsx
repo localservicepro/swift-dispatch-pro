@@ -8,6 +8,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Receipt, Bell, RefreshCw } from "lucide-react";
 import { useRealTimePayments } from "@/hooks/useRealTimePayments";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PaymentSearchFilters } from "@/components/payment/PaymentSearchFilters";
+import { usePaymentFilters } from "@/hooks/usePaymentFilters";
 
 interface PaymentOrder {
   id: string;
@@ -86,7 +88,17 @@ export function PaymentManagement() {
     refetchInterval: 30000 // Auto-refresh every 30 seconds
   });
 
-  // Generate and send invoice with payment link
+  // Initialize search and filter functionality
+  const {
+    searchTerm,
+    setSearchTerm,
+    filters,
+    filteredPayments,
+    handleFilterChange,
+    clearAllFilters,
+    activeFilterCount
+  } = usePaymentFilters(payments);
+
   const generateAndSendInvoice = async (orderId: string) => {
     if (generatingInvoices.includes(orderId)) return;
     setGeneratingInvoices(prev => [...prev, orderId]);
@@ -370,11 +382,11 @@ export function PaymentManagement() {
     setSelectedPayments(prev => prev.includes(paymentId) ? prev.filter(id => id !== paymentId) : [...prev, paymentId]);
   };
 
-  // Calculate statistics from real data including invoiced status
-  const totalReceived = payments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total_amount, 0);
-  const pendingPayments = payments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total_amount, 0);
-  const invoicedPayments = payments.filter(p => p.payment_status === 'invoiced').reduce((sum, p) => sum + p.total_amount, 0);
-  const overduePayments = payments.filter(p => p.payment_status === 'overdue').reduce((sum, p) => sum + p.total_amount, 0);
+  // Calculate statistics from filtered data
+  const totalReceived = filteredPayments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total_amount, 0);
+  const pendingPayments = filteredPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total_amount, 0);
+  const invoicedPayments = filteredPayments.filter(p => p.payment_status === 'invoiced').reduce((sum, p) => sum + p.total_amount, 0);
+  const overduePayments = filteredPayments.filter(p => p.payment_status === 'overdue').reduce((sum, p) => sum + p.total_amount, 0);
   
   if (error) {
     return <div className="space-y-6">
@@ -421,7 +433,17 @@ export function PaymentManagement() {
         </div>
       </div>
 
-      {/* Payment Statistics - Updated to include invoiced */}
+      {/* Search and Filter Controls */}
+      <PaymentSearchFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onClearFilters={clearAllFilters}
+        activeFilterCount={activeFilterCount}
+      />
+
+      {/* Payment Statistics - Updated to use filtered data */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardHeader className="pb-2">
@@ -472,6 +494,11 @@ export function PaymentManagement() {
               Payment Records 
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               <Bell className="w-4 h-4 text-green-500" />
+              {filteredPayments.length !== payments.length && (
+                <Badge variant="outline" className="ml-2">
+                  {filteredPayments.length} of {payments.length}
+                </Badge>
+              )}
             </CardTitle>
             <Badge className="bg-green-100 text-green-800">
               Real-time Updates Active
@@ -482,10 +509,15 @@ export function PaymentManagement() {
           {isLoading ? <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               <p className="mt-2 text-slate-600">Loading payment records...</p>
-            </div> : payments.length === 0 ? <div className="text-center py-8 text-slate-500">
-              <p>No payment records found.</p>
+            </div> : filteredPayments.length === 0 ? <div className="text-center py-8 text-slate-500">
+              <p>{payments.length === 0 ? "No payment records found." : "No payment records match your search criteria."}</p>
+              {activeFilterCount > 0 && (
+                <Button variant="outline" onClick={clearAllFilters} className="mt-2">
+                  Clear all filters
+                </Button>
+              )}
             </div> : <div className="space-y-4">
-              {payments.map(payment => <div key={payment.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
+              {filteredPayments.map(payment => <div key={payment.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <input 
