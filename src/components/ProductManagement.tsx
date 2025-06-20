@@ -9,9 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit, Trash2, Package, Search, ImageIcon } from "lucide-react";
+import { Plus, Edit, Trash2, Package, Search, ImageIcon, Settings, Layers, DollarSign } from "lucide-react";
 import { CategoryManagement } from "./CategoryManagement";
 import { ProductImageUpload } from "./ProductImageUpload";
+import { ProductAttributeManager } from "./product/ProductAttributeManager";
+import { PricingTierManager } from "./product/PricingTierManager";
 
 interface Product {
   id: string;
@@ -257,9 +259,12 @@ export function ProductManagement() {
 
   return (
     <Tabs defaultValue="products" className="space-y-6">
-      <TabsList>
+      <TabsList className="grid w-full grid-cols-5">
         <TabsTrigger value="products">Products</TabsTrigger>
         <TabsTrigger value="categories">Categories</TabsTrigger>
+        <TabsTrigger value="attributes">Attributes</TabsTrigger>
+        <TabsTrigger value="variations">Variations</TabsTrigger>
+        <TabsTrigger value="pricing">Pricing Tiers</TabsTrigger>
       </TabsList>
 
       <TabsContent value="products" className="space-y-6">
@@ -649,6 +654,32 @@ export function ProductManagement() {
 
       <TabsContent value="categories">
         <CategoryManagement />
+      </TabsContent>
+
+      <TabsContent value="attributes">
+        <ProductAttributeManager />
+      </TabsContent>
+
+      <TabsContent value="variations">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Layers className="w-5 h-5" />
+              Product Variations
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8 text-gray-500">
+              <Layers className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>Product variations management will be available here.</p>
+              <p className="text-sm">Create attributes first, then manage product variations.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="pricing">
+        <PricingTierManager />
       </TabsContent>
     </Tabs>
   );

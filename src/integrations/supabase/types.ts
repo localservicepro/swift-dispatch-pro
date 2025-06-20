@@ -115,6 +115,48 @@ export type Database = {
           },
         ]
       }
+      customer_pricing_tiers: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          customer_id: string
+          id: string
+          is_active: boolean
+          pricing_tier_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          customer_id: string
+          id?: string
+          is_active?: boolean
+          pricing_tier_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          customer_id?: string
+          id?: string
+          is_active?: boolean
+          pricing_tier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_pricing_tiers_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_pricing_tiers_pricing_tier_id_fkey"
+            columns: ["pricing_tier_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           auth_user_id: string | null
@@ -778,6 +820,119 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_tiers: {
+        Row: {
+          created_at: string
+          description: string | null
+          discount_percentage: number | null
+          display_name: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          discount_percentage?: number | null
+          display_name: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          discount_percentage?: number | null
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      product_attribute_values: {
+        Row: {
+          attribute_id: string
+          created_at: string
+          display_value: string
+          hex_color: string | null
+          id: string
+          is_active: boolean
+          sort_order: number
+          value: string
+        }
+        Insert: {
+          attribute_id: string
+          created_at?: string
+          display_value: string
+          hex_color?: string | null
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          value: string
+        }
+        Update: {
+          attribute_id?: string
+          created_at?: string
+          display_value?: string
+          hex_color?: string | null
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_attribute_values_attribute_id_fkey"
+            columns: ["attribute_id"]
+            isOneToOne: false
+            referencedRelation: "product_attributes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_attributes: {
+        Row: {
+          attribute_type: Database["public"]["Enums"]["attribute_type"]
+          created_at: string
+          display_name: string
+          id: string
+          is_active: boolean
+          is_required: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          attribute_type?: Database["public"]["Enums"]["attribute_type"]
+          created_at?: string
+          display_name: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          attribute_type?: Database["public"]["Enums"]["attribute_type"]
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_categories: {
         Row: {
           created_at: string
@@ -809,6 +964,166 @@ export type Database = {
             columns: ["parent_category_id"]
             isOneToOne: false
             referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_pricing: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          max_quantity: number | null
+          min_quantity: number | null
+          price: number
+          pricing_tier_id: string
+          product_id: string | null
+          updated_at: string
+          valid_from: string | null
+          valid_to: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_quantity?: number | null
+          min_quantity?: number | null
+          price: number
+          pricing_tier_id: string
+          product_id?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_quantity?: number | null
+          min_quantity?: number | null
+          price?: number
+          pricing_tier_id?: string
+          product_id?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_pricing_pricing_tier_id_fkey"
+            columns: ["pricing_tier_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_tiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_pricing_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_pricing_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_variant_attributes: {
+        Row: {
+          attribute_id: string
+          attribute_value_id: string
+          created_at: string
+          id: string
+          variant_id: string
+        }
+        Insert: {
+          attribute_id: string
+          attribute_value_id: string
+          created_at?: string
+          id?: string
+          variant_id: string
+        }
+        Update: {
+          attribute_id?: string
+          attribute_value_id?: string
+          created_at?: string
+          id?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variant_attributes_attribute_id_fkey"
+            columns: ["attribute_id"]
+            isOneToOne: false
+            referencedRelation: "product_attributes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_variant_attributes_attribute_value_id_fkey"
+            columns: ["attribute_value_id"]
+            isOneToOne: false
+            referencedRelation: "product_attribute_values"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_variant_attributes_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_variants: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          price_adjustment: number
+          product_id: string
+          sku: string | null
+          stock_quantity: number
+          updated_at: string
+          variant_name: string | null
+          weight_adjustment: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price_adjustment?: number
+          product_id: string
+          sku?: string | null
+          stock_quantity?: number
+          updated_at?: string
+          variant_name?: string | null
+          weight_adjustment?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price_adjustment?: number
+          product_id?: string
+          sku?: string | null
+          stock_quantity?: number
+          updated_at?: string
+          variant_name?: string | null
+          weight_adjustment?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -1071,6 +1386,7 @@ export type Database = {
       }
     }
     Enums: {
+      attribute_type: "select" | "color" | "size" | "text" | "number"
       delivery_method: "delivery" | "pickup"
       order_status:
         | "requested"
@@ -1196,6 +1512,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      attribute_type: ["select", "color", "size", "text", "number"],
       delivery_method: ["delivery", "pickup"],
       order_status: [
         "requested",
