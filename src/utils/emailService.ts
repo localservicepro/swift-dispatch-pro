@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 interface OrderConfirmationData {
@@ -45,6 +44,24 @@ interface InvoiceData {
   paymentStatus: string;
 }
 
+interface PaymentConfirmationData {
+  customerName: string;
+  customerEmail: string;
+  orderNumber: string;
+  invoiceNumber: string;
+  paymentAmount: number;
+  currency?: string;
+  paymentMethod: string;
+  transactionId: string;
+  orderItems?: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+  }>;
+  receiptDownloadUrl?: string;
+  paymentDate: string;
+}
+
 export const emailService = {
   async getCustomerEmail(orderId: string): Promise<string | null> {
     try {
@@ -69,6 +86,29 @@ export const emailService = {
     } catch (error) {
       console.error('Error getting customer email:', error);
       return null;
+    }
+  },
+
+  async sendPaymentConfirmation(data: PaymentConfirmationData) {
+    console.log('Sending payment confirmation email:', data);
+    
+    try {
+      const { error } = await supabase.functions.invoke('send-emails', {
+        body: {
+          type: 'payment-confirmation',
+          data
+        }
+      });
+      
+      if (error) {
+        console.error('Error sending payment confirmation:', error);
+        throw new Error(`Email service error: ${error.message}`);
+      }
+      
+      console.log('Payment confirmation email sent successfully');
+    } catch (error: any) {
+      console.error('Failed to send payment confirmation email:', error);
+      throw new Error(`Failed to send payment confirmation: ${error.message}`);
     }
   },
 

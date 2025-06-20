@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0'
@@ -139,6 +138,70 @@ const handler = async (req: Request): Promise<Response> => {
           } else {
             logStep('Order payment status updated successfully', { orderId, requestId });
             updateOperations.push('order_updated');
+          }
+
+          // Send payment confirmation email
+          try {
+            const { data: orderData, error: orderFetchError } = await supabase
+              .from('orders')
+              .select(`
+                order_number,
+                customer_name,
+                products,
+                customers!orders_customer_id_fkey(email)
+              `)
+              .eq('id', orderId)
+              .single();
+
+            const { data: invoiceData, error: invoiceFetchError } = await supabase
+              .from('invoices')
+              .select('invoice_number, amount, currency')
+              .eq('id', invoiceId)
+              .single();
+
+            if (!orderFetchError && !invoiceFetchError && orderData?.customers?.email) {
+              // Generate receipt
+              const { data: receiptData, error: receiptError } = await supabase.functions.invoke('generate-receipt', {
+                body: { invoiceId, sessionId }
+              });
+
+              const receiptDownloadUrl = receiptData?.downloadUrl || undefined;
+
+              // Send payment confirmation email
+              const { error: emailError } = await supabase.functions.invoke('send-emails', {
+                body: {
+                  type: 'payment-confirmation',
+                  data: {
+                    customerName: orderData.customer_name,
+                    customerEmail: orderData.customers.email,
+                    orderNumber: orderData.order_number,
+                    invoiceNumber: invoiceData.invoice_number,
+                    paymentAmount: invoiceData.amount,
+                    currency: invoiceData.currency || 'USD',
+                    paymentMethod: 'Credit Card',
+                    transactionId: sessionId,
+                    orderItems: orderData.products || [],
+                    receiptDownloadUrl,
+                    paymentDate: new Date().toLocaleDateString()
+                  }
+                }
+              });
+
+              if (emailError) {
+                logStep('Warning: Failed to send payment confirmation email', { 
+                  error: emailError, 
+                  requestId 
+                });
+              } else {
+                logStep('Payment confirmation email sent successfully', { requestId });
+                updateOperations.push('email_sent');
+              }
+            }
+          } catch (emailError: any) {
+            logStep('Warning: Failed to send payment confirmation email', { 
+              error: emailError.message, 
+              requestId 
+            });
           }
 
           // Log the payment verification success for audit trail

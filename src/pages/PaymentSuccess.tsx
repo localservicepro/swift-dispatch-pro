@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'failed'>('pending');
+  const [receiptDownloadUrl, setReceiptDownloadUrl] = useState<string>('');
 
   const sessionId = searchParams.get('session_id');
   const invoiceId = searchParams.get('invoice_id');
@@ -42,6 +44,19 @@ export default function PaymentSuccess() {
         } else if (data?.success) {
           console.log('Payment verified successfully');
           setVerificationStatus('success');
+          
+          // Generate receipt download URL
+          try {
+            const { data: receiptData } = await supabase.functions.invoke('generate-receipt', {
+              body: { invoiceId, sessionId }
+            });
+            
+            if (receiptData?.downloadUrl) {
+              setReceiptDownloadUrl(receiptData.downloadUrl);
+            }
+          } catch (receiptError) {
+            console.warn('Failed to generate receipt:', receiptError);
+          }
         } else {
           console.log('Payment verification failed:', data);
           setVerificationStatus('failed');
@@ -55,11 +70,53 @@ export default function PaymentSuccess() {
     runVerification();
   }, [sessionId, invoiceId]);
 
-  const handleDownloadReceipt = () => {
-    toast({
-      title: "Receipt Download",
-      description: "Receipt download feature will be available soon.",
-    });
+  const handleDownloadReceipt = async () => {
+    try {
+      if (receiptDownloadUrl) {
+        // Create a temporary link to download the receipt
+        const link = document.createElement('a');
+        link.href = receiptDownloadUrl;
+        link.download = `receipt-${invoice?.invoice_number || 'payment'}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+          title: "Receipt Downloaded",
+          description: "Your payment receipt has been downloaded successfully.",
+        });
+      } else {
+        // Try to generate receipt if not available
+        const { data, error } = await supabase.functions.invoke('generate-receipt', {
+          body: { invoiceId, sessionId }
+        });
+        
+        if (error) throw error;
+        
+        if (data?.downloadUrl) {
+          const link = document.createElement('a');
+          link.href = data.downloadUrl;
+          link.download = `receipt-${invoice?.invoice_number || 'payment'}.html`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          toast({
+            title: "Receipt Downloaded",
+            description: "Your payment receipt has been downloaded successfully.",
+          });
+        } else {
+          throw new Error('Unable to generate receipt');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to download receipt:', error);
+      toast({
+        title: "Download Failed",
+        description: "Unable to download receipt at this time. Please try again later.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleViewOrderStatus = () => {
