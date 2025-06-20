@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -123,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [profile]);
+  }, []); // Remove profile dependency to prevent unnecessary re-creation
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -167,22 +168,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('Starting sign out process...');
       
-      // Clear state immediately to provide instant UI feedback
-      clearAuthState();
+      // Check if we have an active session before attempting to sign out
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      if (!currentSession) {
+        console.log('No active session found, clearing local state');
+        clearAuthState();
+        return { error: null };
+      }
       
       // Attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error('Sign out error:', error);
-        // Don't restore state on error - user expects to be signed out
+        
+        // If the error is "session not found" or similar, we can still clear local state
+        if (error.message?.toLowerCase().includes('session') || 
+            error.message?.toLowerCase().includes('not found') ||
+            error.status === 403) {
+          console.log('Session already invalid, clearing local state');
+          clearAuthState();
+          return { error: null }; // Don't show error to user for invalid sessions
+        }
+        
+        return { error };
       } else {
         console.log('Sign out successful');
+        clearAuthState();
+        return { error: null };
       }
       
-      return { error };
     } catch (error) {
       console.error('Sign out exception:', error);
+      // Clear state even on error to ensure user is logged out locally
+      clearAuthState();
       return { error };
     } finally {
       setSigningOut(false);
