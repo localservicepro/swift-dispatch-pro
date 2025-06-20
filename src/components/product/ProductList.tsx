@@ -11,6 +11,8 @@ interface Product {
   name: string;
   description: string | null;
   price: number;
+  account_price?: number;
+  trade_price?: number;
   stock_quantity: number;
   sku: string | null;
   barcode: string | null;
@@ -130,7 +132,20 @@ export function ProductList({ products, loading, onEdit, onDeleteSuccess }: Prod
                 <div className="mb-3">
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-semibold text-slate-800 leading-tight">{product.name}</h4>
-                    <span className="text-lg font-bold text-green-600 ml-2">${product.price.toFixed(2)}</span>
+                  </div>
+                  
+                  {/* Simplified Pricing Display */}
+                  <div className="mb-2">
+                    <div className="text-sm space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Account:</span>
+                        <span className="font-medium text-green-600">${(product.account_price || product.price || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Trade:</span>
+                        <span className="font-medium text-blue-600">${(product.trade_price || (product.price || 0) * 0.9).toFixed(2)}</span>
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="flex flex-wrap gap-1 mb-2">

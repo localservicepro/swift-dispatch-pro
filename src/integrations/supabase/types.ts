@@ -618,6 +618,13 @@ export type Database = {
             foreignKeyName: "order_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "product_pricing_simple"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -1023,8 +1030,22 @@ export type Database = {
             foreignKeyName: "product_pricing_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "product_pricing_simple"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_pricing_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_pricing_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_pricing_simple"
+            referencedColumns: ["variant_id"]
           },
           {
             foreignKeyName: "product_pricing_variant_id_fkey"
@@ -1076,6 +1097,13 @@ export type Database = {
             foreignKeyName: "product_variant_attributes_variant_id_fkey"
             columns: ["variant_id"]
             isOneToOne: false
+            referencedRelation: "product_pricing_simple"
+            referencedColumns: ["variant_id"]
+          },
+          {
+            foreignKeyName: "product_variant_attributes_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
             referencedRelation: "product_variants"
             referencedColumns: ["id"]
           },
@@ -1083,6 +1111,7 @@ export type Database = {
       }
       product_variants: {
         Row: {
+          account_price: number | null
           created_at: string
           id: string
           is_active: boolean
@@ -1090,11 +1119,13 @@ export type Database = {
           product_id: string
           sku: string | null
           stock_quantity: number
+          trade_price: number | null
           updated_at: string
           variant_name: string | null
           weight_adjustment: number | null
         }
         Insert: {
+          account_price?: number | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -1102,11 +1133,13 @@ export type Database = {
           product_id: string
           sku?: string | null
           stock_quantity?: number
+          trade_price?: number | null
           updated_at?: string
           variant_name?: string | null
           weight_adjustment?: number | null
         }
         Update: {
+          account_price?: number | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -1114,11 +1147,19 @@ export type Database = {
           product_id?: string
           sku?: string | null
           stock_quantity?: number
+          trade_price?: number | null
           updated_at?: string
           variant_name?: string | null
           weight_adjustment?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_pricing_simple"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_variants_product_id_fkey"
             columns: ["product_id"]
@@ -1130,6 +1171,7 @@ export type Database = {
       }
       products: {
         Row: {
+          account_price: number | null
           barcode: string | null
           category_id: string | null
           created_at: string
@@ -1142,10 +1184,12 @@ export type Database = {
           price: number
           sku: string | null
           stock_quantity: number
+          trade_price: number | null
           updated_at: string
           weight: number | null
         }
         Insert: {
+          account_price?: number | null
           barcode?: string | null
           category_id?: string | null
           created_at?: string
@@ -1158,10 +1202,12 @@ export type Database = {
           price: number
           sku?: string | null
           stock_quantity?: number
+          trade_price?: number | null
           updated_at?: string
           weight?: number | null
         }
         Update: {
+          account_price?: number | null
           barcode?: string | null
           category_id?: string | null
           created_at?: string
@@ -1174,6 +1220,7 @@ export type Database = {
           price?: number
           sku?: string | null
           stock_quantity?: number
+          trade_price?: number | null
           updated_at?: string
           weight?: number | null
         }
@@ -1342,7 +1389,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      product_pricing_simple: {
+        Row: {
+          account_price: number | null
+          final_account_price: number | null
+          final_trade_price: number | null
+          id: string | null
+          name: string | null
+          trade_price: number | null
+          variant_id: string | null
+          variant_name: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       create_driver: {
