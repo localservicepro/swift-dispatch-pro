@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,8 +42,9 @@ interface Variation {
   attributes: Record<string, string>;
   sku: string;
   stockQuantity: number;
-  accountPrice: number;
   tradePrice: number;
+  accountPrice: number;
+  useGlobalPricing: boolean;
 }
 
 interface ProductFormProps {
@@ -153,13 +153,14 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
           .delete()
           .eq('product_id', productId);
 
-        // Insert new variants with only price_adjustment (no individual pricing)
+        // Insert new variants with individual trade and account pricing
         const variantData = variations.map(variation => ({
           product_id: productId,
           variant_name: Object.values(variation.attributes).join(' - '),
           sku: variation.sku,
           stock_quantity: variation.stockQuantity,
-          price_adjustment: variation.accountPrice - formData.price, // Store as adjustment from base price
+          // Store the price difference from the base product price
+          price_adjustment: variation.tradePrice - formData.price,
         }));
 
         const { error: variantError } = await supabase
@@ -266,6 +267,8 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
             )}
           </div>
 
+          
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="productStock">Stock Quantity *</Label>
