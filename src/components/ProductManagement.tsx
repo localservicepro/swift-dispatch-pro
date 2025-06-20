@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus } from "lucide-react";
 import { CategoryManagement } from "./CategoryManagement";
+import { PricingTierManagement } from "./PricingTierManagement";
 import { ProductForm } from "./product/ProductForm";
 import { ProductList } from "./product/ProductList";
 import { ProductFilters } from "./product/ProductFilters";
@@ -14,8 +15,6 @@ interface Product {
   name: string;
   description: string | null;
   price: number;
-  account_price?: number;
-  trade_price?: number;
   stock_quantity: number;
   sku: string | null;
   barcode: string | null;
@@ -140,16 +139,17 @@ export function ProductManagement() {
 
   return (
     <Tabs defaultValue="products" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="products">Products</TabsTrigger>
         <TabsTrigger value="categories">Categories</TabsTrigger>
+        <TabsTrigger value="pricing">Pricing Tiers</TabsTrigger>
       </TabsList>
 
       <TabsContent value="products" className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-2xl font-bold text-slate-800">Product Management</h3>
-            <p className="text-slate-600">Manage your product inventory with simplified pricing and variations</p>
+            <p className="text-slate-600">Manage your product inventory with simplified pricing</p>
           </div>
           <Button 
             onClick={() => setIsCreating(true)} 
@@ -188,6 +188,10 @@ export function ProductManagement() {
 
       <TabsContent value="categories">
         <CategoryManagement />
+      </TabsContent>
+
+      <TabsContent value="pricing">
+        <PricingTierManagement />
       </TabsContent>
     </Tabs>
   );

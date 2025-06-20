@@ -618,8 +618,8 @@ export type Database = {
             foreignKeyName: "order_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
-            referencedRelation: "product_pricing_simple"
-            referencedColumns: ["id"]
+            referencedRelation: "product_pricing_calculated"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "order_items_product_id_fkey"
@@ -836,7 +836,9 @@ export type Database = {
           id: string
           is_active: boolean
           is_default: boolean
+          is_markup: boolean | null
           name: string
+          percentage_adjustment: number | null
           updated_at: string
         }
         Insert: {
@@ -847,7 +849,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_default?: boolean
+          is_markup?: boolean | null
           name: string
+          percentage_adjustment?: number | null
           updated_at?: string
         }
         Update: {
@@ -858,7 +862,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_default?: boolean
+          is_markup?: boolean | null
           name?: string
+          percentage_adjustment?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -1030,8 +1036,8 @@ export type Database = {
             foreignKeyName: "product_pricing_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
-            referencedRelation: "product_pricing_simple"
-            referencedColumns: ["id"]
+            referencedRelation: "product_pricing_calculated"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "product_pricing_product_id_fkey"
@@ -1044,7 +1050,7 @@ export type Database = {
             foreignKeyName: "product_pricing_variant_id_fkey"
             columns: ["variant_id"]
             isOneToOne: false
-            referencedRelation: "product_pricing_simple"
+            referencedRelation: "product_pricing_calculated"
             referencedColumns: ["variant_id"]
           },
           {
@@ -1097,7 +1103,7 @@ export type Database = {
             foreignKeyName: "product_variant_attributes_variant_id_fkey"
             columns: ["variant_id"]
             isOneToOne: false
-            referencedRelation: "product_pricing_simple"
+            referencedRelation: "product_pricing_calculated"
             referencedColumns: ["variant_id"]
           },
           {
@@ -1111,7 +1117,6 @@ export type Database = {
       }
       product_variants: {
         Row: {
-          account_price: number | null
           created_at: string
           id: string
           is_active: boolean
@@ -1119,13 +1124,11 @@ export type Database = {
           product_id: string
           sku: string | null
           stock_quantity: number
-          trade_price: number | null
           updated_at: string
           variant_name: string | null
           weight_adjustment: number | null
         }
         Insert: {
-          account_price?: number | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -1133,13 +1136,11 @@ export type Database = {
           product_id: string
           sku?: string | null
           stock_quantity?: number
-          trade_price?: number | null
           updated_at?: string
           variant_name?: string | null
           weight_adjustment?: number | null
         }
         Update: {
-          account_price?: number | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -1147,7 +1148,6 @@ export type Database = {
           product_id?: string
           sku?: string | null
           stock_quantity?: number
-          trade_price?: number | null
           updated_at?: string
           variant_name?: string | null
           weight_adjustment?: number | null
@@ -1157,8 +1157,8 @@ export type Database = {
             foreignKeyName: "product_variants_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
-            referencedRelation: "product_pricing_simple"
-            referencedColumns: ["id"]
+            referencedRelation: "product_pricing_calculated"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "product_variants_product_id_fkey"
@@ -1171,7 +1171,6 @@ export type Database = {
       }
       products: {
         Row: {
-          account_price: number | null
           barcode: string | null
           category_id: string | null
           created_at: string
@@ -1184,12 +1183,10 @@ export type Database = {
           price: number
           sku: string | null
           stock_quantity: number
-          trade_price: number | null
           updated_at: string
           weight: number | null
         }
         Insert: {
-          account_price?: number | null
           barcode?: string | null
           category_id?: string | null
           created_at?: string
@@ -1202,12 +1199,10 @@ export type Database = {
           price: number
           sku?: string | null
           stock_quantity?: number
-          trade_price?: number | null
           updated_at?: string
           weight?: number | null
         }
         Update: {
-          account_price?: number | null
           barcode?: string | null
           category_id?: string | null
           created_at?: string
@@ -1220,7 +1215,6 @@ export type Database = {
           price?: number
           sku?: string | null
           stock_quantity?: number
-          trade_price?: number | null
           updated_at?: string
           weight?: number | null
         }
@@ -1389,14 +1383,15 @@ export type Database = {
       }
     }
     Views: {
-      product_pricing_simple: {
+      product_pricing_calculated: {
         Row: {
           account_price: number | null
-          final_account_price: number | null
-          final_trade_price: number | null
-          id: string | null
+          base_price: number | null
           name: string | null
+          price_adjustment: number | null
+          product_id: string | null
           trade_price: number | null
+          variant_base_price: number | null
           variant_id: string | null
           variant_name: string | null
         }
@@ -1407,6 +1402,14 @@ export type Database = {
       create_driver: {
         Args: { driver_id: string; driver_name: string; driver_license: string }
         Returns: undefined
+      }
+      get_product_price: {
+        Args: {
+          product_id_param: string
+          variant_id_param?: string
+          customer_type_param?: string
+        }
+        Returns: number
       }
       is_current_user_admin: {
         Args: Record<PropertyKey, never>

@@ -124,6 +124,14 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     ));
   };
 
+  // Calculate pricing based on global pricing tiers
+  const calculateVariationPrices = (basePrice: number) => {
+    return {
+      trade: basePrice, // Trade tier: 0% adjustment (base price)
+      account: basePrice * 0.9 // Account tier: 10% discount
+    };
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -190,57 +198,68 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
           <div className="space-y-4">
             <h4 className="font-medium">Generated Variations ({variations.length})</h4>
             <div className="space-y-3">
-              {variations.map(variation => (
-                <div key={variation.id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {Object.entries(variation.attributes).map(([key, value]) => (
-                      <Badge key={`${key}-${value}`} variant="outline">
-                        {key}: {value}
-                      </Badge>
-                    ))}
+              {variations.map(variation => {
+                const calculatedPrices = calculateVariationPrices(variation.accountPrice);
+                
+                return (
+                  <div key={variation.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {Object.entries(variation.attributes).map(([key, value]) => (
+                        <Badge key={`${key}-${value}`} variant="outline">
+                          {key}: {value}
+                        </Badge>
+                      ))}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <Label>SKU</Label>
+                        <Input
+                          value={variation.sku}
+                          onChange={(e) => updateVariation(variation.id, 'sku', e.target.value)}
+                          placeholder="SKU"
+                        />
+                      </div>
+                      <div>
+                        <Label>Stock</Label>
+                        <Input
+                          type="number"
+                          value={variation.stockQuantity}
+                          onChange={(e) => updateVariation(variation.id, 'stockQuantity', parseInt(e.target.value) || 0)}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <Label>Base Price (for calculation)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={variation.accountPrice}
+                          onChange={(e) => updateVariation(variation.id, 'accountPrice', parseFloat(e.target.value) || 0)}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Show calculated prices if base price is set */}
+                    {variation.accountPrice > 0 && (
+                      <div className="bg-gray-50 p-3 rounded mt-3">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Calculated Customer Prices:</p>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="text-center">
+                            <span className="text-gray-600">Trade:</span>
+                            <span className="ml-2 font-medium text-blue-600">${calculatedPrices.trade.toFixed(2)}</span>
+                          </div>
+                          <div className="text-center">
+                            <span className="text-gray-600">Account:</span>
+                            <span className="ml-2 font-medium text-green-600">${calculatedPrices.account.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div>
-                      <Label>SKU</Label>
-                      <Input
-                        value={variation.sku}
-                        onChange={(e) => updateVariation(variation.id, 'sku', e.target.value)}
-                        placeholder="SKU"
-                      />
-                    </div>
-                    <div>
-                      <Label>Stock</Label>
-                      <Input
-                        type="number"
-                        value={variation.stockQuantity}
-                        onChange={(e) => updateVariation(variation.id, 'stockQuantity', parseInt(e.target.value) || 0)}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <Label>Account Price</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={variation.accountPrice}
-                        onChange={(e) => updateVariation(variation.id, 'accountPrice', parseFloat(e.target.value) || 0)}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <Label>Trade Price</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={variation.tradePrice}
-                        onChange={(e) => updateVariation(variation.id, 'tradePrice', parseFloat(e.target.value) || 0)}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

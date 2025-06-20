@@ -16,8 +16,6 @@ interface Product {
   name: string;
   description: string | null;
   price: number;
-  account_price?: number;
-  trade_price?: number;
   stock_quantity: number;
   sku: string | null;
   barcode: string | null;
@@ -62,8 +60,7 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
   const [formData, setFormData] = useState({
     name: editingProduct?.name || "",
     description: editingProduct?.description || "",
-    account_price: editingProduct?.account_price || editingProduct?.price || 0,
-    trade_price: editingProduct?.trade_price || (editingProduct?.price ? editingProduct.price * 0.9 : 0),
+    price: editingProduct?.price || 0, // Single base price
     stock_quantity: editingProduct?.stock_quantity || 0,
     sku: editingProduct?.sku || "",
     barcode: editingProduct?.barcode || "",
@@ -75,6 +72,16 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
 
   const [variations, setVariations] = useState<Variation[]>([]);
 
+  // Calculate preview prices based on pricing tiers
+  const calculatePreviewPrices = (basePrice: number) => {
+    return {
+      trade: basePrice, // Trade tier: 0% adjustment (base price)
+      account: basePrice * 0.9 // Account tier: 10% discount
+    };
+  };
+
+  const previewPrices = calculatePreviewPrices(formData.price);
+
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
       toast({
@@ -85,12 +92,19 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
       return;
     }
 
+    if (!formData.price || formData.price <= 0) {
+      toast({
+        title: "Error",
+        description: "Base price is required and must be greater than 0",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const productData = {
       name: formData.name.trim(),
       description: formData.description.trim() || null,
-      price: formData.account_price, // Keep for backwards compatibility
-      account_price: formData.account_price,
-      trade_price: formData.trade_price,
+      price: formData.price, // Single base price
       stock_quantity: formData.stock_quantity,
       sku: formData.sku.trim() || null,
       barcode: formData.barcode.trim() || null,
@@ -139,15 +153,13 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
           .delete()
           .eq('product_id', productId);
 
-        // Insert new variants
+        // Insert new variants with only price_adjustment (no individual pricing)
         const variantData = variations.map(variation => ({
           product_id: productId,
           variant_name: Object.values(variation.attributes).join(' - '),
           sku: variation.sku,
           stock_quantity: variation.stockQuantity,
-          account_price: variation.accountPrice,
-          trade_price: variation.tradePrice,
-          price_adjustment: 0, // Not used in simplified model
+          price_adjustment: variation.accountPrice - formData.price, // Store as adjustment from base price
         }));
 
         const { error: variantError } = await supabase
@@ -219,30 +231,39 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
             </div>
           </div>
 
-          {/* Simplified Pricing */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Simplified Single Base Price */}
+          <div className="space-y-4">
             <div>
-              <Label htmlFor="accountPrice">Account Price *</Label>
+              <Label htmlFor="basePrice">Base Price *</Label>
               <Input
-                id="accountPrice"
+                id="basePrice"
                 type="number"
                 step="0.01"
-                value={formData.account_price}
-                onChange={(e) => updateFormData({ account_price: parseFloat(e.target.value) || 0 })}
+                value={formData.price}
+                onChange={(e) => updateFormData({ price: parseFloat(e.target.value) || 0 })}
                 placeholder="0.00"
               />
             </div>
-            <div>
-              <Label htmlFor="tradePrice">Trade Price *</Label>
-              <Input
-                id="tradePrice"
-                type="number"
-                step="0.01"
-                value={formData.trade_price}
-                onChange={(e) => updateFormData({ trade_price: parseFloat(e.target.value) || 0 })}
-                placeholder="0.00"
-              />
-            </div>
+
+            {/* Price Preview */}
+            {formData.price > 0 && (
+              <div className="bg-gray-50 p-4 rounded-lg border">
+                <h4 className="font-medium text-gray-700 mb-3">Calculated Customer Prices</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Trade (Regular)</p>
+                    <p className="text-lg font-semibold text-blue-600">${previewPrices.trade.toFixed(2)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Account (VIP -10%)</p>
+                    <p className="text-lg font-semibold text-green-600">${previewPrices.account.toFixed(2)}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Prices calculated automatically based on pricing tier settings
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
