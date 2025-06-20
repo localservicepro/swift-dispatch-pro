@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ProductImageUpload } from "@/components/ProductImageUpload";
@@ -25,6 +27,7 @@ interface Product {
   images: string[];
   created_at: string;
   updated_at: string;
+  product_type?: string;
   category?: {
     name: string;
   };
@@ -60,14 +63,15 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
   const [formData, setFormData] = useState({
     name: editingProduct?.name || "",
     description: editingProduct?.description || "",
-    price: editingProduct?.price || 0, // Single base price
+    price: editingProduct?.price || 0,
     stock_quantity: editingProduct?.stock_quantity || 0,
     sku: editingProduct?.sku || "",
     barcode: editingProduct?.barcode || "",
     weight: editingProduct?.weight || 0,
     dimensions: editingProduct?.dimensions || "",
     category_id: editingProduct?.category_id || "",
-    images: editingProduct?.images || []
+    images: editingProduct?.images || [],
+    product_type: editingProduct?.product_type || "single"
   });
 
   const [variations, setVariations] = useState<Variation[]>([]);
@@ -92,10 +96,21 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
       return;
     }
 
-    if (!formData.price || formData.price <= 0) {
+    // For single products, require base price
+    if (formData.product_type === "single" && (!formData.price || formData.price <= 0)) {
       toast({
         title: "Error",
-        description: "Base price is required and must be greater than 0",
+        description: "Base price is required and must be greater than 0 for single products",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // For variable products, require variations
+    if (formData.product_type === "variable" && variations.length === 0) {
+      toast({
+        title: "Error",
+        description: "At least one variation is required for variable products",
         variant: "destructive",
       });
       return;
@@ -104,14 +119,15 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
     const productData = {
       name: formData.name.trim(),
       description: formData.description.trim() || null,
-      price: formData.price, // Single base price
+      price: formData.product_type === "single" ? formData.price : 0, // Set to 0 for variable products
       stock_quantity: formData.stock_quantity,
       sku: formData.sku.trim() || null,
       barcode: formData.barcode.trim() || null,
       weight: formData.weight || null,
       dimensions: formData.dimensions.trim() || null,
       category_id: formData.category_id || null,
-      images: formData.images
+      images: formData.images,
+      product_type: formData.product_type
     };
 
     try {
@@ -145,8 +161,8 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
         });
       }
 
-      // Handle variations if any
-      if (variations.length > 0 && productId) {
+      // Handle variations for variable products
+      if (formData.product_type === "variable" && variations.length > 0 && productId) {
         // First, delete existing variants for this product
         await supabase
           .from('product_variants')
@@ -159,8 +175,8 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
           variant_name: Object.values(variation.attributes).join(' - '),
           sku: variation.sku,
           stock_quantity: variation.stockQuantity,
-          // Store the price difference from the base product price
-          price_adjustment: variation.tradePrice - formData.price,
+          // Store the trade price as the price adjustment (since base product price is 0 for variable products)
+          price_adjustment: variation.tradePrice,
         }));
 
         const { error: variantError } = await supabase
@@ -202,6 +218,31 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-6">
+          {/* Product Type Selection */}
+          <div className="space-y-3">
+            <Label className="text-base font-medium">Product Type</Label>
+            <RadioGroup
+              value={formData.product_type}
+              onValueChange={(value) => updateFormData({ product_type: value })}
+              className="flex gap-6"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="single" id="single" />
+                <Label htmlFor="single" className="font-normal">
+                  Single Product
+                  <span className="block text-sm text-gray-500">Fixed pricing, no variations</span>
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="variable" id="variable" />
+                <Label htmlFor="variable" className="font-normal">
+                  Variable Product
+                  <span className="block text-sm text-gray-500">Multiple variations with individual pricing</span>
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="productName">Product Name *</Label>
@@ -232,43 +273,43 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
             </div>
           </div>
 
-          {/* Simplified Single Base Price */}
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="basePrice">Base Price *</Label>
-              <Input
-                id="basePrice"
-                type="number"
-                step="0.01"
-                value={formData.price}
-                onChange={(e) => updateFormData({ price: parseFloat(e.target.value) || 0 })}
-                placeholder="0.00"
-              />
-            </div>
-
-            {/* Price Preview */}
-            {formData.price > 0 && (
-              <div className="bg-gray-50 p-4 rounded-lg border">
-                <h4 className="font-medium text-gray-700 mb-3">Calculated Customer Prices</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">Trade (Regular)</p>
-                    <p className="text-lg font-semibold text-blue-600">${previewPrices.trade.toFixed(2)}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">Account (VIP -10%)</p>
-                    <p className="text-lg font-semibold text-green-600">${previewPrices.account.toFixed(2)}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-2 text-center">
-                  Prices calculated automatically based on pricing tier settings
-                </p>
+          {/* Conditional Pricing Section */}
+          {formData.product_type === "single" && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="basePrice">Base Price *</Label>
+                <Input
+                  id="basePrice"
+                  type="number"
+                  step="0.01"
+                  value={formData.price}
+                  onChange={(e) => updateFormData({ price: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00"
+                />
               </div>
-            )}
-          </div>
 
-          
-          
+              {/* Price Preview for Single Products */}
+              {formData.price > 0 && (
+                <div className="bg-gray-50 p-4 rounded-lg border">
+                  <h4 className="font-medium text-gray-700 mb-3">Calculated Customer Prices</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600">Trade (Regular)</p>
+                      <p className="text-lg font-semibold text-blue-600">${previewPrices.trade.toFixed(2)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600">Account (VIP -10%)</p>
+                      <p className="text-lg font-semibold text-green-600">${previewPrices.account.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Prices calculated automatically based on pricing tier settings
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="productStock">Stock Quantity *</Label>
@@ -344,11 +385,13 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
         </CardContent>
       </Card>
 
-      {/* Product Variations Section */}
-      <ProductVariations
-        variations={variations}
-        onVariationsChange={setVariations}
-      />
+      {/* Product Variations Section - Only show for variable products */}
+      {formData.product_type === "variable" && (
+        <ProductVariations
+          variations={variations}
+          onVariationsChange={setVariations}
+        />
+      )}
       
       <div className="flex gap-3">
         <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700">
