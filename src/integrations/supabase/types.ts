@@ -482,6 +482,7 @@ export type Database = {
       }
       email_settings: {
         Row: {
+          admin_email: string | null
           connection_status: string
           created_at: string
           email_provider: string
@@ -495,6 +496,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          admin_email?: string | null
           connection_status?: string
           created_at?: string
           email_provider?: string
@@ -508,6 +510,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          admin_email?: string | null
           connection_status?: string
           created_at?: string
           email_provider?: string

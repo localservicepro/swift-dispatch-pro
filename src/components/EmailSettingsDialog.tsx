@@ -16,6 +16,7 @@ export function EmailSettingsDialog() {
     sender_name: '',
     sender_email: '',
     reply_to_email: '',
+    admin_email: '',
     resend_api_key: ''
   });
 
@@ -26,6 +27,7 @@ export function EmailSettingsDialog() {
         sender_name: settings.sender_name || '',
         sender_email: settings.sender_email || '',
         reply_to_email: settings.reply_to_email || '',
+        admin_email: settings.admin_email || '',
         resend_api_key: settings.resend_api_key || ''
       });
     }
@@ -111,6 +113,20 @@ export function EmailSettingsDialog() {
             />
             <p className="text-xs text-gray-500 mt-1">
               This email will be used for customer support contacts
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="admin_email">System Admin Email</Label>
+            <Input
+              id="admin_email"
+              type="email"
+              value={formData.admin_email}
+              onChange={(e) => setFormData({...formData, admin_email: e.target.value})}
+              placeholder="admin@yourcompany.com"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              This email will receive system notifications and alerts
             </p>
           </div>
 

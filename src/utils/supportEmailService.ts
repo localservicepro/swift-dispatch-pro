@@ -37,6 +37,25 @@ class SupportEmailService {
     }
   }
 
+  async getAdminEmail(): Promise<string> {
+    try {
+      const { data, error } = await supabase
+        .from('email_settings')
+        .select('admin_email')
+        .single();
+
+      if (error || !data?.admin_email) {
+        console.warn('No admin email configured, using default');
+        return 'admin@localservicepro.com.au';
+      }
+
+      return data.admin_email;
+    } catch (error) {
+      console.error('Error fetching admin email:', error);
+      return 'admin@localservicepro.com.au';
+    }
+  }
+
   async openSupportEmail(options: SupportEmailOptions = {}) {
     const supportEmail = await this.getSupportEmail();
     

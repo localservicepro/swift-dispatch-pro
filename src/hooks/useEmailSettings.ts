@@ -9,6 +9,7 @@ interface EmailSettings {
   sender_name: string;
   sender_email: string;
   reply_to_email: string;
+  admin_email: string;
   resend_api_key: string;
   connection_status: string;
   last_tested_at?: string;
@@ -42,6 +43,7 @@ export function useEmailSettings() {
           sender_name: 'SwiftDispatch Pro',
           sender_email: 'updates@localservicepro.com.au',
           reply_to_email: 'support@localservicepro.com.au',
+          admin_email: 'admin@localservicepro.com.au',
           resend_api_key: '',
           connection_status: 'disconnected'
         };
