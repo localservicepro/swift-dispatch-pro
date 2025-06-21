@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { supportEmailService } from "@/utils/supportEmailService";
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
@@ -189,11 +190,21 @@ export default function PaymentSuccess() {
     }
   };
 
-  const handleContactSupport = () => {
-    toast({
-      title: "Support Contact",
-      description: "Please contact support at support@localservicepro.com.au",
-    });
+  const handleContactSupport = async () => {
+    try {
+      await supportEmailService.openSupportEmail({
+        subject: 'Payment Support Request',
+        orderId: order?.id,
+        sessionId: sessionId || undefined,
+        invoiceId: invoiceId || undefined,
+        body: 'Hello, I need assistance with my recent payment:\n\n'
+      });
+    } catch (error: any) {
+      toast({
+        title: "Support Contact",
+        description: error.message || "Please contact support for assistance.",
+      });
+    }
   };
 
   if (!sessionId || !invoiceId) {

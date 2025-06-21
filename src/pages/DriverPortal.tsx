@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DriverLogin } from "@/components/driver/DriverLogin";
 import { DriverDashboard } from "@/components/driver/DriverDashboard";
+import { supportEmailService } from "@/utils/supportEmailService";
 
 export default function DriverPortal() {
   const [user, setUser] = useState<any>(null);
@@ -31,11 +31,18 @@ export default function DriverPortal() {
           setUser(user);
           setProfile(profile);
         } else {
-          toast({
-            title: "Access Denied",
-            description: "You don't have driver access to this portal",
-            variant: "destructive",
-          });
+          try {
+            await supportEmailService.openSupportEmail({
+              subject: 'Driver Portal Access Request',
+              body: 'Hello, I am trying to access the driver portal but do not have proper access:\n\n'
+            });
+          } catch (error: any) {
+            toast({
+              title: "Access Denied",
+              description: "You don't have driver access to this portal. Please contact support.",
+              variant: "destructive",
+            });
+          }
         }
       }
     } catch (error) {

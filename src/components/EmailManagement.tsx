@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Mail, Send, AlertCircle, CheckCircle } from "lucide-react";
+import { EmailSettingsDialog } from "./EmailSettingsDialog";
 
 interface EmailLog {
   id: string;
@@ -59,6 +61,7 @@ export function EmailManagement() {
       case 'order-confirmation': return <CheckCircle className="w-4 h-4" />;
       case 'delivery-status-update': return <Send className="w-4 h-4" />;
       case 'invoice': return <Mail className="w-4 h-4" />;
+      case 'payment-confirmation': return <CheckCircle className="w-4 h-4" />;
       default: return <AlertCircle className="w-4 h-4" />;
     }
   };
@@ -68,47 +71,8 @@ export function EmailManagement() {
       case 'order-confirmation': return 'Order Confirmation';
       case 'delivery-status-update': return 'Delivery Update';
       case 'invoice': return 'Invoice';
+      case 'payment-confirmation': return 'Payment Confirmation';
       default: return type;
-    }
-  };
-
-  const testEmailSystem = async () => {
-    try {
-      const { error } = await supabase.functions.invoke('send-emails', {
-        body: {
-          type: 'order-confirmation',
-          data: {
-            customerName: 'Test Customer',
-            customerEmail: 'test@example.com',
-            orderNumber: 'TEST-001',
-            orderItems: [
-              { name: 'Test Product', quantity: 1, price: 25.00 }
-            ],
-            totalAmount: 30.00,
-            deliveryAddress: '123 Test Street, Test City',
-            deliveryDate: new Date().toLocaleDateString(),
-            deliveryTime: '10:00 AM',
-            specialInstructions: 'This is a test email'
-          }
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Test Email Sent",
-        description: "A test order confirmation email has been sent",
-      });
-      
-      // Refresh the logs
-      refetch();
-    } catch (error: any) {
-      console.error('Error sending test email:', error);
-      toast({
-        title: "Test Failed",
-        description: "Failed to send test email. Check the console for details.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -117,12 +81,9 @@ export function EmailManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-slate-800">Email Management</h2>
-          <p className="text-slate-600 mt-1">Monitor email delivery and manage preferences</p>
+          <p className="text-slate-600 mt-1">Monitor email delivery and manage email settings</p>
         </div>
-        <Button onClick={testEmailSystem} className="flex items-center gap-2">
-          <Send className="w-4 h-4" />
-          Send Test Email
-        </Button>
+        <EmailSettingsDialog />
       </div>
 
       {/* Email Statistics */}
@@ -193,7 +154,7 @@ export function EmailManagement() {
           ) : emailLogs.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
               <Mail className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-              <p>No emails sent yet. Send a test email to get started!</p>
+              <p>No emails sent yet. Configure your email settings to get started!</p>
             </div>
           ) : (
             <div className="space-y-4">

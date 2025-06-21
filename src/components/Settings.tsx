@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ActivityLog } from "./settings/ActivityLog";
+import { EmailSettingsDialog } from "./EmailSettingsDialog";
 
 export function Settings() {
   const [businessInfo, setBusinessInfo] = useState({
@@ -55,6 +56,7 @@ export function Settings() {
           <CardTitle className="text-lg font-semibold text-slate-800">Business Profile</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-6">
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="businessName">Business Name</Label>
@@ -113,12 +115,29 @@ export function Settings() {
         </CardContent>
       </Card>
 
+      {/* Email Configuration */}
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100">
+          <CardTitle className="text-lg font-semibold text-slate-800 flex items-center justify-between">
+            Email Configuration
+            <EmailSettingsDialog />
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <p className="text-sm text-slate-600 mb-4">
+            Configure your email settings, Resend API integration, and support contact information.
+            This affects how emails are sent to customers and how support requests are handled.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Email Notification Preferences */}
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100">
           <CardTitle className="text-lg font-semibold text-slate-800">Email Notification Preferences</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-6">
+          
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>

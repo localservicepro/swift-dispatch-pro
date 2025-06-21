@@ -1,4 +1,3 @@
-
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { XCircle, RefreshCw, Phone, CreditCard } from "lucide-react";
 import { PaymentDetailsCard } from "@/components/PaymentDetailsCard";
 import { usePaymentDetails } from "@/hooks/usePaymentDetails";
 import { useToast } from "@/hooks/use-toast";
+import { supportEmailService } from "@/utils/supportEmailService";
 
 export default function PaymentCancelled() {
   const [searchParams] = useSearchParams();
@@ -26,11 +26,19 @@ export default function PaymentCancelled() {
     }
   };
 
-  const handleContactSupport = () => {
-    toast({
-      title: "Support Contact",
-      description: "Please contact support at support@localservicepro.com.au for assistance with your payment.",
-    });
+  const handleContactSupport = async () => {
+    try {
+      await supportEmailService.openSupportEmail({
+        subject: 'Payment Cancellation Support',
+        invoiceId: invoiceId || undefined,
+        body: 'Hello, I cancelled my payment and need assistance:\n\n'
+      });
+    } catch (error: any) {
+      toast({
+        title: "Support Contact",
+        description: error.message || "Please contact support for assistance with your payment.",
+      });
+    }
   };
 
   return (
