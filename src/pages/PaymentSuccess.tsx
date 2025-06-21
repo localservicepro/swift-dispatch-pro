@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -89,37 +88,63 @@ export default function PaymentSuccess() {
     try {
       console.log('Starting receipt download...', { sessionId, invoiceId });
       
-      let downloadUrl = receiptDownloadUrl;
-      let filename = `receipt-${sessionId.slice(-8)}.html`;
+      const { data, error } = await supabase.functions.invoke('generate-receipt', {
+        body: { invoiceId, sessionId }
+      });
       
-      // If we don't have a pre-generated receipt, generate it now
-      if (!downloadUrl) {
-        console.log('Generating receipt on demand...');
-        
-        const { data, error } = await supabase.functions.invoke('generate-receipt', {
-          body: { invoiceId, sessionId }
-        });
-        
-        console.log('Receipt generation result:', { data, error });
-        
-        if (error) {
-          throw new Error(`Receipt generation failed: ${error.message}`);
-        }
-        
-        if (!data?.downloadUrl) {
-          throw new Error('No download URL received from receipt service');
-        }
-        
-        downloadUrl = data.downloadUrl;
-        filename = data.filename || filename;
+      console.log('Receipt generation result:', { data, error });
+      
+      if (error) {
+        console.error('Receipt generation error:', error);
+        throw new Error(`Receipt generation failed: ${error.message}`);
+      }
+      
+      if (!data?.success) {
+        throw new Error('Receipt generation was not successful');
       }
 
-      console.log('Initiating download...', { filename, urlLength: downloadUrl.length });
+      // Handle fallback mode
+      if (data.fallbackMode) {
+        console.log('Using fallback mode for download');
+        
+        // Create a blob from the HTML content
+        const blob = new Blob([data.receiptData.html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = data.filename || `receipt-${sessionId.slice(-8)}.html`;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the blob URL
+        URL.revokeObjectURL(url);
+        
+        toast({
+          title: "Receipt Downloaded",
+          description: "Your payment receipt has been downloaded successfully.",
+        });
+        
+        return;
+      }
+
+      // Normal download mode
+      if (!data.downloadUrl) {
+        throw new Error('No download URL received from receipt service');
+      }
+
+      console.log('Initiating download...', { 
+        filename: data.filename, 
+        urlLength: data.downloadUrl.length 
+      });
       
       // Create and trigger download
       const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
+      link.href = data.downloadUrl;
+      link.download = data.filename || `receipt-${sessionId.slice(-8)}.html`;
       link.style.display = 'none';
       
       document.body.appendChild(link);
@@ -136,9 +161,18 @@ export default function PaymentSuccess() {
     } catch (error: any) {
       console.error('Receipt download failed:', error);
       
+      // Provide more specific error messages
+      let errorMessage = "Unable to download receipt. Please try again.";
+      
+      if (error.message?.includes('fetch')) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (error.message?.includes('generation failed')) {
+        errorMessage = "Receipt generation failed. Please contact support if this persists.";
+      }
+      
       toast({
         title: "Download Failed",
-        description: error.message || "Unable to download receipt. Please try again or contact support.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
