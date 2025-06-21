@@ -127,21 +127,6 @@ export const PaymentConfirmationEmail = ({
           </Section>
         )}
 
-        {receiptDownloadUrl && (
-          <Section style={downloadSection}>
-            <Heading style={h2}>Download Your Receipt</Heading>
-            <Text style={downloadText}>
-              Click the button below to download a PDF copy of your receipt for your records.
-            </Text>
-            <Button
-              href={receiptDownloadUrl}
-              style={downloadButton}
-            >
-              Download Receipt (PDF)
-            </Button>
-          </Section>
-        )}
-
         <Section style={footer}>
           <Text style={footerText}>
             If you have any questions about this payment, please contact our support team.
@@ -264,32 +249,6 @@ const itemText = {
   color: '#334155',
   fontSize: '14px',
   margin: '0',
-}
-
-const downloadSection = {
-  padding: '32px 24px',
-  textAlign: 'center' as const,
-  backgroundColor: '#f8fafc',
-  margin: '32px 0',
-}
-
-const downloadText = {
-  color: '#64748b',
-  fontSize: '14px',
-  lineHeight: '20px',
-  margin: '0 0 24px',
-}
-
-const downloadButton = {
-  backgroundColor: '#3b82f6',
-  borderRadius: '6px',
-  color: '#ffffff',
-  fontSize: '16px',
-  fontWeight: 'bold',
-  textDecoration: 'none',
-  textAlign: 'center' as const,
-  display: 'inline-block',
-  padding: '12px 24px',
 }
 
 const footer = {

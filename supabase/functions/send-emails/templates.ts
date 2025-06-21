@@ -1,3 +1,4 @@
+
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import React from 'npm:react@18.3.1'
 import { OrderConfirmationEmail } from './_templates/order-confirmation.tsx'
@@ -80,13 +81,6 @@ export async function getEmailTemplate({ type, data }: { type: string, data: any
                 <p><strong>Transaction ID:</strong> ${data.transactionId}</p>
                 <p><strong>Payment Date:</strong> ${data.paymentDate}</p>
               </div>
-              ${data.receiptDownloadUrl ? `
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="${data.receiptDownloadUrl}" style="background: #3b82f6; color: white; padding: 16px 32px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                    Download Receipt (PDF)
-                  </a>
-                </div>
-              ` : ''}
               <p>Your payment has been processed successfully. Thank you for your business!</p>
             </body>
           </html>
