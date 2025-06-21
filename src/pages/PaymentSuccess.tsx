@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Download, Package, Phone, Clock, AlertCircle } from "lucide-react";
+import { CheckCircle, Download, Package, Phone, Clock, AlertCircle, RefreshCw } from "lucide-react";
 import { PaymentDetailsCard } from "@/components/PaymentDetailsCard";
 import { usePaymentDetails } from "@/hooks/usePaymentDetails";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,7 @@ export default function PaymentSuccess() {
   const { toast } = useToast();
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'failed'>('pending');
   const [receiptDownloadUrl, setReceiptDownloadUrl] = useState<string>('');
+  const [isDownloadingReceipt, setIsDownloadingReceipt] = useState(false);
 
   const sessionId = searchParams.get('session_id');
   const invoiceId = searchParams.get('invoice_id');
@@ -45,17 +46,20 @@ export default function PaymentSuccess() {
           console.log('Payment verified successfully');
           setVerificationStatus('success');
           
-          // Generate receipt download URL
+          // Pre-generate receipt download URL
           try {
-            const { data: receiptData } = await supabase.functions.invoke('generate-receipt', {
+            const { data: receiptData, error: receiptError } = await supabase.functions.invoke('generate-receipt', {
               body: { invoiceId, sessionId }
             });
             
+            console.log('Receipt generation response:', { receiptData, receiptError });
+            
             if (receiptData?.downloadUrl) {
               setReceiptDownloadUrl(receiptData.downloadUrl);
+              console.log('Receipt URL ready for download');
             }
           } catch (receiptError) {
-            console.warn('Failed to generate receipt:', receiptError);
+            console.warn('Failed to pre-generate receipt:', receiptError);
           }
         } else {
           console.log('Payment verification failed:', data);
@@ -70,52 +74,75 @@ export default function PaymentSuccess() {
     runVerification();
   }, [sessionId, invoiceId]);
 
-  const handleDownloadReceipt = async () => {
+  const downloadReceipt = async () => {
+    if (!sessionId || !invoiceId) {
+      toast({
+        title: "Error",
+        description: "Missing payment information for receipt generation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDownloadingReceipt(true);
+    
     try {
-      if (receiptDownloadUrl) {
-        // Create a temporary link to download the receipt
-        const link = document.createElement('a');
-        link.href = receiptDownloadUrl;
-        link.download = `receipt-${invoice?.invoice_number || 'payment'}.html`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      console.log('Starting receipt download...', { sessionId, invoiceId });
+      
+      let downloadUrl = receiptDownloadUrl;
+      let filename = `receipt-${sessionId.slice(-8)}.html`;
+      
+      // If we don't have a pre-generated receipt, generate it now
+      if (!downloadUrl) {
+        console.log('Generating receipt on demand...');
         
-        toast({
-          title: "Receipt Downloaded",
-          description: "Your payment receipt has been downloaded successfully.",
-        });
-      } else {
-        // Try to generate receipt if not available
         const { data, error } = await supabase.functions.invoke('generate-receipt', {
           body: { invoiceId, sessionId }
         });
         
-        if (error) throw error;
+        console.log('Receipt generation result:', { data, error });
         
-        if (data?.downloadUrl) {
-          const link = document.createElement('a');
-          link.href = data.downloadUrl;
-          link.download = `receipt-${invoice?.invoice_number || 'payment'}.html`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          toast({
-            title: "Receipt Downloaded",
-            description: "Your payment receipt has been downloaded successfully.",
-          });
-        } else {
-          throw new Error('Unable to generate receipt');
+        if (error) {
+          throw new Error(`Receipt generation failed: ${error.message}`);
         }
+        
+        if (!data?.downloadUrl) {
+          throw new Error('No download URL received from receipt service');
+        }
+        
+        downloadUrl = data.downloadUrl;
+        filename = data.filename || filename;
       }
-    } catch (error) {
-      console.error('Failed to download receipt:', error);
+
+      console.log('Initiating download...', { filename, urlLength: downloadUrl.length });
+      
+      // Create and trigger download
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log('Download triggered successfully');
+      
+      toast({
+        title: "Receipt Downloaded",
+        description: "Your payment receipt has been downloaded successfully.",
+      });
+      
+    } catch (error: any) {
+      console.error('Receipt download failed:', error);
+      
       toast({
         title: "Download Failed",
-        description: "Unable to download receipt at this time. Please try again later.",
+        description: error.message || "Unable to download receipt. Please try again or contact support.",
         variant: "destructive",
       });
+    } finally {
+      setIsDownloadingReceipt(false);
     }
   };
 
@@ -239,9 +266,22 @@ export default function PaymentSuccess() {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button onClick={handleDownloadReceipt} className="flex items-center gap-2">
-            <Download className="w-4 h-4" />
-            Download Receipt
+          <Button 
+            onClick={downloadReceipt} 
+            disabled={isDownloadingReceipt}
+            className="flex items-center gap-2"
+          >
+            {isDownloadingReceipt ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Generating Receipt...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Download Receipt
+              </>
+            )}
           </Button>
           
           {order && (
