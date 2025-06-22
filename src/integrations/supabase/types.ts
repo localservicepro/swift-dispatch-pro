@@ -528,43 +528,52 @@ export type Database = {
       invoices: {
         Row: {
           amount: number
+          batch_invoice_type: string | null
           created_at: string | null
           currency: string | null
           customer_email: string
           due_date: string
           id: string
           invoice_number: string
+          is_batch_invoice: boolean | null
           order_id: string | null
           paid_at: string | null
           payment_url: string | null
+          related_order_ids: Json | null
           status: string | null
           stripe_payment_intent_id: string | null
         }
         Insert: {
           amount: number
+          batch_invoice_type?: string | null
           created_at?: string | null
           currency?: string | null
           customer_email: string
           due_date: string
           id?: string
           invoice_number: string
+          is_batch_invoice?: boolean | null
           order_id?: string | null
           paid_at?: string | null
           payment_url?: string | null
+          related_order_ids?: Json | null
           status?: string | null
           stripe_payment_intent_id?: string | null
         }
         Update: {
           amount?: number
+          batch_invoice_type?: string | null
           created_at?: string | null
           currency?: string | null
           customer_email?: string
           due_date?: string
           id?: string
           invoice_number?: string
+          is_batch_invoice?: boolean | null
           order_id?: string | null
           paid_at?: string | null
           payment_url?: string | null
+          related_order_ids?: Json | null
           status?: string | null
           stripe_payment_intent_id?: string | null
         }
@@ -637,6 +646,7 @@ export type Database = {
         Row: {
           adjustments: number | null
           admin_id: string | null
+          batch_invoice_id: string | null
           created_at: string | null
           customer_address: string
           customer_id: string | null
@@ -673,6 +683,7 @@ export type Database = {
         Insert: {
           adjustments?: number | null
           admin_id?: string | null
+          batch_invoice_id?: string | null
           created_at?: string | null
           customer_address: string
           customer_id?: string | null
@@ -711,6 +722,7 @@ export type Database = {
         Update: {
           adjustments?: number | null
           admin_id?: string | null
+          batch_invoice_id?: string | null
           created_at?: string | null
           customer_address?: string
           customer_id?: string | null
@@ -752,6 +764,13 @@ export type Database = {
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_batch_invoice_id_fkey"
+            columns: ["batch_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
           {
