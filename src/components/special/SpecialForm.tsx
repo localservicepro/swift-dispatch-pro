@@ -41,8 +41,8 @@ export function SpecialForm({ isCreating, editingSpecial, onClose, onSuccess }: 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    special_type: 'limited_time' as const,
-    discount_type: 'percentage' as const,
+    special_type: 'limited_time' as 'monthly' | 'limited_time' | 'flash_sale' | 'seasonal' | 'customer_tier',
+    discount_type: 'percentage' as 'percentage' | 'fixed_amount',
     discount_value: '',
     start_date: '',
     end_date: '',
@@ -207,7 +207,7 @@ export function SpecialForm({ isCreating, editingSpecial, onClose, onSuccess }: 
 
             <div className="space-y-2">
               <Label htmlFor="special_type">Special Type</Label>
-              <Select value={formData.special_type} onValueChange={(value: any) => setFormData(prev => ({ ...prev, special_type: value }))}>
+              <Select value={formData.special_type} onValueChange={(value: 'monthly' | 'limited_time' | 'flash_sale' | 'seasonal' | 'customer_tier') => setFormData(prev => ({ ...prev, special_type: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -236,7 +236,7 @@ export function SpecialForm({ isCreating, editingSpecial, onClose, onSuccess }: 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="discount_type">Discount Type</Label>
-              <Select value={formData.discount_type} onValueChange={(value: any) => setFormData(prev => ({ ...prev, discount_type: value }))}>
+              <Select value={formData.discount_type} onValueChange={(value: 'percentage' | 'fixed_amount') => setFormData(prev => ({ ...prev, discount_type: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
