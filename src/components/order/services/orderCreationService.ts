@@ -172,8 +172,18 @@ async function createSplitOrder(params: CreateOrderParams, orderTotals: any, pay
       const split = params.splits[i];
       const splitOrderNumber = `${masterOrderNumber}-${i + 1}`;
       
-      // Calculate split totals proportionally
-      const splitSubtotal = split.products.reduce((sum: number, p: any) => sum + (p.price * p.quantity), 0);
+      // Calculate split totals by looking up prices from original cart
+      const splitSubtotal = split.products.reduce((sum: number, splitProduct: any) => {
+        const cartItem = params.cart.find(cartItem => cartItem.id === splitProduct.productId);
+        if (!cartItem) {
+          console.error(`Product not found in cart: ${splitProduct.productId}`);
+          return sum;
+        }
+        return sum + (cartItem.price * splitProduct.quantity);
+      }, 0);
+
+      console.log(`Split ${i + 1} subtotal:`, splitSubtotal);
+
       const splitTotals = calculateOrderTotals(
         splitSubtotal,
         0, // No adjustments on splits
@@ -182,10 +192,27 @@ async function createSplitOrder(params: CreateOrderParams, orderTotals: any, pay
         paymentSettings
       );
 
+      console.log(`Split ${i + 1} totals:`, splitTotals);
+
       // Convert truck_type to proper enum value or null
       const validSplitTruckType = split.truckType && ['small', 'medium', 'large', 'crane'].includes(split.truckType) 
         ? split.truckType as 'small' | 'medium' | 'large' | 'crane'
         : null;
+
+      // Convert split products to match the expected format
+      const splitProducts = split.products.map((splitProduct: any) => {
+        const cartItem = params.cart.find(cartItem => cartItem.id === splitProduct.productId);
+        if (!cartItem) {
+          console.error(`Product not found in cart for split product: ${splitProduct.productId}`);
+          return null;
+        }
+        return {
+          id: cartItem.id,
+          name: cartItem.name,
+          price: cartItem.price,
+          quantity: splitProduct.quantity
+        };
+      }).filter(Boolean); // Remove any null entries
 
       const splitOrderData = {
         order_number: splitOrderNumber,
@@ -195,7 +222,7 @@ async function createSplitOrder(params: CreateOrderParams, orderTotals: any, pay
         customer_address: split.deliveryAddress,
         delivery_address: split.deliveryAddress,
         same_as_billing: false,
-        products: split.products,
+        products: splitProducts,
         subtotal: splitTotals.subtotal,
         adjustments: 0,
         delivery_fee: splitTotals.deliveryFee,
@@ -214,6 +241,8 @@ async function createSplitOrder(params: CreateOrderParams, orderTotals: any, pay
         split_number: i + 1,
         payment_status: 'pending'
       };
+
+      console.log(`Creating split order ${i + 1}:`, splitOrderData);
 
       const { data: splitOrder, error: splitError } = await supabase
         .from('orders')
