@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Truck, Calendar, Clock, Minus, Plus, ChevronDown, ChevronUp, MapPin } from "lucide-react";
+import { Truck, Calendar, Clock, Minus, Plus, ChevronDown, ChevronUp, MapPin, FileText } from "lucide-react";
 import { useState } from "react";
 import { CartItem, SplitConfig, Customer } from "./types";
 import { TruckTypeSelector } from "./TruckTypeSelector";
@@ -65,6 +66,10 @@ export function SplitSummaryCard({
 
   const handleDeliveryAddressChange = (address: string) => {
     onUpdateSplit(splitIndex, { deliveryAddress: address });
+  };
+
+  const handleSpecialInstructionsChange = (instructions: string) => {
+    onUpdateSplit(splitIndex, { specialInstructions: instructions });
   };
 
   return (
@@ -251,6 +256,20 @@ export function SplitSummaryCard({
                   </p>
                 </div>
               )}
+
+              {/* Special Instructions for Driver */}
+              <div>
+                <Label className="text-xs font-medium mb-1 block flex items-center gap-1">
+                  <FileText className="w-3 h-3" />
+                  Special Instructions for Driver
+                </Label>
+                <Textarea
+                  value={split.specialInstructions || ""}
+                  onChange={(e) => handleSpecialInstructionsChange(e.target.value)}
+                  placeholder="Any special instructions for the driver for this delivery..."
+                  className="h-16 text-xs resize-none"
+                />
+              </div>
             </CardContent>
           </CollapsibleContent>
         </Collapsible>

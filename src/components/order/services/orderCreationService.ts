@@ -131,7 +131,7 @@ async function createSplitOrder(params: CreateOrderParams, orderTotals: any, pay
     const masterOrderNumber = `SPL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const orders = [];
 
-    // Create master order entry
+    // Create master order entry - this is a summary record, not a split order itself
     const masterOrderData = {
       order_number: masterOrderNumber,
       customer_id: params.selectedCustomer.id,
@@ -148,9 +148,9 @@ async function createSplitOrder(params: CreateOrderParams, orderTotals: any, pay
       delivery_method: params.deliveryMethod,
       payment_method: params.paymentMethod,
       status: 'preparing' as const,
-      is_split_order: true,
+      is_split_order: false, // Master order is not a split order itself
       master_order_id: null,
-      split_number: 0,
+      split_number: null, // Master order doesn't have a split number
       payment_status: 'pending'
     };
 
@@ -206,7 +206,7 @@ async function createSplitOrder(params: CreateOrderParams, orderTotals: any, pay
         truck_type: validSplitTruckType,
         truck_id: split.truckId,
         driver_id: split.driverId,
-        special_instructions: split.specialInstructions,
+        special_instructions: split.specialInstructions || '', // Use split-specific instructions
         payment_method: params.paymentMethod,
         status: 'preparing' as const,
         is_split_order: true,
