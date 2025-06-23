@@ -206,19 +206,6 @@ export function GoogleMapsLightbox({
             onMapReady={handleMapReady}
           />
 
-          {/* Instructions */}
-          {!showApiKeyInput && (
-            <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-              <p className="font-medium mb-1">How to use:</p>
-              <ul className="space-y-1 text-xs">
-                <li>• Search for an address in the search box above</li>
-                <li>• Click on the map to select a location</li>
-                <li>• Drag the marker to fine-tune the position</li>
-                <li>• Click "Confirm Selection" when you're ready</li>
-              </ul>
-            </div>
-          )}
-
           {/* Selected Address Display */}
           {selectedAddress && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
