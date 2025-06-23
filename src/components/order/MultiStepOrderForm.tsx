@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
@@ -146,6 +145,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         return (
           <ProductSelectionStep
             cart={cart}
+            subtotal={subtotal}
             adjustments={adjustments}
             onCartUpdate={setCart}
             onAdjustmentsChange={setAdjustments}
@@ -255,8 +255,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               onDeliveryDateChange={setDeliveryDate}
               onDeliveryTimeChange={setDeliveryTime}
               onTruckTypeChange={setTruckType}
-              onTruckIdChange={setTruckId}
-              onDriverIdChange={setDriverId}
+              onTruckSelect={setSelectedTruck}
+              onDriverChange={setDriverId}
               onSpecialInstructionsChange={setSpecialInstructions}
               onBack={prevStep}
               onNext={nextStep}
