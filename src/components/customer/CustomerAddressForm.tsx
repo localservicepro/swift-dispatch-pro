@@ -2,7 +2,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SuburbSelector } from "@/components/order/SuburbSelector";
-import { GoogleAddressAutocomplete } from "@/components/ui/google-address-autocomplete";
+import { EnhancedAddressInput } from "@/components/ui/enhanced-address-input";
 
 interface CustomerAddressFormProps {
   formData: {
@@ -23,19 +23,26 @@ export function CustomerAddressForm({
   const handleAddressSelect = (addressData: any) => {
     console.log('Address selected:', addressData);
     onFormDataChange({ full_address: addressData.fullAddress });
-    // You could also auto-select suburb based on postcode here
+    
+    // Auto-select suburb based on postcode if available
+    if (addressData.postcode) {
+      // You could implement auto-suburb selection here based on postcode
+      console.log('Could auto-select suburb for postcode:', addressData.postcode);
+    }
   };
 
   return (
     <>
       <div>
-        <GoogleAddressAutocomplete
+        <EnhancedAddressInput
           label="Full Address"
           value={formData.full_address}
           onChange={(value) => onFormDataChange({ full_address: value })}
           onAddressSelect={handleAddressSelect}
           placeholder="Start typing your address..."
           required
+          showMapButton={true}
+          showValidation={true}
         />
       </div>
 
