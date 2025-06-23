@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
 import { Button } from './button';
 import { Input } from './input';
-import { MapPin, Search, X } from 'lucide-react';
+import { MapPin, Search, X, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDebounce } from '@/hooks/useDebounce';
 
@@ -34,6 +34,10 @@ declare global {
   }
 }
 
+// You'll need to replace this with your actual Google Maps API key
+// Get it from: https://console.cloud.google.com/google/maps-apis/credentials
+const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || 'YOUR_GOOGLE_MAPS_API_KEY_HERE';
+
 export function GoogleMapsLightbox({
   isOpen,
   onClose,
@@ -46,28 +50,37 @@ export function GoogleMapsLightbox({
   const [selectedAddress, setSelectedAddress] = useState<AddressData | null>(null);
   const [isLoadingMaps, setIsLoadingMaps] = useState(true);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const autocompleteServiceRef = useRef<any>(null);
   
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
   // Load Google Maps script
   useEffect(() => {
+    if (GOOGLE_MAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
+      setMapError('Google Maps API key not configured. Please add your API key to the environment.');
+      setIsLoadingMaps(false);
+      return;
+    }
+
     if (!window.google) {
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NODE_ENV === 'development' ? 'YOUR_GOOGLE_MAPS_API_KEY_FOR_CLIENT' : 'YOUR_GOOGLE_MAPS_API_KEY_FOR_CLIENT'}&libraries=places&callback=initGoogleMaps`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
       script.async = true;
       script.defer = true;
       
       window.initGoogleMaps = () => {
+        console.log('Google Maps API loaded successfully');
         setIsLoadingMaps(false);
       };
       
       script.onerror = () => {
-        setMapError('Failed to load Google Maps. Please check your API key configuration.');
+        console.error('Failed to load Google Maps API');
+        setMapError('Failed to load Google Maps. Please check your API key and internet connection.');
         setIsLoadingMaps(false);
       };
       
@@ -99,12 +112,24 @@ export function GoogleMapsLightbox({
           reverseGeocode(lat, lng);
         });
 
+        // If there's an initial address, try to geocode it
+        if (initialAddress) {
+          geocodeAddress(initialAddress);
+        }
+
       } catch (error) {
         console.error('Error initializing map:', error);
         setMapError('Failed to initialize map. Please try again.');
       }
     }
-  }, [isOpen, isLoadingMaps]);
+  }, [isOpen, isLoadingMaps, initialAddress]);
+
+  // Update search query when initialAddress changes
+  useEffect(() => {
+    if (initialAddress && initialAddress !== searchQuery) {
+      setSearchQuery(initialAddress);
+    }
+  }, [initialAddress]);
 
   // Search for addresses using our edge function
   useEffect(() => {
@@ -116,30 +141,46 @@ export function GoogleMapsLightbox({
   }, [debouncedSearchQuery]);
 
   const searchAddresses = async (query: string) => {
+    setIsSearching(true);
     try {
+      console.log('Searching for addresses:', query);
       const { data, error } = await supabase.functions.invoke('google-places', {
         body: { input: query }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Address search error:', error);
+        throw error;
+      }
 
-      if (data.predictions) {
+      console.log('Address search response:', data);
+      if (data?.predictions && Array.isArray(data.predictions)) {
         setSuggestions(data.predictions);
+      } else {
+        setSuggestions([]);
       }
     } catch (error) {
       console.error('Error searching addresses:', error);
+      setSuggestions([]);
+    } finally {
+      setIsSearching(false);
     }
   };
 
   const selectSuggestion = async (suggestion: any) => {
     try {
+      console.log('Selecting suggestion:', suggestion);
       const { data, error } = await supabase.functions.invoke('google-places-details', {
         body: { placeId: suggestion.place_id }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Place details error:', error);
+        throw error;
+      }
 
-      if (data.parsedAddress) {
+      console.log('Place details response:', data);
+      if (data?.parsedAddress) {
         const addressData: AddressData = {
           fullAddress: data.parsedAddress.fullAddress,
           street: data.parsedAddress.street,
@@ -162,16 +203,43 @@ export function GoogleMapsLightbox({
     }
   };
 
+  const geocodeAddress = async (address: string) => {
+    if (!window.google) return;
+
+    const geocoder = new window.google.maps.Geocoder();
+    
+    try {
+      console.log('Geocoding address:', address);
+      const response = await new Promise((resolve, reject) => {
+        geocoder.geocode({ address }, (results: any, status: any) => {
+          if (status === 'OK') resolve(results);
+          else reject(new Error(`Geocoding failed: ${status}`));
+        });
+      });
+
+      const result = (response as any)[0];
+      if (result) {
+        const lat = result.geometry.location.lat();
+        const lng = result.geometry.location.lng();
+        updateMapLocation(lat, lng);
+        reverseGeocode(lat, lng);
+      }
+    } catch (error) {
+      console.error('Geocoding failed:', error);
+    }
+  };
+
   const reverseGeocode = async (lat: number, lng: number) => {
     if (!window.google) return;
 
     const geocoder = new window.google.maps.Geocoder();
     
     try {
+      console.log('Reverse geocoding:', lat, lng);
       const response = await new Promise((resolve, reject) => {
         geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
           if (status === 'OK') resolve(results);
-          else reject(new Error(`Geocoding failed: ${status}`));
+          else reject(new Error(`Reverse geocoding failed: ${status}`));
         });
       });
 
@@ -283,6 +351,12 @@ export function GoogleMapsLightbox({
               className="pl-10"
             />
             
+            {isSearching && (
+              <div className="absolute right-3 top-3">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900" />
+              </div>
+            )}
+            
             {/* Suggestions Dropdown */}
             {suggestions.length > 0 && (
               <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
@@ -315,14 +389,30 @@ export function GoogleMapsLightbox({
               </div>
             ) : mapError ? (
               <div className="h-96 bg-red-50 rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <X className="w-8 h-8 text-red-500 mx-auto mb-2" />
-                  <p className="text-red-600">{mapError}</p>
+                <div className="text-center max-w-md p-4">
+                  <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+                  <p className="text-red-600 mb-2">{mapError}</p>
+                  {GOOGLE_MAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY_HERE' && (
+                    <p className="text-sm text-red-500">
+                      Please configure your Google Maps API key in the environment variables.
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
               <div ref={mapRef} className="h-96 w-full rounded-lg" />
             )}
+          </div>
+
+          {/* Instructions */}
+          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+            <p className="font-medium mb-1">How to use:</p>
+            <ul className="space-y-1 text-xs">
+              <li>• Search for an address in the search box above</li>
+              <li>• Click on the map to select a location</li>
+              <li>• Drag the marker to fine-tune the position</li>
+              <li>• Click "Confirm Selection" when you're ready</li>
+            </ul>
           </div>
 
           {/* Selected Address Display */}

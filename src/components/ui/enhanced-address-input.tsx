@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from './input';
 import { Label } from './label';
@@ -65,11 +64,12 @@ export function EnhancedAddressInput({
   const [showMapLightbox, setShowMapLightbox] = useState(false);
   const [sessionToken] = useState(() => Math.random().toString(36).substring(7));
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchAttempts, setSearchAttempts] = useState(0);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
-  const debouncedValue = useDebounce(value, 300);
+  const debouncedValue = useDebounce(value, 500);
 
   // Fetch predictions when user types
   useEffect(() => {
@@ -80,6 +80,7 @@ export function EnhancedAddressInput({
       setShowDropdown(false);
       setValidationStatus('idle');
       setHasSearched(false);
+      setSearchAttempts(0);
     }
   }, [debouncedValue]);
 
@@ -87,51 +88,59 @@ export function EnhancedAddressInput({
     setIsLoading(true);
     setValidationStatus('validating');
     setHasSearched(true);
+    setSearchAttempts(prev => prev + 1);
     
     try {
+      console.log('Fetching predictions for:', input);
       const { data, error } = await supabase.functions.invoke('google-places', {
         body: { input, sessionToken }
       });
 
       if (error) {
         console.error('Google Places API error:', error);
-        throw error;
+        handleSearchFailure();
+        return;
       }
+
+      console.log('Predictions response:', data);
 
       if (data.predictions && data.predictions.length > 0) {
         setPredictions(data.predictions);
         setShowDropdown(true);
         setSelectedIndex(-1);
-        setValidationStatus('idle'); // Don't show valid until user selects
+        setValidationStatus('idle');
         onValidationChange?.(true);
       } else {
-        // No predictions found - auto-open map lightbox after a short delay
+        console.log('No predictions found, will auto-open map lightbox');
         setPredictions([]);
         setShowDropdown(false);
-        setValidationStatus('idle'); // Don't show invalid immediately
+        setValidationStatus('idle');
         
-        // Auto-open map lightbox when no results found
+        // Auto-open map lightbox when no results found after a delay
         setTimeout(() => {
-          console.log('No address predictions found, opening map lightbox');
+          console.log('Auto-opening map lightbox due to no search results');
           setShowMapLightbox(true);
-        }, 500);
+        }, 1000);
       }
     } catch (error) {
       console.error('Error fetching address predictions:', error);
-      setPredictions([]);
-      setShowDropdown(false);
-      setValidationStatus('idle'); // Don't show invalid on API error
-      
-      // Auto-open map lightbox on API error too
-      setTimeout(() => {
-        console.log('Address lookup failed, opening map lightbox');
-        setShowMapLightbox(true);
-      }, 500);
-      
-      onValidationChange?.(false);
+      handleSearchFailure();
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSearchFailure = () => {
+    setPredictions([]);
+    setShowDropdown(false);
+    setValidationStatus('idle');
+    onValidationChange?.(false);
+    
+    // Auto-open map lightbox on API error after a delay
+    setTimeout(() => {
+      console.log('Auto-opening map lightbox due to search failure');
+      setShowMapLightbox(true);
+    }, 1000);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,6 +152,7 @@ export function EnhancedAddressInput({
       setPredictions([]);
       setValidationStatus('idle');
       setHasSearched(false);
+      setSearchAttempts(0);
     }
   };
 
@@ -154,11 +164,17 @@ export function EnhancedAddressInput({
     
     // Get detailed address information
     try {
+      console.log('Getting details for prediction:', prediction);
       const { data, error } = await supabase.functions.invoke('google-places-details', {
         body: { placeId: prediction.place_id, sessionToken }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Place details error:', error);
+        throw error;
+      }
+
+      console.log('Place details response:', data);
 
       if (data.parsedAddress && onAddressSelect) {
         const addressData: AddressData = {
@@ -185,6 +201,7 @@ export function EnhancedAddressInput({
   };
 
   const handleMapAddressSelect = (addressData: AddressData) => {
+    console.log('Address selected from map:', addressData);
     onChange(addressData.fullAddress);
     onAddressSelect?.(addressData);
     setValidationStatus('valid');
@@ -264,10 +281,10 @@ export function EnhancedAddressInput({
             Address Not Found
           </Badge>
         )}
-        {hasSearched && predictions.length === 0 && !isLoading && validationStatus === 'idle' && value.length > 2 && (
+        {hasSearched && predictions.length === 0 && !isLoading && validationStatus === 'idle' && value.length > 2 && searchAttempts > 0 && (
           <Badge variant="outline" className="text-blue-700 bg-blue-50">
             <Map className="w-3 h-3 mr-1" />
-            Try the map to find your address
+            No results found - try using the map to select your address
           </Badge>
         )}
       </div>
