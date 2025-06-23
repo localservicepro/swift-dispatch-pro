@@ -5,7 +5,7 @@ export const getGoogleMapsApiKey = () => {
   const envKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 
                  import.meta.env.REACT_APP_GOOGLE_MAPS_API_KEY;
   
-  if (envKey && envKey !== 'GOOGLE_MAPS_API_KEY') {
+  if (envKey && envKey !== 'AIzaSyAY8Q84_WVfXmRkLgSeveoaJnlj03M9fyE') {
     console.log('Using environment variable API key');
     return envKey;
   }
@@ -19,7 +19,7 @@ export const getGoogleMapsApiKey = () => {
   
   // IMPORTANT: Replace this with your actual Google Maps API key
   // Get your key from: https://console.cloud.google.com/apis/credentials
-  const DEVELOPMENT_API_KEY = 'GOOGLE_MAPS_API_KEY'; // Replace with your actual API key
+  const DEVELOPMENT_API_KEY = 'AIzaSyAY8Q84_WVfXmRkLgSeveoaJnlj03M9fyE'; // Replace with your actual API key
   
   console.log('Using development API key');
   return DEVELOPMENT_API_KEY;
@@ -34,7 +34,7 @@ export const loadGoogleMapsScript = () => {
     // Check for placeholder values
     const isPlaceholder = !apiKey || 
                          apiKey === 'AIzaSyAY8Q84_WVfXmRkLgSeveoaJnlj03M9fyE' ||
-                         apiKey === 'AIzaSyAI5xdGun8A7xR-ri9knHTmM4OdRtTnNQw';
+                         apiKey === 'AIzaSyAY8Q84_WVfXmRkLgSeveoaJnlj03M9fyE';
     
     if (isPlaceholder) {
       console.error('Google Maps API key is not configured properly');
