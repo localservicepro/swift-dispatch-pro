@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
 import { Button } from './button';
@@ -34,9 +33,22 @@ declare global {
   }
 }
 
-// You'll need to replace this with your actual Google Maps API key
-// Get it from: https://console.cloud.google.com/google/maps-apis/credentials
-const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || 'YOUR_GOOGLE_MAPS_API_KEY_HERE';
+// Configuration for Google Maps API key
+const getGoogleMapsApiKey = () => {
+  // Try environment variables first (for production/staging)
+  const envKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 
+                 import.meta.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+  
+  if (envKey && envKey !== 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
+    return envKey;
+  }
+  
+  // For development - replace with your actual API key
+  // TODO: Replace this with your actual Google Maps API key
+  const DEVELOPMENT_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY_HERE';
+  
+  return DEVELOPMENT_API_KEY;
+};
 
 export function GoogleMapsLightbox({
   isOpen,
@@ -51,6 +63,8 @@ export function GoogleMapsLightbox({
   const [isLoadingMaps, setIsLoadingMaps] = useState(true);
   const [mapError, setMapError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -61,26 +75,31 @@ export function GoogleMapsLightbox({
 
   // Load Google Maps script
   useEffect(() => {
-    if (GOOGLE_MAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
-      setMapError('Google Maps API key not configured. Please add your API key to the environment.');
+    const apiKey = getGoogleMapsApiKey();
+    
+    if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
+      setMapError('Google Maps API key not configured. Please enter your API key below.');
+      setShowApiKeyInput(true);
       setIsLoadingMaps(false);
       return;
     }
 
     if (!window.google) {
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
       script.async = true;
       script.defer = true;
       
       window.initGoogleMaps = () => {
         console.log('Google Maps API loaded successfully');
         setIsLoadingMaps(false);
+        setMapError(null);
       };
       
       script.onerror = () => {
         console.error('Failed to load Google Maps API');
         setMapError('Failed to load Google Maps. Please check your API key and internet connection.');
+        setShowApiKeyInput(true);
         setIsLoadingMaps(false);
       };
       
@@ -139,6 +158,14 @@ export function GoogleMapsLightbox({
       setSuggestions([]);
     }
   }, [debouncedSearchQuery]);
+
+  const handleApiKeySubmit = () => {
+    if (apiKeyInput.trim()) {
+      // Store the API key temporarily and reload the script
+      localStorage.setItem('temp_google_maps_api_key', apiKeyInput.trim());
+      window.location.reload();
+    }
+  };
 
   const searchAddresses = async (query: string) => {
     setIsSearching(true);
@@ -341,6 +368,30 @@ export function GoogleMapsLightbox({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* API Key Input (shown when key is missing) */}
+          {showApiKeyInput && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="font-medium text-yellow-900 mb-2">Google Maps API Key Required</h4>
+              <p className="text-sm text-yellow-700 mb-3">
+                Please enter your Google Maps API key to use the map functionality.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter your Google Maps API key..."
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={handleApiKeySubmit} disabled={!apiKeyInput.trim()}>
+                  Set Key
+                </Button>
+              </div>
+              <p className="text-xs text-yellow-600 mt-2">
+                Get your API key from the Google Cloud Console and enable Maps JavaScript API, Places API, and Geocoding API.
+              </p>
+            </div>
+          )}
+
           {/* Search Input */}
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -349,6 +400,7 @@ export function GoogleMapsLightbox({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
+              disabled={showApiKeyInput}
             />
             
             {isSearching && (
@@ -358,7 +410,7 @@ export function GoogleMapsLightbox({
             )}
             
             {/* Suggestions Dropdown */}
-            {suggestions.length > 0 && (
+            {suggestions.length > 0 && !showApiKeyInput && (
               <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                 {suggestions.map((suggestion) => (
                   <div
@@ -392,9 +444,9 @@ export function GoogleMapsLightbox({
                 <div className="text-center max-w-md p-4">
                   <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
                   <p className="text-red-600 mb-2">{mapError}</p>
-                  {GOOGLE_MAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY_HERE' && (
+                  {showApiKeyInput && (
                     <p className="text-sm text-red-500">
-                      Please configure your Google Maps API key in the environment variables.
+                      Please enter your Google Maps API key above to continue.
                     </p>
                   )}
                 </div>
@@ -435,7 +487,7 @@ export function GoogleMapsLightbox({
             </Button>
             <Button 
               onClick={handleConfirmSelection}
-              disabled={!selectedAddress}
+              disabled={!selectedAddress || showApiKeyInput}
               className="flex-1"
             >
               Confirm Selection
