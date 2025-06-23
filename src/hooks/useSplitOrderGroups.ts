@@ -52,13 +52,16 @@ export function useSplitOrderGroups() {
   // Soft delete entire split order group
   const deleteSplitOrderGroup = async (orderId: string, reason?: string) => {
     try {
-      const { data, error } = await supabase.rpc('soft_delete_split_order_group', {
-        p_order_id: orderId,
-        p_reason: reason || 'Admin group deletion'
-      });
+      // Use the raw SQL call since the function isn't in the generated types yet
+      const { data, error } = await supabase
+        .rpc('soft_delete_split_order_group' as any, {
+          p_order_id: orderId,
+          p_reason: reason || 'Admin group deletion'
+        });
 
       if (error) throw error;
 
+      // Type the result manually since it's not in generated types
       const result = data as {
         deleted_order_ids: string[];
         order_numbers: string[];
@@ -91,12 +94,15 @@ export function useSplitOrderGroups() {
   // Restore entire split order group
   const restoreSplitOrderGroup = async (orderId: string) => {
     try {
-      const { data, error } = await supabase.rpc('restore_split_order_group', {
-        p_order_id: orderId
-      });
+      // Use the raw SQL call since the function isn't in the generated types yet
+      const { data, error } = await supabase
+        .rpc('restore_split_order_group' as any, {
+          p_order_id: orderId
+        });
 
       if (error) throw error;
 
+      // Type the result manually since it's not in generated types
       const result = data as {
         restored_order_ids: string[];
         order_numbers: string[];

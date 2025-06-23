@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,20 +35,24 @@ export function DeletedOrdersList() {
   const { deletedOrders, isLoading, restoreOrder } = useDeletedOrdersData();
   const { restoreSplitOrderGroup } = useSplitOrderGroups();
 
-  // Group deleted orders by split relationships
+  // Group deleted orders by split relationships - safely access properties
   const groupedOrders = useMemo(() => {
     const groups: { [key: string]: any[] } = {};
     const standaloneOrders: any[] = [];
 
     deletedOrders.forEach(order => {
-      const groupKey = order.master_order_id || (order.is_split_order ? 'orphaned' : null);
+      // Safely access master_order_id and is_split_order properties
+      const masterOrderId = (order as any).master_order_id;
+      const isSplitOrder = (order as any).is_split_order;
+      
+      const groupKey = masterOrderId || (isSplitOrder ? 'orphaned' : null);
       
       if (groupKey && groupKey !== 'orphaned') {
         if (!groups[groupKey]) groups[groupKey] = [];
         groups[groupKey].push(order);
-      } else if (order.is_split_order) {
+      } else if (isSplitOrder) {
         // This is a master order with splits
-        const splitOrders = deletedOrders.filter(o => o.master_order_id === order.id);
+        const splitOrders = deletedOrders.filter(o => (o as any).master_order_id === order.id);
         if (splitOrders.length > 0) {
           groups[order.id] = [order, ...splitOrders];
         } else {
@@ -183,8 +188,8 @@ export function DeletedOrdersList() {
             <div className="space-y-6">
               {/* Split Order Groups */}
               {filteredResults.groups.map((group, groupIndex) => {
-                const masterOrder = group.find(o => !o.master_order_id) || group[0];
-                const splitOrders = group.filter(o => o.master_order_id);
+                const masterOrder = group.find(o => !(o as any).master_order_id) || group[0];
+                const splitOrders = group.filter(o => (o as any).master_order_id);
                 const totalAmount = group.reduce((sum, order) => sum + order.total_amount, 0);
 
                 return (
@@ -231,7 +236,7 @@ export function DeletedOrdersList() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">{order.order_number}</span>
-                                {!order.master_order_id && (
+                                {!(order as any).master_order_id && (
                                   <Badge variant="secondary" className="text-xs">Master</Badge>
                                 )}
                               </div>
