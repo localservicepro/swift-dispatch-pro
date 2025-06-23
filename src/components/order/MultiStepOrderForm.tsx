@@ -128,6 +128,11 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     }
   };
 
+  const handleTruckSelect = (truckId: string, truckDetails: any) => {
+    setTruckId(truckId);
+    setSelectedTruck(truckDetails);
+  };
+
   const totalSteps = getTotalSteps();
 
   const renderCurrentStep = () => {
@@ -255,7 +260,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               onDeliveryDateChange={setDeliveryDate}
               onDeliveryTimeChange={setDeliveryTime}
               onTruckTypeChange={setTruckType}
-              onTruckSelect={setSelectedTruck}
+              onTruckSelect={handleTruckSelect}
               onDriverChange={setDriverId}
               onSpecialInstructionsChange={setSpecialInstructions}
               onBack={prevStep}
