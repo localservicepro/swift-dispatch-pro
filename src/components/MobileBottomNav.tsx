@@ -8,7 +8,7 @@ import {
   CreditCard,
   Mail,
   Settings,
-  Truck,
+  Users2,
   Target,
   Trash2,
   ChevronLeft,
@@ -24,7 +24,7 @@ const menuItems = [
   { title: "Products", icon: Package, id: "products" },
   { title: "Customers", icon: Users, id: "customers" },
   { title: "Payments", icon: CreditCard, id: "payments" },
-  { title: "Team", icon: Truck, id: "drivers" },
+  { title: "Team", icon: Users2, id: "drivers" },
   { title: "Emails", icon: Mail, id: "emails" },
   { title: "Settings", icon: Settings, id: "settings" },
 ];
