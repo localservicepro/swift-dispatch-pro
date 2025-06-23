@@ -41,19 +41,22 @@ const getGoogleMapsApiKey = () => {
                  import.meta.env.REACT_APP_GOOGLE_MAPS_API_KEY;
   
   if (envKey && envKey !== 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
+    console.log('Using environment variable API key');
     return envKey;
   }
   
   // Check localStorage for temporarily stored key
   const tempKey = localStorage.getItem('temp_google_maps_api_key');
   if (tempKey) {
+    console.log('Using temporary localStorage API key');
     return tempKey;
   }
   
-  // Replace this with your actual Google Maps API key
-  // TODO: Replace the value below with your actual Google Maps API key
-  const DEVELOPMENT_API_KEY = 'YOUR_ACTUAL_GOOGLE_MAPS_API_KEY_HERE';
+  // IMPORTANT: Replace this with your actual Google Maps API key
+  // Get your key from: https://console.cloud.google.com/apis/credentials
+  const DEVELOPMENT_API_KEY = 'AIzaSyBvOkTwrdX9CdUGmFV0WkMT8gD8ej2XYzQ'; // Replace with your actual API key
   
+  console.log('Using development API key');
   return DEVELOPMENT_API_KEY;
 };
 
@@ -84,17 +87,24 @@ export function GoogleMapsLightbox({
   useEffect(() => {
     const apiKey = getGoogleMapsApiKey();
     
-    console.log('Google Maps API Key check:', apiKey ? 'Key found' : 'No key found');
+    console.log('Google Maps API Key status:', apiKey ? 'Available' : 'Missing');
     
-    if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE' || apiKey === 'AIzaSyDX8nQv8fZ5zQv8fZ5zQv8fZ5zQv8fZ5zQ' || apiKey === 'YOUR_ACTUAL_GOOGLE_MAPS_API_KEY_HERE') {
-      setMapError('Google Maps API key not configured. Please enter your API key below.');
+    // Check for placeholder values
+    const isPlaceholder = !apiKey || 
+                         apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE' || 
+                         apiKey === 'YOUR_ACTUAL_GOOGLE_MAPS_API_KEY_HERE' ||
+                         apiKey === 'AIzaSyDX8nQv8fZ5zQv8fZ5zQv8fZ5zQv8fZ5zQ';
+    
+    if (isPlaceholder) {
+      console.error('Google Maps API key is not configured properly');
+      setMapError('Google Maps API key not configured. Please enter your API key below or update the code with your actual key.');
       setShowApiKeyInput(true);
       setIsLoadingMaps(false);
       return;
     }
 
     if (!window.google) {
-      console.log('Loading Google Maps script...');
+      console.log('Loading Google Maps script with API key...');
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
       script.async = true;
@@ -104,11 +114,12 @@ export function GoogleMapsLightbox({
         console.log('Google Maps API loaded successfully');
         setIsLoadingMaps(false);
         setMapError(null);
+        setShowApiKeyInput(false);
       };
       
       script.onerror = (error) => {
         console.error('Failed to load Google Maps API:', error);
-        setMapError('Failed to load Google Maps. Please check your API key and internet connection.');
+        setMapError('Failed to load Google Maps. Please check your API key and ensure the Maps JavaScript API, Places API, and Geocoding API are enabled in Google Cloud Console.');
         setShowApiKeyInput(true);
         setIsLoadingMaps(false);
       };
@@ -117,6 +128,8 @@ export function GoogleMapsLightbox({
     } else {
       console.log('Google Maps already loaded');
       setIsLoadingMaps(false);
+      setMapError(null);
+      setShowApiKeyInput(false);
     }
   }, []);
 
@@ -152,7 +165,7 @@ export function GoogleMapsLightbox({
         console.log('Google Maps initialized successfully');
       } catch (error) {
         console.error('Error initializing map:', error);
-        setMapError('Failed to initialize map. Please try again.');
+        setMapError('Failed to initialize map. Please ensure all required APIs are enabled.');
       }
     }
   }, [isOpen, isLoadingMaps, initialAddress]);
@@ -177,6 +190,7 @@ export function GoogleMapsLightbox({
     if (apiKeyInput.trim()) {
       console.log('Setting temporary API key');
       localStorage.setItem('temp_google_maps_api_key', apiKeyInput.trim());
+      setApiKeyInput('');
       window.location.reload();
     }
   };
@@ -356,6 +370,7 @@ export function GoogleMapsLightbox({
 
   const handleConfirmSelection = () => {
     if (selectedAddress) {
+      console.log('Confirming address selection:', selectedAddress);
       onAddressSelect(selectedAddress);
       onClose();
     }
@@ -383,14 +398,15 @@ export function GoogleMapsLightbox({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* API Key Input (shown when key is missing) */}
+          {/* API Key Input (shown when key is missing or invalid) */}
           {showApiKeyInput && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <h4 className="font-medium text-yellow-900 mb-2">Google Maps API Key Required</h4>
               <p className="text-sm text-yellow-700 mb-3">
-                Please enter your Google Maps API key to use the map functionality.
+                To use the map functionality, you need a valid Google Maps API key. 
+                You can enter it temporarily here, or update the code with your actual key.
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-3">
                 <Input
                   placeholder="Enter your Google Maps API key..."
                   value={apiKeyInput}
@@ -401,9 +417,11 @@ export function GoogleMapsLightbox({
                   Set Key
                 </Button>
               </div>
-              <p className="text-xs text-yellow-600 mt-2">
-                Get your API key from the Google Cloud Console and enable Maps JavaScript API, Places API, and Geocoding API.
-              </p>
+              <div className="text-xs text-yellow-600 space-y-1">
+                <p>• Get your API key from the Google Cloud Console</p>
+                <p>• Enable Maps JavaScript API, Places API, and Geocoding API</p>
+                <p>• Add your domain to authorized origins</p>
+              </div>
             </div>
           )}
 
@@ -451,19 +469,15 @@ export function GoogleMapsLightbox({
               <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
-                  <p className="text-gray-600">Loading map...</p>
+                  <p className="text-gray-600">Loading Google Maps...</p>
                 </div>
               </div>
             ) : mapError ? (
               <div className="h-96 bg-red-50 rounded-lg flex items-center justify-center">
                 <div className="text-center max-w-md p-4">
                   <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
-                  <p className="text-red-600 mb-2">{mapError}</p>
-                  {showApiKeyInput && (
-                    <p className="text-sm text-red-500">
-                      Please enter your Google Maps API key above to continue.
-                    </p>
-                  )}
+                  <p className="text-red-600 mb-2 font-medium">Map Loading Error</p>
+                  <p className="text-sm text-red-500">{mapError}</p>
                 </div>
               </div>
             ) : (
@@ -472,15 +486,17 @@ export function GoogleMapsLightbox({
           </div>
 
           {/* Instructions */}
-          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-            <p className="font-medium mb-1">How to use:</p>
-            <ul className="space-y-1 text-xs">
-              <li>• Search for an address in the search box above</li>
-              <li>• Click on the map to select a location</li>
-              <li>• Drag the marker to fine-tune the position</li>
-              <li>• Click "Confirm Selection" when you're ready</li>
-            </ul>
-          </div>
+          {!showApiKeyInput && (
+            <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+              <p className="font-medium mb-1">How to use:</p>
+              <ul className="space-y-1 text-xs">
+                <li>• Search for an address in the search box above</li>
+                <li>• Click on the map to select a location</li>
+                <li>• Drag the marker to fine-tune the position</li>
+                <li>• Click "Confirm Selection" when you're ready</li>
+              </ul>
+            </div>
+          )}
 
           {/* Selected Address Display */}
           {selectedAddress && (
