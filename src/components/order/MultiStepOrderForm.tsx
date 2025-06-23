@@ -148,7 +148,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             cart={cart}
             adjustments={adjustments}
             onCartUpdate={setCart}
-            onAdjustmentsUpdate={setAdjustments}
+            onAdjustmentsChange={setAdjustments}
             onBack={prevStep}
             onNext={nextStep}
           />

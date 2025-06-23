@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Customer, CartItem } from "../types";
 import { calculateOrderTotals } from "../utils/paymentCalculations";
@@ -52,6 +53,17 @@ interface CreateSplitOrderParams {
   specialInstructions: string;
   orderTotals: any;
 }
+
+// Helper function to convert CartItem to JSON-serializable format
+const serializeCartItems = (cart: CartItem[]) => {
+  return cart.map(item => ({
+    id: item.product.id,
+    name: item.product.name,
+    price: item.unit_price,
+    quantity: item.quantity,
+    total_price: item.total_price
+  }));
+};
 
 export async function createOrder(params: CreateOrderParams) {
   console.log('Creating order with params:', params);
@@ -119,6 +131,9 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       ? params.truckType as 'small' | 'medium' | 'large' | 'crane'
       : null;
 
+    // Serialize cart items for database storage
+    const serializedProducts = serializeCartItems(params.cart);
+
     const orderData = {
       order_number: orderNumber,
       customer_id: params.customer.id,
@@ -127,7 +142,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       customer_address: params.sameAsBilling ? params.customer.full_address : params.deliveryAddress,
       delivery_address: params.sameAsBilling ? params.customer.full_address : params.deliveryAddress,
       same_as_billing: params.sameAsBilling,
-      products: params.cart,
+      products: serializedProducts,
       subtotal: params.orderTotals.subtotal,
       adjustments: params.orderTotals.adjustments,
       delivery_fee: params.orderTotals.deliveryFee,
@@ -191,6 +206,9 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
     const masterOrderNumber = `SPL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const orders = [];
 
+    // Serialize cart items for database storage
+    const serializedProducts = serializeCartItems(params.cart);
+
     // Create master order entry - this is a summary record, not a split order itself
     const masterOrderData = {
       order_number: masterOrderNumber,
@@ -200,7 +218,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       customer_address: params.customer.full_address,
       delivery_address: params.customer.full_address,
       same_as_billing: true,
-      products: params.cart,
+      products: serializedProducts,
       subtotal: params.orderTotals.subtotal,
       adjustments: params.orderTotals.adjustments,
       delivery_fee: params.orderTotals.deliveryFee,
@@ -234,12 +252,12 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       
       // Calculate split totals by looking up prices from original cart
       const splitSubtotal = split.products.reduce((sum: number, splitProduct: any) => {
-        const cartItem = params.cart.find(cartItem => cartItem.id === splitProduct.productId);
+        const cartItem = params.cart.find(cartItem => cartItem.product.id === splitProduct.productId);
         if (!cartItem) {
           console.error(`Product not found in cart: ${splitProduct.productId}`);
           return sum;
         }
-        return sum + (cartItem.price * splitProduct.quantity);
+        return sum + (cartItem.unit_price * splitProduct.quantity);
       }, 0);
 
       console.log(`Split ${i + 1} subtotal:`, splitSubtotal);
@@ -261,16 +279,17 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
 
       // Convert split products to match the expected format
       const splitProducts = split.products.map((splitProduct: any) => {
-        const cartItem = params.cart.find(cartItem => cartItem.id === splitProduct.productId);
+        const cartItem = params.cart.find(cartItem => cartItem.product.id === splitProduct.productId);
         if (!cartItem) {
           console.error(`Product not found in cart for split product: ${splitProduct.productId}`);
           return null;
         }
         return {
-          id: cartItem.id,
-          name: cartItem.name,
-          price: cartItem.price,
-          quantity: splitProduct.quantity
+          id: cartItem.product.id,
+          name: cartItem.product.name,
+          price: cartItem.unit_price,
+          quantity: splitProduct.quantity,
+          total_price: cartItem.unit_price * splitProduct.quantity
         };
       }).filter(Boolean); // Remove any null entries
 
