@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
 import { Button } from './button';
@@ -50,7 +51,8 @@ const getGoogleMapsApiKey = () => {
   }
   
   // Replace this with your actual Google Maps API key
-  const DEVELOPMENT_API_KEY = 'AIzaSyDX8nQv8fZ5zQv8fZ5zQv8fZ5zQv8fZ5zQ'; // Replace with your actual key
+  // TODO: Replace the value below with your actual Google Maps API key
+  const DEVELOPMENT_API_KEY = 'YOUR_ACTUAL_GOOGLE_MAPS_API_KEY_HERE';
   
   return DEVELOPMENT_API_KEY;
 };
@@ -84,7 +86,7 @@ export function GoogleMapsLightbox({
     
     console.log('Google Maps API Key check:', apiKey ? 'Key found' : 'No key found');
     
-    if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE' || apiKey === 'AIzaSyDX8nQv8fZ5zQv8fZ5zQv8fZ5zQv8fZ5zQ') {
+    if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE' || apiKey === 'AIzaSyDX8nQv8fZ5zQv8fZ5zQv8fZ5zQv8fZ5zQ' || apiKey === 'YOUR_ACTUAL_GOOGLE_MAPS_API_KEY_HERE') {
       setMapError('Google Maps API key not configured. Please enter your API key below.');
       setShowApiKeyInput(true);
       setIsLoadingMaps(false);
