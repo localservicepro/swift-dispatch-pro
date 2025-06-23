@@ -158,7 +158,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         return (
           <DeliveryMethodSelectionStep
             deliveryMethod={deliveryMethod}
-            onMethodSelect={setDeliveryMethod}
+            onDeliveryMethodChange={setDeliveryMethod}
             onBack={prevStep}
             onNext={nextStep}
           />
@@ -251,14 +251,12 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               truckType={truckType}
               truckId={truckId}
               driverId={driverId}
-              driverName={driverName}
               specialInstructions={specialInstructions}
               onDeliveryDateChange={setDeliveryDate}
               onDeliveryTimeChange={setDeliveryTime}
               onTruckTypeChange={setTruckType}
               onTruckIdChange={setTruckId}
               onDriverIdChange={setDriverId}
-              onDriverNameChange={setDriverName}
               onSpecialInstructionsChange={setSpecialInstructions}
               onBack={prevStep}
               onNext={nextStep}
