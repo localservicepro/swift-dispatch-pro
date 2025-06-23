@@ -64,6 +64,7 @@ export function EnhancedAddressInput({
   const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
   const [showMapLightbox, setShowMapLightbox] = useState(false);
   const [sessionToken] = useState(() => Math.random().toString(36).substring(7));
+  const [hasSearched, setHasSearched] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -78,72 +79,58 @@ export function EnhancedAddressInput({
       setPredictions([]);
       setShowDropdown(false);
       setValidationStatus('idle');
+      setHasSearched(false);
     }
   }, [debouncedValue]);
-
-  // Validate address after user stops typing
-  useEffect(() => {
-    if (debouncedValue && debouncedValue.length > 5 && predictions.length === 0 && !showDropdown) {
-      validateAddress(debouncedValue);
-    }
-  }, [debouncedValue, predictions.length, showDropdown]);
 
   const fetchPredictions = async (input: string) => {
     setIsLoading(true);
     setValidationStatus('validating');
+    setHasSearched(true);
     
     try {
       const { data, error } = await supabase.functions.invoke('google-places', {
         body: { input, sessionToken }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Google Places API error:', error);
+        throw error;
+      }
 
-      if (data.predictions) {
+      if (data.predictions && data.predictions.length > 0) {
         setPredictions(data.predictions);
         setShowDropdown(true);
         setSelectedIndex(-1);
+        setValidationStatus('idle'); // Don't show valid until user selects
+        onValidationChange?.(true);
+      } else {
+        // No predictions found - auto-open map lightbox after a short delay
+        setPredictions([]);
+        setShowDropdown(false);
+        setValidationStatus('idle'); // Don't show invalid immediately
         
-        // Check if current input exactly matches a prediction
-        const exactMatch = data.predictions.find((p: PlacePrediction) => 
-          p.description.toLowerCase() === input.toLowerCase()
-        );
-        
-        if (exactMatch) {
-          setValidationStatus('valid');
-          onValidationChange?.(true);
-        } else {
-          setValidationStatus('idle');
-        }
+        // Auto-open map lightbox when no results found
+        setTimeout(() => {
+          console.log('No address predictions found, opening map lightbox');
+          setShowMapLightbox(true);
+        }, 500);
       }
     } catch (error) {
       console.error('Error fetching address predictions:', error);
       setPredictions([]);
-      setValidationStatus('invalid');
+      setShowDropdown(false);
+      setValidationStatus('idle'); // Don't show invalid on API error
+      
+      // Auto-open map lightbox on API error too
+      setTimeout(() => {
+        console.log('Address lookup failed, opening map lightbox');
+        setShowMapLightbox(true);
+      }, 500);
+      
       onValidationChange?.(false);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const validateAddress = async (address: string) => {
-    setValidationStatus('validating');
-    
-    try {
-      // Try to find the address using geocoding
-      const { data, error } = await supabase.functions.invoke('google-places', {
-        body: { input: address }
-      });
-
-      if (error) throw error;
-
-      const isValid = data.predictions && data.predictions.length > 0;
-      setValidationStatus(isValid ? 'valid' : 'invalid');
-      onValidationChange?.(isValid);
-    } catch (error) {
-      console.error('Error validating address:', error);
-      setValidationStatus('invalid');
-      onValidationChange?.(false);
     }
   };
 
@@ -155,6 +142,7 @@ export function EnhancedAddressInput({
       setShowDropdown(false);
       setPredictions([]);
       setValidationStatus('idle');
+      setHasSearched(false);
     }
   };
 
@@ -240,6 +228,10 @@ export function EnhancedAddressInput({
     }, 150);
   };
 
+  const handleMapButtonClick = () => {
+    setShowMapLightbox(true);
+  };
+
   const getValidationIcon = () => {
     if (!showValidation) return null;
     
@@ -270,6 +262,12 @@ export function EnhancedAddressInput({
           <Badge variant="destructive" className="text-red-700 bg-red-100">
             <AlertCircle className="w-3 h-3 mr-1" />
             Address Not Found
+          </Badge>
+        )}
+        {hasSearched && predictions.length === 0 && !isLoading && validationStatus === 'idle' && value.length > 2 && (
+          <Badge variant="outline" className="text-blue-700 bg-blue-50">
+            <Map className="w-3 h-3 mr-1" />
+            Try the map to find your address
           </Badge>
         )}
       </div>
@@ -306,7 +304,7 @@ export function EnhancedAddressInput({
             type="button"
             variant="outline"
             size="icon"
-            onClick={() => setShowMapLightbox(true)}
+            onClick={handleMapButtonClick}
             title="Select on map"
           >
             <Map className="w-4 h-4" />
