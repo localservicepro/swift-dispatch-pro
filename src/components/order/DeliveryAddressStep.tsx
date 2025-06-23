@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MapPin, Home } from "lucide-react";
 import { Customer, SplitConfig } from "./types";
+import { GoogleAddressAutocomplete } from "@/components/ui/google-address-autocomplete";
 
 interface DeliveryAddressStepProps {
   customer: Customer;
@@ -85,6 +85,11 @@ export function DeliveryAddressStep({
     }
   };
 
+  const handleGoogleAddressSelect = (addressData: any) => {
+    console.log('Delivery address selected:', addressData);
+    handleDeliveryAddressChange(addressData.fullAddress);
+  };
+
   const canProceed = () => {
     if (orderType === "single") {
       return sameAsBilling || deliveryAddress.trim() !== "";
@@ -136,15 +141,12 @@ export function DeliveryAddressStep({
         {/* Custom Delivery Address */}
         {!sameAsBilling && (
           <div>
-            <Label htmlFor="delivery-address" className="text-sm font-medium">
-              Delivery Address
-            </Label>
-            <Input
-              id="delivery-address"
+            <GoogleAddressAutocomplete
+              label="Delivery Address"
               value={deliveryAddress}
-              onChange={(e) => handleDeliveryAddressChange(e.target.value)}
-              placeholder="Enter delivery address..."
-              className="mt-1"
+              onChange={handleDeliveryAddressChange}
+              onAddressSelect={handleGoogleAddressSelect}
+              placeholder="Start typing the delivery address..."
             />
           </div>
         )}

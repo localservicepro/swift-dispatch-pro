@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, User, Phone, Mail, MapPin } from "lucide-react";
+import { GoogleAddressAutocomplete } from "@/components/ui/google-address-autocomplete";
 
 interface Customer {
   id: string;
@@ -135,6 +136,14 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
         description: "Customer created successfully!",
       });
     }
+  };
+
+  const handleNewCustomerAddressSelect = (addressData: any) => {
+    console.log('New customer address selected:', addressData);
+    setNewCustomer(prev => ({
+      ...prev,
+      full_address: addressData.fullAddress
+    }));
   };
 
   return (
@@ -277,11 +286,13 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
                   </div>
 
                   <div>
-                    <Label htmlFor="full_address">Full Address *</Label>
-                    <Input
-                      id="full_address"
+                    <GoogleAddressAutocomplete
+                      label="Full Address *"
                       value={newCustomer.full_address}
-                      onChange={(e) => setNewCustomer({...newCustomer, full_address: e.target.value})}
+                      onChange={(value) => setNewCustomer({...newCustomer, full_address: value})}
+                      onAddressSelect={handleNewCustomerAddressSelect}
+                      placeholder="Start typing the address..."
+                      required
                     />
                   </div>
 
