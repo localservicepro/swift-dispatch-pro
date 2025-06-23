@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Loader2, Receipt, Truck, MapPin } from "lucide-react";
 import { SplitOrderGroup, createBatchInvoiceForSplitOrder } from "@/components/order/utils/splitOrderUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SplitOrderGroupCardProps {
   group: SplitOrderGroup;

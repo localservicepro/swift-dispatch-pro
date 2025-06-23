@@ -1,5 +1,6 @@
+
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
-import { render } from 'npm:@react-email/render@3.0.14'
+import { render } from 'npm:@react-email/render@3.0.1'
 import * as React from 'npm:react@18.2.0'
 
 import { renderOrderConfirmationEmail, renderDeliveryStatusUpdateEmail, renderPaymentConfirmationEmail } from './templates.ts';
