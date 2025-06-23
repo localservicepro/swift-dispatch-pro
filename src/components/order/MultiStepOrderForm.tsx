@@ -88,7 +88,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           customer: selectedCustomer,
           cart,
           adjustments,
-          deliveryMethod,
+          deliveryMethod: deliveryMethod as "delivery" | "pickup",
           splits,
           paymentMethod,
           specialInstructions,
@@ -99,7 +99,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           customer: selectedCustomer,
           cart,
           adjustments,
-          deliveryMethod,
+          deliveryMethod: deliveryMethod as "delivery" | "pickup",
           deliveryDate,
           deliveryTime,
           truckType,
@@ -147,8 +147,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           <ProductSelectionStep
             cart={cart}
             adjustments={adjustments}
-            onCartChange={setCart}
-            onAdjustmentsChange={setAdjustments}
+            onCartUpdate={setCart}
+            onAdjustmentsUpdate={setAdjustments}
             onBack={prevStep}
             onNext={nextStep}
           />
@@ -157,7 +157,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       case 3:
         return (
           <DeliveryMethodSelectionStep
-            selectedMethod={deliveryMethod}
+            deliveryMethod={deliveryMethod}
             onMethodSelect={setDeliveryMethod}
             onBack={prevStep}
             onNext={nextStep}
@@ -179,7 +179,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           return (
             <OrderTypeSelectionStep
               orderType={orderType}
-              onOrderTypeSelect={setOrderType}
+              onOrderTypeChange={setOrderType}
               onBack={prevStep}
               onNext={nextStep}
             />
@@ -236,12 +236,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         if (orderType === "split") {
           return (
             <SplitOrderConfigurationStep
-              customer={selectedCustomer!}
               cart={cart}
               splits={splits}
-              useGlobalDeliveryAddress={useGlobalDeliveryAddress}
-              deliveryAddress={deliveryAddress}
-              sameAsBilling={sameAsBilling}
               onSplitsChange={setSplits}
               onBack={prevStep}
               onNext={nextStep}
@@ -254,7 +250,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               deliveryTime={deliveryTime}
               truckType={truckType}
               truckId={truckId}
-              selectedTruck={selectedTruck}
               driverId={driverId}
               driverName={driverName}
               specialInstructions={specialInstructions}
@@ -262,7 +257,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               onDeliveryTimeChange={setDeliveryTime}
               onTruckTypeChange={setTruckType}
               onTruckIdChange={setTruckId}
-              onSelectedTruckChange={setSelectedTruck}
               onDriverIdChange={setDriverId}
               onDriverNameChange={setDriverName}
               onSpecialInstructionsChange={setSpecialInstructions}
@@ -291,7 +285,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             subtotal={subtotal}
             adjustments={adjustments}
             deliveryFee={deliveryFee}
-            deliveryMethod={deliveryMethod}
+            deliveryMethod={deliveryMethod as "delivery" | "pickup"}
             deliveryDate={deliveryDate}
             deliveryTime={deliveryTime}
             truckType={truckType}
@@ -299,7 +293,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             specialInstructions={specialInstructions}
             paymentMethod={paymentMethod}
             selectedTruck={selectedTruck}
-            deliveryAddress={deliveryAddress}
+            deliveryAddress={sameAsBilling ? selectedCustomer!.full_address : deliveryAddress}
             sameAsBilling={sameAsBilling}
             onBack={prevStep}
             onConfirm={handleCreateOrder}

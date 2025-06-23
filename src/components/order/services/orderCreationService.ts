@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Customer, CartItem } from "../types";
 import { calculateOrderTotals } from "../utils/paymentCalculations";
