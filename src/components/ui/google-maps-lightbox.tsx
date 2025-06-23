@@ -43,9 +43,14 @@ const getGoogleMapsApiKey = () => {
     return envKey;
   }
   
-  // For development - replace with your actual API key
-  // TODO: Replace this with your actual Google Maps API key
-  const DEVELOPMENT_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY_HERE';
+  // Check localStorage for temporarily stored key
+  const tempKey = localStorage.getItem('temp_google_maps_api_key');
+  if (tempKey) {
+    return tempKey;
+  }
+  
+  // Replace this with your actual Google Maps API key
+  const DEVELOPMENT_API_KEY = 'AIzaSyDX8nQv8fZ5zQv8fZ5zQv8fZ5zQv8fZ5zQ'; // Replace with your actual key
   
   return DEVELOPMENT_API_KEY;
 };
@@ -77,7 +82,9 @@ export function GoogleMapsLightbox({
   useEffect(() => {
     const apiKey = getGoogleMapsApiKey();
     
-    if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
+    console.log('Google Maps API Key check:', apiKey ? 'Key found' : 'No key found');
+    
+    if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE' || apiKey === 'AIzaSyDX8nQv8fZ5zQv8fZ5zQv8fZ5zQv8fZ5zQ') {
       setMapError('Google Maps API key not configured. Please enter your API key below.');
       setShowApiKeyInput(true);
       setIsLoadingMaps(false);
@@ -85,6 +92,7 @@ export function GoogleMapsLightbox({
     }
 
     if (!window.google) {
+      console.log('Loading Google Maps script...');
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
       script.async = true;
@@ -96,8 +104,8 @@ export function GoogleMapsLightbox({
         setMapError(null);
       };
       
-      script.onerror = () => {
-        console.error('Failed to load Google Maps API');
+      script.onerror = (error) => {
+        console.error('Failed to load Google Maps API:', error);
         setMapError('Failed to load Google Maps. Please check your API key and internet connection.');
         setShowApiKeyInput(true);
         setIsLoadingMaps(false);
@@ -105,6 +113,7 @@ export function GoogleMapsLightbox({
       
       document.head.appendChild(script);
     } else {
+      console.log('Google Maps already loaded');
       setIsLoadingMaps(false);
     }
   }, []);
@@ -113,6 +122,7 @@ export function GoogleMapsLightbox({
   useEffect(() => {
     if (isOpen && !isLoadingMaps && window.google && mapRef.current && !mapInstanceRef.current) {
       try {
+        console.log('Initializing Google Maps...');
         const map = new window.google.maps.Map(mapRef.current, {
           center: { lat: -33.8688, lng: 151.2093 }, // Default to Sydney
           zoom: 13,
@@ -128,6 +138,7 @@ export function GoogleMapsLightbox({
         map.addListener('click', (event: any) => {
           const lat = event.latLng.lat();
           const lng = event.latLng.lng();
+          console.log('Map clicked at:', lat, lng);
           reverseGeocode(lat, lng);
         });
 
@@ -136,6 +147,7 @@ export function GoogleMapsLightbox({
           geocodeAddress(initialAddress);
         }
 
+        console.log('Google Maps initialized successfully');
       } catch (error) {
         console.error('Error initializing map:', error);
         setMapError('Failed to initialize map. Please try again.');
@@ -161,7 +173,7 @@ export function GoogleMapsLightbox({
 
   const handleApiKeySubmit = () => {
     if (apiKeyInput.trim()) {
-      // Store the API key temporarily and reload the script
+      console.log('Setting temporary API key');
       localStorage.setItem('temp_google_maps_api_key', apiKeyInput.trim());
       window.location.reload();
     }
@@ -170,7 +182,7 @@ export function GoogleMapsLightbox({
   const searchAddresses = async (query: string) => {
     setIsSearching(true);
     try {
-      console.log('Searching for addresses:', query);
+      console.log('Searching for addresses via edge function:', query);
       const { data, error } = await supabase.functions.invoke('google-places', {
         body: { input: query }
       });
@@ -184,6 +196,7 @@ export function GoogleMapsLightbox({
       if (data?.predictions && Array.isArray(data.predictions)) {
         setSuggestions(data.predictions);
       } else {
+        console.log('No predictions found in response');
         setSuggestions([]);
       }
     } catch (error) {
