@@ -8,6 +8,19 @@ export function useOpportunityData() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Enhanced cache invalidation function
+  const invalidateOrdersCache = async (reason?: string) => {
+    console.log(`Invalidating orders cache: ${reason || 'unknown reason'}`);
+    
+    // Force invalidate all order-related queries
+    await queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] });
+    await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    await queryClient.invalidateQueries({ queryKey: ['deleted-orders'] });
+    
+    // Force immediate refetch
+    await queryClient.refetchQueries({ queryKey: ['opportunity-orders'] });
+  };
+
   // Fetch orders for pipeline (excluding soft-deleted orders)
   const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ['opportunity-orders'],
@@ -36,6 +49,9 @@ export function useOpportunityData() {
           subtotal,
           truck_type,
           truck_id,
+          deleted_at,
+          master_order_id,
+          is_split_order,
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
@@ -72,11 +88,13 @@ export function useOpportunityData() {
       console.log('Opportunity orders mapped and sorted by time:', sortedOrders);
       return sortedOrders;
     },
+    staleTime: 0, // Always consider data stale for immediate updates
+    gcTime: 0, // Don't cache data for long
   });
 
-  // Set up real-time subscription for pipeline updates
+  // Set up enhanced real-time subscription for pipeline updates
   useEffect(() => {
-    console.log('Setting up real-time subscription for opportunity pipeline...');
+    console.log('Setting up enhanced real-time subscription for opportunity pipeline...');
     
     const channel = supabase
       .channel('opportunity-pipeline-realtime')
@@ -90,44 +108,93 @@ export function useOpportunityData() {
         async (payload) => {
           console.log('Real-time pipeline update received:', payload);
           
-          queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] });
+          const { eventType, new: newRecord, old: oldRecord } = payload;
           
-          if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
-            const oldStatus = payload.old.status;
-            const newStatus = payload.new.status;
-            const oldPaymentStatus = payload.old.payment_status;
-            const newPaymentStatus = payload.new.payment_status;
+          // Handle deletion events (when deleted_at changes from null to timestamp)
+          if (eventType === 'UPDATE' && oldRecord?.deleted_at === null && newRecord?.deleted_at !== null) {
+            console.log('Order deletion detected:', newRecord?.order_number);
+            
+            // Optimistically remove from cache immediately
+            queryClient.setQueryData(['opportunity-orders'], (oldData: any[]) => {
+              if (!oldData) return [];
+              const filtered = oldData.filter(order => order.id !== newRecord.id);
+              console.log('Optimistically removed order from cache:', newRecord?.order_number);
+              return filtered;
+            });
+            
+            // Show deletion notification
+            toast({
+              title: "Order Deleted",
+              description: `Order ${newRecord?.order_number} has been deleted`,
+              duration: 3000,
+            });
+            
+            // Force cache refresh after optimistic update
+            await invalidateOrdersCache('order deletion detected');
+            return;
+          }
+          
+          // Handle restoration events (when deleted_at changes from timestamp to null)
+          if (eventType === 'UPDATE' && oldRecord?.deleted_at !== null && newRecord?.deleted_at === null) {
+            console.log('Order restoration detected:', newRecord?.order_number);
+            
+            toast({
+              title: "Order Restored",
+              description: `Order ${newRecord?.order_number} has been restored`,
+              duration: 3000,
+            });
+            
+            // Force cache refresh for restoration
+            await invalidateOrdersCache('order restoration detected');
+            return;
+          }
+          
+          // Handle regular status updates
+          if (eventType === 'UPDATE' && oldRecord && newRecord) {
+            const oldStatus = oldRecord.status;
+            const newStatus = newRecord.status;
+            const oldPaymentStatus = oldRecord.payment_status;
+            const newPaymentStatus = newRecord.payment_status;
             
             if (oldStatus !== newStatus) {
+              console.log('Order status changed:', newRecord?.order_number, oldStatus, '->', newStatus);
               toast({
                 title: "Pipeline Update",
-                description: `Order ${payload.new.order_number} moved to ${newStatus}`,
+                description: `Order ${newRecord.order_number} moved to ${newStatus}`,
                 duration: 3000,
               });
             }
             
             if (oldPaymentStatus !== newPaymentStatus && newPaymentStatus === 'paid') {
+              console.log('Payment confirmed:', newRecord?.order_number);
               toast({
                 title: "Payment Confirmed",
-                description: `Order ${payload.new.order_number} payment confirmed`,
+                description: `Order ${newRecord.order_number} payment confirmed`,
                 duration: 3000,
               });
             }
           }
           
-          if (payload.eventType === 'INSERT' && payload.new) {
+          // Handle new orders
+          if (eventType === 'INSERT' && newRecord) {
+            console.log('New order detected:', newRecord?.order_number);
             toast({
               title: "New Opportunity",
-              description: `Order ${payload.new.order_number} entered pipeline`,
+              description: `Order ${newRecord.order_number} entered pipeline`,
               duration: 3000,
             });
+          }
+          
+          // Invalidate cache for all events except deletion (already handled optimistically)
+          if (!(eventType === 'UPDATE' && oldRecord?.deleted_at === null && newRecord?.deleted_at !== null)) {
+            await invalidateOrdersCache(`real-time ${eventType}`);
           }
         }
       )
       .subscribe();
 
     return () => {
-      console.log('Cleaning up real-time pipeline subscription...');
+      console.log('Cleaning up enhanced real-time pipeline subscription...');
       supabase.removeChannel(channel);
     };
   }, [queryClient, toast]);
@@ -136,6 +203,7 @@ export function useOpportunityData() {
     orders,
     isLoading,
     error,
-    refetch
+    refetch,
+    invalidateOrdersCache
   };
 }

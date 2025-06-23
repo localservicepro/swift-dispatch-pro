@@ -63,7 +63,8 @@ export function OpportunityPipeline() {
     orders,
     isLoading,
     error,
-    refetch
+    refetch,
+    invalidateOrdersCache
   } = useOpportunityData();
 
   // Configure drag sensors
@@ -247,6 +248,8 @@ export function OpportunityPipeline() {
           updateData = { status: newStage };
       }
 
+      console.log('Updating order status:', order.order_number, currentStage, '->', newStage);
+
       const { error } = await supabase
         .from('orders')
         .update({
@@ -274,8 +277,10 @@ export function OpportunityPipeline() {
         description: `Order ${order.order_number} moved to ${PIPELINE_STAGES.find(s => s.id === newStage)?.title}`,
       });
 
-      refetch();
+      // Use enhanced cache invalidation
+      await invalidateOrdersCache('drag and drop status update');
     } catch (error: any) {
+      console.error('Error moving order:', error);
       toast({
         title: "Error",
         description: "Failed to move order",

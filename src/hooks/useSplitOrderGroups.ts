@@ -16,6 +16,24 @@ export function useSplitOrderGroups() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Enhanced cache invalidation for split order operations
+  const invalidateAllOrdersCache = async (reason?: string) => {
+    console.log(`Invalidating all orders cache for split operations: ${reason || 'unknown reason'}`);
+    
+    // Invalidate all order-related queries with immediate refetch
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['orders'] }),
+      queryClient.invalidateQueries({ queryKey: ['deleted-orders'] }),
+      queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] })
+    ]);
+    
+    // Force immediate refetch for critical queries
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ['opportunity-orders'] }),
+      queryClient.refetchQueries({ queryKey: ['deleted-orders'] })
+    ]);
+  };
+
   // Get split order group info for a specific order
   const getSplitOrderGroupInfo = async (orderId: string): Promise<SplitOrderGroupInfo | null> => {
     const { data: order, error } = await supabase
@@ -52,6 +70,21 @@ export function useSplitOrderGroups() {
   // Soft delete entire split order group
   const deleteSplitOrderGroup = async (orderId: string, reason?: string) => {
     try {
+      console.log('Deleting split order group for order:', orderId);
+      
+      // Get group info first for optimistic updates
+      const groupInfo = await getSplitOrderGroupInfo(orderId);
+      
+      if (groupInfo?.allOrderIds) {
+        // Optimistically remove all orders in the group from opportunity orders cache
+        queryClient.setQueryData(['opportunity-orders'], (oldData: any[]) => {
+          if (!oldData) return [];
+          const filtered = oldData.filter(order => !groupInfo.allOrderIds.includes(order.id));
+          console.log('Optimistically removed split order group from cache:', groupInfo.orderNumbers);
+          return filtered;
+        });
+      }
+
       // Use the raw SQL call since the function isn't in the generated types yet
       const { data, error } = await supabase
         .rpc('soft_delete_split_order_group' as any, {
@@ -69,19 +102,23 @@ export function useSplitOrderGroups() {
         total_deleted: number;
       };
 
+      console.log('Split order group deletion result:', result);
+
       toast({
         title: "Split Order Group Deleted",
         description: `Deleted ${result.total_deleted} orders for ${result.customer_name}: ${result.order_numbers.join(', ')}`,
       });
 
-      // Refresh queries
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      queryClient.invalidateQueries({ queryKey: ['deleted-orders'] });
-      queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] });
+      // Enhanced cache invalidation
+      await invalidateAllOrdersCache('split order group deletion');
 
       return result;
     } catch (error: any) {
       console.error('Error deleting split order group:', error);
+      
+      // Revert optimistic updates on error
+      await queryClient.refetchQueries({ queryKey: ['opportunity-orders'] });
+      
       toast({
         title: "Error",
         description: "Failed to delete split order group. Please try again.",
@@ -94,6 +131,8 @@ export function useSplitOrderGroups() {
   // Restore entire split order group
   const restoreSplitOrderGroup = async (orderId: string) => {
     try {
+      console.log('Restoring split order group for order:', orderId);
+
       // Use the raw SQL call since the function isn't in the generated types yet
       const { data, error } = await supabase
         .rpc('restore_split_order_group' as any, {
@@ -110,15 +149,15 @@ export function useSplitOrderGroups() {
         total_restored: number;
       };
 
+      console.log('Split order group restoration result:', result);
+
       toast({
         title: "Split Order Group Restored",
         description: `Restored ${result.total_restored} orders for ${result.customer_name}: ${result.order_numbers.join(', ')}`,
       });
 
-      // Refresh queries
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      queryClient.invalidateQueries({ queryKey: ['deleted-orders'] });
-      queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] });
+      // Enhanced cache invalidation
+      await invalidateAllOrdersCache('split order group restoration');
 
       return result;
     } catch (error: any) {
@@ -135,6 +174,7 @@ export function useSplitOrderGroups() {
   return {
     getSplitOrderGroupInfo,
     deleteSplitOrderGroup,
-    restoreSplitOrderGroup
+    restoreSplitOrderGroup,
+    invalidateAllOrdersCache
   };
 }
