@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +7,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MapPin, Home } from "lucide-react";
 import { Customer, SplitConfig } from "./types";
 import { GoogleAddressAutocomplete } from "@/components/ui/google-address-autocomplete";
+import { SuburbSelector } from "./SuburbSelector";
+import { useSuburbManagement } from "@/hooks/useSuburbManagement";
+import { createAddressSelectHandler } from "@/utils/addressUtils";
 
 interface DeliveryAddressStepProps {
   customer: Customer;
@@ -14,10 +18,13 @@ interface DeliveryAddressStepProps {
   sameAsBilling: boolean;
   useGlobalDeliveryAddress: boolean;
   splits: SplitConfig[];
+  selectedSuburbId: string;
+  deliveryRate: number;
   onDeliveryAddressChange: (address: string) => void;
   onSameAsBillingChange: (same: boolean) => void;
   onUseGlobalDeliveryAddressChange: (useGlobal: boolean) => void;
   onSplitsChange: (splits: SplitConfig[]) => void;
+  onSuburbChange: (suburbId: string, rate: number) => void;
   onBack: () => void;
   onNext: () => void;
 }
@@ -29,13 +36,18 @@ export function DeliveryAddressStep({
   sameAsBilling,
   useGlobalDeliveryAddress,
   splits,
+  selectedSuburbId,
+  deliveryRate,
   onDeliveryAddressChange,
   onSameAsBillingChange,
   onUseGlobalDeliveryAddressChange,
   onSplitsChange,
+  onSuburbChange,
   onBack,
   onNext
 }: DeliveryAddressStepProps) {
+  const { handleAutoSuburbSelection } = useSuburbManagement();
+
   const handleSameAsBillingChange = (checked: boolean) => {
     onSameAsBillingChange(checked);
     if (checked) {
@@ -85,17 +97,22 @@ export function DeliveryAddressStep({
     }
   };
 
+  const handleAddressSelect = createAddressSelectHandler(
+    (updates) => handleDeliveryAddressChange(updates.full_address),
+    (postcode: string) => handleAutoSuburbSelection(postcode, onSuburbChange)
+  );
+
   const handleGoogleAddressSelect = (addressData: any) => {
     console.log('Delivery address selected:', addressData);
-    handleDeliveryAddressChange(addressData.fullAddress);
+    handleAddressSelect(addressData);
   };
 
   const canProceed = () => {
     if (orderType === "single") {
-      return sameAsBilling || deliveryAddress.trim() !== "";
+      return (sameAsBilling || deliveryAddress.trim() !== "") && selectedSuburbId;
     } else {
       if (useGlobalDeliveryAddress) {
-        return sameAsBilling || deliveryAddress.trim() !== "";
+        return (sameAsBilling || deliveryAddress.trim() !== "") && selectedSuburbId;
       } else {
         // Check if all splits have valid delivery addresses
         return splits.every(split => 
@@ -148,6 +165,21 @@ export function DeliveryAddressStep({
               onAddressSelect={handleGoogleAddressSelect}
               placeholder="Start typing the delivery address..."
             />
+          </div>
+        )}
+
+        {/* Suburb Selector */}
+        <SuburbSelector
+          selectedSuburbId={selectedSuburbId}
+          onSuburbChange={onSuburbChange}
+        />
+
+        {/* Delivery Rate Display */}
+        {deliveryRate > 0 && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <p className="text-sm font-medium text-green-900">
+              Delivery Rate: ${deliveryRate.toFixed(2)}
+            </p>
           </div>
         )}
 

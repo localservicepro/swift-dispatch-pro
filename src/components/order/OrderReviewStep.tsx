@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Package, User, MapPin, Clock, Truck, CreditCard, Store } from "lucide-react";
+import { CheckCircle, Package, User, MapPin, Clock, Truck, CreditCard, Store, Home } from "lucide-react";
 import { Customer, CartItem, Truck as TruckType } from "./types";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals, formatCurrency } from "./utils/paymentCalculations";
@@ -22,6 +22,8 @@ interface OrderReviewStepProps {
   specialInstructions: string;
   paymentMethod: string;
   selectedTruck: TruckType | null;
+  deliveryAddress: string;
+  sameAsBilling: boolean;
   onBack: () => void;
   onConfirm: () => void;
   isCreating: boolean;
@@ -41,6 +43,8 @@ export function OrderReviewStep({
   specialInstructions,
   paymentMethod,
   selectedTruck,
+  deliveryAddress,
+  sameAsBilling,
   onBack,
   onConfirm,
   isCreating
@@ -77,6 +81,9 @@ export function OrderReviewStep({
     return labels[method] || method;
   };
 
+  // Determine which address to show for delivery
+  const actualDeliveryAddress = sameAsBilling ? customer.full_address : deliveryAddress;
+
   return (
     <Card>
       <CardHeader>
@@ -98,9 +105,42 @@ export function OrderReviewStep({
             {customer.phone && (
               <p className="text-sm text-muted-foreground">{customer.phone}</p>
             )}
-            <p className="text-sm text-muted-foreground mt-1">{customer.full_address}</p>
+            <div className="mt-2">
+              <p className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                <Home className="w-3 h-3" />
+                Billing Address:
+              </p>
+              <p className="text-sm text-muted-foreground">{customer.full_address}</p>
+            </div>
           </div>
         </div>
+
+        {/* Delivery Address - Only show for delivery orders and when different from billing */}
+        {deliveryMethod === "delivery" && (
+          <div className="space-y-3">
+            <h3 className="flex items-center gap-2 font-semibold">
+              <MapPin className="w-4 h-4" />
+              Delivery Address
+            </h3>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground">{actualDeliveryAddress}</p>
+              {!sameAsBilling && (
+                <div className="mt-2">
+                  <Badge variant="secondary" className="text-xs">
+                    Different from billing address
+                  </Badge>
+                </div>
+              )}
+              {sameAsBilling && (
+                <div className="mt-2">
+                  <Badge variant="outline" className="text-xs">
+                    Same as billing address
+                  </Badge>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Products */}
         <div className="space-y-3">
