@@ -19,7 +19,7 @@ export const getGoogleMapsApiKey = () => {
   
   // IMPORTANT: Replace this with your actual Google Maps API key
   // Get your key from: https://console.cloud.google.com/apis/credentials
-  const DEVELOPMENT_API_KEY = 'AIzaSyBvOkTwrdX9CdUGmFV0WkMT8gD8ej2XYzQ'; // Replace with your actual API key
+  const DEVELOPMENT_API_KEY = 'YOUR_ACTUAL_GOOGLE_MAPS_API_KEY_HERE'; // Replace with your actual API key
   
   console.log('Using development API key');
   return DEVELOPMENT_API_KEY;
@@ -35,7 +35,8 @@ export const loadGoogleMapsScript = () => {
     const isPlaceholder = !apiKey || 
                          apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE' || 
                          apiKey === 'YOUR_ACTUAL_GOOGLE_MAPS_API_KEY_HERE' ||
-                         apiKey === 'AIzaSyDX8nQv8fZ5zQv8fZ5zQv8fZ5zQv8fZ5zQ';
+                         apiKey === 'AIzaSyDX8nQv8fZ5zQv8fZ5zQv8fZ5zQv8fZ5zQ' ||
+                         apiKey === 'AIzaSyBvOkTwrdX9CdUGmFV0WkMT8gD8ej2XYzQ';
     
     if (isPlaceholder) {
       console.error('Google Maps API key is not configured properly');
