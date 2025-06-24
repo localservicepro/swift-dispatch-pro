@@ -23,7 +23,6 @@ const handler = async (req: Request): Promise<Response> => {
     // Validate environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')
 
     if (!supabaseUrl) {
       console.error('Missing SUPABASE_URL environment variable')
@@ -33,11 +32,6 @@ const handler = async (req: Request): Promise<Response> => {
     if (!supabaseServiceKey) {
       console.error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
       throw new Error('Server configuration error: Missing SUPABASE_SERVICE_ROLE_KEY')
-    }
-    
-    if (!stripeSecretKey) {
-      console.error('Missing STRIPE_SECRET_KEY environment variable')
-      throw new Error('Server configuration error: Missing STRIPE_SECRET_KEY')
     }
 
     console.log('Environment variables validated successfully')
@@ -52,8 +46,40 @@ const handler = async (req: Request): Promise<Response> => {
         schema: 'public'
       }
     })
+
+    // Get Stripe configuration from payment settings
+    console.log('Fetching Stripe configuration from payment settings...')
+    const { data: paymentSettings, error: settingsError } = await supabase
+      .from('payment_settings')
+      .select('stripe_mode, stripe_test_secret_key, stripe_live_secret_key, stripe_connection_status')
+      .single()
+
+    if (settingsError) {
+      console.error('Failed to fetch payment settings:', settingsError)
+      throw new Error('Payment system not configured. Please configure Stripe settings first.')
+    }
+
+    if (!paymentSettings) {
+      throw new Error('Payment settings not found. Please configure Stripe settings first.')
+    }
+
+    // Check if Stripe is properly configured
+    if (paymentSettings.stripe_connection_status !== 'connected') {
+      throw new Error('Stripe is not properly configured. Please test and save your Stripe settings first.')
+    }
+
+    // Get the appropriate secret key based on mode
+    const stripeSecretKey = paymentSettings.stripe_mode === 'live' 
+      ? paymentSettings.stripe_live_secret_key 
+      : paymentSettings.stripe_test_secret_key
+
+    if (!stripeSecretKey) {
+      throw new Error(`Missing Stripe ${paymentSettings.stripe_mode} secret key. Please configure Stripe settings.`)
+    }
+
+    console.log(`Using Stripe in ${paymentSettings.stripe_mode} mode`)
     
-    // Initialize Stripe with updated API version and better error handling
+    // Initialize Stripe with configured secret key
     let stripe: Stripe;
     try {
       stripe = new Stripe(stripeSecretKey, { 
@@ -245,6 +271,7 @@ const handler = async (req: Request): Promise<Response> => {
           order_id: orderData.id,
           invoice_number: invoice.invoice_number,
           is_batch_invoice: invoice.is_batch_invoice ? 'true' : 'false',
+          stripe_mode: paymentSettings.stripe_mode
         },
       })
 
@@ -252,7 +279,8 @@ const handler = async (req: Request): Promise<Response> => {
         sessionId: session.id,
         url: session.url,
         amount: amountInCents,
-        currency: currency.toLowerCase()
+        currency: currency.toLowerCase(),
+        mode: paymentSettings.stripe_mode
       })
 
     } catch (stripeError: any) {
@@ -271,7 +299,7 @@ const handler = async (req: Request): Promise<Response> => {
       } else if (stripeError.type === 'api_error') {
         throw new Error('Payment service temporarily unavailable. Please try again.')
       } else if (stripeError.type === 'authentication_error') {
-        throw new Error('Payment system configuration error')
+        throw new Error('Payment system authentication error. Please check Stripe configuration.')
       } else {
         throw new Error('Payment processing error: ' + (stripeError.message || 'Unknown error'))
       }
@@ -303,7 +331,8 @@ const handler = async (req: Request): Promise<Response> => {
         sessionId: session.id,
         paymentUrl: session.url,
         invoiceNumber: invoice.invoice_number,
-        amount: invoice.amount
+        amount: invoice.amount,
+        mode: paymentSettings.stripe_mode
       }),
       {
         status: 200,
@@ -325,7 +354,7 @@ const handler = async (req: Request): Promise<Response> => {
     let statusCode = 500;
     if (error.message.includes('not found') || error.message.includes('Invalid')) {
       statusCode = 400;
-    } else if (error.message.includes('configuration') || error.message.includes('Missing')) {
+    } else if (error.message.includes('configuration') || error.message.includes('Missing') || error.message.includes('not configured')) {
       statusCode = 503; // Service Unavailable
     }
 
