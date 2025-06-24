@@ -67,10 +67,3 @@ export const loadGoogleMapsScript = () => {
     document.head.appendChild(script);
   });
 };
-
-declare global {
-  interface Window {
-    google?: any;
-    initGoogleMaps?: () => void;
-  }
-}
