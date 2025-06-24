@@ -50,37 +50,6 @@ export async function detectSplitOrderGroups(orders: any[]): Promise<SplitOrderG
   return groups;
 }
 
-// Utility function to wait for database transaction completion
-async function waitForTransactionCommit(delay: number = 1500): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, delay));
-}
-
-// Retry mechanism for database operations
-async function retryOperation<T>(
-  operation: () => Promise<T>,
-  maxRetries: number = 3,
-  baseDelay: number = 1000
-): Promise<T> {
-  let lastError: Error;
-  
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await operation();
-    } catch (error: any) {
-      lastError = error;
-      console.warn(`Operation failed (attempt ${i + 1}/${maxRetries}):`, error.message);
-      
-      if (i < maxRetries - 1) {
-        // Exponential backoff
-        const delay = baseDelay * Math.pow(2, i);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-  
-  throw lastError;
-}
-
 export async function createBatchInvoiceForSplitOrder(splitOrderGroup: SplitOrderGroup) {
   console.log('Creating batch invoice for split order group:', splitOrderGroup);
 
@@ -89,7 +58,7 @@ export async function createBatchInvoiceForSplitOrder(splitOrderGroup: SplitOrde
     const invoiceNumber = `BATCH-${masterOrder.order_number}-${Date.now()}`;
     const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    // Create batch invoice record with proper currency format
+    // Create batch invoice record
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .insert({
@@ -97,7 +66,7 @@ export async function createBatchInvoiceForSplitOrder(splitOrderGroup: SplitOrde
         order_id: masterOrder.id, // Link to master order
         customer_email: masterOrder.customers?.email || `${masterOrder.customer_name.toLowerCase().replace(' ', '.')}@example.com`,
         amount: splitOrderGroup.totalAmount,
-        currency: 'USD', // Standardized currency format
+        currency: 'USD',
         status: 'pending',
         due_date: dueDate,
         is_batch_invoice: true,
@@ -114,45 +83,22 @@ export async function createBatchInvoiceForSplitOrder(splitOrderGroup: SplitOrde
 
     console.log('Batch invoice created:', invoice.id);
 
-    // Wait for transaction commit to ensure invoice is fully available
-    await waitForTransactionCommit();
-
-    // Verify invoice exists before proceeding
-    const { data: verifyInvoice, error: verifyError } = await supabase
-      .from('invoices')
-      .select('id, invoice_number, status')
-      .eq('id', invoice.id)
-      .single();
-
-    if (verifyError || !verifyInvoice) {
-      console.error('Invoice verification failed:', verifyError);
-      throw new Error('Invoice creation failed - invoice not found after creation');
-    }
-
-    console.log('Invoice verified successfully:', verifyInvoice);
-
-    // Create payment session with retry mechanism
-    const paymentResult = await retryOperation(async () => {
-      console.log('Attempting to create payment session for invoice:', invoice.id);
-      
-      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-invoice-payment', {
-        body: { invoiceId: invoice.id }
-      });
-
-      if (paymentError) {
-        console.error('Payment session error:', paymentError);
-        throw new Error(`Payment session error: ${paymentError.message}`);
-      }
-
-      if (!paymentData?.success) {
-        console.error('Payment session failed:', paymentData);
-        throw new Error(paymentData?.error || 'Failed to create payment session');
-      }
-
-      return paymentData;
+    // Create payment session for the combined amount
+    const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-invoice-payment', {
+      body: { invoiceId: invoice.id }
     });
 
-    console.log('Payment session created successfully:', paymentResult);
+    if (paymentError) {
+      console.error('Payment session error:', paymentError);
+      await supabase.from('invoices').delete().eq('id', invoice.id);
+      throw new Error(`Failed to create payment session: ${paymentError.message}`);
+    }
+
+    if (!paymentData.success) {
+      console.error('Payment session failed:', paymentData);
+      await supabase.from('invoices').delete().eq('id', invoice.id);
+      throw new Error(paymentData.error || 'Failed to create payment session');
+    }
 
     // Update all orders with the batch invoice reference and status
     const { error: updateError } = await supabase
@@ -170,8 +116,8 @@ export async function createBatchInvoiceForSplitOrder(splitOrderGroup: SplitOrde
 
     return {
       invoice,
-      paymentUrl: paymentResult.paymentUrl,
-      sessionId: paymentResult.sessionId
+      paymentUrl: paymentData.paymentUrl,
+      sessionId: paymentData.sessionId
     };
 
   } catch (error: any) {
