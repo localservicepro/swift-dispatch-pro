@@ -39,19 +39,10 @@ const handler = async (req: Request): Promise<Response> => {
     const { invoiceId }: InvoicePaymentRequest = await req.json()
     console.log('Processing payment for invoice:', invoiceId)
 
-    // Get invoice details with order information
+    // First, get the invoice details to determine if it's a batch invoice or individual invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select(`
-        *,
-        orders!inner(
-          id,
-          order_number,
-          customer_name,
-          customer_address,
-          products
-        )
-      `)
+      .select('*')
       .eq('id', invoiceId)
       .single()
 
@@ -64,8 +55,55 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Invoice is not available for payment')
     }
 
+    console.log('Invoice details:', {
+      id: invoice.id,
+      is_batch_invoice: invoice.is_batch_invoice,
+      order_id: invoice.order_id
+    })
+
+    // Now get order information using the appropriate relationship
+    let orderData = null;
+    let orderError = null;
+
+    if (invoice.is_batch_invoice) {
+      // For batch invoices, get orders that reference this invoice via batch_invoice_id
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, order_number, customer_name, customer_address, products')
+        .eq('batch_invoice_id', invoiceId)
+        .limit(1)
+        .single()
+      
+      orderData = data;
+      orderError = error;
+      console.log('Fetched batch invoice order:', orderData)
+    } else {
+      // For individual invoices, get the order via order_id
+      if (invoice.order_id) {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('id, order_number, customer_name, customer_address, products')
+          .eq('id', invoice.order_id)
+          .single()
+        
+        orderData = data;
+        orderError = error;
+        console.log('Fetched individual invoice order:', orderData)
+      } else {
+        throw new Error('Invoice does not have an associated order')
+      }
+    }
+
+    if (orderError || !orderData) {
+      console.error('Order fetch error:', orderError)
+      throw new Error('Associated order not found')
+    }
+
     console.log('Creating Stripe checkout session for invoice:', invoice.invoice_number)
-    console.log('Order ID to include in metadata:', invoice.order_id)
+    console.log('Order details:', {
+      id: orderData.id,
+      order_number: orderData.order_number
+    })
 
     // Create Stripe checkout session with proper metadata
     const session = await stripe.checkout.sessions.create({
@@ -76,7 +114,7 @@ const handler = async (req: Request): Promise<Response> => {
             currency: invoice.currency.toLowerCase(),
             product_data: {
               name: `Invoice ${invoice.invoice_number}`,
-              description: `Payment for Order ${invoice.orders.order_number}`,
+              description: `Payment for Order ${orderData.order_number}`,
             },
             unit_amount: Math.round(invoice.amount * 100), // Convert to cents
           },
@@ -89,8 +127,9 @@ const handler = async (req: Request): Promise<Response> => {
       customer_email: invoice.customer_email,
       metadata: {
         invoice_id: invoice.id,
-        order_id: invoice.order_id,
+        order_id: orderData.id,
         invoice_number: invoice.invoice_number,
+        is_batch_invoice: invoice.is_batch_invoice ? 'true' : 'false',
       },
     })
 
@@ -99,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
       metadata: session.metadata
     })
 
-    // Update invoice with payment URL and session ID (renamed for clarity)
+    // Update invoice with payment URL and session ID
     const { error: updateError } = await supabase
       .from('invoices')
       .update({ 
