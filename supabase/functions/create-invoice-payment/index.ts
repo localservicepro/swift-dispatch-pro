@@ -82,11 +82,22 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Invalid request format')
     }
 
-    // Fetch invoice details with better error handling and explicit RLS bypass
+    // Fetch invoice details with improved query to avoid relationship ambiguity
     console.log('Fetching invoice details...')
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select('*')
+      .select(`
+        id,
+        invoice_number,
+        customer_email,
+        amount,
+        currency,
+        status,
+        due_date,
+        is_batch_invoice,
+        order_id,
+        batch_invoice_type
+      `)
       .eq('id', invoiceId)
       .maybeSingle()
 
@@ -132,7 +143,7 @@ const handler = async (req: Request): Promise<Response> => {
       status: invoice.status
     })
 
-    // Fetch order information with proper relationship handling
+    // Fetch order information with separate queries to avoid relationship conflicts
     let orderData = null;
     
     if (invoice.is_batch_invoice) {
