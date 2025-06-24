@@ -17,9 +17,18 @@ interface Driver {
 interface DriverSelectorProps {
   selectedDriverId: string;
   onDriverChange: (driverId: string) => void;
+  deliveryDate?: string;
+  deliveryTime?: string;
+  excludeOrderId?: string;
 }
 
-export function DriverSelector({ selectedDriverId, onDriverChange }: DriverSelectorProps) {
+export function DriverSelector({ 
+  selectedDriverId, 
+  onDriverChange,
+  deliveryDate,
+  deliveryTime,
+  excludeOrderId
+}: DriverSelectorProps) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loadingDrivers, setLoadingDrivers] = useState(true);
   const [driversError, setDriversError] = useState<string | null>(null);
