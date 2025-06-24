@@ -42,7 +42,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Environment variables validated successfully')
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    // Create Supabase client with service role and explicit RLS bypass
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      },
+      db: {
+        schema: 'public'
+      }
+    })
     
     // Initialize Stripe with updated API version and better error handling
     let stripe: Stripe;
@@ -73,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Invalid request format')
     }
 
-    // Fetch invoice details with better error handling
+    // Fetch invoice details with better error handling and explicit RLS bypass
     console.log('Fetching invoice details...')
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
@@ -88,6 +97,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!invoice) {
       console.error('Invoice not found:', invoiceId)
+      
+      // Debug: Check if invoices exist at all
+      const { data: allInvoices, error: countError } = await supabase
+        .from('invoices')
+        .select('id, invoice_number')
+        .limit(5)
+      
+      console.log('Debug - Sample invoices:', allInvoices)
+      console.log('Debug - Count error:', countError)
+      
       throw new Error('Invoice not found')
     }
 
