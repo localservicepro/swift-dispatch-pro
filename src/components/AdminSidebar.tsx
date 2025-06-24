@@ -18,9 +18,10 @@ import {
   CreditCard,
   Mail,
   Settings,
-  Truck,
+  Users2,
   Target,
   Trash2,
+  Truck,
 } from "lucide-react";
 
 const menuItems = [
@@ -55,8 +56,13 @@ const menuItems = [
     id: "payments",
   },
   {
-    title: "Team Management",
+    title: "Fleet Management",
     icon: Truck,
+    id: "trucks",
+  },
+  {
+    title: "Team Management",
+    icon: Users2,
     id: "drivers",
   },
   {

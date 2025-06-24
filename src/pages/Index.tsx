@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
@@ -11,6 +12,7 @@ import { PaymentManagement } from "@/components/PaymentManagement";
 import { EmailManagement } from "@/components/EmailManagement";
 import { CustomerManagement } from "@/components/CustomerManagement";
 import { Settings } from "@/components/Settings";
+import { TruckManagement } from "@/components/TruckManagement";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -53,6 +55,8 @@ const Index = () => {
         return <CustomerManagement />;
       case "payments":
         return <PaymentManagement />;
+      case "trucks":
+        return <TruckManagement />;
       case "drivers":
         return <TeamManagement />;
       case "emails":

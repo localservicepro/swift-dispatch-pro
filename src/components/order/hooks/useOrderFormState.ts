@@ -17,14 +17,9 @@ export function useOrderFormState() {
   const [orderType, setOrderType] = useState<"single" | "split">("single");
   const [splits, setSplits] = useState<SplitConfig[]>([]);
   
-  // Single order delivery state
+  // Single order delivery state - removed truck and driver related state
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
-  const [truckType, setTruckType] = useState<TruckType | "">("");
-  const [truckId, setTruckId] = useState("");
-  const [selectedTruck, setSelectedTruck] = useState<Truck | null>(null);
-  const [driverId, setDriverId] = useState("");
-  const [driverName, setDriverName] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   
@@ -32,6 +27,10 @@ export function useOrderFormState() {
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [sameAsBilling, setSameAsBilling] = useState(true);
   const [useGlobalDeliveryAddress, setUseGlobalDeliveryAddress] = useState(true);
+  
+  // Suburb and delivery rate state
+  const [selectedSuburbId, setSelectedSuburbId] = useState("");
+  const [deliveryRate, setDeliveryRate] = useState(0);
 
   // Fetch payment settings for calculations
   const { data: paymentSettings } = usePaymentSettings();
@@ -41,7 +40,7 @@ export function useOrderFormState() {
     if (deliveryMethod === "pickup") {
       return 5; // Customer → Products → Method → Payment → Review
     }
-    return 8; // Customer → Products → Method → Order Type → Address → Details → Payment → Review
+    return 7; // Customer → Products → Method → Order Type → Address → Payment → Review (removed Details step)
   };
 
   // Enhanced delivery method setter to auto-set order type
@@ -49,7 +48,15 @@ export function useOrderFormState() {
     setDeliveryMethod(method);
     if (method === "pickup") {
       setOrderType("single"); // Auto-set to single for pickup orders
+      setDeliveryRate(0); // No delivery fee for pickup
+      setSelectedSuburbId(""); // Clear suburb for pickup
     }
+  };
+
+  // Suburb change handler
+  const handleSuburbChange = (suburbId: string, rate: number) => {
+    setSelectedSuburbId(suburbId);
+    setDeliveryRate(rate);
   };
 
   const nextStep = () => {
@@ -66,19 +73,19 @@ export function useOrderFormState() {
 
   // Calculate totals using payment settings
   const subtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
-  const deliveryFee = deliveryMethod === "pickup" ? 0 : (selectedCustomer?.suburb?.delivery_rate || 0);
+  const currentDeliveryFee = deliveryMethod === "pickup" ? 0 : deliveryRate;
   
   // Use dynamic calculation with payment settings
   const orderTotals = paymentSettings ? 
-    calculateOrderTotals(subtotal, adjustments, deliveryFee, paymentMethod, paymentSettings) :
+    calculateOrderTotals(subtotal, adjustments, currentDeliveryFee, paymentMethod, paymentSettings) :
     {
       subtotal,
       adjustments,
-      deliveryFee,
+      deliveryFee: currentDeliveryFee,
       surchargeAmount: 0,
-      gstAmount: (subtotal + adjustments + deliveryFee) * 0.1, // fallback 10% GST
-      totalAmount: (subtotal + adjustments + deliveryFee) * 1.1,
-      baseAmount: subtotal + adjustments + deliveryFee,
+      gstAmount: (subtotal + adjustments + currentDeliveryFee) * 0.1, // fallback 10% GST
+      totalAmount: (subtotal + adjustments + currentDeliveryFee) * 1.1,
+      baseAmount: subtotal + adjustments + currentDeliveryFee,
       hasSurcharge: false,
       surchargeRate: 0,
       gstRate: 10
@@ -95,16 +102,13 @@ export function useOrderFormState() {
     splits,
     deliveryDate,
     deliveryTime,
-    truckType,
-    truckId,
-    selectedTruck,
-    driverId,
-    driverName,
     specialInstructions,
     paymentMethod,
     deliveryAddress,
     sameAsBilling,
     useGlobalDeliveryAddress,
+    selectedSuburbId,
+    deliveryRate,
     subtotal: orderTotals.subtotal,
     deliveryFee: orderTotals.deliveryFee,
     surchargeAmount: orderTotals.surchargeAmount,
@@ -122,16 +126,14 @@ export function useOrderFormState() {
     setSplits,
     setDeliveryDate,
     setDeliveryTime,
-    setTruckType,
-    setTruckId,
-    setSelectedTruck,
-    setDriverId,
-    setDriverName,
     setSpecialInstructions,
     setPaymentMethod,
     setDeliveryAddress,
     setSameAsBilling,
     setUseGlobalDeliveryAddress,
+    setSelectedSuburbId,
+    setDeliveryRate,
+    handleSuburbChange,
     
     // Navigation
     nextStep,

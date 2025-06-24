@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PaymentSearchFilters } from "@/components/payment/PaymentSearchFilters";
 import { PaymentSettings } from "@/components/payment/PaymentSettings";
 import { usePaymentFilters } from "@/hooks/usePaymentFilters";
+import { detectSplitOrderGroups } from "@/components/order/utils/splitOrderUtils";
+import { SplitOrderGroupCard } from "@/components/payment/SplitOrderGroupCard";
 
 interface PaymentOrder {
   id: string;
@@ -37,6 +39,7 @@ export function PaymentManagement() {
   const [showSettings, setShowSettings] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [splitOrderGroups, setSplitOrderGroups] = useState<any[]>([]);
 
   // Set up real-time payment updates
   useRealTimePayments((update) => {
@@ -100,6 +103,33 @@ export function PaymentManagement() {
     clearAllFilters,
     activeFilterCount
   } = usePaymentFilters(payments);
+
+  // Detect split order groups from filtered payments
+  useEffect(() => {
+    const detectGroups = async () => {
+      if (filteredPayments.length > 0) {
+        try {
+          const groups = await detectSplitOrderGroups(filteredPayments);
+          setSplitOrderGroups(groups);
+        } catch (error) {
+          console.error('Error detecting split order groups:', error);
+          setSplitOrderGroups([]);
+        }
+      } else {
+        setSplitOrderGroups([]);
+      }
+    };
+
+    detectGroups();
+  }, [filteredPayments]);
+
+  // Filter out individual split orders from the regular payment list
+  const nonSplitPayments = filteredPayments.filter(payment => {
+    // Keep if it's not part of any split order group
+    return !splitOrderGroups.some(group => 
+      group.allOrders.some((order: any) => order.id === payment.id)
+    );
+  });
 
   const generateAndSendInvoice = async (orderId: string) => {
     if (generatingInvoices.includes(orderId)) return;
@@ -384,11 +414,17 @@ export function PaymentManagement() {
     setSelectedPayments(prev => prev.includes(paymentId) ? prev.filter(id => id !== paymentId) : [...prev, paymentId]);
   };
 
-  // Calculate statistics from filtered data
-  const totalReceived = filteredPayments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total_amount, 0);
-  const pendingPayments = filteredPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total_amount, 0);
-  const invoicedPayments = filteredPayments.filter(p => p.payment_status === 'invoiced').reduce((sum, p) => sum + p.total_amount, 0);
-  const overduePayments = filteredPayments.filter(p => p.payment_status === 'overdue').reduce((sum, p) => sum + p.total_amount, 0);
+  // Calculate statistics from filtered data (excluding split orders to avoid double counting)
+  const totalReceived = nonSplitPayments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total_amount, 0) +
+    splitOrderGroups.filter(g => g.hasExistingInvoice).reduce((sum, g) => sum + g.totalAmount, 0);
+  
+  const pendingPayments = nonSplitPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total_amount, 0) +
+    splitOrderGroups.filter(g => g.canInvoice).reduce((sum, g) => sum + g.totalAmount, 0);
+  
+  const invoicedPayments = nonSplitPayments.filter(p => p.payment_status === 'invoiced').reduce((sum, p) => sum + p.total_amount, 0) +
+    splitOrderGroups.filter(g => g.hasExistingInvoice && !g.canInvoice).reduce((sum, g) => sum + g.totalAmount, 0);
+  
+  const overduePayments = nonSplitPayments.filter(p => p.payment_status === 'overdue').reduce((sum, p) => sum + p.total_amount, 0);
   
   if (error) {
     return <div className="space-y-6">
@@ -498,17 +534,40 @@ export function PaymentManagement() {
         </Card>
       </div>
 
+      {/* Split Order Groups */}
+      {splitOrderGroups.length > 0 && (
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+              Split Order Groups
+              <Badge variant="outline" className="ml-2">
+                {splitOrderGroups.length} groups
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {splitOrderGroups.map((group, index) => (
+              <SplitOrderGroupCard
+                key={group.masterOrder.id}
+                group={group}
+                onInvoiceCreated={() => refetch()}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Payment Records */}
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-              Payment Records 
+              Individual Payment Records 
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               <Bell className="w-4 h-4 text-green-500" />
-              {filteredPayments.length !== payments.length && (
+              {nonSplitPayments.length !== payments.length && (
                 <Badge variant="outline" className="ml-2">
-                  {filteredPayments.length} of {payments.length}
+                  {nonSplitPayments.length} of {payments.length}
                 </Badge>
               )}
             </CardTitle>
@@ -521,15 +580,15 @@ export function PaymentManagement() {
           {isLoading ? <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               <p className="mt-2 text-slate-600">Loading payment records...</p>
-            </div> : filteredPayments.length === 0 ? <div className="text-center py-8 text-slate-500">
-              <p>{payments.length === 0 ? "No payment records found." : "No payment records match your search criteria."}</p>
+            </div> : nonSplitPayments.length === 0 ? <div className="text-center py-8 text-slate-500">
+              <p>{payments.length === 0 ? "No payment records found." : "No individual payment records match your search criteria."}</p>
               {activeFilterCount > 0 && (
                 <Button variant="outline" onClick={clearAllFilters} className="mt-2">
                   Clear all filters
                 </Button>
               )}
             </div> : <div className="space-y-4">
-              {filteredPayments.map(payment => <div key={payment.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
+              {nonSplitPayments.map(payment => <div key={payment.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <input 

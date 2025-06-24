@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Package, Plus, Minus, ShoppingCart } from "lucide-react";
+import { Search, Package, Plus, Minus, ShoppingCart, Star, Clock } from "lucide-react";
+import { useSpecialPricing } from "@/hooks/useSpecialPricing";
+import { format } from "date-fns";
 
 interface Product {
   id: string;
@@ -57,6 +59,7 @@ export function ProductSelectionStep({
   const [adjustmentType, setAdjustmentType] = useState<"percentage" | "fixed">("percentage");
   const [adjustmentValue, setAdjustmentValue] = useState<string>("");
   const { toast } = useToast();
+  const { loadSpecialsForProducts, hasActiveSpecial, getSpecialForProduct, applySpecialDiscount } = useSpecialPricing();
 
   useEffect(() => {
     loadCategories();
@@ -83,6 +86,13 @@ export function ProductSelectionStep({
   useEffect(() => {
     loadProducts();
   }, [searchQuery, selectedCategory]);
+
+  useEffect(() => {
+    if (products.length > 0) {
+      const productIds = products.map(p => p.id);
+      loadSpecialsForProducts(productIds);
+    }
+  }, [products, loadSpecialsForProducts]);
 
   const loadCategories = async () => {
     const { data, error } = await supabase
@@ -129,8 +139,14 @@ export function ProductSelectionStep({
     setLoading(false);
   };
 
+  const getProductPrice = (product: Product) => {
+    // Apply special pricing if available
+    return hasActiveSpecial(product.id) ? applySpecialDiscount(product.price, product.id) : product.price;
+  };
+
   const addToCart = (product: Product) => {
     const existingItem = cart.find(item => item.product.id === product.id);
+    const price = getProductPrice(product);
     
     if (existingItem) {
       updateQuantity(product.id, existingItem.quantity + 1);
@@ -138,8 +154,8 @@ export function ProductSelectionStep({
       const newItem: CartItem = {
         product,
         quantity: 1,
-        unit_price: product.price,
-        total_price: product.price
+        unit_price: price,
+        total_price: price
       };
       onCartUpdate([...cart, newItem]);
     }
@@ -151,11 +167,18 @@ export function ProductSelectionStep({
       return;
     }
 
-    const updatedCart = cart.map(item => 
-      item.product.id === productId 
-        ? { ...item, quantity: newQuantity, total_price: item.unit_price * newQuantity }
-        : item
-    );
+    const updatedCart = cart.map(item => {
+      if (item.product.id === productId) {
+        const price = getProductPrice(item.product);
+        return { 
+          ...item, 
+          quantity: newQuantity, 
+          unit_price: price,
+          total_price: price * newQuantity 
+        };
+      }
+      return item;
+    });
     onCartUpdate(updatedCart);
   };
 
@@ -225,66 +248,115 @@ export function ProductSelectionStep({
             {loading && <div className="text-center py-4">Loading products...</div>}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-              {products.map((product) => (
-                <div key={product.id} className="border rounded-lg p-4">
-                  {product.images && product.images.length > 0 && (
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      className="w-full h-32 object-cover rounded mb-3"
-                    />
-                  )}
-                  
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm">{product.name}</h4>
-                      {product.category?.name && (
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {product.category.name}
+              {products.map((product) => {
+                const productSpecial = getSpecialForProduct(product.id);
+                const originalPrice = product.price;
+                const currentPrice = getProductPrice(product);
+                const hasSpecial = hasActiveSpecial(product.id) && currentPrice !== originalPrice;
+
+                return (
+                  <div key={product.id} className="border rounded-lg p-4 relative">
+                    {/* Special Badge */}
+                    {hasSpecial && (
+                      <div className="absolute top-2 right-2 z-10">
+                        <Badge className="bg-red-500 text-white flex items-center gap-1 text-xs">
+                          <Star className="w-3 h-3" />
+                          SPECIAL
                         </Badge>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-green-600">${product.price.toFixed(2)}</div>
-                      <div className="text-xs text-gray-500">Stock: {product.stock_quantity}</div>
-                    </div>
-                  </div>
-                  
-                  {product.description && (
-                    <p className="text-xs text-gray-600 mb-2">{product.description}</p>
-                  )}
-                  
-                  <div className="flex items-center justify-between">
-                    {product.sku && (
-                      <span className="text-xs text-gray-500">SKU: {product.sku}</span>
+                      </div>
+                    )}
+
+                    {product.images && product.images.length > 0 && (
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-full h-32 object-cover rounded mb-3"
+                      />
                     )}
                     
-                    {getCartQuantity(product.id) > 0 ? (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateQuantity(product.id, getCartQuantity(product.id) - 1)}
-                        >
-                          <Minus className="w-3 h-3" />
-                        </Button>
-                        <span className="font-medium">{getCartQuantity(product.id)}</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + 1)}
-                        >
-                          <Plus className="w-3 h-3" />
-                        </Button>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-sm">{product.name}</h4>
+                        {product.category?.name && (
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {product.category.name}
+                          </Badge>
+                        )}
                       </div>
-                    ) : (
-                      <Button size="sm" onClick={() => addToCart(product)}>
-                        Add to Cart
-                      </Button>
+                      <div className="text-right">
+                        {hasSpecial ? (
+                          <div>
+                            <div className="text-xs text-gray-500 line-through">
+                              ${originalPrice.toFixed(2)}
+                            </div>
+                            <div className="font-semibold text-red-600">
+                              ${currentPrice.toFixed(2)}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="font-semibold text-green-600">
+                            ${currentPrice.toFixed(2)}
+                          </div>
+                        )}
+                        <div className="text-xs text-gray-500">Stock: {product.stock_quantity}</div>
+                      </div>
+                    </div>
+
+                    {/* Special Details */}
+                    {productSpecial && (
+                      <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
+                        <div className="text-red-700 font-medium">
+                          {productSpecial.special_name}
+                        </div>
+                        <div className="text-red-600">
+                          {productSpecial.discount_type === 'percentage' 
+                            ? `${productSpecial.discount_value}% off` 
+                            : `$${productSpecial.discount_value} off`
+                          }
+                        </div>
+                        <div className="flex items-center gap-1 text-red-600">
+                          <Clock className="w-3 h-3" />
+                          Ends: {format(new Date(productSpecial.end_date), 'MMM d')}
+                        </div>
+                      </div>
                     )}
+                    
+                    {product.description && (
+                      <p className="text-xs text-gray-600 mb-2">{product.description}</p>
+                    )}
+                    
+                    <div className="flex items-center justify-between">
+                      {product.sku && (
+                        <span className="text-xs text-gray-500">SKU: {product.sku}</span>
+                      )}
+                      
+                      {getCartQuantity(product.id) > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateQuantity(product.id, getCartQuantity(product.id) - 1)}
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
+                          <span className="font-medium">{getCartQuantity(product.id)}</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + 1)}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" onClick={() => addToCart(product)}>
+                          Add to Cart
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -307,36 +379,53 @@ export function ProductSelectionStep({
             ) : (
               <>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {cart.map((item) => (
-                    <div key={item.product.id} className="flex items-center justify-between p-2 border rounded">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{item.product.name}</div>
-                        <div className="text-xs text-gray-500">${item.unit_price.toFixed(2)} each</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                          >
-                            <Minus className="w-3 h-3" />
-                          </Button>
-                          <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                          >
-                            <Plus className="w-3 h-3" />
-                          </Button>
+                  {cart.map((item) => {
+                    const hasSpecial = hasActiveSpecial(item.product.id);
+                    const originalPrice = item.product.price;
+                    
+                    return (
+                      <div key={item.product.id} className="flex items-center justify-between p-2 border rounded">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate flex items-center gap-1">
+                            {item.product.name}
+                            {hasSpecial && <Star className="w-3 h-3 text-red-500" />}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {hasSpecial ? (
+                              <>
+                                <span className="line-through">${originalPrice.toFixed(2)}</span>
+                                <span className="text-red-600 ml-1">${item.unit_price.toFixed(2)} each</span>
+                              </>
+                            ) : (
+                              `$${item.unit_price.toFixed(2)} each`
+                            )}
+                          </div>
                         </div>
-                        <div className="font-medium text-sm">${item.total_price.toFixed(2)}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </Button>
+                            <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <div className="font-medium text-sm">${item.total_price.toFixed(2)}</div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="border-t pt-4 space-y-3">

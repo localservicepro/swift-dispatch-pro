@@ -7,6 +7,24 @@ export function useDeletedOrdersData() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Enhanced cache invalidation for deleted orders
+  const invalidateAllOrdersCache = async (reason?: string) => {
+    console.log(`Invalidating all orders cache: ${reason || 'unknown reason'}`);
+    
+    // Invalidate all order-related queries
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['deleted-orders'] }),
+      queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] }),
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    ]);
+    
+    // Force immediate refetch for critical queries
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ['deleted-orders'] }),
+      queryClient.refetchQueries({ queryKey: ['opportunity-orders'] })
+    ]);
+  };
+
   // Fetch soft-deleted orders
   const { data: deletedOrders = [], isLoading, error, refetch } = useQuery({
     queryKey: ['deleted-orders'],
@@ -38,6 +56,8 @@ export function useDeletedOrdersData() {
           subtotal,
           truck_type,
           truck_id,
+          master_order_id,
+          is_split_order,
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
@@ -71,10 +91,21 @@ export function useDeletedOrdersData() {
       console.log('Deleted orders mapped:', mappedOrders);
       return mappedOrders;
     },
+    staleTime: 0, // Always consider data stale for immediate updates
   });
 
   const restoreOrder = async (orderId: string, orderNumber: string) => {
     try {
+      console.log('Restoring order:', orderNumber);
+      
+      // Optimistically remove from deleted orders cache
+      queryClient.setQueryData(['deleted-orders'], (oldData: any[]) => {
+        if (!oldData) return [];
+        const filtered = oldData.filter(order => order.id !== orderId);
+        console.log('Optimistically removed from deleted orders cache:', orderNumber);
+        return filtered;
+      });
+
       const { error } = await supabase.rpc('restore_order', {
         p_order_id: orderId
       });
@@ -86,13 +117,15 @@ export function useDeletedOrdersData() {
         description: `Order ${orderNumber} has been successfully restored`,
       });
 
-      // Refresh both deleted and regular orders
-      queryClient.invalidateQueries({ queryKey: ['deleted-orders'] });
-      queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] });
+      // Enhanced cache invalidation after restoration
+      await invalidateAllOrdersCache('order restoration');
       
-      refetch();
     } catch (error: any) {
       console.error('Error restoring order:', error);
+      
+      // Revert optimistic update on error
+      await refetch();
+      
       toast({
         title: "Error",
         description: "Failed to restore order. Please try again.",
@@ -103,6 +136,8 @@ export function useDeletedOrdersData() {
 
   const softDeleteOrder = async (orderId: string, orderNumber: string, reason?: string) => {
     try {
+      console.log('Soft deleting order:', orderNumber);
+
       const { error } = await supabase.rpc('soft_delete_order', {
         p_order_id: orderId,
         p_reason: reason || 'Admin deletion'
@@ -115,9 +150,9 @@ export function useDeletedOrdersData() {
         description: `Order ${orderNumber} has been moved to deleted orders`,
       });
 
-      // Refresh both deleted and regular orders
-      queryClient.invalidateQueries({ queryKey: ['deleted-orders'] });
-      queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] });
+      // Enhanced cache invalidation after deletion
+      await invalidateAllOrdersCache('order deletion');
+      
     } catch (error: any) {
       console.error('Error soft deleting order:', error);
       toast({
@@ -134,6 +169,7 @@ export function useDeletedOrdersData() {
     error,
     refetch,
     restoreOrder,
-    softDeleteOrder
+    softDeleteOrder,
+    invalidateAllOrdersCache
   };
 }

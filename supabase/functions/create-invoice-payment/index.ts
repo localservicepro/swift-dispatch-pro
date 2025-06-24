@@ -39,12 +39,12 @@ const handler = async (req: Request): Promise<Response> => {
     const { invoiceId }: InvoicePaymentRequest = await req.json()
     console.log('Processing payment for invoice:', invoiceId)
 
-    // Get invoice details with order information
+    // Get invoice details with order information using explicit relationship
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select(`
         *,
-        orders!inner(
+        orders!invoices_order_id_fkey(
           id,
           order_number,
           customer_name,

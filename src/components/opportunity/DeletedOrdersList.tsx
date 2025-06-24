@@ -12,9 +12,12 @@ import {
   User, 
   DollarSign,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Split,
+  Link2
 } from "lucide-react";
 import { useDeletedOrdersData } from "./useDeletedOrdersData";
+import { useSplitOrderGroups } from "@/hooks/useSplitOrderGroups";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,17 +33,62 @@ import {
 export function DeletedOrdersList() {
   const [searchQuery, setSearchQuery] = useState("");
   const { deletedOrders, isLoading, restoreOrder } = useDeletedOrdersData();
+  const { restoreSplitOrderGroup } = useSplitOrderGroups();
+
+  // Group deleted orders by split relationships - safely access properties
+  const groupedOrders = useMemo(() => {
+    const groups: { [key: string]: any[] } = {};
+    const standaloneOrders: any[] = [];
+
+    deletedOrders.forEach(order => {
+      // Safely access master_order_id and is_split_order properties
+      const masterOrderId = (order as any).master_order_id;
+      const isSplitOrder = (order as any).is_split_order;
+      
+      const groupKey = masterOrderId || (isSplitOrder ? 'orphaned' : null);
+      
+      if (groupKey && groupKey !== 'orphaned') {
+        if (!groups[groupKey]) groups[groupKey] = [];
+        groups[groupKey].push(order);
+      } else if (isSplitOrder) {
+        // This is a master order with splits
+        const splitOrders = deletedOrders.filter(o => (o as any).master_order_id === order.id);
+        if (splitOrders.length > 0) {
+          groups[order.id] = [order, ...splitOrders];
+        } else {
+          standaloneOrders.push(order);
+        }
+      } else {
+        standaloneOrders.push(order);
+      }
+    });
+
+    return { groups: Object.values(groups), standaloneOrders };
+  }, [deletedOrders]);
 
   // Filter orders by search query
-  const filteredOrders = useMemo(() => {
-    if (!searchQuery.trim()) return deletedOrders;
+  const filteredResults = useMemo(() => {
+    if (!searchQuery.trim()) return groupedOrders;
     
     const query = searchQuery.toLowerCase().trim();
-    return deletedOrders.filter(order => 
+    
+    const filteredGroups = groupedOrders.groups.filter(group =>
+      group.some(order => 
+        order.order_number.toLowerCase().includes(query) ||
+        order.customer_name.toLowerCase().includes(query)
+      )
+    );
+    
+    const filteredStandalone = groupedOrders.standaloneOrders.filter(order => 
       order.order_number.toLowerCase().includes(query) ||
       order.customer_name.toLowerCase().includes(query)
     );
-  }, [deletedOrders, searchQuery]);
+
+    return { groups: filteredGroups, standaloneOrders: filteredStandalone };
+  }, [groupedOrders, searchQuery]);
+
+  const totalFilteredOrders = filteredResults.groups.reduce((sum, group) => sum + group.length, 0) + 
+                             filteredResults.standaloneOrders.length;
 
   const formatDeletedDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -81,6 +129,14 @@ export function DeletedOrdersList() {
     );
   }
 
+  const handleRestoreGroup = async (masterOrder: any) => {
+    try {
+      await restoreSplitOrderGroup(masterOrder.id);
+    } catch (error) {
+      console.error('Failed to restore split order group:', error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -94,7 +150,7 @@ export function DeletedOrdersList() {
         
         <div className="flex items-center gap-4">
           <Badge variant="outline" className="text-red-600 border-red-300">
-            {filteredOrders.length} deleted orders
+            {totalFilteredOrders} deleted orders
           </Badge>
         </div>
       </div>
@@ -116,7 +172,7 @@ export function DeletedOrdersList() {
         </CardHeader>
         
         <CardContent>
-          {filteredOrders.length === 0 ? (
+          {totalFilteredOrders === 0 ? (
             <div className="text-center py-8 text-slate-400">
               {searchQuery ? (
                 <p>No deleted orders match your search</p>
@@ -129,8 +185,113 @@ export function DeletedOrdersList() {
               )}
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredOrders.map((order) => (
+            <div className="space-y-6">
+              {/* Split Order Groups */}
+              {filteredResults.groups.map((group, groupIndex) => {
+                const masterOrder = group.find(o => !(o as any).master_order_id) || group[0];
+                const splitOrders = group.filter(o => (o as any).master_order_id);
+                const totalAmount = group.reduce((sum, order) => sum + order.total_amount, 0);
+
+                return (
+                  <Card key={`group-${groupIndex}`} className="border-2 border-blue-200 bg-blue-50">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Split className="w-5 h-5 text-blue-600" />
+                            <h3 className="font-semibold text-slate-800">Split Order Group</h3>
+                          </div>
+                          <Badge variant="outline" className="text-blue-600 border-blue-300">
+                            {group.length} orders
+                          </Badge>
+                          <Badge className={getDeletedBadgeColor(masterOrder.deleted_at)}>
+                            <Clock className="w-3 h-3 mr-1" />
+                            Deleted {formatDeletedDate(masterOrder.deleted_at)}
+                          </Badge>
+                        </div>
+                        <span className="text-lg font-bold text-green-600">
+                          ${totalAmount.toFixed(2)} total
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-3">
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4" />
+                          <span>{masterOrder.customer_name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Link2 className="w-4 h-4" />
+                          <span>Master: {masterOrder.order_number}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          <span>{new Date(masterOrder.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+
+                      {/* List all orders in the group */}
+                      <div className="space-y-2 mb-4">
+                        {group.map((order) => (
+                          <div key={order.id} className="bg-white rounded p-3 border text-sm">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{order.order_number}</span>
+                                {!(order as any).master_order_id && (
+                                  <Badge variant="secondary" className="text-xs">Master</Badge>
+                                )}
+                              </div>
+                              <span className="text-slate-600">${order.total_amount.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="flex items-center gap-2">
+                              <RotateCcw className="w-4 h-4" />
+                              Restore Group
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="flex items-center gap-2">
+                                <AlertCircle className="w-5 h-5 text-orange-600" />
+                                Restore Split Order Group
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to restore this entire split order group?
+                                <br />
+                                <br />
+                                This will restore <strong>{group.length} orders</strong> for <strong>{masterOrder.customer_name}</strong>:
+                                <ul className="list-disc list-inside mt-2 space-y-1">
+                                  {group.map(order => (
+                                    <li key={order.id}>{order.order_number} - ${order.total_amount.toFixed(2)}</li>
+                                  ))}
+                                </ul>
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleRestoreGroup(masterOrder)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <RotateCcw className="w-4 h-4 mr-2" />
+                                Restore Group
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+
+              {/* Standalone Orders */}
+              {filteredResults.standaloneOrders.map((order) => (
                 <Card key={order.id} className="border border-red-200 hover:border-red-300 transition-colors">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">

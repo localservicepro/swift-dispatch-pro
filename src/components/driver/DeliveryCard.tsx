@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { DeliveryActionDialog } from "./DeliveryActionDialog";
 import { OrderDetailsCard } from "./OrderDetailsCard";
+import { DeliveryMapCard } from "./DeliveryMapCard";
 import { Database } from "@/integrations/supabase/types";
 import { 
   MapPin, 
@@ -160,6 +162,13 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
               </div>
             )}
           </div>
+
+          {/* Google Maps Integration */}
+          <DeliveryMapCard
+            address={order.customer_address}
+            customerName={order.customer_name}
+            orderId={order.id}
+          />
 
           {/* Truck Information */}
           {(order.truck_type || order.truck_registration) && (

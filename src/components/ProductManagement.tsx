@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Plus } from "lucide-react";
 import { CategoryManagement } from "./CategoryManagement";
 import { PricingTierManagement } from "./PricingTierManagement";
+import { SpecialManagement } from "./SpecialManagement";
 import { ProductForm } from "./product/ProductForm";
 import { ProductList } from "./product/ProductList";
 import { ProductFilters } from "./product/ProductFilters";
@@ -139,10 +140,11 @@ export function ProductManagement() {
 
   return (
     <Tabs defaultValue="products" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="products">Products</TabsTrigger>
         <TabsTrigger value="categories">Categories</TabsTrigger>
         <TabsTrigger value="pricing">Pricing Tiers</TabsTrigger>
+        <TabsTrigger value="specials">Specials</TabsTrigger>
       </TabsList>
 
       <TabsContent value="products" className="space-y-6">
@@ -192,6 +194,10 @@ export function ProductManagement() {
 
       <TabsContent value="pricing">
         <PricingTierManagement />
+      </TabsContent>
+
+      <TabsContent value="specials">
+        <SpecialManagement />
       </TabsContent>
     </Tabs>
   );
