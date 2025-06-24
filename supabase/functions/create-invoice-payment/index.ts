@@ -44,21 +44,28 @@ const handler = async (req: Request): Promise<Response> => {
       .from('invoices')
       .select('*')
       .eq('id', invoiceId)
-      .single()
+      .maybeSingle()
 
-    if (invoiceError || !invoice) {
+    if (invoiceError) {
       console.error('Invoice fetch error:', invoiceError)
+      throw new Error('Failed to fetch invoice details')
+    }
+
+    if (!invoice) {
+      console.error('Invoice not found:', invoiceId)
       throw new Error('Invoice not found')
     }
 
     if (invoice.status !== 'pending') {
+      console.error('Invoice not available for payment. Status:', invoice.status)
       throw new Error('Invoice is not available for payment')
     }
 
     console.log('Invoice details:', {
       id: invoice.id,
       is_batch_invoice: invoice.is_batch_invoice,
-      order_id: invoice.order_id
+      order_id: invoice.order_id,
+      status: invoice.status
     })
 
     // Now get order information using the appropriate relationship
@@ -66,43 +73,56 @@ const handler = async (req: Request): Promise<Response> => {
     let orderError = null;
 
     if (invoice.is_batch_invoice) {
+      console.log('Fetching orders for batch invoice...')
       // For batch invoices, get orders that reference this invoice via batch_invoice_id
       const { data, error } = await supabase
         .from('orders')
         .select('id, order_number, customer_name, customer_address, products')
         .eq('batch_invoice_id', invoiceId)
         .limit(1)
-        .single()
+        .maybeSingle()
       
       orderData = data;
       orderError = error;
-      console.log('Fetched batch invoice order:', orderData)
+      console.log('Fetched batch invoice order:', { data, error })
     } else {
+      console.log('Fetching order for individual invoice...')
       // For individual invoices, get the order via order_id
       if (invoice.order_id) {
         const { data, error } = await supabase
           .from('orders')
           .select('id, order_number, customer_name, customer_address, products')
           .eq('id', invoice.order_id)
-          .single()
+          .maybeSingle()
         
         orderData = data;
         orderError = error;
-        console.log('Fetched individual invoice order:', orderData)
+        console.log('Fetched individual invoice order:', { data, error })
       } else {
+        console.error('Invoice has no order_id:', invoice)
         throw new Error('Invoice does not have an associated order')
       }
     }
 
-    if (orderError || !orderData) {
+    if (orderError) {
       console.error('Order fetch error:', orderError)
+      throw new Error('Failed to fetch associated order')
+    }
+
+    if (!orderData) {
+      console.error('No order data found for invoice:', {
+        invoiceId,
+        is_batch_invoice: invoice.is_batch_invoice,
+        order_id: invoice.order_id
+      })
       throw new Error('Associated order not found')
     }
 
     console.log('Creating Stripe checkout session for invoice:', invoice.invoice_number)
     console.log('Order details:', {
       id: orderData.id,
-      order_number: orderData.order_number
+      order_number: orderData.order_number,
+      customer_name: orderData.customer_name
     })
 
     // Create Stripe checkout session with proper metadata
@@ -133,9 +153,10 @@ const handler = async (req: Request): Promise<Response> => {
       },
     })
 
-    console.log('Stripe session created with metadata:', {
+    console.log('Stripe session created successfully:', {
       sessionId: session.id,
-      metadata: session.metadata
+      metadata: session.metadata,
+      url: session.url
     })
 
     // Update invoice with payment URL and session ID
