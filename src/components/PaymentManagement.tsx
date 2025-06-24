@@ -12,7 +12,6 @@ import { Search, Filter, X, FileText, CreditCard, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/components/order/utils/paymentCalculations";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
-type PaymentStatus = Database["public"]["Enums"]["payment_status"];
 
 interface PaymentOrder {
   id: string;
@@ -23,7 +22,7 @@ interface PaymentOrder {
   products: any;
   total_amount: number;
   status: OrderStatus;
-  payment_status: PaymentStatus;
+  payment_status: string;
   driver_id?: string;
   created_at: string;
   delivery_date?: string;
@@ -107,6 +106,37 @@ const PaymentManagement = () => {
 
   const hasActiveFilters = searchQuery.trim() !== "" || paymentStatusFilter !== "pending";
 
+  // Utility function to wait for database transaction completion
+  const waitForTransactionCommit = async (delay: number = 1500): Promise<void> => {
+    return new Promise(resolve => setTimeout(resolve, delay));
+  };
+
+  // Retry mechanism for database operations
+  const retryOperation = async <T,>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelay: number = 1000
+  ): Promise<T> => {
+    let lastError: Error;
+    
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        lastError = error;
+        console.warn(`Operation failed (attempt ${i + 1}/${maxRetries}):`, error.message);
+        
+        if (i < maxRetries - 1) {
+          // Exponential backoff
+          const delay = baseDelay * Math.pow(2, i);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    throw lastError;
+  };
+
   const handleCreateInvoice = async (order: PaymentOrder) => {
     setCreatingInvoice(order.id);
     
@@ -139,7 +169,7 @@ const PaymentManagement = () => {
       console.log('Invoice created:', invoice.id);
 
       // Wait for transaction commit
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await waitForTransactionCommit();
 
       // Verify invoice exists
       const { data: verifyInvoice, error: verifyError } = await supabase
@@ -156,42 +186,25 @@ const PaymentManagement = () => {
       console.log('Invoice verified successfully:', verifyInvoice);
 
       // Create payment session with retry mechanism
-      let paymentData;
-      let attempts = 0;
-      const maxAttempts = 3;
+      const paymentResult = await retryOperation(async () => {
+        console.log('Attempting to create payment session for invoice:', invoice.id);
+        
+        const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-invoice-payment', {
+          body: { invoiceId: invoice.id }
+        });
 
-      while (attempts < maxAttempts) {
-        try {
-          console.log(`Creating payment session (attempt ${attempts + 1}/${maxAttempts})...`);
-          
-          const { data, error: paymentError } = await supabase.functions.invoke('create-invoice-payment', {
-            body: { invoiceId: invoice.id }
-          });
-
-          if (paymentError) {
-            throw new Error(`Payment session error: ${paymentError.message}`);
-          }
-
-          if (!data?.success) {
-            throw new Error(data?.error || 'Failed to create payment session');
-          }
-
-          paymentData = data;
-          break;
-
-        } catch (error: any) {
-          attempts++;
-          console.warn(`Payment session attempt ${attempts} failed:`, error.message);
-          
-          if (attempts < maxAttempts) {
-            // Exponential backoff
-            const delay = 1000 * Math.pow(2, attempts - 1);
-            await new Promise(resolve => setTimeout(resolve, delay));
-          } else {
-            throw error;
-          }
+        if (paymentError) {
+          console.error('Payment session error:', paymentError);
+          throw new Error(`Payment session error: ${paymentError.message}`);
         }
-      }
+
+        if (!paymentData?.success) {
+          console.error('Payment session failed:', paymentData);
+          throw new Error(paymentData?.error || 'Failed to create payment session');
+        }
+
+        return paymentData;
+      });
 
       // Update order with invoice reference
       const { error: updateError } = await supabase
@@ -212,8 +225,8 @@ const PaymentManagement = () => {
       });
 
       // Open payment URL in new tab
-      if (paymentData.paymentUrl) {
-        window.open(paymentData.paymentUrl, '_blank');
+      if (paymentResult.paymentUrl) {
+        window.open(paymentResult.paymentUrl, '_blank');
       }
 
       // Refresh data
@@ -229,6 +242,25 @@ const PaymentManagement = () => {
       });
     } finally {
       setCreatingInvoice(null);
+    }
+  };
+
+  // Helper function to safely format products
+  const formatProducts = (products: any) => {
+    if (!products) return 'No products';
+    
+    try {
+      if (Array.isArray(products)) {
+        return products.map(p => {
+          const name = p?.name || p?.product_name || 'Product';
+          const quantity = p?.quantity || 1;
+          return `${name} (Qty: ${quantity})`;
+        }).join(', ');
+      }
+      return 'Products listed';
+    } catch (error) {
+      console.warn('Error formatting products:', error);
+      return 'Products listed';
     }
   };
 
@@ -361,11 +393,7 @@ const PaymentManagement = () => {
                     </div>
                     <div>
                       <p className="text-slate-500">Products</p>
-                      <p className="font-medium">
-                        {Array.isArray(order.products)
-                          ? order.products.map(p => `${p.name} (Qty: ${p.quantity})`).join(', ')
-                          : 'Products listed'}
-                      </p>
+                      <p className="font-medium">{formatProducts(order.products)}</p>
                     </div>
                     <div>
                       <p className="text-slate-500">Address</p>

@@ -8,7 +8,7 @@ import { DashboardOverview } from "@/components/DashboardOverview";
 import { OpportunityPipeline } from "@/components/OpportunityPipeline";
 import { OrderManagement } from "@/components/OrderManagement";
 import { ProductManagement } from "@/components/ProductManagement";
-import { PaymentManagement } from "@/components/PaymentManagement";
+import PaymentManagement from "@/components/PaymentManagement";
 import { EmailManagement } from "@/components/EmailManagement";
 import { CustomerManagement } from "@/components/CustomerManagement";
 import { Settings } from "@/components/Settings";
