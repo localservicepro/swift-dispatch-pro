@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,12 +26,12 @@ interface StripeConfigurationSectionProps {
 
 export function StripeConfigurationSection({ settings, onSettingsUpdate }: StripeConfigurationSectionProps) {
   const [config, setConfig] = useState<StripeConfig>({
-    stripe_test_publishable_key: settings?.stripe_test_publishable_key || '',
-    stripe_test_secret_key: settings?.stripe_test_secret_key || '',
-    stripe_live_publishable_key: settings?.stripe_live_publishable_key || '',
-    stripe_live_secret_key: settings?.stripe_live_secret_key || '',
-    stripe_mode: settings?.stripe_mode || 'test',
-    stripe_webhook_secret: settings?.stripe_webhook_secret || ''
+    stripe_test_publishable_key: '',
+    stripe_test_secret_key: '',
+    stripe_live_publishable_key: '',
+    stripe_live_secret_key: '',
+    stripe_mode: 'test',
+    stripe_webhook_secret: ''
   });
 
   const [showKeys, setShowKeys] = useState({
@@ -43,6 +43,20 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const { toast } = useToast();
+
+  // Update config when settings change
+  useEffect(() => {
+    if (settings) {
+      setConfig({
+        stripe_test_publishable_key: settings.stripe_test_publishable_key || '',
+        stripe_test_secret_key: settings.stripe_test_secret_key || '',
+        stripe_live_publishable_key: settings.stripe_live_publishable_key || '',
+        stripe_live_secret_key: settings.stripe_live_secret_key || '',
+        stripe_mode: settings.stripe_mode || 'test',
+        stripe_webhook_secret: settings.stripe_webhook_secret || ''
+      });
+    }
+  }, [settings]);
 
   const getConnectionStatusBadge = () => {
     const status = settings?.stripe_connection_status || 'not_configured';
@@ -62,6 +76,28 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
         return <Badge className="bg-yellow-100 text-yellow-800">Testing...</Badge>;
       default:
         return <Badge className="bg-gray-100 text-gray-800">Not Configured</Badge>;
+    }
+  };
+
+  const validateCurrentModeKeys = () => {
+    if (config.stripe_mode === 'test') {
+      return config.stripe_test_publishable_key && config.stripe_test_secret_key;
+    } else {
+      return config.stripe_live_publishable_key && config.stripe_live_secret_key;
+    }
+  };
+
+  const getCurrentModeKeys = () => {
+    if (config.stripe_mode === 'test') {
+      return {
+        publishableKey: config.stripe_test_publishable_key,
+        secretKey: config.stripe_test_secret_key
+      };
+    } else {
+      return {
+        publishableKey: config.stripe_live_publishable_key,
+        secretKey: config.stripe_live_secret_key
+      };
     }
   };
 
@@ -108,10 +144,10 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
   };
 
   const handleTestConnection = async () => {
-    if (!config.stripe_test_publishable_key || !config.stripe_test_secret_key) {
+    if (!validateCurrentModeKeys()) {
       toast({
         title: "Missing Keys",
-        description: "Please enter both publishable and secret keys for testing",
+        description: `Please enter both publishable and secret keys for ${config.stripe_mode} mode`,
         variant: "destructive",
       });
       return;
@@ -119,38 +155,56 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
 
     setTesting(true);
     try {
+      // Update connection status to testing
+      if (settings?.id) {
+        await supabase
+          .from('payment_settings')
+          .update({ stripe_connection_status: 'testing' })
+          .eq('id', settings.id);
+        onSettingsUpdate();
+      }
+
       // First save the current config
       await handleSave();
       
-      // Then test the connection
+      // Get the keys for the current mode
+      const { publishableKey, secretKey } = getCurrentModeKeys();
+      
+      console.log(`Testing connection in ${config.stripe_mode} mode...`);
+      
+      // Test the connection using the appropriate keys for the current mode
       const { data, error } = await supabase.functions.invoke('test-stripe-connection', {
         body: {
-          publishableKey: config.stripe_test_publishable_key,
-          secretKey: config.stripe_test_secret_key,
+          publishableKey,
+          secretKey,
           mode: config.stripe_mode
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Function invocation error:', error);
+        throw new Error(error.message || 'Failed to invoke connection test function');
+      }
 
-      if (data.success) {
+      if (data?.success) {
         toast({
           title: "Connection Successful",
-          description: "Stripe connection test passed successfully",
+          description: `Stripe ${config.stripe_mode} mode connection verified successfully`,
         });
       } else {
-        throw new Error(data.error || 'Connection test failed');
+        throw new Error(data?.error || 'Connection test failed');
       }
     } catch (error: any) {
       console.error('Stripe connection test failed:', error);
       toast({
         title: "Connection Failed",
-        description: error.message || "Failed to connect to Stripe. Please check your API keys.",
+        description: error.message || `Failed to connect to Stripe in ${config.stripe_mode} mode. Please check your API keys.`,
         variant: "destructive",
       });
     } finally {
       setTesting(false);
-      onSettingsUpdate();
+      // Refresh settings to get updated connection status
+      setTimeout(() => onSettingsUpdate(), 1000);
     }
   };
 
@@ -163,6 +217,10 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
     if (show) return key;
     if (key.length <= 8) return '•'.repeat(key.length);
     return key.substring(0, 4) + '•'.repeat(key.length - 8) + key.substring(key.length - 4);
+  };
+
+  const handleKeyChange = (field: keyof StripeConfig, value: string) => {
+    setConfig(prev => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -191,10 +249,7 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
             <Switch
               id="stripe_mode"
               checked={config.stripe_mode === 'live'}
-              onCheckedChange={(checked) => setConfig({
-                ...config,
-                stripe_mode: checked ? 'live' : 'test'
-              })}
+              onCheckedChange={(checked) => handleKeyChange('stripe_mode', checked ? 'live' : 'test')}
             />
             <span className={`text-sm ${config.stripe_mode === 'live' ? 'font-semibold' : ''}`}>Live</span>
           </div>
@@ -211,10 +266,7 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
                 id="test_publishable"
                 placeholder="pk_test_..."
                 value={config.stripe_test_publishable_key}
-                onChange={(e) => setConfig({
-                  ...config,
-                  stripe_test_publishable_key: e.target.value
-                })}
+                onChange={(e) => handleKeyChange('stripe_test_publishable_key', e.target.value)}
               />
             </div>
             
@@ -225,11 +277,8 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
                   id="test_secret"
                   type={showKeys.testSecret ? "text" : "password"}
                   placeholder="sk_test_..."
-                  value={showKeys.testSecret ? config.stripe_test_secret_key : maskKey(config.stripe_test_secret_key, false)}
-                  onChange={(e) => setConfig({
-                    ...config,
-                    stripe_test_secret_key: e.target.value
-                  })}
+                  value={config.stripe_test_secret_key}
+                  onChange={(e) => handleKeyChange('stripe_test_secret_key', e.target.value)}
                   className="pr-10"
                 />
                 <Button
@@ -257,10 +306,7 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
                 id="live_publishable"
                 placeholder="pk_live_..."
                 value={config.stripe_live_publishable_key}
-                onChange={(e) => setConfig({
-                  ...config,
-                  stripe_live_publishable_key: e.target.value
-                })}
+                onChange={(e) => handleKeyChange('stripe_live_publishable_key', e.target.value)}
               />
             </div>
             
@@ -271,11 +317,8 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
                   id="live_secret"
                   type={showKeys.liveSecret ? "text" : "password"}
                   placeholder="sk_live_..."
-                  value={showKeys.liveSecret ? config.stripe_live_secret_key : maskKey(config.stripe_live_secret_key, false)}
-                  onChange={(e) => setConfig({
-                    ...config,
-                    stripe_live_secret_key: e.target.value
-                  })}
+                  value={config.stripe_live_secret_key}
+                  onChange={(e) => handleKeyChange('stripe_live_secret_key', e.target.value)}
                   className="pr-10"
                 />
                 <Button
@@ -303,11 +346,8 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
                 id="webhook_secret"
                 type={showKeys.webhook ? "text" : "password"}
                 placeholder="whsec_..."
-                value={showKeys.webhook ? config.stripe_webhook_secret : maskKey(config.stripe_webhook_secret, false)}
-                onChange={(e) => setConfig({
-                  ...config,
-                  stripe_webhook_secret: e.target.value
-                })}
+                value={config.stripe_webhook_secret}
+                onChange={(e) => handleKeyChange('stripe_webhook_secret', e.target.value)}
                 className="pr-10"
               />
               <Button
@@ -368,12 +408,12 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
         <div className="flex gap-3 pt-4 border-t">
           <Button 
             onClick={handleTestConnection} 
-            disabled={testing || saving || !config.stripe_test_publishable_key || !config.stripe_test_secret_key}
+            disabled={testing || saving || !validateCurrentModeKeys()}
             variant="outline"
             className="flex items-center gap-2"
           >
             <TestTube className="w-4 h-4" />
-            {testing ? "Testing..." : "Test Connection"}
+            {testing ? "Testing..." : `Test ${config.stripe_mode} Connection`}
           </Button>
           <Button 
             onClick={handleSave} 
