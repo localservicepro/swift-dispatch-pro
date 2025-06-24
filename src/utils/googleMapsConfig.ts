@@ -19,7 +19,7 @@ export const getGoogleMapsApiKey = () => {
   
   // IMPORTANT: Replace this with your actual Google Maps API key
   // Get your key from: https://console.cloud.google.com/apis/credentials
-  const DEVELOPMENT_API_KEY = 'YOUR_ACTUAL_GOOGLE_MAPS_API_KEY_HERE'; // Replace with your actual API key
+  const DEVELOPMENT_API_KEY = 'AIzaSyAY8Q84_WVfXmRkLgSeveoaJnlj03M9fyE'; // Replace with your actual API key
   
   if (DEVELOPMENT_API_KEY && DEVELOPMENT_API_KEY !== 'YOUR_ACTUAL_GOOGLE_MAPS_API_KEY_HERE') {
     console.log('Using development API key');
