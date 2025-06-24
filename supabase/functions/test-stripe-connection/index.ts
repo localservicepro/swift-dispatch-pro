@@ -14,6 +14,17 @@ interface TestConnectionRequest {
   mode: 'test' | 'live'
 }
 
+// Helper function to get Stripe keys from environment secrets
+function getStripeKeysFromSecrets(mode: 'test' | 'live') {
+  const secretKeyEnvName = mode === 'test' ? 'STRIPE_TEST_SECRET_KEY' : 'STRIPE_LIVE_SECRET_KEY'
+  const publishableKeyEnvName = mode === 'test' ? 'STRIPE_TEST_PUBLISHABLE_KEY' : 'STRIPE_LIVE_PUBLISHABLE_KEY'
+  
+  return {
+    secretKey: Deno.env.get(secretKeyEnvName),
+    publishableKey: Deno.env.get(publishableKeyEnvName)
+  }
+}
+
 const handler = async (req: Request): Promise<Response> => {
   console.log('=== Stripe Connection Test Started ===')
   console.log('Request method:', req.method)
@@ -43,18 +54,25 @@ const handler = async (req: Request): Promise<Response> => {
       requestBody = await req.json()
       console.log('Request body parsed successfully')
       console.log('Mode:', requestBody.mode)
-      console.log('Publishable key starts with:', requestBody.publishableKey?.substring(0, 12) + '...')
-      console.log('Secret key starts with:', requestBody.secretKey?.substring(0, 12) + '...')
     } catch (error) {
       console.error('Failed to parse request body:', error)
       throw new Error('Invalid request body')
     }
 
-    const { publishableKey, secretKey, mode } = requestBody
+    const { mode } = requestBody
+
+    // Get keys from edge function secrets (preferred) or fallback to request body
+    const secretKeys = getStripeKeysFromSecrets(mode)
+    const secretKey = secretKeys.secretKey || requestBody.secretKey
+    const publishableKey = secretKeys.publishableKey || requestBody.publishableKey
+
+    console.log('Key sources:')
+    console.log('- Using secret key from:', secretKeys.secretKey ? 'edge function secrets' : 'request body')
+    console.log('- Using publishable key from:', secretKeys.publishableKey ? 'edge function secrets' : 'request body')
 
     if (!publishableKey || !secretKey) {
-      console.error('Missing API keys in request')
-      throw new Error('Missing Stripe API keys')
+      console.error('Missing API keys')
+      throw new Error('Missing Stripe API keys in both edge function secrets and request')
     }
 
     // Validate key format
@@ -77,7 +95,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Initializing Stripe in ${mode} mode...`)
 
-    // Initialize Stripe with the provided secret key
+    // Initialize Stripe with the secret key
     const stripe = new Stripe(secretKey, { 
       apiVersion: '2024-06-20',
       typescript: true
@@ -103,11 +121,10 @@ const handler = async (req: Request): Promise<Response> => {
       throw stripeError
     }
 
-    // Create Supabase client
+    // Create Supabase client and update connection status
     console.log('Creating Supabase client for database update...')
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Update connection status in database
     try {
       const { data: settingsData, error: fetchError } = await supabase
         .from('payment_settings')
@@ -116,28 +133,25 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (fetchError) {
         console.error('Failed to fetch payment settings:', fetchError)
-        throw new Error('Failed to fetch payment settings')
-      }
+      } else if (settingsData) {
+        console.log('Updating payment settings with ID:', settingsData.id)
 
-      console.log('Updating payment settings with ID:', settingsData.id)
+        const { error: updateError } = await supabase
+          .from('payment_settings')
+          .update({ 
+            stripe_connection_status: 'connected',
+            stripe_last_tested_at: new Date().toISOString()
+          })
+          .eq('id', settingsData.id)
 
-      const { error: updateError } = await supabase
-        .from('payment_settings')
-        .update({ 
-          stripe_connection_status: 'connected',
-          stripe_last_tested_at: new Date().toISOString()
-        })
-        .eq('id', settingsData.id)
-
-      if (updateError) {
-        console.error('Failed to update connection status:', updateError)
-        // Don't fail the entire operation if database update fails
-      } else {
-        console.log('Database updated successfully')
+        if (updateError) {
+          console.error('Failed to update connection status:', updateError)
+        } else {
+          console.log('Database updated successfully')
+        }
       }
     } catch (dbError) {
       console.error('Database operation failed:', dbError)
-      // Don't fail the entire operation if database update fails
     }
 
     console.log('=== Stripe Connection Test Completed Successfully ===')
@@ -150,7 +164,8 @@ const handler = async (req: Request): Promise<Response> => {
         country: account.country,
         mode: mode,
         chargesEnabled: account.charges_enabled,
-        payoutsEnabled: account.payouts_enabled
+        payoutsEnabled: account.payouts_enabled,
+        keySource: secretKeys.secretKey ? 'edge_function_secrets' : 'request_body'
       }),
       {
         status: 200,
@@ -164,7 +179,6 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error('=== Stripe Connection Test Failed ===')
     console.error('Error details:', error)
-    console.error('Error stack:', error.stack)
 
     // Try to update database with error status
     try {
@@ -205,15 +219,7 @@ const handler = async (req: Request): Promise<Response> => {
     } else if (error.type === 'StripePermissionError') {
       errorMessage = 'Insufficient permissions for this Stripe key'
       statusCode = 403
-    } else if (error.type === 'StripeConnectionError') {
-      errorMessage = 'Unable to connect to Stripe - please check your internet connection'
-      statusCode = 503
-    } else if (error.type === 'StripeRateLimitError') {
-      errorMessage = 'Too many requests to Stripe - please wait and try again'
-      statusCode = 429
     }
-
-    console.log('Returning error response:', { statusCode, errorMessage })
 
     return new Response(
       JSON.stringify({ 

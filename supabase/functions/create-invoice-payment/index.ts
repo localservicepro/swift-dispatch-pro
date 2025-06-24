@@ -12,6 +12,17 @@ interface InvoicePaymentRequest {
   invoiceId: string
 }
 
+// Helper function to get Stripe keys from environment secrets
+function getStripeKeysFromSecrets(mode: 'test' | 'live') {
+  const secretKeyEnvName = mode === 'test' ? 'STRIPE_TEST_SECRET_KEY' : 'STRIPE_LIVE_SECRET_KEY'
+  const publishableKeyEnvName = mode === 'test' ? 'STRIPE_TEST_PUBLISHABLE_KEY' : 'STRIPE_LIVE_PUBLISHABLE_KEY'
+  
+  return {
+    secretKey: Deno.env.get(secretKeyEnvName),
+    publishableKey: Deno.env.get(publishableKeyEnvName)
+  }
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -24,306 +35,160 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-    if (!supabaseUrl) {
-      console.error('Missing SUPABASE_URL environment variable')
-      throw new Error('Server configuration error: Missing SUPABASE_URL')
-    }
-    
-    if (!supabaseServiceKey) {
-      console.error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
-      throw new Error('Server configuration error: Missing SUPABASE_SERVICE_ROLE_KEY')
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Server configuration error: Missing Supabase configuration')
     }
 
-    console.log('Environment variables validated successfully')
-
-    // Create Supabase client with service role and explicit RLS bypass
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      },
-      db: {
-        schema: 'public'
-      }
+      auth: { autoRefreshToken: false, persistSession: false },
+      db: { schema: 'public' }
     })
 
-    // Get Stripe configuration from payment settings
-    console.log('Fetching Stripe configuration from payment settings...')
+    // Get payment settings to determine Stripe mode
+    console.log('Fetching payment settings...')
     const { data: paymentSettings, error: settingsError } = await supabase
       .from('payment_settings')
       .select('stripe_mode, stripe_test_secret_key, stripe_live_secret_key, stripe_connection_status')
       .single()
 
-    if (settingsError) {
-      console.error('Failed to fetch payment settings:', settingsError)
+    if (settingsError || !paymentSettings) {
       throw new Error('Payment system not configured. Please configure Stripe settings first.')
     }
 
-    if (!paymentSettings) {
-      throw new Error('Payment settings not found. Please configure Stripe settings first.')
-    }
-
-    // Check if Stripe is properly configured
     if (paymentSettings.stripe_connection_status !== 'connected') {
       throw new Error('Stripe is not properly configured. Please test and save your Stripe settings first.')
     }
 
-    // Get the appropriate secret key based on mode
-    const stripeSecretKey = paymentSettings.stripe_mode === 'live' 
-      ? paymentSettings.stripe_live_secret_key 
-      : paymentSettings.stripe_test_secret_key
+    const stripeMode = paymentSettings.stripe_mode || 'test'
+    console.log(`Using Stripe in ${stripeMode} mode`)
+
+    // Get Stripe keys from edge function secrets (preferred) or fallback to database
+    const secretKeys = getStripeKeysFromSecrets(stripeMode)
+    const stripeSecretKey = secretKeys.secretKey || 
+      (stripeMode === 'live' ? paymentSettings.stripe_live_secret_key : paymentSettings.stripe_test_secret_key)
+
+    console.log('Key source:', secretKeys.secretKey ? 'edge function secrets' : 'database fallback')
 
     if (!stripeSecretKey) {
-      throw new Error(`Missing Stripe ${paymentSettings.stripe_mode} secret key. Please configure Stripe settings.`)
+      throw new Error(`Missing Stripe ${stripeMode} secret key. Please configure Stripe settings.`)
     }
 
-    console.log(`Using Stripe in ${paymentSettings.stripe_mode} mode`)
-    
-    // Initialize Stripe with configured secret key
-    let stripe: Stripe;
-    try {
-      stripe = new Stripe(stripeSecretKey, { 
-        apiVersion: '2024-06-20',
-        typescript: true
-      })
-      console.log('Stripe client initialized successfully')
-    } catch (stripeInitError) {
-      console.error('Failed to initialize Stripe client:', stripeInitError)
-      throw new Error('Payment system initialization failed')
+    // Initialize Stripe
+    const stripe = new Stripe(stripeSecretKey, { 
+      apiVersion: '2024-06-20',
+      typescript: true
+    })
+
+    // Parse request and fetch invoice
+    const { invoiceId } = await req.json()
+    if (!invoiceId) {
+      throw new Error('Invalid or missing invoiceId')
     }
 
-    // Validate and parse request body
-    let invoiceId: string;
-    try {
-      const requestBody = await req.json()
-      invoiceId = requestBody.invoiceId
-      
-      if (!invoiceId || typeof invoiceId !== 'string' || invoiceId.trim() === '') {
-        throw new Error('Invalid or missing invoiceId')
-      }
-      
-      console.log('Processing payment for invoice:', invoiceId)
-    } catch (parseError) {
-      console.error('Request parsing error:', parseError)
-      throw new Error('Invalid request format')
-    }
+    console.log('Processing payment for invoice:', invoiceId)
 
-    // Fetch invoice details with improved query to avoid relationship ambiguity
-    console.log('Fetching invoice details...')
+    // Fetch invoice details
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select(`
-        id,
-        invoice_number,
-        customer_email,
-        amount,
-        currency,
-        status,
-        due_date,
-        is_batch_invoice,
-        order_id,
-        batch_invoice_type
+        id, invoice_number, customer_email, amount, currency, status,
+        due_date, is_batch_invoice, order_id, batch_invoice_type
       `)
       .eq('id', invoiceId)
       .maybeSingle()
 
     if (invoiceError) {
-      console.error('Database error fetching invoice:', invoiceError)
-      throw new Error(`Database error: ${invoiceError.message || 'Failed to fetch invoice'}`)
+      throw new Error(`Database error: ${invoiceError.message}`)
     }
 
     if (!invoice) {
-      console.error('Invoice not found:', invoiceId)
-      
-      // Debug: Check if invoices exist at all
-      const { data: allInvoices, error: countError } = await supabase
-        .from('invoices')
-        .select('id, invoice_number')
-        .limit(5)
-      
-      console.log('Debug - Sample invoices:', allInvoices)
-      console.log('Debug - Count error:', countError)
-      
       throw new Error('Invoice not found')
     }
 
-    // Validate invoice status
     if (invoice.status !== 'pending') {
-      console.error('Invoice not available for payment. Status:', invoice.status)
       throw new Error(`Invoice is not available for payment. Current status: ${invoice.status}`)
     }
 
-    // Validate invoice amount
     if (!invoice.amount || invoice.amount <= 0) {
-      console.error('Invalid invoice amount:', invoice.amount)
       throw new Error('Invalid invoice amount')
     }
 
-    console.log('Invoice details validated:', {
+    console.log('Invoice validated:', {
       id: invoice.id,
-      invoice_number: invoice.invoice_number,
       amount: invoice.amount,
-      currency: invoice.currency,
-      is_batch_invoice: invoice.is_batch_invoice,
-      order_id: invoice.order_id,
-      status: invoice.status
+      currency: invoice.currency
     })
 
-    // Fetch order information with separate queries to avoid relationship conflicts
-    let orderData = null;
-    
+    // Fetch order information
+    let orderData = null
     if (invoice.is_batch_invoice) {
-      console.log('Fetching orders for batch invoice...')
-      // For batch invoices, get any order that references this invoice via batch_invoice_id
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('orders')
         .select('id, order_number, customer_name, customer_address, products')
         .eq('batch_invoice_id', invoiceId)
         .limit(1)
         .maybeSingle()
-      
-      if (error) {
-        console.error('Database error fetching batch orders:', error)
-        throw new Error(`Database error: ${error.message || 'Failed to fetch batch orders'}`)
-      }
-      
-      orderData = data;
-      console.log('Fetched batch invoice order:', { found: !!data, order_id: data?.id })
-    } else {
-      console.log('Fetching order for individual invoice...')
-      // For individual invoices, get the order via order_id
-      if (!invoice.order_id) {
-        console.error('Individual invoice missing order_id:', invoice)
-        throw new Error('Invoice does not have an associated order')
-      }
-
-      const { data, error } = await supabase
+      orderData = data
+    } else if (invoice.order_id) {
+      const { data } = await supabase
         .from('orders')
         .select('id, order_number, customer_name, customer_address, products')
         .eq('id', invoice.order_id)
         .maybeSingle()
-      
-      if (error) {
-        console.error('Database error fetching individual order:', error)
-        throw new Error(`Database error: ${error.message || 'Failed to fetch order'}`)
-      }
-      
-      orderData = data;
-      console.log('Fetched individual invoice order:', { found: !!data, order_id: data?.id })
+      orderData = data
     }
 
     if (!orderData) {
-      console.error('No order data found for invoice:', {
-        invoiceId,
-        is_batch_invoice: invoice.is_batch_invoice,
-        order_id: invoice.order_id
-      })
       throw new Error('Associated order not found')
     }
 
-    console.log('Order details:', {
-      id: orderData.id,
-      order_number: orderData.order_number,
-      customer_name: orderData.customer_name
+    // Create Stripe checkout session
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://your-domain.com'
+    const currency = (invoice.currency || 'USD').toUpperCase()
+    const amountInCents = Math.round(invoice.amount * 100)
+
+    console.log('Creating Stripe session...', {
+      currency: currency.toLowerCase(),
+      amountInCents,
+      mode: stripeMode
     })
 
-    // Handle origin URL with fallback
-    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://your-domain.com'
-    console.log('Using origin URL:', origin)
-
-    // Create Stripe checkout session with comprehensive error handling
-    console.log('Creating Stripe checkout session...')
-    let session: Stripe.Checkout.Session;
-    
-    try {
-      // Ensure currency is uppercase as Stripe expects
-      const currency = (invoice.currency || 'USD').toUpperCase()
-      const amountInCents = Math.round(invoice.amount * 100)
-      
-      console.log('Stripe session parameters:', {
-        currency,
-        amountInCents,
-        customerEmail: invoice.customer_email,
-        invoiceNumber: invoice.invoice_number
-      })
-
-      session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: [
-          {
-            price_data: {
-              currency: currency.toLowerCase(), // Stripe expects lowercase currency
-              product_data: {
-                name: `Invoice ${invoice.invoice_number}`,
-                description: `Payment for Order ${orderData.order_number} - ${orderData.customer_name}`,
-              },
-              unit_amount: amountInCents,
-            },
-            quantity: 1,
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: currency.toLowerCase(),
+          product_data: {
+            name: `Invoice ${invoice.invoice_number}`,
+            description: `Payment for Order ${orderData.order_number} - ${orderData.customer_name}`,
           },
-        ],
-        mode: 'payment',
-        success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&invoice_id=${invoice.id}`,
-        cancel_url: `${origin}/payment-cancelled?invoice_id=${invoice.id}`,
-        customer_email: invoice.customer_email,
-        metadata: {
-          invoice_id: invoice.id,
-          order_id: orderData.id,
-          invoice_number: invoice.invoice_number,
-          is_batch_invoice: invoice.is_batch_invoice ? 'true' : 'false',
-          stripe_mode: paymentSettings.stripe_mode
+          unit_amount: amountInCents,
         },
-      })
+        quantity: 1,
+      }],
+      mode: 'payment',
+      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&invoice_id=${invoice.id}`,
+      cancel_url: `${origin}/payment-cancelled?invoice_id=${invoice.id}`,
+      customer_email: invoice.customer_email,
+      metadata: {
+        invoice_id: invoice.id,
+        order_id: orderData.id,
+        invoice_number: invoice.invoice_number,
+        is_batch_invoice: invoice.is_batch_invoice ? 'true' : 'false',
+        stripe_mode: stripeMode
+      },
+    })
 
-      console.log('Stripe session created successfully:', {
-        sessionId: session.id,
-        url: session.url,
-        amount: amountInCents,
-        currency: currency.toLowerCase(),
-        mode: paymentSettings.stripe_mode
-      })
+    console.log('Stripe session created:', session.id)
 
-    } catch (stripeError: any) {
-      console.error('Stripe API error:', {
-        type: stripeError.type,
-        code: stripeError.code,
-        message: stripeError.message,
-        param: stripeError.param
-      })
-      
-      // Provide user-friendly error messages based on Stripe error types
-      if (stripeError.type === 'card_error') {
-        throw new Error('Payment method error: ' + stripeError.message)
-      } else if (stripeError.type === 'invalid_request_error') {
-        throw new Error('Payment setup error: ' + stripeError.message)
-      } else if (stripeError.type === 'api_error') {
-        throw new Error('Payment service temporarily unavailable. Please try again.')
-      } else if (stripeError.type === 'authentication_error') {
-        throw new Error('Payment system authentication error. Please check Stripe configuration.')
-      } else {
-        throw new Error('Payment processing error: ' + (stripeError.message || 'Unknown error'))
-      }
-    }
-
-    // Update invoice with payment URL and session ID
-    console.log('Updating invoice with payment details...')
-    const { error: updateError } = await supabase
+    // Update invoice with payment details
+    await supabase
       .from('invoices')
       .update({ 
         payment_url: session.url,
-        stripe_payment_intent_id: session.id // Store session ID for tracking
+        stripe_payment_intent_id: session.id
       })
       .eq('id', invoiceId)
-
-    if (updateError) {
-      console.error('Error updating invoice with payment details:', updateError)
-      // Don't fail the entire operation if invoice update fails
-      console.warn('Continuing despite invoice update failure - session created successfully')
-    } else {
-      console.log('Invoice updated successfully with payment details')
-    }
-
-    console.log('Payment session creation completed successfully')
 
     return new Response(
       JSON.stringify({ 
@@ -332,30 +197,23 @@ const handler = async (req: Request): Promise<Response> => {
         paymentUrl: session.url,
         invoiceNumber: invoice.invoice_number,
         amount: invoice.amount,
-        mode: paymentSettings.stripe_mode
+        mode: stripeMode,
+        keySource: secretKeys.secretKey ? 'edge_function_secrets' : 'database_fallback'
       }),
       {
         status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     )
 
   } catch (error: any) {
-    console.error('Error creating invoice payment session:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    })
+    console.error('Error creating invoice payment session:', error)
     
-    // Determine appropriate status code based on error type
-    let statusCode = 500;
+    let statusCode = 500
     if (error.message.includes('not found') || error.message.includes('Invalid')) {
-      statusCode = 400;
-    } else if (error.message.includes('configuration') || error.message.includes('Missing') || error.message.includes('not configured')) {
-      statusCode = 503; // Service Unavailable
+      statusCode = 400
+    } else if (error.message.includes('configuration') || error.message.includes('not configured')) {
+      statusCode = 503
     }
 
     return new Response(
@@ -366,10 +224,7 @@ const handler = async (req: Request): Promise<Response> => {
       }),
       {
         status: statusCode,
-        headers: { 
-          'Content-Type': 'application/json', 
-          ...corsHeaders 
-        },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     )
   }

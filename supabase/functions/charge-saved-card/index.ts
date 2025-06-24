@@ -8,6 +8,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Helper function to get Stripe secret key from environment
+function getStripeSecretKey() {
+  // Try to get from centralized edge function secrets first
+  return Deno.env.get('STRIPE_TEST_SECRET_KEY') || 
+         Deno.env.get('STRIPE_LIVE_SECRET_KEY') || 
+         Deno.env.get('STRIPE_SECRET_KEY') // Fallback to old key name
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -26,9 +34,16 @@ serve(async (req) => {
       }
     )
 
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2023-10-16',
+    const stripeSecretKey = getStripeSecretKey()
+    if (!stripeSecretKey) {
+      throw new Error('Stripe secret key not configured in edge function secrets')
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2024-06-20',
     })
+
+    console.log('Using Stripe secret key from edge function secrets')
 
     // Get customer's default payment method
     const { data: paymentMethod, error: pmError } = await supabaseClient

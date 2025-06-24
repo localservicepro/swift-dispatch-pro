@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { CreditCard, Eye, EyeOff, TestTube, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
+import { CreditCard, Eye, EyeOff, TestTube, ExternalLink, AlertCircle, CheckCircle, CloudUpload } from "lucide-react";
 
 interface StripeConfig {
   stripe_test_publishable_key: string;
@@ -110,6 +109,7 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
         updated_at: new Date().toISOString()
       };
 
+      // First save to database
       if (settings?.id) {
         const { error } = await supabase
           .from('payment_settings')
@@ -125,10 +125,32 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
         if (error) throw error;
       }
 
-      toast({
-        title: "Stripe Settings Saved",
-        description: "Stripe configuration has been updated successfully",
+      // Then sync keys to edge function secrets
+      console.log('Syncing Stripe keys to edge function secrets...');
+      const { data: syncData, error: syncError } = await supabase.functions.invoke('sync-stripe-keys', {
+        body: {
+          stripe_test_publishable_key: config.stripe_test_publishable_key,
+          stripe_test_secret_key: config.stripe_test_secret_key,
+          stripe_live_publishable_key: config.stripe_live_publishable_key,
+          stripe_live_secret_key: config.stripe_live_secret_key,
+          stripe_webhook_secret: config.stripe_webhook_secret
+        }
       });
+
+      if (syncError) {
+        console.error('Error syncing keys to edge function secrets:', syncError);
+        toast({
+          title: "Warning",
+          description: "Settings saved but failed to sync keys to edge functions. Some features may not work correctly.",
+          variant: "destructive",
+        });
+      } else if (syncData?.success) {
+        console.log('Keys synced successfully:', syncData);
+        toast({
+          title: "Stripe Settings Saved & Synced",
+          description: "Stripe configuration has been updated and synced to edge functions successfully",
+        });
+      }
 
       onSettingsUpdate();
     } catch (error: any) {
@@ -262,6 +284,20 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
       </CardHeader>
       <CardContent className="space-y-6 pt-6">
         
+        {/* Sync Info Notice */}
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div className="flex items-start gap-2">
+            <CloudUpload className="w-5 h-5 text-blue-600 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-blue-900 mb-1">Centralized Key Management</h4>
+              <p className="text-sm text-blue-800">
+                When you save your Stripe keys here, they are automatically synced to Supabase edge function secrets 
+                and used consistently across all payment operations in the system.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Mode Toggle */}
         <div className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <div>
@@ -444,9 +480,10 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
           <Button 
             onClick={handleSave} 
             disabled={saving}
-            className="flex-1"
+            className="flex-1 flex items-center gap-2"
           >
-            {saving ? "Saving..." : "Save Stripe Settings"}
+            <CloudUpload className="w-4 h-4" />
+            {saving ? "Saving & Syncing..." : "Save & Sync Stripe Settings"}
           </Button>
         </div>
       </CardContent>
