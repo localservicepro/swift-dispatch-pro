@@ -8,12 +8,28 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Helper function to get Stripe secret key from environment
-function getStripeSecretKey() {
-  // Try to get from centralized edge function secrets first
-  return Deno.env.get('STRIPE_TEST_SECRET_KEY') || 
-         Deno.env.get('STRIPE_LIVE_SECRET_KEY') || 
-         Deno.env.get('STRIPE_SECRET_KEY') // Fallback to old key name
+// Helper function to get Stripe secret key with fallback
+async function getStripeSecretKey(supabase: any) {
+  // Try environment secrets first
+  let secretKey = Deno.env.get('STRIPE_TEST_SECRET_KEY') || 
+                  Deno.env.get('STRIPE_LIVE_SECRET_KEY') || 
+                  Deno.env.get('STRIPE_SECRET_KEY')
+
+  // Fallback to database
+  if (!secretKey) {
+    const { data: settings } = await supabase
+      .from('payment_settings')
+      .select('stripe_mode, stripe_test_secret_key, stripe_live_secret_key')
+      .single()
+
+    if (settings) {
+      secretKey = settings.stripe_mode === 'live' 
+        ? settings.stripe_live_secret_key 
+        : settings.stripe_test_secret_key
+    }
+  }
+
+  return secretKey
 }
 
 serve(async (req) => {
@@ -34,16 +50,16 @@ serve(async (req) => {
       }
     )
 
-    const stripeSecretKey = getStripeSecretKey()
+    const stripeSecretKey = await getStripeSecretKey(supabaseClient)
     if (!stripeSecretKey) {
-      throw new Error('Stripe secret key not configured in edge function secrets')
+      throw new Error('Stripe secret key not configured')
     }
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: '2024-06-20',
     })
 
-    console.log('Using Stripe secret key from edge function secrets')
+    console.log('Using Stripe secret key from configured source')
 
     // Get customer details
     const { data: customer, error: customerError } = await supabaseClient
@@ -104,7 +120,7 @@ serve(async (req) => {
       JSON.stringify({ error: error.message }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+      status: 400,
       }
     )
   }

@@ -24,13 +24,17 @@ export function SplitOrderGroupCard({ group, onInvoiceCreated }: SplitOrderGroup
     try {
       const result = await createBatchInvoiceForSplitOrder(group);
       
+      // Get customer email properly
+      const customerEmail = group.masterOrder.customers?.email || 
+        `${group.masterOrder.customer_name.toLowerCase().replace(' ', '.')}@example.com`;
+      
       // Send batch invoice email
       const { error: emailError } = await supabase.functions.invoke('send-emails', {
         body: {
           type: 'batch-invoice',
           data: {
             customerName: group.masterOrder.customer_name,
-            customerEmail: group.masterOrder.customers?.email || `${group.masterOrder.customer_name.toLowerCase().replace(' ', '.')}@example.com`,
+            customerEmail,
             masterOrderNumber: group.masterOrder.order_number,
             invoiceNumber: result.invoice.invoice_number,
             allOrders: group.allOrders.map(order => ({
@@ -71,7 +75,7 @@ export function SplitOrderGroupCard({ group, onInvoiceCreated }: SplitOrderGroup
       console.error('Error creating batch invoice:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to generate batch invoice. Please try again.",
+        description: error.message || "Failed to create batch invoice. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -80,90 +84,81 @@ export function SplitOrderGroupCard({ group, onInvoiceCreated }: SplitOrderGroup
   };
 
   return (
-    <Card className="border-l-4 border-l-blue-500 bg-blue-50">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-slate-800 flex items-center justify-between">
+    <Card className="border-l-4 border-l-blue-500">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Truck className="w-5 h-5 text-blue-600" />
-            <span>Split Order Group: {group.masterOrder.order_number}</span>
-          </div>
-          <div className="flex gap-2">
-            <Badge variant="secondary" className="text-xs">
+            <span>Split Order Group - {group.masterOrder.customer_name}</span>
+            <Badge variant="outline">
               {group.allOrders.length} orders
             </Badge>
-            <Badge variant="outline" className="text-xs font-bold">
-              Total: ${group.totalAmount.toFixed(2)}
-            </Badge>
-            {group.hasExistingInvoice && (
-              <Badge className="bg-green-100 text-green-800 text-xs">
-                Invoiced
-              </Badge>
-            )}
           </div>
+          <span className="text-lg font-bold text-green-600">
+            ${group.totalAmount.toFixed(2)}
+          </span>
         </CardTitle>
       </CardHeader>
-      
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
-            <p className="text-slate-500">Customer</p>
-            <p className="font-medium">{group.masterOrder.customer_name}</p>
-            {group.masterOrder.customer_phone && (
-              <p className="text-xs text-slate-400">{group.masterOrder.customer_phone}</p>
-            )}
+            <p className="text-slate-500">Master Order</p>
+            <p className="font-medium">{group.masterOrder.order_number}</p>
           </div>
           <div>
-            <p className="text-slate-500">Payment Method</p>
-            <p className="font-medium">{group.masterOrder.payment_method || 'Not Set'}</p>
+            <p className="text-slate-500 flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              Address
+            </p>
+            <p className="font-medium">{group.masterOrder.customer_address}</p>
           </div>
           <div>
-            <p className="text-slate-500">Order Date</p>
-            <p className="font-medium">{new Date(group.masterOrder.created_at).toLocaleDateString()}</p>
+            <p className="text-slate-500 flex items-center gap-1">
+              <Truck className="w-3 h-3" />
+              Delivery Status
+            </p>
+            <p className="font-medium">
+              {group.canInvoice ? 'Ready to invoice' : 'Already invoiced'}
+            </p>
           </div>
         </div>
 
-        {/* Split Order Details */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-slate-700">Delivery Details:</p>
-          {group.allOrders.map((order, index) => (
-            <div key={order.id} className="bg-white rounded p-3 border text-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-medium">{order.order_number}</span>
-                <span className="text-slate-600">${order.total_amount.toFixed(2)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-600">
-                <MapPin className="w-3 h-3" />
-                <span className="text-xs">{order.delivery_address}</span>
-              </div>
-              {order.delivery_date && (
-                <div className="text-xs text-slate-500 mt-1">
-                  Delivery: {order.delivery_date} {order.delivery_time && `at ${order.delivery_time}`}
+          <p className="text-sm font-medium text-slate-700">Related Orders:</p>
+          <div className="grid grid-cols-1 gap-2">
+            {group.allOrders.map((order) => (
+              <div key={order.id} className="flex justify-between items-center p-2 bg-slate-50 rounded text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{order.order_number}</span>
+                  <Badge variant="outline" className="text-xs">
+                    {order.status}
+                  </Badge>
                 </div>
-              )}
-            </div>
-          ))}
+                <span className="font-medium">${order.total_amount.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {group.canInvoice && (
-          <div className="flex gap-2 pt-2">
-            <Button 
-              onClick={handleCreateBatchInvoice}
-              disabled={isGenerating}
-              className="flex items-center gap-2"
-            >
-              {isGenerating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Receipt className="w-4 h-4" />
-              )}
-              {isGenerating ? "Creating Batch Invoice..." : "Create Batch Invoice"}
-            </Button>
-          </div>
+          <Button 
+            onClick={handleCreateBatchInvoice}
+            disabled={isGenerating}
+            className="w-full flex items-center gap-2"
+          >
+            {isGenerating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Receipt className="w-4 h-4" />
+            )}
+            {isGenerating ? "Creating Batch Invoice..." : "Create Batch Invoice"}
+          </Button>
         )}
 
-        {!group.canInvoice && !group.hasExistingInvoice && (
-          <div className="text-sm text-amber-600 bg-amber-50 p-2 rounded">
-            Cannot create batch invoice: Some orders have non-pending payment status
+        {group.hasExistingInvoice && (
+          <div className="text-center py-2">
+            <Badge className="bg-green-100 text-green-800">
+              Batch invoice already created
+            </Badge>
           </div>
         )}
       </CardContent>

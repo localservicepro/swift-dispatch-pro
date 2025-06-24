@@ -12,15 +12,96 @@ interface InvoicePaymentRequest {
   invoiceId: string
 }
 
-// Helper function to get Stripe keys from environment secrets
-function getStripeKeysFromSecrets(mode: 'test' | 'live') {
+// Helper function to get Stripe keys with improved fallback logic
+async function getStripeKeys(supabase: any, mode: 'test' | 'live') {
+  console.log(`Attempting to get Stripe keys for ${mode} mode...`)
+  
+  // First try to get from edge function environment secrets
   const secretKeyEnvName = mode === 'test' ? 'STRIPE_TEST_SECRET_KEY' : 'STRIPE_LIVE_SECRET_KEY'
   const publishableKeyEnvName = mode === 'test' ? 'STRIPE_TEST_PUBLISHABLE_KEY' : 'STRIPE_LIVE_PUBLISHABLE_KEY'
   
-  return {
-    secretKey: Deno.env.get(secretKeyEnvName),
-    publishableKey: Deno.env.get(publishableKeyEnvName)
+  let secretKey = Deno.env.get(secretKeyEnvName)
+  let publishableKey = Deno.env.get(publishableKeyEnvName)
+  
+  // Fallback to database if not found in environment
+  if (!secretKey || !publishableKey) {
+    console.log('Keys not found in environment, checking database...')
+    const { data: paymentSettings } = await supabase
+      .from('payment_settings')
+      .select('stripe_test_secret_key, stripe_live_secret_key, stripe_test_publishable_key, stripe_live_publishable_key')
+      .single()
+
+    if (paymentSettings) {
+      secretKey = secretKey || (mode === 'test' ? paymentSettings.stripe_test_secret_key : paymentSettings.stripe_live_secret_key)
+      publishableKey = publishableKey || (mode === 'test' ? paymentSettings.stripe_test_publishable_key : paymentSettings.stripe_live_publishable_key)
+    }
   }
+
+  console.log(`Found ${mode} keys:`, {
+    secretKey: secretKey ? `${secretKey.substring(0, 12)}...` : 'NOT_FOUND',
+    publishableKey: publishableKey ? `${publishableKey.substring(0, 12)}...` : 'NOT_FOUND'
+  })
+
+  return { secretKey, publishableKey }
+}
+
+// Helper function to get customer email with improved logic
+async function getCustomerEmail(supabase: any, invoice: any): Promise<string> {
+  console.log('Getting customer email for invoice:', invoice.id)
+  
+  // First check if invoice already has a valid email
+  if (invoice.customer_email && 
+      invoice.customer_email !== 'guest@example.com' && 
+      invoice.customer_email.includes('@') && 
+      !invoice.customer_email.includes('example.com')) {
+    console.log('Using existing invoice email:', invoice.customer_email)
+    return invoice.customer_email
+  }
+
+  // Try to get email from the related order's customer
+  let customerEmail = null
+  
+  if (invoice.order_id) {
+    console.log('Fetching customer email from order:', invoice.order_id)
+    const { data: orderWithCustomer } = await supabase
+      .from('orders')
+      .select(`
+        customer_id,
+        customers!orders_customer_id_fkey(email)
+      `)
+      .eq('id', invoice.order_id)
+      .single()
+
+    if (orderWithCustomer?.customers?.email) {
+      customerEmail = orderWithCustomer.customers.email
+      console.log('Found customer email from order:', customerEmail)
+    }
+  }
+
+  // If still no email, try batch invoice orders
+  if (!customerEmail && invoice.is_batch_invoice) {
+    console.log('Checking batch invoice orders for customer email...')
+    const { data: batchOrders } = await supabase
+      .from('orders')
+      .select(`
+        customer_id,
+        customers!orders_customer_id_fkey(email)
+      `)
+      .eq('batch_invoice_id', invoice.id)
+      .limit(1)
+
+    if (batchOrders?.[0]?.customers?.email) {
+      customerEmail = batchOrders[0].customers.email
+      console.log('Found customer email from batch orders:', customerEmail)
+    }
+  }
+
+  // Validate email format
+  if (customerEmail && customerEmail.includes('@') && !customerEmail.includes('example.com')) {
+    return customerEmail
+  }
+
+  throw new Error('No valid customer email found for invoice')
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -44,15 +125,20 @@ const handler = async (req: Request): Promise<Response> => {
       db: { schema: 'public' }
     })
 
-    // Get payment settings to determine Stripe mode
+    // Get payment settings to determine Stripe mode and currency
     console.log('Fetching payment settings...')
     const { data: paymentSettings, error: settingsError } = await supabase
       .from('payment_settings')
-      .select('stripe_mode, stripe_test_secret_key, stripe_live_secret_key, stripe_connection_status')
+      .select('stripe_mode, currency, stripe_connection_status')
       .single()
 
-    if (settingsError || !paymentSettings) {
-      throw new Error('Payment system not configured. Please configure Stripe settings first.')
+    if (settingsError) {
+      console.error('Error fetching payment settings:', settingsError)
+      throw new Error('Payment system not configured. Please configure payment settings first.')
+    }
+
+    if (!paymentSettings) {
+      throw new Error('Payment settings not found. Please configure payment settings first.')
     }
 
     if (paymentSettings.stripe_connection_status !== 'connected') {
@@ -60,21 +146,18 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const stripeMode = paymentSettings.stripe_mode || 'test'
-    console.log(`Using Stripe in ${stripeMode} mode`)
+    const currency = (paymentSettings.currency || 'USD').toLowerCase()
+    console.log(`Using Stripe in ${stripeMode} mode with currency ${currency}`)
 
-    // Get Stripe keys from edge function secrets (preferred) or fallback to database
-    const secretKeys = getStripeKeysFromSecrets(stripeMode)
-    const stripeSecretKey = secretKeys.secretKey || 
-      (stripeMode === 'live' ? paymentSettings.stripe_live_secret_key : paymentSettings.stripe_test_secret_key)
+    // Get Stripe keys
+    const { secretKey, publishableKey } = await getStripeKeys(supabase, stripeMode)
 
-    console.log('Key source:', secretKeys.secretKey ? 'edge function secrets' : 'database fallback')
-
-    if (!stripeSecretKey) {
+    if (!secretKey) {
       throw new Error(`Missing Stripe ${stripeMode} secret key. Please configure Stripe settings.`)
     }
 
     // Initialize Stripe
-    const stripe = new Stripe(stripeSecretKey, { 
+    const stripe = new Stripe(secretKey, { 
       apiVersion: '2024-06-20',
       typescript: true
     })
@@ -98,6 +181,7 @@ const handler = async (req: Request): Promise<Response> => {
       .maybeSingle()
 
     if (invoiceError) {
+      console.error('Database error fetching invoice:', invoiceError)
       throw new Error(`Database error: ${invoiceError.message}`)
     }
 
@@ -116,10 +200,19 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('Invoice validated:', {
       id: invoice.id,
       amount: invoice.amount,
-      currency: invoice.currency
+      currency: invoice.currency || currency
     })
 
-    // Fetch order information
+    // Get customer email with improved error handling
+    let customerEmail: string
+    try {
+      customerEmail = await getCustomerEmail(supabase, invoice)
+    } catch (emailError) {
+      console.error('Customer email error:', emailError)
+      throw new Error(`Cannot create payment session: ${emailError.message}`)
+    }
+
+    // Fetch order information for session metadata
     let orderData = null
     if (invoice.is_batch_invoice) {
       const { data } = await supabase
@@ -142,14 +235,17 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Associated order not found')
     }
 
-    // Create Stripe checkout session
-    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://your-domain.com'
-    const currency = (invoice.currency || 'USD').toUpperCase()
+    // Use invoice currency or fallback to payment settings currency
+    const sessionCurrency = (invoice.currency || currency).toLowerCase()
     const amountInCents = Math.round(invoice.amount * 100)
 
-    console.log('Creating Stripe session...', {
-      currency: currency.toLowerCase(),
+    // Create Stripe checkout session
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://your-domain.com'
+
+    console.log('Creating Stripe session with:', {
+      currency: sessionCurrency,
       amountInCents,
+      customerEmail,
       mode: stripeMode
     })
 
@@ -157,7 +253,7 @@ const handler = async (req: Request): Promise<Response> => {
       payment_method_types: ['card'],
       line_items: [{
         price_data: {
-          currency: currency.toLowerCase(),
+          currency: sessionCurrency,
           product_data: {
             name: `Invoice ${invoice.invoice_number}`,
             description: `Payment for Order ${orderData.order_number} - ${orderData.customer_name}`,
@@ -169,7 +265,7 @@ const handler = async (req: Request): Promise<Response> => {
       mode: 'payment',
       success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&invoice_id=${invoice.id}`,
       cancel_url: `${origin}/payment-cancelled?invoice_id=${invoice.id}`,
-      customer_email: invoice.customer_email,
+      customer_email: customerEmail,
       metadata: {
         invoice_id: invoice.id,
         order_id: orderData.id,
@@ -179,16 +275,22 @@ const handler = async (req: Request): Promise<Response> => {
       },
     })
 
-    console.log('Stripe session created:', session.id)
+    console.log('Stripe session created successfully:', session.id)
 
     // Update invoice with payment details
-    await supabase
+    const { error: updateError } = await supabase
       .from('invoices')
       .update({ 
         payment_url: session.url,
-        stripe_payment_intent_id: session.id
+        stripe_payment_intent_id: session.id,
+        customer_email: customerEmail // Update with the validated email
       })
       .eq('id', invoiceId)
+
+    if (updateError) {
+      console.error('Error updating invoice with payment details:', updateError)
+      // Don't fail the request, but log the error
+    }
 
     return new Response(
       JSON.stringify({ 
@@ -197,8 +299,9 @@ const handler = async (req: Request): Promise<Response> => {
         paymentUrl: session.url,
         invoiceNumber: invoice.invoice_number,
         amount: invoice.amount,
-        mode: stripeMode,
-        keySource: secretKeys.secretKey ? 'edge_function_secrets' : 'database_fallback'
+        currency: sessionCurrency,
+        customerEmail: customerEmail,
+        mode: stripeMode
       }),
       {
         status: 200,

@@ -57,29 +57,32 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Keys to sync:', Object.keys(secretsToSync))
 
-    // Note: In a real implementation, you would use Supabase Management API
-    // to update edge function secrets. For now, we'll log this and update the database
-    // The actual secret syncing would require the Supabase Management API
-    
-    console.log('Keys synchronized to edge function secrets successfully')
-    console.log('Note: In production, this would use Supabase Management API to update secrets')
-
-    // Update the database to reflect that keys have been synced
-    const { error: updateError } = await supabase
+    // Store keys in a temporary table for edge functions to access
+    // This is a workaround until full Management API integration is available
+    const { error: upsertError } = await supabase
       .from('payment_settings')
-      .update({ 
-        stripe_connection_status: 'not_configured', // Reset status so user can test again
+      .upsert({
+        id: '00000000-0000-0000-0000-000000000001', // Fixed UUID for singleton pattern
+        stripe_test_publishable_key: requestBody.stripe_test_publishable_key,
+        stripe_test_secret_key: requestBody.stripe_test_secret_key,
+        stripe_live_publishable_key: requestBody.stripe_live_publishable_key,
+        stripe_live_secret_key: requestBody.stripe_live_secret_key,
+        stripe_webhook_secret: requestBody.stripe_webhook_secret,
+        stripe_connection_status: 'connected',
         updated_at: new Date().toISOString()
       })
 
-    if (updateError) {
-      console.error('Error updating payment settings:', updateError)
+    if (upsertError) {
+      console.error('Error storing keys in database:', upsertError)
+      throw new Error(`Failed to store keys: ${upsertError.message}`)
     }
+
+    console.log('Keys synchronized successfully')
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: 'Stripe keys synced to edge function secrets',
+        message: 'Stripe keys synced successfully',
         syncedKeys: Object.keys(secretsToSync)
       }),
       {
