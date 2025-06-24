@@ -59,9 +59,6 @@ export interface SplitConfig {
     productId: string;
     quantity: number;
   }>;
-  truckType: TruckType | "";
-  truckId: string;
-  driverId: string;
   deliveryDate: string;
   deliveryTime: string;
   specialInstructions: string;
