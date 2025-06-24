@@ -37,6 +37,9 @@ export function SplitOrderConfigurationStep({
         id: `split-${i + 1}`,
         name: `Split ${i + 1}`,
         products: [],
+        truckType: "",
+        truckId: "",
+        driverId: "",
         deliveryDate: "",
         deliveryTime: "",
         specialInstructions: "",
@@ -188,9 +191,9 @@ export function SplitOrderConfigurationStep({
     // Check if each split has at least one product
     const allSplitsHaveProducts = splits.every(split => split.products.length > 0);
 
-    // Check if each split has delivery date and time
+    // Check if each split has truck type and truck ID assigned
     const allSplitsHaveDeliveryDetails = splits.every(split => 
-      split.deliveryDate && split.deliveryTime
+      split.truckType && split.truckId && split.deliveryDate && split.deliveryTime
     );
 
     return fullyAllocated && allSplitsHaveProducts && allSplitsHaveDeliveryDetails;
@@ -204,7 +207,7 @@ export function SplitOrderConfigurationStep({
           Step 4: Configure Order Splits
         </CardTitle>
         <p className="text-xs text-gray-600">
-          Allocate your products across different splits and set delivery details for each. Truck and driver assignment will be done after order confirmation.
+          Allocate your products across different splits and set delivery details for each.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -331,7 +334,7 @@ export function SplitOrderConfigurationStep({
         {!canProceed() && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="text-xs text-yellow-800">
-              Please ensure all products are fully allocated, each split has at least one product, and delivery dates/times are set for each split.
+              Please ensure all products are fully allocated, each split has at least one product, and all delivery details (truck type, truck, date, time) are configured.
             </p>
           </div>
         )}
