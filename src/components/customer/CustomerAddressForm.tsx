@@ -1,8 +1,7 @@
 
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { SuburbSelector } from "@/components/order/SuburbSelector";
-import { EnhancedAddressInput } from "@/components/ui/enhanced-address-input";
-import { useSuburbManagement } from "@/hooks/useSuburbManagement";
-import { createAddressSelectHandler } from "@/utils/addressUtils";
 
 interface CustomerAddressFormProps {
   formData: {
@@ -20,25 +19,15 @@ export function CustomerAddressForm({
   onFormDataChange, 
   onSuburbChange 
 }: CustomerAddressFormProps) {
-  const { handleAutoSuburbSelection } = useSuburbManagement();
-
-  const handleAddressSelect = createAddressSelectHandler(
-    onFormDataChange,
-    (postcode: string) => handleAutoSuburbSelection(postcode, onSuburbChange)
-  );
-
   return (
     <>
       <div>
-        <EnhancedAddressInput
-          label="Full Address"
+        <Label htmlFor="full_address">Full Address</Label>
+        <Input
+          id="full_address"
           value={formData.full_address}
-          onChange={(value) => onFormDataChange({ full_address: value })}
-          onAddressSelect={handleAddressSelect}
-          placeholder="Start typing your address..."
+          onChange={(e) => onFormDataChange({ full_address: e.target.value })}
           required
-          showMapButton={true}
-          showValidation={true}
         />
       </div>
 

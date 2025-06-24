@@ -39,10 +39,19 @@ const handler = async (req: Request): Promise<Response> => {
     const { invoiceId }: InvoicePaymentRequest = await req.json()
     console.log('Processing payment for invoice:', invoiceId)
 
-    // First, get the invoice details
+    // Get invoice details with order information
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select('*')
+      .select(`
+        *,
+        orders!inner(
+          id,
+          order_number,
+          customer_name,
+          customer_address,
+          products
+        )
+      `)
       .eq('id', invoiceId)
       .single()
 
@@ -51,40 +60,12 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Invoice not found')
     }
 
-    console.log('Invoice found:', {
-      invoiceNumber: invoice.invoice_number,
-      orderId: invoice.order_id,
-      amount: invoice.amount,
-      status: invoice.status
-    })
-
     if (invoice.status !== 'pending') {
       throw new Error('Invoice is not available for payment')
     }
 
-    // Now get the related order details
-    let orderNumber = 'Unknown Order'
-    if (invoice.order_id) {
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .select('order_number, customer_name, customer_address, products')
-        .eq('id', invoice.order_id)
-        .single()
-
-      if (orderError) {
-        console.error('Order fetch error:', orderError)
-        console.log('Proceeding without order details')
-      } else if (order) {
-        orderNumber = order.order_number
-        console.log('Order found:', {
-          orderNumber: order.order_number,
-          customerName: order.customer_name
-        })
-      }
-    }
-
     console.log('Creating Stripe checkout session for invoice:', invoice.invoice_number)
-    console.log('Order number to include in description:', orderNumber)
+    console.log('Order ID to include in metadata:', invoice.order_id)
 
     // Create Stripe checkout session with proper metadata
     const session = await stripe.checkout.sessions.create({
@@ -95,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
             currency: invoice.currency.toLowerCase(),
             product_data: {
               name: `Invoice ${invoice.invoice_number}`,
-              description: `Payment for Order ${orderNumber}`,
+              description: `Payment for Order ${invoice.orders.order_number}`,
             },
             unit_amount: Math.round(invoice.amount * 100), // Convert to cents
           },
@@ -108,22 +89,22 @@ const handler = async (req: Request): Promise<Response> => {
       customer_email: invoice.customer_email,
       metadata: {
         invoice_id: invoice.id,
-        order_id: invoice.order_id || '',
+        order_id: invoice.order_id,
         invoice_number: invoice.invoice_number,
       },
     })
 
-    console.log('Stripe session created successfully:', {
+    console.log('Stripe session created with metadata:', {
       sessionId: session.id,
       metadata: session.metadata
     })
 
-    // Update invoice with payment URL and session ID
+    // Update invoice with payment URL and session ID (renamed for clarity)
     const { error: updateError } = await supabase
       .from('invoices')
       .update({ 
         payment_url: session.url,
-        stripe_payment_intent_id: session.id
+        stripe_payment_intent_id: session.id // This stores the session ID for now
       })
       .eq('id', invoiceId)
 
@@ -132,7 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Failed to update invoice with payment information')
     }
 
-    console.log('Payment session created successfully for invoice:', invoice.invoice_number)
+    console.log('Payment session created successfully with order_id in metadata:', session.id)
 
     return new Response(
       JSON.stringify({ 

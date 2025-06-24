@@ -6,12 +6,15 @@ import { ProductSelectionStep } from "./ProductSelectionStep";
 import { DeliveryMethodSelectionStep } from "./DeliveryMethodSelectionStep";
 import { OrderTypeSelectionStep } from "./OrderTypeSelectionStep";
 import { DeliveryAddressStep } from "./DeliveryAddressStep";
+import { SplitOrderConfigurationStep } from "./SplitOrderConfigurationStep";
+import { DeliveryDetailsStep } from "./DeliveryDetailsStep";
 import { PaymentMethodStep } from "./PaymentMethodStep";
 import { OrderReviewStep } from "./OrderReviewStep";
-import { SplitOrderConfigurationStep } from "./SplitOrderConfigurationStep";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { useOrderFormState } from "./hooks/useOrderFormState";
-import { createSingleOrder, createSplitOrder } from "./services/orderCreationService";
+import { useDriverManager } from "./hooks/useDriverManager";
+import { createOrder } from "./services/orderCreationService";
+import { Truck } from "./types";
 
 interface MultiStepOrderFormProps {
   onOrderCreated: () => void;
@@ -21,9 +24,8 @@ interface MultiStepOrderFormProps {
 export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFormProps) {
   const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
-  
+
   const {
-    // State
     currentStep,
     selectedCustomer,
     cart,
@@ -33,19 +35,18 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     splits,
     deliveryDate,
     deliveryTime,
+    truckType,
+    truckId,
+    selectedTruck,
+    driverId,
+    driverName,
     specialInstructions,
     paymentMethod,
     deliveryAddress,
     sameAsBilling,
     useGlobalDeliveryAddress,
-    selectedSuburbId,
-    deliveryRate,
     subtotal,
     deliveryFee,
-    totalAmount,
-    orderTotals,
-    
-    // Setters
     setSelectedCustomer,
     setCart,
     setAdjustments,
@@ -54,60 +55,82 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setSplits,
     setDeliveryDate,
     setDeliveryTime,
+    setTruckType,
+    setTruckId,
+    setSelectedTruck,
+    setDriverId,
+    setDriverName,
     setSpecialInstructions,
     setPaymentMethod,
     setDeliveryAddress,
     setSameAsBilling,
     setUseGlobalDeliveryAddress,
-    handleSuburbChange,
-    
-    // Navigation
     nextStep,
     prevStep,
     getTotalSteps
   } = useOrderFormState();
 
+  const { handleDriverChange } = useDriverManager(setDriverId, setDriverName);
+
+  const handleTruckSelect = (newTruckId: string, truckDetails: Truck | null) => {
+    setTruckId(newTruckId);
+    setSelectedTruck(truckDetails);
+  };
+
   const handleCreateOrder = async () => {
     if (!selectedCustomer) return;
-    
+
     setIsCreating(true);
     try {
-      if (orderType === "split") {
-        await createSplitOrder({
-          customer: selectedCustomer,
-          cart,
-          adjustments,
-          deliveryMethod: deliveryMethod as "delivery" | "pickup",
-          splits,
-          paymentMethod,
-          specialInstructions,
-          orderTotals
+      // Transform CartItem[] to Product[] for order creation
+      const products = cart.map(cartItem => ({
+        id: cartItem.product.id,
+        name: cartItem.product.name,
+        price: cartItem.unit_price,
+        quantity: cartItem.quantity
+      }));
+
+      // For pickup orders, we don't need truck/driver details
+      const validTruckType = deliveryMethod === "pickup" ? "" : (truckType || "small");
+
+      const result = await createOrder({
+        selectedCustomer,
+        cart: products,
+        subtotal,
+        adjustments,
+        deliveryFee,
+        deliveryMethod: deliveryMethod || "delivery",
+        orderType,
+        splits,
+        deliveryDate: deliveryMethod === "pickup" ? "" : deliveryDate,
+        deliveryTime: deliveryMethod === "pickup" ? "" : deliveryTime,
+        truckType: validTruckType,
+        truckId: deliveryMethod === "pickup" ? "" : truckId,
+        driverId: deliveryMethod === "pickup" ? "" : driverId,
+        specialInstructions,
+        paymentMethod,
+        deliveryAddress,
+        sameAsBilling
+      });
+
+      if (result.type === 'single') {
+        toast({
+          title: "Success",
+          description: `Order ${result.orderNumber} created successfully!`,
         });
       } else {
-        await createSingleOrder({
-          customer: selectedCustomer,
-          cart,
-          adjustments,
-          deliveryMethod: deliveryMethod as "delivery" | "pickup",
-          deliveryDate,
-          deliveryTime,
-          specialInstructions,
-          paymentMethod,
-          deliveryAddress: sameAsBilling ? selectedCustomer.full_address : deliveryAddress,
-          sameAsBilling,
-          suburbId: selectedSuburbId,
-          deliveryRate,
-          orderTotals
+        toast({
+          title: "Success",
+          description: `Split order ${result.orderNumber} created with ${result.splitCount} parts!`,
         });
       }
-      
+
       onOrderCreated();
       onClose();
     } catch (error: any) {
-      console.error('Failed to create order:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create order. Please try again.",
+        description: error.message || "Failed to create order",
         variant: "destructive",
       });
     } finally {
@@ -115,170 +138,169 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     }
   };
 
-  const totalSteps = getTotalSteps();
-
-  const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <CustomerSearchStep
-            selectedCustomer={selectedCustomer}
-            onCustomerSelect={setSelectedCustomer}
-            onNext={nextStep}
-          />
-        );
-      
-      case 2:
-        return (
-          <ProductSelectionStep
-            cart={cart}
-            subtotal={subtotal}
-            adjustments={adjustments}
-            onCartUpdate={setCart}
-            onAdjustmentsChange={setAdjustments}
-            onBack={prevStep}
-            onNext={nextStep}
-          />
-        );
-      
-      case 3:
-        return (
-          <DeliveryMethodSelectionStep
-            deliveryMethod={deliveryMethod}
-            onDeliveryMethodChange={setDeliveryMethod}
-            onBack={prevStep}
-            onNext={nextStep}
-          />
-        );
-      
-      case 4:
-        if (deliveryMethod === "pickup") {
-          return (
-            <PaymentMethodStep
-              customer={selectedCustomer}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else {
-          return (
-            <OrderTypeSelectionStep
-              orderType={orderType}
-              onOrderTypeChange={setOrderType}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        }
-      
-      case 5:
-        if (deliveryMethod === "pickup") {
-          return (
-            <OrderReviewStep
-              customer={selectedCustomer!}
-              cart={cart}
-              subtotal={subtotal}
-              adjustments={adjustments}
-              deliveryFee={0}
-              deliveryMethod={deliveryMethod}
-              deliveryDate=""
-              deliveryTime=""
-              specialInstructions=""
-              paymentMethod={paymentMethod}
-              deliveryAddress=""
-              sameAsBilling={true}
-              onBack={prevStep}
-              onConfirm={handleCreateOrder}
-              isCreating={isCreating}
-            />
-          );
-        } else {
-          return (
-            <DeliveryAddressStep
-              customer={selectedCustomer!}
-              orderType={orderType}
-              deliveryAddress={deliveryAddress}
-              sameAsBilling={sameAsBilling}
-              useGlobalDeliveryAddress={useGlobalDeliveryAddress}
-              splits={splits}
-              selectedSuburbId={selectedSuburbId}
-              deliveryRate={deliveryRate}
-              deliveryDate={deliveryDate}
-              deliveryTime={deliveryTime}
-              specialInstructions={specialInstructions}
-              onDeliveryAddressChange={setDeliveryAddress}
-              onSameAsBillingChange={setSameAsBilling}
-              onUseGlobalDeliveryAddressChange={setUseGlobalDeliveryAddress}
-              onSplitsChange={setSplits}
-              onSuburbChange={handleSuburbChange}
-              onDeliveryDateChange={setDeliveryDate}
-              onDeliveryTimeChange={setDeliveryTime}
-              onSpecialInstructionsChange={setSpecialInstructions}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        }
-      
-      case 6:
-        if (orderType === "split") {
-          return (
-            <SplitOrderConfigurationStep
-              cart={cart}
-              splits={splits}
-              onSplitsChange={setSplits}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else {
-          return (
-            <PaymentMethodStep
-              customer={selectedCustomer}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        }
-      
-      case 7:
-        return (
-          <OrderReviewStep
-            customer={selectedCustomer!}
-            cart={cart}
-            subtotal={subtotal}
-            adjustments={adjustments}
-            deliveryFee={deliveryFee}
-            deliveryMethod={deliveryMethod as "delivery" | "pickup"}
-            deliveryDate={deliveryDate}
-            deliveryTime={deliveryTime}
-            specialInstructions={specialInstructions}
-            paymentMethod={paymentMethod}
-            deliveryAddress={sameAsBilling ? selectedCustomer!.full_address : deliveryAddress}
-            sameAsBilling={sameAsBilling}
-            onBack={prevStep}
-            onConfirm={handleCreateOrder}
-            isCreating={isCreating}
-          />
-        );
-      
-      default:
-        return null;
-    }
-  };
+  const currentTotalSteps = getTotalSteps();
 
   return (
     <div className="space-y-6">
       <ProgressIndicator 
         currentStep={currentStep} 
-        totalSteps={totalSteps}
         deliveryMethod={deliveryMethod}
+        totalSteps={currentTotalSteps} 
       />
-      {renderCurrentStep()}
+
+      {currentStep === 1 && (
+        <CustomerSearchStep
+          selectedCustomer={selectedCustomer}
+          onCustomerSelect={setSelectedCustomer}
+          onNext={nextStep}
+        />
+      )}
+
+      {currentStep === 2 && (
+        <ProductSelectionStep
+          cart={cart}
+          subtotal={subtotal}
+          adjustments={adjustments}
+          onCartUpdate={setCart}
+          onAdjustmentsChange={setAdjustments}
+          onNext={nextStep}
+          onBack={prevStep}
+        />
+      )}
+
+      {currentStep === 3 && (
+        <DeliveryMethodSelectionStep
+          deliveryMethod={deliveryMethod}
+          onDeliveryMethodChange={setDeliveryMethod}
+          onBack={prevStep}
+          onNext={nextStep}
+        />
+      )}
+
+      {/* Order Type Selection - Only for delivery orders (Step 4) */}
+      {currentStep === 4 && deliveryMethod === "delivery" && (
+        <OrderTypeSelectionStep
+          orderType={orderType}
+          onOrderTypeChange={setOrderType}
+          onBack={prevStep}
+          onNext={nextStep}
+        />
+      )}
+
+      {/* Payment Step for Pickup Orders (Step 4) */}
+      {currentStep === 4 && deliveryMethod === "pickup" && selectedCustomer && (
+        <PaymentMethodStep
+          customer={selectedCustomer}
+          paymentMethod={paymentMethod}
+          onPaymentMethodChange={setPaymentMethod}
+          onBack={prevStep}
+          onNext={nextStep}
+        />
+      )}
+
+      {/* Review Step for Pickup Orders (Step 5) */}
+      {currentStep === 5 && deliveryMethod === "pickup" && selectedCustomer && (
+        <OrderReviewStep
+          customer={selectedCustomer}
+          cart={cart}
+          subtotal={subtotal}
+          adjustments={adjustments}
+          deliveryFee={deliveryFee}
+          deliveryMethod={deliveryMethod || "delivery"}
+          deliveryDate=""
+          deliveryTime=""
+          truckType=""
+          driverName=""
+          specialInstructions=""
+          paymentMethod={paymentMethod}
+          selectedTruck={null}
+          onBack={prevStep}
+          onConfirm={handleCreateOrder}
+          isCreating={isCreating}
+        />
+      )}
+
+      {/* Delivery Address Step - Only for delivery orders (Step 5) */}
+      {currentStep === 5 && selectedCustomer && deliveryMethod === "delivery" && (
+        <DeliveryAddressStep
+          customer={selectedCustomer}
+          orderType={orderType}
+          deliveryAddress={deliveryAddress}
+          sameAsBilling={sameAsBilling}
+          useGlobalDeliveryAddress={useGlobalDeliveryAddress}
+          splits={splits}
+          onDeliveryAddressChange={setDeliveryAddress}
+          onSameAsBillingChange={setSameAsBilling}
+          onUseGlobalDeliveryAddressChange={setUseGlobalDeliveryAddress}
+          onSplitsChange={setSplits}
+          onBack={prevStep}
+          onNext={nextStep}
+        />
+      )}
+
+      {/* Split Order Configuration - Only for delivery split orders (Step 6) */}
+      {currentStep === 6 && orderType === "split" && deliveryMethod === "delivery" && (
+        <SplitOrderConfigurationStep
+          cart={cart}
+          splits={splits}
+          onSplitsChange={setSplits}
+          onBack={prevStep}
+          onNext={nextStep}
+        />
+      )}
+
+      {/* Delivery Details - Only for delivery single orders (Step 6) */}
+      {currentStep === 6 && orderType === "single" && deliveryMethod === "delivery" && (
+        <DeliveryDetailsStep
+          deliveryDate={deliveryDate}
+          deliveryTime={deliveryTime}
+          truckType={truckType}
+          truckId={truckId}
+          driverId={driverId}
+          specialInstructions={specialInstructions}
+          onDeliveryDateChange={setDeliveryDate}
+          onDeliveryTimeChange={setDeliveryTime}
+          onTruckTypeChange={setTruckType}
+          onTruckSelect={handleTruckSelect}
+          onDriverChange={handleDriverChange}
+          onSpecialInstructionsChange={setSpecialInstructions}
+          onBack={prevStep}
+          onNext={nextStep}
+        />
+      )}
+
+      {/* Payment step for delivery orders (Step 7) */}
+      {currentStep === 7 && deliveryMethod === "delivery" && selectedCustomer && (
+        <PaymentMethodStep
+          customer={selectedCustomer}
+          paymentMethod={paymentMethod}
+          onPaymentMethodChange={setPaymentMethod}
+          onBack={prevStep}
+          onNext={nextStep}
+        />
+      )}
+
+      {/* Review step for delivery orders (Step 8) */}
+      {currentStep === 8 && deliveryMethod === "delivery" && selectedCustomer && (
+        <OrderReviewStep
+          customer={selectedCustomer}
+          cart={cart}
+          subtotal={subtotal}
+          adjustments={adjustments}
+          deliveryFee={deliveryFee}
+          deliveryMethod={deliveryMethod || "delivery"}
+          deliveryDate={orderType === "single" ? deliveryDate : splits[0]?.deliveryDate || ""}
+          deliveryTime={orderType === "single" ? deliveryTime : splits[0]?.deliveryTime || ""}
+          truckType={orderType === "single" ? truckType : ("split" as any)}
+          driverName={orderType === "single" ? driverName : "Multiple drivers"}
+          specialInstructions={orderType === "single" ? specialInstructions : `Split order with ${splits.length} parts`}
+          paymentMethod={paymentMethod}
+          selectedTruck={orderType === "single" ? selectedTruck : null}
+          onBack={prevStep}
+          onConfirm={handleCreateOrder}
+          isCreating={isCreating}
+        />
+      )}
     </div>
   );
 }

@@ -1,13 +1,10 @@
 
-import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Package, Edit, Trash2, ImageIcon, Star, Clock } from "lucide-react";
-import { useSpecialPricing } from "@/hooks/useSpecialPricing";
-import { format } from "date-fns";
+import { Package, Edit, Trash2, ImageIcon } from "lucide-react";
 
 interface Product {
   id: string;
@@ -38,17 +35,6 @@ interface ProductListProps {
 
 export function ProductList({ products, loading, onEdit, onDeleteSuccess }: ProductListProps) {
   const { toast } = useToast();
-  const { specials, loadSpecialsForProducts, hasActiveSpecial, getSpecialForProduct, applySpecialDiscount } = useSpecialPricing();
-  const [specialsLoaded, setSpecialsLoaded] = useState(false);
-
-  useEffect(() => {
-    if (products.length > 0 && !specialsLoaded) {
-      const productIds = products.map(p => p.id);
-      loadSpecialsForProducts(productIds).then(() => {
-        setSpecialsLoaded(true);
-      });
-    }
-  }, [products, loadSpecialsForProducts, specialsLoaded]);
 
   const handleDeleteProduct = async (productId: string) => {
     const { error } = await supabase
@@ -72,25 +58,10 @@ export function ProductList({ products, loading, onEdit, onDeleteSuccess }: Prod
   };
 
   // Calculate pricing based on global pricing tiers
-  const calculateCustomerPrices = (basePrice: number, productId: string) => {
-    const tradePrice = basePrice; // Trade tier: 0% adjustment (base price)
-    const accountPrice = basePrice * 0.9; // Account tier: 10% discount
-
-    // Apply special pricing if available
-    const tradeSpecialPrice = hasActiveSpecial(productId) ? applySpecialDiscount(tradePrice, productId) : tradePrice;
-    const accountSpecialPrice = hasActiveSpecial(productId) ? applySpecialDiscount(accountPrice, productId) : accountPrice;
-
+  const calculateCustomerPrices = (basePrice: number) => {
     return {
-      trade: {
-        original: tradePrice,
-        special: tradeSpecialPrice,
-        hasSpecial: hasActiveSpecial(productId) && tradeSpecialPrice !== tradePrice
-      },
-      account: {
-        original: accountPrice,
-        special: accountSpecialPrice,
-        hasSpecial: hasActiveSpecial(productId) && accountSpecialPrice !== accountPrice
-      }
+      trade: basePrice, // Trade tier: 0% adjustment (base price)
+      account: basePrice * 0.9 // Account tier: 10% discount
     };
   };
 
@@ -112,21 +83,10 @@ export function ProductList({ products, loading, onEdit, onDeleteSuccess }: Prod
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {products.map((product) => {
-              const customerPrices = calculateCustomerPrices(product.price, product.id);
-              const productSpecial = getSpecialForProduct(product.id);
+              const customerPrices = calculateCustomerPrices(product.price);
               
               return (
-                <div key={product.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors relative">
-                  {/* Special Badge */}
-                  {hasActiveSpecial(product.id) && (
-                    <div className="absolute top-2 right-2 z-10">
-                      <Badge className="bg-red-500 text-white flex items-center gap-1">
-                        <Star className="w-3 h-3" />
-                        SPECIAL
-                      </Badge>
-                    </div>
-                  )}
-
+                <div key={product.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
                   {/* Product Images */}
                   <div className="mb-3">
                     {product.images && product.images.length > 0 ? (
@@ -190,58 +150,16 @@ export function ProductList({ products, loading, onEdit, onDeleteSuccess }: Prod
                           <span className="text-gray-600">Base Price:</span>
                           <span className="font-medium text-gray-800">${product.price.toFixed(2)}</span>
                         </div>
-                        
-                        {/* Trade Pricing */}
                         <div className="flex justify-between">
                           <span className="text-gray-600">Trade:</span>
-                          <div className="flex items-center gap-2">
-                            {customerPrices.trade.hasSpecial ? (
-                              <>
-                                <span className="line-through text-gray-400">${customerPrices.trade.original.toFixed(2)}</span>
-                                <span className="font-medium text-red-600">${customerPrices.trade.special.toFixed(2)}</span>
-                              </>
-                            ) : (
-                              <span className="font-medium text-blue-600">${customerPrices.trade.original.toFixed(2)}</span>
-                            )}
-                          </div>
+                          <span className="font-medium text-blue-600">${customerPrices.trade.toFixed(2)}</span>
                         </div>
-                        
-                        {/* Account Pricing */}
                         <div className="flex justify-between">
                           <span className="text-gray-600">Account:</span>
-                          <div className="flex items-center gap-2">
-                            {customerPrices.account.hasSpecial ? (
-                              <>
-                                <span className="line-through text-gray-400">${customerPrices.account.original.toFixed(2)}</span>
-                                <span className="font-medium text-red-600">${customerPrices.account.special.toFixed(2)}</span>
-                              </>
-                            ) : (
-                              <span className="font-medium text-green-600">${customerPrices.account.original.toFixed(2)}</span>
-                            )}
-                          </div>
+                          <span className="font-medium text-green-600">${customerPrices.account.toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
-
-                    {/* Special Details */}
-                    {productSpecial && (
-                      <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
-                        <div className="flex items-center gap-1 text-red-700 font-medium">
-                          <Star className="w-3 h-3" />
-                          {productSpecial.special_name}
-                        </div>
-                        <div className="text-red-600">
-                          {productSpecial.discount_type === 'percentage' 
-                            ? `${productSpecial.discount_value}% off` 
-                            : `$${productSpecial.discount_value} off`
-                          }
-                        </div>
-                        <div className="flex items-center gap-1 text-red-600">
-                          <Clock className="w-3 h-3" />
-                          Ends: {format(new Date(productSpecial.end_date), 'MMM d, yyyy')}
-                        </div>
-                      </div>
-                    )}
                     
                     <div className="flex flex-wrap gap-1 mb-2">
                       <Badge variant={product.is_active ? "default" : "secondary"}>

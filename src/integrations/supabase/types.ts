@@ -528,52 +528,43 @@ export type Database = {
       invoices: {
         Row: {
           amount: number
-          batch_invoice_type: string | null
           created_at: string | null
           currency: string | null
           customer_email: string
           due_date: string
           id: string
           invoice_number: string
-          is_batch_invoice: boolean | null
           order_id: string | null
           paid_at: string | null
           payment_url: string | null
-          related_order_ids: Json | null
           status: string | null
           stripe_payment_intent_id: string | null
         }
         Insert: {
           amount: number
-          batch_invoice_type?: string | null
           created_at?: string | null
           currency?: string | null
           customer_email: string
           due_date: string
           id?: string
           invoice_number: string
-          is_batch_invoice?: boolean | null
           order_id?: string | null
           paid_at?: string | null
           payment_url?: string | null
-          related_order_ids?: Json | null
           status?: string | null
           stripe_payment_intent_id?: string | null
         }
         Update: {
           amount?: number
-          batch_invoice_type?: string | null
           created_at?: string | null
           currency?: string | null
           customer_email?: string
           due_date?: string
           id?: string
           invoice_number?: string
-          is_batch_invoice?: boolean | null
           order_id?: string | null
           paid_at?: string | null
           payment_url?: string | null
-          related_order_ids?: Json | null
           status?: string | null
           stripe_payment_intent_id?: string | null
         }
@@ -646,7 +637,6 @@ export type Database = {
         Row: {
           adjustments: number | null
           admin_id: string | null
-          batch_invoice_id: string | null
           created_at: string | null
           customer_address: string
           customer_id: string | null
@@ -683,7 +673,6 @@ export type Database = {
         Insert: {
           adjustments?: number | null
           admin_id?: string | null
-          batch_invoice_id?: string | null
           created_at?: string | null
           customer_address: string
           customer_id?: string | null
@@ -722,7 +711,6 @@ export type Database = {
         Update: {
           adjustments?: number | null
           admin_id?: string | null
-          batch_invoice_id?: string | null
           created_at?: string | null
           customer_address?: string
           customer_id?: string | null
@@ -764,13 +752,6 @@ export type Database = {
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_batch_invoice_id_fkey"
-            columns: ["batch_invoice_id"]
-            isOneToOne: false
-            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
           {
@@ -1080,127 +1061,6 @@ export type Database = {
             columns: ["variant_id"]
             isOneToOne: false
             referencedRelation: "product_variants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_special_items: {
-        Row: {
-          category_id: string | null
-          created_at: string
-          id: string
-          product_id: string | null
-          special_id: string
-        }
-        Insert: {
-          category_id?: string | null
-          created_at?: string
-          id?: string
-          product_id?: string | null
-          special_id: string
-        }
-        Update: {
-          category_id?: string | null
-          created_at?: string
-          id?: string
-          product_id?: string | null
-          special_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_special_items_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "product_categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_special_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_pricing_calculated"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "product_special_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_special_items_special_id_fkey"
-            columns: ["special_id"]
-            isOneToOne: false
-            referencedRelation: "product_specials"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_specials: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          current_uses: number | null
-          customer_tiers: string[] | null
-          description: string | null
-          discount_type: Database["public"]["Enums"]["discount_type"]
-          discount_value: number
-          end_date: string
-          id: string
-          is_active: boolean
-          maximum_uses: number | null
-          minimum_quantity: number | null
-          name: string
-          promotional_code: string | null
-          special_type: Database["public"]["Enums"]["special_type"]
-          start_date: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          current_uses?: number | null
-          customer_tiers?: string[] | null
-          description?: string | null
-          discount_type?: Database["public"]["Enums"]["discount_type"]
-          discount_value: number
-          end_date: string
-          id?: string
-          is_active?: boolean
-          maximum_uses?: number | null
-          minimum_quantity?: number | null
-          name: string
-          promotional_code?: string | null
-          special_type?: Database["public"]["Enums"]["special_type"]
-          start_date: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          current_uses?: number | null
-          customer_tiers?: string[] | null
-          description?: string | null
-          discount_type?: Database["public"]["Enums"]["discount_type"]
-          discount_value?: number
-          end_date?: string
-          id?: string
-          is_active?: boolean
-          maximum_uses?: number | null
-          minimum_quantity?: number | null
-          name?: string
-          promotional_code?: string | null
-          special_type?: Database["public"]["Enums"]["special_type"]
-          start_date?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_specials_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1545,27 +1405,9 @@ export type Database = {
       }
     }
     Functions: {
-      calculate_special_price: {
-        Args: {
-          base_price: number
-          product_id_param: string
-          customer_tier_param?: string
-        }
-        Returns: number
-      }
       create_driver: {
         Args: { driver_id: string; driver_name: string; driver_license: string }
         Returns: undefined
-      }
-      get_active_specials_for_product: {
-        Args: { product_id_param: string; customer_tier_param?: string }
-        Returns: {
-          special_id: string
-          special_name: string
-          discount_type: Database["public"]["Enums"]["discount_type"]
-          discount_value: number
-          end_date: string
-        }[]
       }
       get_product_price: {
         Args: {
@@ -1614,7 +1456,6 @@ export type Database = {
     Enums: {
       attribute_type: "select" | "color" | "size" | "text" | "number"
       delivery_method: "delivery" | "pickup"
-      discount_type: "percentage" | "fixed_amount"
       order_status:
         | "requested"
         | "preparing"
@@ -1622,12 +1463,6 @@ export type Database = {
         | "en_route"
         | "delivered"
         | "cancelled"
-      special_type:
-        | "monthly"
-        | "limited_time"
-        | "flash_sale"
-        | "seasonal"
-        | "customer_tier"
       truck_type: "small" | "medium" | "large" | "crane"
       user_role: "admin" | "driver" | "customer"
     }
@@ -1747,7 +1582,6 @@ export const Constants = {
     Enums: {
       attribute_type: ["select", "color", "size", "text", "number"],
       delivery_method: ["delivery", "pickup"],
-      discount_type: ["percentage", "fixed_amount"],
       order_status: [
         "requested",
         "preparing",
@@ -1755,13 +1589,6 @@ export const Constants = {
         "en_route",
         "delivered",
         "cancelled",
-      ],
-      special_type: [
-        "monthly",
-        "limited_time",
-        "flash_sale",
-        "seasonal",
-        "customer_tier",
       ],
       truck_type: ["small", "medium", "large", "crane"],
       user_role: ["admin", "driver", "customer"],

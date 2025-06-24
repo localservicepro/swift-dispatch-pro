@@ -26,8 +26,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { EnhancedDeleteOrderDialog } from "./order/EnhancedDeleteOrderDialog";
-import { useSplitOrderGroups } from "@/hooks/useSplitOrderGroups";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -61,7 +59,6 @@ export function OrderManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { profile } = useAuth();
-  const { deleteSplitOrderGroup } = useSplitOrderGroups();
 
   // Fetch orders from database with enhanced suburb retrieval
   const { data: orders = [], isLoading, error, refetch } = useQuery({
@@ -209,40 +206,34 @@ export function OrderManagement() {
   // Check if any filters are active
   const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all";
 
-  // Enhanced delete handler that supports both single and group deletion
-  const handleDeleteOrder = async (orderId: string, deleteType: 'single' | 'group') => {
+  // Handle soft delete with confirmation
+  const handleDeleteOrder = async () => {
     if (!deletingOrder || isDeleting) return;
 
     setIsDeleting(true);
     try {
-      if (deleteType === 'group') {
-        // Use the split order group deletion
-        await deleteSplitOrderGroup(orderId, 'Admin deletion');
-      } else {
-        // Use regular single order deletion
-        const { error } = await supabase.rpc('soft_delete_order', {
-          p_order_id: orderId,
-          p_reason: 'Admin deletion'
-        });
+      const { error } = await supabase.rpc('soft_delete_order', {
+        p_order_id: deletingOrder.id,
+        p_reason: 'Admin deletion'
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        // Log the activity
-        if (profile?.full_name) {
-          await activityLogger.orderSoftDelete(
-            orderId,
-            deletingOrder.order_number,
-            deletingOrder.customer_name,
-            'Admin deletion',
-            profile.full_name
-          );
-        }
-
-        toast({
-          title: "Order Deleted",
-          description: `Order ${deletingOrder.order_number} has been moved to deleted orders`,
-        });
+      // Log the activity
+      if (profile?.full_name) {
+        await activityLogger.orderSoftDelete(
+          deletingOrder.id,
+          deletingOrder.order_number,
+          deletingOrder.customer_name,
+          'Admin deletion',
+          profile.full_name
+        );
       }
+
+      toast({
+        title: "Order Deleted",
+        description: `Order ${deletingOrder.order_number} has been moved to deleted orders`,
+      });
 
       // Refresh orders
       refetch();
@@ -514,14 +505,47 @@ export function OrderManagement() {
         />
       )}
 
-      {/* Enhanced Delete Confirmation Dialog */}
-      <EnhancedDeleteOrderDialog
-        order={deletingOrder}
-        open={!!deletingOrder}
-        onOpenChange={() => setDeletingOrder(null)}
-        onConfirmDelete={handleDeleteOrder}
-        isDeleting={isDeleting}
-      />
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingOrder} onOpenChange={() => setDeletingOrder(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-600" />
+              Delete Order
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this order? This action will move the order to deleted orders where it can be restored if needed.
+              {deletingOrder && (
+                <div className="mt-3 p-3 bg-slate-50 rounded-lg">
+                  <p><strong>Order:</strong> {deletingOrder.order_number}</p>
+                  <p><strong>Customer:</strong> {deletingOrder.customer_name}</p>
+                  <p><strong>Amount:</strong> ${deletingOrder.total_amount.toFixed(2)}</p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteOrder}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b border-white"></div>
+                  Deleting...
+                </div>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete Order
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>

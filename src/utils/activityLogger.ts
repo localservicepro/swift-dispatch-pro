@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 interface LogActivityParams {
@@ -143,34 +144,5 @@ export const activityLogger = {
       oldValues: changes.oldValues,
       newValues: changes.newValues,
       description: `${adminName} edited customer ${customerName}`
-    }),
-
-  orderSplitGroupDelete: (orderIds: string[], orderNumbers: string[], customerName: string, reason: string, adminName: string) =>
-    logActivity({
-      actionType: 'split_order_group_delete',
-      targetType: 'order_group',
-      targetId: orderIds[0], // Use master order as primary target
-      targetDetails: { 
-        order_ids: orderIds,
-        order_numbers: orderNumbers, 
-        customer_name: customerName, 
-        reason,
-        total_orders: orderIds.length
-      },
-      description: `${adminName} deleted split order group (${orderIds.length} orders) for ${customerName}: ${orderNumbers.join(', ')} - Reason: ${reason}`
-    }),
-
-  orderSplitGroupRestore: (orderIds: string[], orderNumbers: string[], customerName: string, adminName: string) =>
-    logActivity({
-      actionType: 'split_order_group_restore',
-      targetType: 'order_group',
-      targetId: orderIds[0], // Use master order as primary target
-      targetDetails: { 
-        order_ids: orderIds,
-        order_numbers: orderNumbers, 
-        customer_name: customerName,
-        total_orders: orderIds.length
-      },
-      description: `${adminName} restored split order group (${orderIds.length} orders) for ${customerName}: ${orderNumbers.join(', ')}`
     })
 };

@@ -17,8 +17,6 @@ export async function chargeCardOnFile({
   description
 }: ChargeCardOnFileParams) {
   try {
-    console.log('Charging card on file for customer:', customerId);
-    
     const { data, error } = await supabase.functions.invoke('charge-saved-card', {
       body: {
         customerId,
@@ -30,21 +28,12 @@ export async function chargeCardOnFile({
     });
 
     if (error) {
-      console.error('Supabase function invocation error:', error);
-      throw new Error(`Function invocation failed: ${error.message}`);
+      throw error;
     }
 
-    if (data?.error) {
-      console.error('Charge card function returned error:', data.error);
+    if (data.error) {
       throw new Error(data.error);
     }
-
-    if (!data?.payment_intent_id) {
-      console.error('No payment intent ID returned from charge function');
-      throw new Error('Invalid response from payment service');
-    }
-
-    console.log('Card charged successfully:', data);
 
     return {
       success: true,
@@ -59,12 +48,6 @@ export async function chargeCardOnFile({
 
 export async function setupPaymentMethod(customerId: string, returnUrl: string) {
   try {
-    console.log('Setting up payment method for customer:', customerId);
-    
-    if (!customerId || !returnUrl) {
-      throw new Error('Customer ID and return URL are required');
-    }
-
     const { data, error } = await supabase.functions.invoke('setup-payment-method', {
       body: {
         customerId,
@@ -73,21 +56,12 @@ export async function setupPaymentMethod(customerId: string, returnUrl: string) 
     });
 
     if (error) {
-      console.error('Supabase function invocation error:', error);
-      throw new Error(`Function invocation failed: ${error.message}`);
+      throw error;
     }
 
-    if (data?.error) {
-      console.error('Setup payment method function returned error:', data.error);
+    if (data.error) {
       throw new Error(data.error);
     }
-
-    if (!data?.clientSecret) {
-      console.error('No client secret returned from setup function');
-      throw new Error('Invalid response from payment service');
-    }
-
-    console.log('Payment method setup successful');
 
     return {
       clientSecret: data.clientSecret,
@@ -101,12 +75,6 @@ export async function setupPaymentMethod(customerId: string, returnUrl: string) 
 
 export async function savePaymentMethod(customerId: string, paymentMethodId: string) {
   try {
-    console.log('Saving payment method for customer:', customerId);
-    
-    if (!customerId || !paymentMethodId) {
-      throw new Error('Customer ID and payment method ID are required');
-    }
-
     const { data, error } = await supabase.functions.invoke('save-payment-method', {
       body: {
         customerId,
@@ -115,16 +83,12 @@ export async function savePaymentMethod(customerId: string, paymentMethodId: str
     });
 
     if (error) {
-      console.error('Supabase function invocation error:', error);
-      throw new Error(`Function invocation failed: ${error.message}`);
+      throw error;
     }
 
-    if (data?.error) {
-      console.error('Save payment method function returned error:', data.error);
+    if (data.error) {
       throw new Error(data.error);
     }
-
-    console.log('Payment method saved successfully');
 
     return { success: true };
   } catch (error: any) {

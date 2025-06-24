@@ -15,10 +15,6 @@ import { OpportunityCard } from "./opportunity/OpportunityCard";
 import { useAuth } from "./auth/AuthProvider";
 import { activityLogger } from "@/utils/activityLogger";
 import { OrderEditDialog } from "./order/OrderEditDialog";
-import { TruckDriverAssignmentDialog } from "./order/TruckDriverAssignmentDialog";
-import { Database } from "@/integrations/supabase/types";
-
-type TruckType = Database["public"]["Enums"]["truck_type"];
 
 const PIPELINE_STAGES = [{
   id: 'requested',
@@ -56,10 +52,6 @@ export function OpportunityPipeline() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
-  // New state for truck/driver assignment
-  const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
-  const [orderForAssignment, setOrderForAssignment] = useState<any>(null);
-  
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { profile } = useAuth();
@@ -71,8 +63,7 @@ export function OpportunityPipeline() {
     orders,
     isLoading,
     error,
-    refetch,
-    invalidateOrdersCache
+    refetch
   } = useOpportunityData();
 
   // Configure drag sensors
@@ -181,7 +172,6 @@ export function OpportunityPipeline() {
     }
   };
 
-  // Enhanced drag end handler with assignment dialog integration
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
@@ -209,15 +199,7 @@ export function OpportunityPipeline() {
       return;
     }
 
-    // NEW: Handle truck/driver assignment when moving to preparing stage
-    if (newStage === 'preparing' && (!order.truck_id || !order.truck_type)) {
-      console.log('Order needs truck assignment, opening dialog:', order.order_number);
-      setOrderForAssignment(order);
-      setShowAssignmentDialog(true);
-      return; // Don't proceed with status update yet
-    }
-
-    // Validate stage transition for other stages
+    // Validate stage transition
     const stageOrder = ['requested', 'preparing', 'loading', 'en_route', 'delivered'];
     const currentIndex = stageOrder.indexOf(currentStage);
     const newIndex = stageOrder.indexOf(newStage);
@@ -242,76 +224,6 @@ export function OpportunityPipeline() {
       return;
     }
 
-    // Proceed with regular status update for other stage transitions
-    await updateOrderStatus(order, currentStage, newStage);
-  };
-
-  // Handle truck/driver assignment completion
-  const handleAssignmentComplete = async (assignments: {
-    truckType: TruckType;
-    truckId: string;
-    driverId: string;
-  }) => {
-    if (!orderForAssignment) return;
-
-    try {
-      console.log('Completing assignment for order:', orderForAssignment.order_number, assignments);
-
-      const updateData: any = {
-        truck_type: assignments.truckType,
-        truck_id: assignments.truckId,
-        driver_id: assignments.driverId === 'unassigned' ? null : assignments.driverId,
-        status: 'preparing',
-        payment_status: 'paid',
-        updated_at: new Date().toISOString()
-      };
-
-      const { error } = await supabase
-        .from('orders')
-        .update(updateData)
-        .eq('id', orderForAssignment.id);
-
-      if (error) throw error;
-
-      // Update truck status to assigned if a truck was selected
-      if (assignments.truckId && assignments.truckId !== 'none') {
-        await supabase
-          .from('trucks')
-          .update({ 
-            status: 'assigned',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', assignments.truckId);
-      }
-
-      // Log the activity
-      if (profile?.full_name) {
-        await activityLogger.orderStatusUpdate(
-          orderForAssignment.id,
-          orderForAssignment.order_number,
-          orderForAssignment.customer_name,
-          'requested',
-          'preparing',
-          profile.full_name
-        );
-      }
-
-      toast({
-        title: "Assignment Complete",
-        description: `Order ${orderForAssignment.order_number} assigned and moved to preparing stage`,
-      });
-
-      // Use enhanced cache invalidation
-      await invalidateOrdersCache('truck and driver assignment');
-      
-    } catch (error: any) {
-      console.error('Error completing assignment:', error);
-      throw error;
-    }
-  };
-
-  // Regular status update function for non-assignment transitions
-  const updateOrderStatus = async (order: any, currentStage: string, newStage: string) => {
     try {
       let updateData: any = {};
 
@@ -334,8 +246,6 @@ export function OpportunityPipeline() {
         default:
           updateData = { status: newStage };
       }
-
-      console.log('Updating order status:', order.order_number, currentStage, '->', newStage);
 
       const { error } = await supabase
         .from('orders')
@@ -364,10 +274,8 @@ export function OpportunityPipeline() {
         description: `Order ${order.order_number} moved to ${PIPELINE_STAGES.find(s => s.id === newStage)?.title}`,
       });
 
-      // Use enhanced cache invalidation
-      await invalidateOrdersCache('status update via drag and drop');
+      refetch();
     } catch (error: any) {
-      console.error('Error moving order:', error);
       toast({
         title: "Error",
         description: "Failed to move order",
@@ -416,12 +324,6 @@ export function OpportunityPipeline() {
   const handleOrderUpdate = () => {
     refetch();
     handleEditDialogClose();
-  };
-
-  // Handle assignment dialog close
-  const handleAssignmentDialogClose = () => {
-    setShowAssignmentDialog(false);
-    setOrderForAssignment(null);
   };
 
   if (error) {
@@ -587,14 +489,6 @@ export function OpportunityPipeline() {
           onClose={handleEditDialogClose}
         />
       )}
-
-      {/* NEW: Truck/Driver Assignment Dialog */}
-      <TruckDriverAssignmentDialog
-        isOpen={showAssignmentDialog}
-        onClose={handleAssignmentDialogClose}
-        order={orderForAssignment}
-        onAssignmentComplete={handleAssignmentComplete}
-      />
     </>
   );
 }

@@ -8,12 +8,11 @@ import {
   CreditCard,
   Mail,
   Settings,
-  Users2,
+  Truck,
   Target,
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Truck,
 } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useState } from "react";
@@ -25,8 +24,7 @@ const menuItems = [
   { title: "Products", icon: Package, id: "products" },
   { title: "Customers", icon: Users, id: "customers" },
   { title: "Payments", icon: CreditCard, id: "payments" },
-  { title: "Fleet", icon: Truck, id: "trucks" },
-  { title: "Team", icon: Users2, id: "drivers" },
+  { title: "Team", icon: Truck, id: "drivers" },
   { title: "Emails", icon: Mail, id: "emails" },
   { title: "Settings", icon: Settings, id: "settings" },
 ];
