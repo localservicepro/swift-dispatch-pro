@@ -8,12 +8,27 @@ schemas = ["public", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
+[functions.test-stripe-connection]
+verify_jwt = false
+
 [db]
 port = 54322
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[realtime]
+enabled = true
+ip_version = "IPv6"
 
 [studio]
 enabled = true
 port = 54323
+api_url = "http://127.0.0.1"
 
 [inbucket]
 enabled = true
@@ -23,20 +38,21 @@ pop3_port = 54326
 
 [storage]
 enabled = true
-port = 54325
-image_transformation = {"endpoint": "http://imgproxy:5001"}
+file_size_limit = "50MiB"
 
 [auth]
 enabled = true
-port = 54326
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://wntcxbxitsanbyrtfhwv.supabase.co/auth/v1/callback"]
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = ["https://swiftdispatch.leadtocrm.com"]
 jwt_expiry = 3600
 refresh_token_rotation_enabled = true
-security_refresh_token_reuse_interval = 10
+recover_session_from_cookie = false
 
-[edge_functions]
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[edge_runtime]
 enabled = true
-
-[functions.create-user]
-verify_jwt = true
+ip_version = "IPv6"

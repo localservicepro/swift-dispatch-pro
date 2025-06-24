@@ -170,7 +170,9 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
       // Get the keys for the current mode
       const { publishableKey, secretKey } = getCurrentModeKeys();
       
-      console.log(`Testing connection in ${config.stripe_mode} mode...`);
+      console.log(`Testing Stripe connection in ${config.stripe_mode} mode...`);
+      console.log('Publishable key:', publishableKey.substring(0, 12) + '...');
+      console.log('Secret key:', secretKey.substring(0, 12) + '...');
       
       // Test the connection using the appropriate keys for the current mode
       const { data, error } = await supabase.functions.invoke('test-stripe-connection', {
@@ -181,6 +183,8 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
         }
       });
 
+      console.log('Function response:', { data, error });
+
       if (error) {
         console.error('Function invocation error:', error);
         throw new Error(error.message || 'Failed to invoke connection test function');
@@ -189,16 +193,38 @@ export function StripeConfigurationSection({ settings, onSettingsUpdate }: Strip
       if (data?.success) {
         toast({
           title: "Connection Successful",
-          description: `Stripe ${config.stripe_mode} mode connection verified successfully`,
+          description: `Stripe ${config.stripe_mode} mode connection verified successfully. Account: ${data.businessProfile || data.accountId}`,
         });
+        console.log('Connection successful:', data);
       } else {
-        throw new Error(data?.error || 'Connection test failed');
+        console.error('Connection test failed:', data);
+        throw new Error(data?.error || data?.details || 'Connection test failed');
       }
     } catch (error: any) {
       console.error('Stripe connection test failed:', error);
+      
+      // Show more detailed error message
+      let errorTitle = "Connection Failed";
+      let errorDescription = `Failed to connect to Stripe in ${config.stripe_mode} mode.`;
+      
+      if (error.message) {
+        if (error.message.includes('Invalid') && error.message.includes('key')) {
+          errorTitle = "Invalid API Keys";
+          errorDescription = "Please check that your Stripe API keys are correct and match the selected mode.";
+        } else if (error.message.includes('permissions')) {
+          errorTitle = "Permission Error";
+          errorDescription = "Your Stripe API keys don't have sufficient permissions.";
+        } else if (error.message.includes('format')) {
+          errorTitle = "Key Format Error";
+          errorDescription = error.message;
+        } else {
+          errorDescription = error.message;
+        }
+      }
+
       toast({
-        title: "Connection Failed",
-        description: error.message || `Failed to connect to Stripe in ${config.stripe_mode} mode. Please check your API keys.`,
+        title: errorTitle,
+        description: errorDescription,
         variant: "destructive",
       });
     } finally {
