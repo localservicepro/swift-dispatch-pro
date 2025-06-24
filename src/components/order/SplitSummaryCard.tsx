@@ -10,9 +10,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Truck, Calendar, Clock, Minus, Plus, ChevronDown, ChevronUp, MapPin, FileText } from "lucide-react";
 import { useState } from "react";
 import { CartItem, SplitConfig, Customer } from "./types";
-import { TruckTypeSelector } from "./TruckTypeSelector";
-import { SpecificTruckSelector } from "./SpecificTruckSelector";
-import { DriverSelector } from "./DriverSelector";
 
 interface SplitSummaryCardProps {
   split: SplitConfig;
@@ -46,16 +43,8 @@ export function SplitSummaryCard({
 
   const totalItems = split.products.reduce((sum, p) => sum + p.quantity, 0);
 
-  const isConfigurationComplete = split.truckType && split.truckId && split.deliveryDate && split.deliveryTime &&
+  const isConfigurationComplete = split.deliveryDate && split.deliveryTime &&
     (useGlobalDeliveryAddress || split.sameAsBilling || (split.deliveryAddress && split.deliveryAddress.trim() !== ""));
-
-  const handleTruckSelect = (truckId: string, truckDetails: any) => {
-    onUpdateSplit(splitIndex, { truckId });
-  };
-
-  const handleDriverChange = (driverId: string) => {
-    onUpdateSplit(splitIndex, { driverId });
-  };
 
   const handleSameAsBillingChange = (checked: boolean) => {
     onUpdateSplit(splitIndex, { 
@@ -87,7 +76,7 @@ export function SplitSummaryCard({
                 <Badge variant="secondary" className="text-xs">{totalItems} items</Badge>
                 <Badge variant="outline" className="text-xs">${splitTotal.toFixed(2)}</Badge>
                 {isConfigurationComplete && (
-                  <Badge variant="default" className="text-xs bg-green-500">Complete</Badge>
+                  <Badge variant="default" className="text-xs bg-green-500">Ready</Badge>
                 )}
               </div>
             </CardTitle>
@@ -190,35 +179,6 @@ export function SplitSummaryCard({
                 </div>
               )}
 
-              {/* Truck Type Selection */}
-              <div>
-                <TruckTypeSelector
-                  selectedTruckType={split.truckType}
-                  onTruckTypeChange={(truckType) => onUpdateSplit(splitIndex, { truckType, truckId: "" })}
-                />
-              </div>
-
-              {/* Specific Truck Selection */}
-              {split.truckType && (
-                <div>
-                  <SpecificTruckSelector
-                    selectedTruckType={split.truckType}
-                    selectedTruckId={split.truckId}
-                    deliveryDate={split.deliveryDate}
-                    deliveryTime={split.deliveryTime}
-                    onTruckSelect={handleTruckSelect}
-                  />
-                </div>
-              )}
-
-              {/* Driver Selection */}
-              <div>
-                <DriverSelector
-                  selectedDriverId={split.driverId}
-                  onDriverChange={handleDriverChange}
-                />
-              </div>
-
               {/* Delivery date and time (if not in common date mode) */}
               {!isCommonDateMode && (
                 <div className="grid grid-cols-2 gap-2">
@@ -269,6 +229,13 @@ export function SplitSummaryCard({
                   placeholder="Any special instructions for the driver for this delivery..."
                   className="h-16 text-xs resize-none"
                 />
+              </div>
+
+              {/* Note about truck and driver assignment */}
+              <div className="bg-blue-50 border border-blue-200 rounded p-2">
+                <p className="text-xs text-blue-800">
+                  <strong>Note:</strong> Truck and driver assignment will be done after order confirmation through the opportunity pipeline.
+                </p>
               </div>
             </CardContent>
           </CollapsibleContent>
