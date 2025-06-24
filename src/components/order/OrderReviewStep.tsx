@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Package, User, MapPin, Clock, Truck, CreditCard, Store, Home } from "lucide-react";
-import { Customer, CartItem, Truck as TruckType } from "./types";
+import { CheckCircle, Package, User, MapPin, Clock, CreditCard, Store, Home } from "lucide-react";
+import { Customer, CartItem } from "./types";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals, formatCurrency } from "./utils/paymentCalculations";
 
@@ -17,11 +17,8 @@ interface OrderReviewStepProps {
   deliveryMethod: "delivery" | "pickup";
   deliveryDate: string;
   deliveryTime: string;
-  truckType: string;
-  driverName: string;
   specialInstructions: string;
   paymentMethod: string;
-  selectedTruck: TruckType | null;
   deliveryAddress: string;
   sameAsBilling: boolean;
   onBack: () => void;
@@ -38,11 +35,8 @@ export function OrderReviewStep({
   deliveryMethod,
   deliveryDate,
   deliveryTime,
-  truckType,
-  driverName,
   specialInstructions,
   paymentMethod,
-  selectedTruck,
   deliveryAddress,
   sameAsBilling,
   onBack,
@@ -50,7 +44,7 @@ export function OrderReviewStep({
   isCreating
 }: OrderReviewStepProps) {
   const { data: paymentSettings } = usePaymentSettings();
-  const stepNumber = deliveryMethod === "pickup" ? "5" : "8";
+  const stepNumber = deliveryMethod === "pickup" ? "5" : "7";
 
   // Calculate totals with payment settings
   const orderTotals = paymentSettings ? 
@@ -166,7 +160,7 @@ export function OrderReviewStep({
         {/* Delivery Method */}
         <div className="space-y-3">
           <h3 className="flex items-center gap-2 font-semibold">
-            {deliveryMethod === "delivery" ? <Truck className="w-4 h-4" /> : <Store className="w-4 h-4" />}
+            {deliveryMethod === "delivery" ? <MapPin className="w-4 h-4" /> : <Store className="w-4 h-4" />}
             Delivery Method
           </h3>
           <div className="bg-gray-50 p-4 rounded-lg">
@@ -195,26 +189,17 @@ export function OrderReviewStep({
                   {deliveryDate} at {deliveryTime}
                 </span>
               </div>
-              {selectedTruck && (
-                <div className="flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    {selectedTruck.registration_number} ({truckType})
-                  </span>
-                </div>
-              )}
-              {driverName && driverName !== "Multiple drivers" && (
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">Driver: {driverName}</span>
-                </div>
-              )}
               {specialInstructions && (
                 <div className="mt-2">
                   <p className="text-sm font-medium">Special Instructions:</p>
                   <p className="text-sm text-muted-foreground">{specialInstructions}</p>
                 </div>
               )}
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                <p className="text-xs text-blue-700 font-medium">
+                  📝 Note: Truck and driver will be assigned after order confirmation
+                </p>
+              </div>
             </div>
           </div>
         )}

@@ -17,14 +17,9 @@ export function useOrderFormState() {
   const [orderType, setOrderType] = useState<"single" | "split">("single");
   const [splits, setSplits] = useState<SplitConfig[]>([]);
   
-  // Single order delivery state
+  // Single order delivery state - removed truck and driver related state
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
-  const [truckType, setTruckType] = useState<TruckType | "">("");
-  const [truckId, setTruckId] = useState("");
-  const [selectedTruck, setSelectedTruck] = useState<Truck | null>(null);
-  const [driverId, setDriverId] = useState("");
-  const [driverName, setDriverName] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   
@@ -45,7 +40,7 @@ export function useOrderFormState() {
     if (deliveryMethod === "pickup") {
       return 5; // Customer → Products → Method → Payment → Review
     }
-    return 8; // Customer → Products → Method → Order Type → Address → Details → Payment → Review
+    return 7; // Customer → Products → Method → Order Type → Address → Payment → Review (removed Details step)
   };
 
   // Enhanced delivery method setter to auto-set order type
@@ -107,11 +102,6 @@ export function useOrderFormState() {
     splits,
     deliveryDate,
     deliveryTime,
-    truckType,
-    truckId,
-    selectedTruck,
-    driverId,
-    driverName,
     specialInstructions,
     paymentMethod,
     deliveryAddress,
@@ -136,11 +126,6 @@ export function useOrderFormState() {
     setSplits,
     setDeliveryDate,
     setDeliveryTime,
-    setTruckType,
-    setTruckId,
-    setSelectedTruck,
-    setDriverId,
-    setDriverName,
     setSpecialInstructions,
     setPaymentMethod,
     setDeliveryAddress,
