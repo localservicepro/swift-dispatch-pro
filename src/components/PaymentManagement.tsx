@@ -2,158 +2,129 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Receipt, Bell, Settings, RefreshCw } from "lucide-react";
-import { useRealTimePayments } from "@/hooks/useRealTimePayments";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PaymentSearchFilters } from "@/components/payment/PaymentSearchFilters";
-import { PaymentSettings } from "@/components/payment/PaymentSettings";
-import { usePaymentFilters } from "@/hooks/usePaymentFilters";
-import { detectSplitOrderGroups } from "@/components/order/utils/splitOrderUtils";
-import { SplitOrderGroupCard } from "@/components/payment/SplitOrderGroupCard";
+import { Database } from "@/integrations/supabase/types";
+import { useQuery } from "@tanstack/react-query";
+import { Search, Filter, X, FileText, CreditCard, Loader2 } from "lucide-react";
+import { formatCurrency } from "@/components/order/utils/paymentCalculations";
+
+type OrderStatus = Database["public"]["Enums"]["order_status"];
+type PaymentStatus = Database["public"]["Enums"]["payment_status"];
 
 interface PaymentOrder {
   id: string;
   order_number: string;
-  customer_id?: string;
   customer_name: string;
-  customer_email?: string;
   customer_phone?: string;
-  total_amount: number;
-  payment_status: string;
-  payment_method?: string;
-  payment_date?: string;
-  created_at: string;
+  customer_address: string;
   products: any;
+  total_amount: number;
+  status: OrderStatus;
+  payment_status: PaymentStatus;
+  driver_id?: string;
+  created_at: string;
+  delivery_date?: string;
+  delivery_time?: string;
+  special_instructions?: string;
+  customer_id?: string;
+  suburb_id?: string;
   delivery_fee?: number;
   subtotal?: number;
+  batch_invoice_id?: string;
+  customers?: {
+    email?: string;
+  };
 }
 
-export function PaymentManagement() {
-  const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
-  const [sendingInvoices, setSendingInvoices] = useState<string[]>([]);
-  const [generatingInvoices, setGeneratingInvoices] = useState<string[]>([]);
-  const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
-  const [showSettings, setShowSettings] = useState(false);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [splitOrderGroups, setSplitOrderGroups] = useState<any[]>([]);
+const PaymentManagement = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>("pending");
+  const [creatingInvoice, setCreatingInvoice] = useState<string | null>(null);
 
-  // Set up real-time payment updates
-  useRealTimePayments((update) => {
-    console.log('Payment update received in PaymentManagement:', update);
-    setLastUpdateTime(new Date());
-    // Refresh the payment orders query when updates are received
-    queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
-  });
-
-  // Fetch real orders with customer data for payment management
-  const {
-    data: payments = [],
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
-    queryKey: ['payment-orders'],
-    queryFn: async (): Promise<PaymentOrder[]> => {
+  const { data: orders = [], isLoading, error, refetch: refetchOrders } = useQuery({
+    queryKey: ['paymentOrders'],
+    queryFn: async () => {
       console.log('Fetching payment orders from database...');
-      const {
-        data,
-        error
-      } = await supabase.from('orders').select(`
+      
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
           id,
           order_number,
-          customer_id,
           customer_name,
           customer_phone,
-          total_amount,
-          payment_status,
-          payment_method,
-          payment_date,
-          created_at,
+          customer_address,
           products,
+          total_amount,
+          status,
+          payment_status,
+          driver_id,
+          created_at,
+          delivery_date,
+          delivery_time,
+          special_instructions,
+          customer_id,
           delivery_fee,
           subtotal,
-          customers!orders_customer_id_fkey(email)
-        `).order('created_at', {
-        ascending: false
-      });
-      if (error) {
-        console.error('Error fetching payment orders:', error);
-        throw error;
+          batch_invoice_id,
+          customers!orders_customer_id_fkey(
+            email
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (ordersError) {
+        console.error('Error fetching orders:', ordersError);
+        throw ordersError;
       }
-      return data.map(order => ({
-        ...order,
-        customer_email: order.customers?.email || `${order.customer_name.toLowerCase().replace(' ', '.')}@example.com`,
-        payment_status: order.payment_status || 'pending'
-      }));
+
+      console.log('Payment orders data:', ordersData);
+      return ordersData || [];
     },
-    refetchInterval: 30000 // Auto-refresh every 30 seconds
   });
 
-  // Initialize search and filter functionality
-  const {
-    searchTerm,
-    setSearchTerm,
-    filters,
-    filteredPayments,
-    handleFilterChange,
-    clearAllFilters,
-    activeFilterCount
-  } = usePaymentFilters(payments);
+  const { toast } = useToast();
 
-  // Detect split order groups from filtered payments
-  useEffect(() => {
-    const detectGroups = async () => {
-      if (filteredPayments.length > 0) {
-        try {
-          const groups = await detectSplitOrderGroups(filteredPayments);
-          setSplitOrderGroups(groups);
-        } catch (error) {
-          console.error('Error detecting split order groups:', error);
-          setSplitOrderGroups([]);
-        }
-      } else {
-        setSplitOrderGroups([]);
-      }
-    };
+  const filteredOrders = orders.filter(order => {
+    const search = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      order.order_number.toLowerCase().includes(search) ||
+      order.customer_name.toLowerCase().includes(search) ||
+      (order.customer_phone && order.customer_phone.toLowerCase().includes(search));
 
-    detectGroups();
-  }, [filteredPayments]);
+    const matchesStatus = paymentStatusFilter === "all" || order.payment_status === paymentStatusFilter;
 
-  // Filter out individual split orders from the regular payment list
-  const nonSplitPayments = filteredPayments.filter(payment => {
-    // Keep if it's not part of any split order group
-    return !splitOrderGroups.some(group => 
-      group.allOrders.some((order: any) => order.id === payment.id)
-    );
+    return matchesSearch && matchesStatus;
   });
 
-  const generateAndSendInvoice = async (orderId: string) => {
-    if (generatingInvoices.includes(orderId)) return;
-    setGeneratingInvoices(prev => [...prev, orderId]);
+  const clearFilters = () => {
+    setSearchQuery("");
+    setPaymentStatusFilter("pending");
+  };
 
+  const hasActiveFilters = searchQuery.trim() !== "" || paymentStatusFilter !== "pending";
+
+  const handleCreateInvoice = async (order: PaymentOrder) => {
+    setCreatingInvoice(order.id);
+    
     try {
-      const order = payments.find(p => p.id === orderId);
-      if (!order) throw new Error('Order not found');
-
-      console.log('Starting invoice generation for order:', order.order_number);
-
-      // Generate unique invoice number
+      console.log('Creating individual invoice for order:', order.id);
+      
       const invoiceNumber = `INV-${order.order_number}-${Date.now()}`;
       const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      // Create invoice record first
+      // Create invoice with standardized currency
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
         .insert({
           invoice_number: invoiceNumber,
-          order_id: orderId,
-          customer_email: order.customer_email,
+          order_id: order.id,
+          customer_email: order.customers?.email || `${order.customer_name.toLowerCase().replace(' ', '.')}@example.com`,
           amount: order.total_amount,
-          currency: 'USD',
+          currency: 'USD', // Standardized currency format
           status: 'pending',
           due_date: dueDate
         })
@@ -167,506 +138,296 @@ export function PaymentManagement() {
 
       console.log('Invoice created:', invoice.id);
 
-      // Create payment session
-      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-invoice-payment', {
-        body: { invoiceId: invoice.id }
-      });
+      // Wait for transaction commit
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
-      if (paymentError) {
-        console.error('Payment session error:', paymentError);
-        // Clean up the invoice if payment session creation fails
-        await supabase.from('invoices').delete().eq('id', invoice.id);
-        throw new Error(`Failed to create payment session: ${paymentError.message}`);
+      // Verify invoice exists
+      const { data: verifyInvoice, error: verifyError } = await supabase
+        .from('invoices')
+        .select('id, invoice_number, status')
+        .eq('id', invoice.id)
+        .single();
+
+      if (verifyError || !verifyInvoice) {
+        console.error('Invoice verification failed:', verifyError);
+        throw new Error('Invoice creation failed - invoice not found after creation');
       }
 
-      if (!paymentData.success) {
-        console.error('Payment session failed:', paymentData);
-        // Clean up the invoice if payment session creation fails
-        await supabase.from('invoices').delete().eq('id', invoice.id);
-        throw new Error(paymentData.error || 'Failed to create payment session');
-      }
+      console.log('Invoice verified successfully:', verifyInvoice);
 
-      console.log('Payment session created:', paymentData.sessionId);
+      // Create payment session with retry mechanism
+      let paymentData;
+      let attempts = 0;
+      const maxAttempts = 3;
 
-      // Parse products for email
-      let orderItems = [];
-      if (Array.isArray(order.products)) {
-        orderItems = order.products.map(item => ({
-          name: item.name || item.product_name || 'Product',
-          quantity: item.quantity || 1,
-          price: item.price || item.unit_price || 0
-        }));
-      } else if (order.products && typeof order.products === 'object') {
-        orderItems = [{
-          name: order.products.name || 'Product',
-          quantity: order.products.quantity || 1,
-          price: order.products.price || order.total_amount
-        }];
-      } else {
-        orderItems = [{
-          name: 'Order Items',
-          quantity: 1,
-          price: order.subtotal || order.total_amount - (order.delivery_fee || 0)
-        }];
-      }
+      while (attempts < maxAttempts) {
+        try {
+          console.log(`Creating payment session (attempt ${attempts + 1}/${maxAttempts})...`);
+          
+          const { data, error: paymentError } = await supabase.functions.invoke('create-invoice-payment', {
+            body: { invoiceId: invoice.id }
+          });
 
-      // Send invoice email with payment link
-      const { error: emailError } = await supabase.functions.invoke('send-emails', {
-        body: {
-          type: 'invoice',
-          data: {
-            customerName: order.customer_name,
-            customerEmail: order.customer_email,
-            orderNumber: order.order_number,
-            invoiceNumber: invoiceNumber,
-            orderItems: orderItems,
-            subtotal: order.subtotal || order.total_amount - (order.delivery_fee || 0),
-            deliveryFee: order.delivery_fee || 0,
-            totalAmount: order.total_amount,
-            dueDate: new Date(dueDate).toLocaleDateString(),
-            paymentStatus: 'Pending',
-            paymentUrl: paymentData.paymentUrl
+          if (paymentError) {
+            throw new Error(`Payment session error: ${paymentError.message}`);
+          }
+
+          if (!data?.success) {
+            throw new Error(data?.error || 'Failed to create payment session');
+          }
+
+          paymentData = data;
+          break;
+
+        } catch (error: any) {
+          attempts++;
+          console.warn(`Payment session attempt ${attempts} failed:`, error.message);
+          
+          if (attempts < maxAttempts) {
+            // Exponential backoff
+            const delay = 1000 * Math.pow(2, attempts - 1);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          } else {
+            throw error;
           }
         }
+      }
+
+      // Update order with invoice reference
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({
+          payment_status: 'invoiced'
+        })
+        .eq('id', order.id);
+
+      if (updateError) {
+        console.error('Error updating order status:', updateError);
+        // Don't fail the entire operation for this
+      }
+
+      toast({
+        title: "Invoice Created",
+        description: `Invoice ${invoice.invoice_number} created successfully. Opening payment page...`,
       });
 
-      if (emailError) {
-        console.error('Email sending error:', emailError);
-        // Don't delete the invoice if email fails, just warn
-        toast({
-          title: "Invoice Created",
-          description: `Invoice ${invoiceNumber} was created but email failed to send. Payment link is available in the system.`,
-          variant: "destructive"
-        });
-      } else {
-        // Update payment status to "invoiced" when email is sent successfully
-        await updatePaymentStatus(orderId, 'invoiced');
-        
-        toast({
-          title: "Invoice Generated & Sent",
-          description: `Invoice ${invoiceNumber} sent to ${order.customer_name} with payment link`,
-          action: (
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="w-4 h-4 mr-1" />
-              Refresh
-            </Button>
-          )
-        });
+      // Open payment URL in new tab
+      if (paymentData.paymentUrl) {
+        window.open(paymentData.paymentUrl, '_blank');
       }
 
       // Refresh data
-      queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
+      refetchOrders();
       
     } catch (error: any) {
-      console.error('Error generating invoice:', error);
+      console.error('Invoice creation failed:', error);
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to generate and send invoice. Please try again.",
-        variant: "destructive"
+        title: "Invoice Creation Failed",
+        description: error.message || "Failed to create invoice. Please check the logs and try again.",
+        variant: "destructive",
       });
     } finally {
-      setGeneratingInvoices(prev => prev.filter(id => id !== orderId));
+      setCreatingInvoice(null);
     }
   };
 
-  const sendInvoice = async (orderId: string) => {
-    if (sendingInvoices.includes(orderId)) return;
-    setSendingInvoices(prev => [...prev, orderId]);
-    try {
-      const order = payments.find(p => p.id === orderId);
-      if (!order) throw new Error('Order not found');
-
-      // Parse products from the order
-      let orderItems = [];
-      if (Array.isArray(order.products)) {
-        orderItems = order.products.map(item => ({
-          name: item.name || item.product_name || 'Product',
-          quantity: item.quantity || 1,
-          price: item.price || item.unit_price || 0
-        }));
-      } else if (order.products && typeof order.products === 'object') {
-        // Handle single product object
-        orderItems = [{
-          name: order.products.name || 'Product',
-          quantity: order.products.quantity || 1,
-          price: order.products.price || order.total_amount
-        }];
-      } else {
-        // Fallback for orders without detailed product info
-        orderItems = [{
-          name: 'Order Items',
-          quantity: 1,
-          price: order.subtotal || order.total_amount - (order.delivery_fee || 0)
-        }];
-      }
-      const {
-        error
-      } = await supabase.functions.invoke('send-emails', {
-        body: {
-          type: 'invoice',
-          data: {
-            customerName: order.customer_name,
-            customerEmail: order.customer_email,
-            orderNumber: order.order_number,
-            invoiceNumber: `INV-${order.order_number}`,
-            orderItems: orderItems,
-            subtotal: order.subtotal || order.total_amount - (order.delivery_fee || 0),
-            deliveryFee: order.delivery_fee || 0,
-            totalAmount: order.total_amount,
-            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-            paymentStatus: order.payment_status
-          }
-        }
-      });
-      if (error) throw error;
-      
-      // Update payment status to "invoiced" when simple invoice is sent successfully
-      await updatePaymentStatus(orderId, 'invoiced');
-      
-      toast({
-        title: "Invoice Sent",
-        description: `Invoice for ${order.order_number} has been sent to ${order.customer_name}`
-      });
-    } catch (error: any) {
-      console.error('Error sending invoice:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send invoice. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setSendingInvoices(prev => prev.filter(id => id !== orderId));
-    }
-  };
-  
-  const sendBatchInvoices = async () => {
-    if (selectedPayments.length === 0) {
-      toast({
-        title: "No Selection",
-        description: "Please select orders to send batch invoices",
-        variant: "destructive"
-      });
-      return;
-    }
-    setSendingInvoices(prev => [...prev, ...selectedPayments]);
-    try {
-      const promises = selectedPayments.map(orderId => sendInvoice(orderId));
-      await Promise.all(promises);
-      toast({
-        title: "Batch Invoices Sent",
-        description: `${selectedPayments.length} invoices have been sent`
-      });
-      setSelectedPayments([]);
-    } catch (error: any) {
-      console.error('Error sending batch invoices:', error);
-      toast({
-        title: "Error",
-        description: "Some invoices failed to send. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setSendingInvoices(prev => prev.filter(id => !selectedPayments.includes(id)));
-    }
-  };
-  
-  const updatePaymentStatus = async (orderId: string, newStatus: string) => {
-    try {
-      const {
-        error
-      } = await supabase.from('orders').update({
-        payment_status: newStatus,
-        payment_date: newStatus === 'paid' ? new Date().toISOString() : null
-      }).eq('id', orderId);
-      if (error) throw error;
-      toast({
-        title: "Payment Status Updated",
-        description: `Payment status changed to ${newStatus}`
-      });
-      refetch();
-    } catch (error: any) {
-      console.error('Error updating payment status:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update payment status",
-        variant: "destructive"
-      });
-    }
-  };
-  
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "paid":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "invoiced":
-        return "bg-blue-100 text-blue-800";
-      case "overdue":
-        return "bg-red-100 text-red-800";
-      case "cancelled":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-  
-  const togglePaymentSelection = (paymentId: string) => {
-    setSelectedPayments(prev => prev.includes(paymentId) ? prev.filter(id => id !== paymentId) : [...prev, paymentId]);
-  };
-
-  // Calculate statistics from filtered data (excluding split orders to avoid double counting)
-  const totalReceived = nonSplitPayments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total_amount, 0) +
-    splitOrderGroups.filter(g => g.hasExistingInvoice).reduce((sum, g) => sum + g.totalAmount, 0);
-  
-  const pendingPayments = nonSplitPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total_amount, 0) +
-    splitOrderGroups.filter(g => g.canInvoice).reduce((sum, g) => sum + g.totalAmount, 0);
-  
-  const invoicedPayments = nonSplitPayments.filter(p => p.payment_status === 'invoiced').reduce((sum, p) => sum + p.total_amount, 0) +
-    splitOrderGroups.filter(g => g.hasExistingInvoice && !g.canInvoice).reduce((sum, g) => sum + g.totalAmount, 0);
-  
-  const overduePayments = nonSplitPayments.filter(p => p.payment_status === 'overdue').reduce((sum, p) => sum + p.total_amount, 0);
-  
   if (error) {
-    return <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-800">Payment Management</h2>
-            <p className="text-slate-600 mt-1">Track payments and manage invoicing</p>
-          </div>
-        </div>
-        
+    console.error('Payment orders query error:', error);
+    return (
+      <div className="space-y-6">
         <Card>
           <CardContent className="p-6">
             <div className="text-center text-red-600">
-              <p>Error loading payment data. Please try again.</p>
-              <Button onClick={() => refetch()} className="mt-2">Retry</Button>
+              <p>Error loading payment orders. Please try again.</p>
+              <Button onClick={() => refetchOrders()} className="mt-2">Retry</Button>
             </div>
           </CardContent>
         </Card>
-      </div>;
+      </div>
+    );
   }
-  
-  return <div className="space-y-6">
+
+  return (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-slate-800">Payment Management</h2>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-slate-600">Track payments and manage invoicing • Real-time updates enabled</p>
-            <Bell className="w-4 h-4 text-green-500" />
-            <span className="text-xs text-green-600">Live</span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Last updated: {lastUpdateTime.toLocaleTimeString()}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button onClick={sendBatchInvoices} variant="outline" disabled={selectedPayments.length === 0 || selectedPayments.some(id => sendingInvoices.includes(id))} className="flex items-center gap-2">
-            {selectedPayments.some(id => sendingInvoices.includes(id)) && <Loader2 className="w-4 h-4 animate-spin" />}
-            Batch Invoice ({selectedPayments.length})
-          </Button>
-          <Button 
-            onClick={() => setShowSettings(true)} 
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <Settings className="w-4 h-4" />
-            Settings
-          </Button>
+          <p className="text-slate-600 mt-1">Manage order payments and invoices</p>
         </div>
       </div>
 
-      {/* Payment Settings Modal */}
-      <PaymentSettings 
-        isOpen={showSettings} 
-        onClose={() => setShowSettings(false)} 
-      />
-
-      {/* Search and Filter Controls */}
-      <PaymentSearchFilters
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onClearFilters={clearAllFilters}
-        activeFilterCount={activeFilterCount}
-      />
-
-      {/* Payment Statistics - Updated to use filtered data */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-700">Total Received</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-900">${totalReceived.toFixed(2)}</div>
-            <p className="text-xs text-green-600 mt-1">From paid orders</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700">Invoiced</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-900">${invoicedPayments.toFixed(2)}</div>
-            <p className="text-xs text-blue-600 mt-1">Invoices sent</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-700">Pending Payments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-900">${pendingPayments.toFixed(2)}</div>
-            <p className="text-xs text-yellow-600 mt-1">Awaiting invoice</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-red-700">Overdue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-900">${overduePayments.toFixed(2)}</div>
-            <p className="text-xs text-red-600 mt-1">Requires follow-up</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Split Order Groups */}
-      {splitOrderGroups.length > 0 && (
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-              Split Order Groups
-              <Badge variant="outline" className="ml-2">
-                {splitOrderGroups.length} groups
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {splitOrderGroups.map((group, index) => (
-              <SplitOrderGroupCard
-                key={group.masterOrder.id}
-                group={group}
-                onInvoiceCreated={() => refetch()}
-              />
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Payment Records */}
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-              Individual Payment Records 
-              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              <Bell className="w-4 h-4 text-green-500" />
-              {nonSplitPayments.length !== payments.length && (
-                <Badge variant="outline" className="ml-2">
-                  {nonSplitPayments.length} of {payments.length}
-                </Badge>
+            <CardTitle className="text-lg font-semibold text-slate-800">
+              Orders Awaiting Payment
+              {isLoading && <span className="text-sm font-normal text-slate-500">(Loading...)</span>}
+              {!isLoading && (
+                <span className="text-sm font-normal text-slate-500">
+                  ({filteredOrders.length} of {orders.length} orders)
+                </span>
               )}
             </CardTitle>
-            <Badge className="bg-green-100 text-green-800">
-              Real-time Updates Active
-            </Badge>
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearFilters}
+                className="flex items-center gap-2"
+              >
+                <X className="h-4 w-4" />
+                Clear Filters
+              </Button>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 mt-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search by order number, customer name, or phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2 sm:w-48">
+              <Filter className="h-4 w-4 text-slate-400" />
+              <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by payment status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="invoiced">Invoiced</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? <div className="text-center py-8">
+          {isLoading ? (
+            <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-slate-600">Loading payment records...</p>
-            </div> : nonSplitPayments.length === 0 ? <div className="text-center py-8 text-slate-500">
-              <p>{payments.length === 0 ? "No payment records found." : "No individual payment records match your search criteria."}</p>
-              {activeFilterCount > 0 && (
-                <Button variant="outline" onClick={clearAllFilters} className="mt-2">
-                  Clear all filters
-                </Button>
+              <p className="mt-2 text-slate-600">Loading orders...</p>
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              {hasActiveFilters ? (
+                <div>
+                  <p>No orders match your current filters.</p>
+                  <Button
+                    variant="outline"
+                    onClick={clearFilters}
+                    className="mt-2"
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              ) : (
+                <p>No orders awaiting payment found.</p>
               )}
-            </div> : <div className="space-y-4">
-              {nonSplitPayments.map(payment => <div key={payment.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredOrders.map(order => (
+                <div key={order.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedPayments.includes(payment.id)} 
-                        onChange={() => togglePaymentSelection(payment.id)} 
-                        className="w-4 h-4 text-blue-600 rounded" 
-                      />
-                      <h3 className="font-semibold text-slate-800">{payment.order_number}</h3>
-                      <Badge className={getStatusColor(payment.payment_status)}>
-                        {payment.payment_status}
+                      <h3 className="font-semibold text-slate-800">{order.order_number}</h3>
+                      <Badge className={
+                        order.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        order.payment_status === 'invoiced' ? 'bg-blue-100 text-blue-800' :
+                        'bg-green-100 text-green-800'
+                      }>
+                        {order.payment_status}
                       </Badge>
                     </div>
-                    <span className="text-lg font-bold text-green-600">${payment.total_amount.toFixed(2)}</span>
+                    <span className="text-lg font-bold text-green-600">
+                      {formatCurrency(order.total_amount)}
+                    </span>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-3">
                     <div>
                       <p className="text-slate-500">Customer</p>
-                      <p className="font-medium">{payment.customer_name}</p>
-                      {payment.customer_phone && <p className="text-xs text-slate-400">{payment.customer_phone}</p>}
-                    </div>
-                    <div>
-                      <p className="text-slate-500">Email</p>
-                      <p className="font-medium text-xs">{payment.customer_email}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500">Payment Method</p>
-                      <p className="font-medium">{payment.payment_method || 'Not Set'}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500">Order Date</p>
-                      <p className="font-medium">{new Date(payment.created_at).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2 mt-4">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => generateAndSendInvoice(payment.id)}
-                      disabled={generatingInvoices.includes(payment.id)}
-                      className="flex items-center gap-2"
-                    >
-                      {generatingInvoices.includes(payment.id) ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Receipt className="w-4 h-4" />
+                      <p className="font-medium">{order.customer_name}</p>
+                      {order.customer_phone && (
+                        <p className="text-xs text-slate-400">{order.customer_phone}</p>
                       )}
-                      {generatingInvoices.includes(payment.id) ? "Generating..." : "Generate Invoice"}
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => sendInvoice(payment.id)} 
-                      disabled={sendingInvoices.includes(payment.id)} 
-                      className="flex items-center gap-2"
-                    >
-                      {sendingInvoices.includes(payment.id) && <Loader2 className="w-4 h-4 animate-spin" />}
-                      {sendingInvoices.includes(payment.id) ? "Sending..." : "Send Simple Invoice"}
-                    </Button>
-                    
-                    <Select onValueChange={value => updatePaymentStatus(payment.id, value)}>
-                      <SelectTrigger className="w-32">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="invoiced">Invoiced</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="overdue">Overdue</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Products</p>
+                      <p className="font-medium">
+                        {Array.isArray(order.products)
+                          ? order.products.map(p => `${p.name} (Qty: ${p.quantity})`).join(', ')
+                          : 'Products listed'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Address</p>
+                      <p className="font-medium">{order.customer_address}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Created</p>
+                      <p className="font-medium">{new Date(order.created_at).toLocaleDateString()}</p>
+                    </div>
                   </div>
-                </div>)}
-            </div>}
+
+                  {order.special_instructions && (
+                    <div className="mb-3">
+                      <p className="text-slate-500 flex items-center gap-1 mb-1">
+                        <FileText className="w-3 h-3" />
+                        Notes
+                      </p>
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                        <p className="text-sm text-yellow-800">{order.special_instructions}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 mt-4">
+                    {order.payment_status === 'pending' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleCreateInvoice(order)}
+                        disabled={!!creatingInvoice}
+                      >
+                        {creatingInvoice === order.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating Invoice...
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            Create Invoice
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    {order.payment_status === 'invoiced' && (
+                      <Button size="sm" variant="secondary" disabled>
+                        Invoiced
+                      </Button>
+                    )}
+                    {order.payment_status === 'paid' && (
+                      <Button size="sm" variant="ghost" disabled>
+                        Paid
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
-    </div>;
-}
+    </div>
+  );
+};
+
+export default PaymentManagement;
