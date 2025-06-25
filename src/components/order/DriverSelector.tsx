@@ -17,9 +17,18 @@ interface Driver {
 interface DriverSelectorProps {
   selectedDriverId: string;
   onDriverChange: (driverId: string) => void;
+  deliveryDate?: string;
+  deliveryTime?: string;
+  excludeOrderId?: string;
 }
 
-export function DriverSelector({ selectedDriverId, onDriverChange }: DriverSelectorProps) {
+export function DriverSelector({ 
+  selectedDriverId, 
+  onDriverChange,
+  deliveryDate,
+  deliveryTime,
+  excludeOrderId
+}: DriverSelectorProps) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loadingDrivers, setLoadingDrivers] = useState(true);
   const [driversError, setDriversError] = useState<string | null>(null);
@@ -139,6 +148,12 @@ export function DriverSelector({ selectedDriverId, onDriverChange }: DriverSelec
       {!loadingDrivers && drivers.length > 0 && (
         <p className="text-sm text-gray-600">
           Found {drivers.filter(d => d.role === 'driver').length} driver(s) and {drivers.filter(d => d.role === 'admin').length} admin(s) available for assignment.
+        </p>
+      )}
+
+      {deliveryDate && deliveryTime && (
+        <p className="text-xs text-gray-500">
+          Delivery scheduled: {deliveryDate} at {deliveryTime}
         </p>
       )}
     </div>
