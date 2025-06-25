@@ -8,30 +8,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Helper function to get Stripe secret key with fallback
-async function getStripeSecretKey(supabase: any) {
-  // Try environment secrets first
-  let secretKey = Deno.env.get('STRIPE_TEST_SECRET_KEY') || 
-                  Deno.env.get('STRIPE_LIVE_SECRET_KEY') || 
-                  Deno.env.get('STRIPE_SECRET_KEY')
-
-  // Fallback to database
-  if (!secretKey) {
-    const { data: settings } = await supabase
-      .from('payment_settings')
-      .select('stripe_mode, stripe_test_secret_key, stripe_live_secret_key')
-      .single()
-
-    if (settings) {
-      secretKey = settings.stripe_mode === 'live' 
-        ? settings.stripe_live_secret_key 
-        : settings.stripe_test_secret_key
-    }
-  }
-
-  return secretKey
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -50,16 +26,9 @@ serve(async (req) => {
       }
     )
 
-    const stripeSecretKey = await getStripeSecretKey(supabaseClient)
-    if (!stripeSecretKey) {
-      throw new Error('Stripe secret key not configured')
-    }
-
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2024-06-20',
+    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+      apiVersion: '2023-10-16',
     })
-
-    console.log('Using Stripe secret key from configured source')
 
     // Get customer's default payment method
     const { data: paymentMethod, error: pmError } = await supabaseClient

@@ -10,14 +10,6 @@ interface PaymentSettings {
   gst_label: string;
   include_gst_in_prices: boolean;
   default_delivery_fee: number;
-  stripe_test_publishable_key?: string;
-  stripe_test_secret_key?: string;
-  stripe_live_publishable_key?: string;
-  stripe_live_secret_key?: string;
-  stripe_mode: 'test' | 'live';
-  stripe_webhook_secret?: string;
-  stripe_connection_status: 'not_configured' | 'connected' | 'error' | 'testing';
-  stripe_last_tested_at?: string;
 }
 
 export function usePaymentSettings() {
@@ -44,9 +36,7 @@ export function usePaymentSettings() {
         currency: 'AUD',
         gst_label: 'GST',
         include_gst_in_prices: false,
-        default_delivery_fee: 0.00,
-        stripe_mode: 'test',
-        stripe_connection_status: 'not_configured'
+        default_delivery_fee: 0.00
       };
 
       return data || defaultSettings;

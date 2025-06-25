@@ -820,14 +820,6 @@ export type Database = {
           id: string
           include_gst_in_prices: boolean
           service_charge_rate: number
-          stripe_connection_status: string
-          stripe_last_tested_at: string | null
-          stripe_live_publishable_key: string | null
-          stripe_live_secret_key: string | null
-          stripe_mode: string
-          stripe_test_publishable_key: string | null
-          stripe_test_secret_key: string | null
-          stripe_webhook_secret: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -840,14 +832,6 @@ export type Database = {
           id?: string
           include_gst_in_prices?: boolean
           service_charge_rate?: number
-          stripe_connection_status?: string
-          stripe_last_tested_at?: string | null
-          stripe_live_publishable_key?: string | null
-          stripe_live_secret_key?: string | null
-          stripe_mode?: string
-          stripe_test_publishable_key?: string | null
-          stripe_test_secret_key?: string | null
-          stripe_webhook_secret?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -860,14 +844,6 @@ export type Database = {
           id?: string
           include_gst_in_prices?: boolean
           service_charge_rate?: number
-          stripe_connection_status?: string
-          stripe_last_tested_at?: string | null
-          stripe_live_publishable_key?: string | null
-          stripe_live_secret_key?: string | null
-          stripe_mode?: string
-          stripe_test_publishable_key?: string | null
-          stripe_test_secret_key?: string | null
-          stripe_webhook_secret?: string | null
           updated_at?: string
           updated_by?: string | null
         }
