@@ -28,7 +28,7 @@ export function DeliveryMapCard({ address, customerName, orderId }: DeliveryMapC
       // Load Google Maps script
       await loadGoogleMapsScript();
 
-      if (!mapRef.current) return;
+      if (!mapRef.current || !window.google) return;
 
       // Geocode the address
       const geocoder = new window.google.maps.Geocoder();
