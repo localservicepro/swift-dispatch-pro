@@ -68,7 +68,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('Using Stripe in mode:', paymentSettings.stripe_mode)
     const stripe = new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' })
 
-    // Step 3: Get invoice details with explicit relationship
+    // Step 3: Get invoice details (simplified query)
     console.log('Step 2: Fetching invoice details...')
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
@@ -97,18 +97,19 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Invoice is not available for payment')
     }
 
-    // Step 5: Validate currency consistency
-    const invoiceCurrency = invoice.currency || paymentSettings.currency
-    console.log('Currency validation:', {
-      invoiceCurrency,
-      settingsCurrency: paymentSettings.currency,
-      finalCurrency: invoiceCurrency
+    // Step 5: Use payment settings currency as default, fallback to invoice currency
+    const finalCurrency = paymentSettings.currency || invoice.currency || 'AUD'
+    console.log('Currency determination:', {
+      paymentSettingsCurrency: paymentSettings.currency,
+      invoiceCurrency: invoice.currency,
+      finalCurrency
     })
 
-    // Step 6: Get order details with proper relationship handling
-    console.log('Step 3: Fetching order details...')
-    let orderDetails = null;
-    
+    // Step 6: Get order details if needed for customer information
+    console.log('Step 3: Fetching order details for customer info...')
+    let customerEmail = invoice.customer_email
+    let orderDetails = null
+
     if (invoice.order_id) {
       console.log('Fetching single order details for order_id:', invoice.order_id)
       const { data: singleOrder, error: singleOrderError } = await supabase
@@ -119,13 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
           customer_name,
           customer_address,
           products,
-          customer_id,
-          customers!orders_customer_id_fkey(
-            id,
-            email,
-            first_name,
-            last_name
-          )
+          customer_id
         `)
         .eq('id', invoice.order_id)
         .single()
@@ -137,9 +132,22 @@ const handler = async (req: Request): Promise<Response> => {
         console.log('Single order found:', {
           orderNumber: orderDetails.order_number,
           customerName: orderDetails.customer_name,
-          hasCustomerRecord: !!orderDetails.customers,
-          customerEmail: orderDetails.customers?.email
+          customerId: orderDetails.customer_id
         })
+
+        // Try to get customer email from customers table if we have customer_id
+        if (orderDetails.customer_id) {
+          const { data: customer, error: customerError } = await supabase
+            .from('customers')
+            .select('email')
+            .eq('id', orderDetails.customer_id)
+            .single()
+
+          if (!customerError && customer?.email) {
+            customerEmail = customer.email
+            console.log('Using customer email from customers table:', customerEmail)
+          }
+        }
       }
     } else if (invoice.is_batch_invoice && invoice.related_order_ids) {
       console.log('Fetching batch order details...')
@@ -158,13 +166,7 @@ const handler = async (req: Request): Promise<Response> => {
             customer_name,
             customer_address,
             products,
-            customer_id,
-            customers!orders_customer_id_fkey(
-              id,
-              email,
-              first_name,
-              last_name
-            )
+            customer_id
           `)
           .in('id', orderIds)
 
@@ -175,33 +177,37 @@ const handler = async (req: Request): Promise<Response> => {
           console.log('Batch orders found:', {
             count: batchOrders?.length,
             firstOrderNumber: orderDetails?.order_number,
-            hasCustomerRecord: !!orderDetails?.customers,
-            customerEmail: orderDetails?.customers?.email
+            customerId: orderDetails?.customer_id
           })
+
+          // Try to get customer email from customers table if we have customer_id
+          if (orderDetails?.customer_id) {
+            const { data: customer, error: customerError } = await supabase
+              .from('customers')
+              .select('email')
+              .eq('id', orderDetails.customer_id)
+              .single()
+
+            if (!customerError && customer?.email) {
+              customerEmail = customer.email
+              console.log('Using customer email from customers table for batch:', customerEmail)
+            }
+          }
         }
       }
     }
 
-    // Step 7: Determine and validate customer email
-    console.log('Step 4: Resolving customer email...')
-    let customerEmail = invoice.customer_email;
-    
-    if (orderDetails?.customers?.email) {
-      customerEmail = orderDetails.customers.email;
-      console.log('Using customer email from database:', customerEmail);
-    }
-
-    console.log('Customer email resolution:', {
+    // Step 7: Validate customer email
+    console.log('Step 4: Validating customer email...')
+    console.log('Customer email validation:', {
       invoiceEmail: invoice.customer_email,
-      orderCustomerEmail: orderDetails?.customers?.email,
       finalEmail: customerEmail,
       hasOrderDetails: !!orderDetails
     })
 
-    // Validate customer email
     if (!customerEmail || !customerEmail.includes('@') || customerEmail.includes('unknown')) {
-      console.error('Invalid customer email:', customerEmail);
-      throw new Error('Valid customer email is required for payment processing. Please ensure the customer has a valid email address.');
+      console.error('Invalid customer email:', customerEmail)
+      throw new Error('Valid customer email is required for payment processing. Please ensure the customer has a valid email address.')
     }
 
     // Step 8: Validate invoice amount
@@ -211,18 +217,18 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Step 9: Create product description
-    let productDescription = `Payment for Invoice ${invoice.invoice_number}`;
+    let productDescription = `Payment for Invoice ${invoice.invoice_number}`
     if (orderDetails) {
       if (invoice.is_batch_invoice) {
-        productDescription = `Batch Invoice ${invoice.invoice_number} - Multiple Orders`;
+        productDescription = `Batch Invoice ${invoice.invoice_number} - Multiple Orders`
       } else {
-        productDescription = `Invoice ${invoice.invoice_number} - Order ${orderDetails.order_number}`;
+        productDescription = `Invoice ${invoice.invoice_number} - Order ${orderDetails.order_number}`
       }
     }
 
     console.log('Step 5: Creating Stripe checkout session...')
     console.log('Stripe session parameters:', {
-      currency: invoiceCurrency.toLowerCase(),
+      currency: finalCurrency.toLowerCase(),
       amount: invoice.amount,
       amountInCents: Math.round(invoice.amount * 100),
       customerEmail,
@@ -235,7 +241,7 @@ const handler = async (req: Request): Promise<Response> => {
       line_items: [
         {
           price_data: {
-            currency: invoiceCurrency.toLowerCase(),
+            currency: finalCurrency.toLowerCase(),
             product_data: {
               name: `Invoice ${invoice.invoice_number}`,
               description: productDescription,
@@ -255,9 +261,18 @@ const handler = async (req: Request): Promise<Response> => {
         order_id: invoice.order_id || '',
         is_batch_invoice: invoice.is_batch_invoice ? 'true' : 'false',
       },
-    };
+    }
 
-    console.log('Creating Stripe session with config:', sessionConfig)
+    console.log('Creating Stripe session with config:', {
+      ...sessionConfig,
+      line_items: sessionConfig.line_items.map(item => ({
+        ...item,
+        price_data: {
+          ...item.price_data,
+          unit_amount: item.price_data.unit_amount
+        }
+      }))
+    })
 
     const session = await stripe.checkout.sessions.create(sessionConfig)
 
@@ -275,7 +290,7 @@ const handler = async (req: Request): Promise<Response> => {
       .update({ 
         payment_url: session.url,
         stripe_payment_intent_id: session.id,
-        currency: invoiceCurrency // Ensure currency is consistent
+        currency: finalCurrency // Ensure currency is consistent
       })
       .eq('id', invoiceId)
 
@@ -291,7 +306,7 @@ const handler = async (req: Request): Promise<Response> => {
       invoiceId: invoice.id,
       invoiceNumber: invoice.invoice_number,
       amount: invoice.amount,
-      currency: invoiceCurrency
+      currency: finalCurrency
     })
 
     return new Response(
