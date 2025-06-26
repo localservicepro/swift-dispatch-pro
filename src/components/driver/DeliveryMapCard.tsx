@@ -32,8 +32,8 @@ export function DeliveryMapCard({ address, customerName, orderId }: DeliveryMapC
 
       // Geocode the address
       const geocoder = new window.google.maps.Geocoder();
-      const geocodeResult = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
-        geocoder.geocode({ address }, (results, status) => {
+      const geocodeResult = await new Promise<any[]>((resolve, reject) => {
+        geocoder.geocode({ address }, (results: any, status: any) => {
           if (status === 'OK' && results) {
             resolve(results);
           } else {
