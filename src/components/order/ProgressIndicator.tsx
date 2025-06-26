@@ -22,8 +22,9 @@ const getStepLabels = (deliveryMethod: "delivery" | "pickup" | "" = "") => {
     3: "Method",
     4: "Order Type",
     5: "Address",
-    6: "Payment",
-    7: "Review"
+    6: "Details",
+    7: "Payment",
+    8: "Review"
   };
 };
 
@@ -32,7 +33,7 @@ export function ProgressIndicator({
   deliveryMethod = "", 
   totalSteps 
 }: ProgressIndicatorProps) {
-  const steps = totalSteps || (deliveryMethod === "pickup" ? 5 : 7);
+  const steps = totalSteps || (deliveryMethod === "pickup" ? 5 : 8);
   const stepLabels = getStepLabels(deliveryMethod);
 
   return (

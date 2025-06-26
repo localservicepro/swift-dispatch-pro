@@ -68,7 +68,7 @@ export function useOpportunityData() {
         throw ordersError;
       }
 
-      // Map the data and sort by delivery date/time (earliest first)
+      // Map the data and sort by time (newest first)
       const mappedOrders = ordersData?.map(order => ({
         ...order,
         suburb_id: order.customers?.suburb_id || null,
@@ -80,37 +80,12 @@ export function useOpportunityData() {
         truck_type_from_truck: order.trucks?.truck_type || order.truck_type
       })) || [];
 
-      // Sort orders by delivery date and time (earliest first), then by creation time
-      const sortedOrders = mappedOrders.sort((a, b) => {
-        // Helper function to create a comparable date from delivery_date and delivery_time
-        const getDeliveryDateTime = (order: any) => {
-          if (!order.delivery_date) return null;
-          
-          // Combine delivery_date and delivery_time into a single Date object
-          const dateStr = order.delivery_date;
-          const timeStr = order.delivery_time || '00:00:00';
-          const combinedDateTime = new Date(`${dateStr}T${timeStr}`);
-          
-          return combinedDateTime.getTime();
-        };
+      // Sort orders by creation time (newest first)
+      const sortedOrders = mappedOrders.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
 
-        const aDeliveryTime = getDeliveryDateTime(a);
-        const bDeliveryTime = getDeliveryDateTime(b);
-
-        // If both have delivery dates, sort by delivery date/time (earliest first)
-        if (aDeliveryTime && bDeliveryTime) {
-          return aDeliveryTime - bDeliveryTime;
-        }
-
-        // If only one has a delivery date, prioritize the one with delivery date
-        if (aDeliveryTime && !bDeliveryTime) return -1;
-        if (!aDeliveryTime && bDeliveryTime) return 1;
-
-        // If neither has delivery date, sort by creation time (newest first)
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-
-      console.log('Opportunity orders mapped and sorted by delivery time:', sortedOrders);
+      console.log('Opportunity orders mapped and sorted by time:', sortedOrders);
       return sortedOrders;
     },
     staleTime: 0, // Always consider data stale for immediate updates

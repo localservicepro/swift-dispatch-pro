@@ -19,9 +19,9 @@ export const getGoogleMapsApiKey = () => {
   
   // IMPORTANT: Replace this with your actual Google Maps API key
   // Get your key from: https://console.cloud.google.com/apis/credentials
-  const DEVELOPMENT_API_KEY = 'AIzaSyAY8Q84_WVfXmRkLgSeveoaJnlj03M9fyE';
+  const DEVELOPMENT_API_KEY = 'YOUR_ACTUAL_GOOGLE_MAPS_API_KEY_HERE'; // Replace with your actual API key
   
-  if (DEVELOPMENT_API_KEY) {
+  if (DEVELOPMENT_API_KEY && DEVELOPMENT_API_KEY !== 'YOUR_ACTUAL_GOOGLE_MAPS_API_KEY_HERE') {
     console.log('Using development API key');
     return DEVELOPMENT_API_KEY;
   }
@@ -67,3 +67,10 @@ export const loadGoogleMapsScript = () => {
     document.head.appendChild(script);
   });
 };
+
+declare global {
+  interface Window {
+    google?: any;
+    initGoogleMaps?: () => void;
+  }
+}
