@@ -1,4 +1,3 @@
-
 import { Database } from "@/integrations/supabase/types";
 
 export type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -16,7 +15,7 @@ export interface Customer {
   suburb?: {
     name: string;
     state: string;
-    delivery_rate: number;
+    delivery_rate: string; // Changed from number to string
   };
 }
 

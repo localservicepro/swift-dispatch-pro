@@ -7,7 +7,7 @@ interface OrderDeliveryFormProps {
     full_address: string;
     suburb_id: string;
   };
-  deliveryRate: number;
+  deliveryRate: string; // Changed from number to string
   onFormDataChange: (updates: Partial<OrderDeliveryFormProps['formData']>) => void;
   onSuburbChange: (suburbId: string) => void;
 }

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Customer, CartItem, SplitConfig, TruckType, Truck } from "../types";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
@@ -30,7 +29,7 @@ export function useOrderFormState() {
   
   // Suburb state (no automatic rate setting)
   const [selectedSuburbId, setSelectedSuburbId] = useState("");
-  const [deliveryRate, setDeliveryRate] = useState(0);
+  const [deliveryRate, setDeliveryRate] = useState<string>(''); // Changed from number to string
 
   // Fetch payment settings for calculations
   const { data: paymentSettings } = usePaymentSettings();
@@ -48,7 +47,7 @@ export function useOrderFormState() {
     setDeliveryMethod(method);
     if (method === "pickup") {
       setOrderType("single"); // Auto-set to single for pickup orders
-      setDeliveryRate(0); // No delivery fee for pickup
+      setDeliveryRate(''); // Clear delivery rate for pickup (empty string instead of 0)
       setSelectedSuburbId(""); // Clear suburb for pickup
     }
   };
@@ -73,7 +72,7 @@ export function useOrderFormState() {
 
   // Calculate totals using payment settings
   const subtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
-  const currentDeliveryFee = deliveryMethod === "pickup" ? 0 : deliveryRate;
+  const currentDeliveryFee = deliveryMethod === "pickup" ? 0 : parseFloat(deliveryRate) || 0; // Parse string to number for calculations
   
   // Use dynamic calculation with payment settings
   const orderTotals = paymentSettings ? 
