@@ -251,29 +251,31 @@ export function OrderReviewStep({
           </div>
         </div>
 
-        {/* Delivery Notes */}
-        <div className="space-y-3">
-          <h3 className="flex items-center gap-2 font-semibold">
-            <Truck className="w-4 h-4" />
-            Delivery Notes
-          </h3>
-          <div className="space-y-2">
-            <Label htmlFor="delivery-notes" className="text-sm font-medium">
-              Internal notes for assigned driver only
-            </Label>
-            <Textarea
-              id="delivery-notes"
-              value={deliveryNotes}
-              onChange={handleDeliveryNotesChange}
-              placeholder="Add delivery-specific instructions for the driver (access codes, special handling, etc.)..."
-              className="min-h-[80px]"
-              disabled={isCreating}
-            />
-            <p className="text-xs text-muted-foreground">
-              These notes will only be visible to the assigned driver and won't appear on invoices
-            </p>
+        {/* Delivery Notes - Only show for delivery orders */}
+        {deliveryMethod === "delivery" && (
+          <div className="space-y-3">
+            <h3 className="flex items-center gap-2 font-semibold">
+              <Truck className="w-4 h-4" />
+              Delivery Notes
+            </h3>
+            <div className="space-y-2">
+              <Label htmlFor="delivery-notes" className="text-sm font-medium">
+                Internal notes for assigned driver only
+              </Label>
+              <Textarea
+                id="delivery-notes"
+                value={deliveryNotes}
+                onChange={handleDeliveryNotesChange}
+                placeholder="Add delivery-specific instructions for the driver (access codes, special handling, etc.)..."
+                className="min-h-[80px]"
+                disabled={isCreating}
+              />
+              <p className="text-xs text-muted-foreground">
+                These notes will only be visible to the assigned driver and won't appear on invoices
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Payment Method */}
         <div className="space-y-3">

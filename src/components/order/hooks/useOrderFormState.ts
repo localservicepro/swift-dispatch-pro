@@ -10,8 +10,8 @@ export function useOrderFormState() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [adjustments, setAdjustments] = useState(0);
   
-  // Delivery method state
-  const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup" | "">("");
+  // Delivery method state - starts with delivery as default
+  const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup">("delivery");
   
   // Order splitting state - auto-set to "single" for pickup orders
   const [orderType, setOrderType] = useState<"single" | "split">("single");

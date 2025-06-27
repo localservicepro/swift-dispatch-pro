@@ -98,7 +98,7 @@ export function MultiStepOrderForm() {
           customer: selectedCustomer,
           cart,
           adjustments,
-          deliveryMethod,
+          deliveryMethod: deliveryMethod as "delivery" | "pickup",
           deliveryDate,
           deliveryTime,
           specialInstructions,
@@ -115,7 +115,7 @@ export function MultiStepOrderForm() {
           customer: selectedCustomer,
           cart,
           adjustments,
-          deliveryMethod,
+          deliveryMethod: deliveryMethod as "delivery" | "pickup",
           splits,
           paymentMethod,
           specialInstructions,
@@ -135,7 +135,7 @@ export function MultiStepOrderForm() {
       setSelectedCustomer(null);
       setCart([]);
       setAdjustments(0);
-      setDeliveryMethod("");
+      setDeliveryMethod("delivery");
       setOrderType("single");
       setSplits([]);
       setDeliveryDate("");
@@ -178,8 +178,8 @@ export function MultiStepOrderForm() {
           <ProductSelectionStep
             cart={cart}
             adjustments={adjustments}
-            onCartChange={setCart}
-            onAdjustmentsChange={setAdjustments}
+            onCartUpdate={setCart}
+            onAdjustmentsUpdate={setAdjustments}
             onBack={prevStep}
             onNext={nextStep}
             customer={selectedCustomer}
@@ -189,8 +189,8 @@ export function MultiStepOrderForm() {
       case 3:
         return (
           <DeliveryMethodSelectionStep
-            selectedMethod={deliveryMethod}
-            onMethodSelect={setDeliveryMethod}
+            deliveryMethod={deliveryMethod}
+            onDeliveryMethodChange={setDeliveryMethod}
             onBack={prevStep}
             onNext={nextStep}
           />
@@ -200,21 +200,21 @@ export function MultiStepOrderForm() {
         if (deliveryMethod === "pickup") {
           return (
             <PaymentMethodStep
-              selectedMethod={paymentMethod}
-              onMethodSelect={setPaymentMethod}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
               onBack={prevStep}
               onNext={nextStep}
               subtotal={subtotal}
               adjustments={adjustments}
               deliveryFee={deliveryFee}
-              deliveryMethod={deliveryMethod}
+              deliveryMethod="pickup"
             />
           );
         } else {
           return (
             <OrderTypeSelectionStep
-              selectedType={orderType}
-              onTypeSelect={setOrderType}
+              orderType={orderType}
+              onOrderTypeChange={setOrderType}
               onBack={prevStep}
               onNext={nextStep}
             />
@@ -230,7 +230,7 @@ export function MultiStepOrderForm() {
               subtotal={subtotal}
               adjustments={adjustments}
               deliveryFee={deliveryFee}
-              deliveryMethod={deliveryMethod}
+              deliveryMethod="pickup"
               deliveryDate={deliveryDate}
               deliveryTime={deliveryTime}
               specialInstructions={specialInstructions}
@@ -253,7 +253,7 @@ export function MultiStepOrderForm() {
               customer={selectedCustomer!}
               cart={cart}
               splits={splits}
-              onSplitsChange={setSplits}
+              onSplitsUpdate={setSplits}
               onBack={prevStep}
               onNext={nextStep}
             />
@@ -267,11 +267,11 @@ export function MultiStepOrderForm() {
               useGlobalDeliveryAddress={useGlobalDeliveryAddress}
               selectedSuburbId={selectedSuburbId}
               manualDeliveryFee={manualDeliveryFee}
-              onDeliveryAddressChange={setDeliveryAddress}
-              onSameAsBillingChange={setSameAsBilling}
-              onUseGlobalDeliveryAddressChange={setUseGlobalDeliveryAddress}
-              onSuburbChange={handleSuburbChange}
-              onManualDeliveryFeeChange={setManualDeliveryFee}
+              onDeliveryAddressUpdate={setDeliveryAddress}
+              onSameAsBillingUpdate={setSameAsBilling}
+              onUseGlobalDeliveryAddressUpdate={setUseGlobalDeliveryAddress}
+              onSuburbUpdate={handleSuburbChange}
+              onManualDeliveryFeeUpdate={setManualDeliveryFee}
               onBack={prevStep}
               onNext={nextStep}
             />
@@ -281,14 +281,14 @@ export function MultiStepOrderForm() {
       case 6:
         return (
           <PaymentMethodStep
-            selectedMethod={paymentMethod}
-            onMethodSelect={setPaymentMethod}
+            paymentMethod={paymentMethod}
+            onPaymentMethodChange={setPaymentMethod}
             onBack={prevStep}
             onNext={nextStep}
             subtotal={subtotal}
             adjustments={adjustments}
             deliveryFee={deliveryFee}
-            deliveryMethod={deliveryMethod}
+            deliveryMethod={deliveryMethod as "delivery" | "pickup"}
           />
         );
 
@@ -300,7 +300,7 @@ export function MultiStepOrderForm() {
             subtotal={subtotal}
             adjustments={adjustments}
             deliveryFee={deliveryFee}
-            deliveryMethod={deliveryMethod}
+            deliveryMethod={deliveryMethod as "delivery" | "pickup"}
             deliveryDate={deliveryDate}
             deliveryTime={deliveryTime}
             specialInstructions={specialInstructions}
@@ -334,7 +334,6 @@ export function MultiStepOrderForm() {
             currentStep={currentStep}
             totalSteps={getTotalSteps()}
             deliveryMethod={deliveryMethod}
-            orderType={orderType}
           />
         </CardContent>
       </Card>
