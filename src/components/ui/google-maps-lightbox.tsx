@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
 import { Button } from './button';
 import { Input } from './input';
-import { MapPin, Search } from 'lucide-react';
+import { MapPin, Search, AlertCircle } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { loadGoogleMapsScript } from '@/utils/googleMapsConfig';
 import { ApiKeyInput } from './google-maps/api-key-input';
@@ -45,6 +45,8 @@ export function GoogleMapsLightbox({
   const [mapError, setMapError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [mapInitialized, setMapInitialized] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const { 
@@ -55,20 +57,39 @@ export function GoogleMapsLightbox({
     cleanup 
   } = useGoogleMaps();
 
-  // Load Google Maps script
+  // Load Google Maps script with retry logic
   useEffect(() => {
-    loadGoogleMapsScript()
-      .then(() => {
+    const loadMaps = async () => {
+      console.log('GoogleMapsLightbox: Starting to load Google Maps script...');
+      setIsLoadingMaps(true);
+      setMapError(null);
+      
+      try {
+        await loadGoogleMapsScript();
+        console.log('GoogleMapsLightbox: Google Maps script loaded successfully');
         setIsLoadingMaps(false);
         setMapError(null);
         setShowApiKeyInput(false);
-      })
-      .catch((error) => {
+      } catch (error: any) {
+        console.error('GoogleMapsLightbox: Failed to load Google Maps script:', error);
         setMapError(error.message);
         setShowApiKeyInput(true);
         setIsLoadingMaps(false);
-      });
-  }, []);
+      }
+    };
+
+    if (isOpen) {
+      // Check if Google Maps is already available
+      if (window.google && window.google.maps) {
+        console.log('GoogleMapsLightbox: Google Maps already available');
+        setIsLoadingMaps(false);
+        setMapError(null);
+        setShowApiKeyInput(false);
+      } else {
+        loadMaps();
+      }
+    }
+  }, [isOpen, retryCount]);
 
   // Update search query when initialAddress changes
   useEffect(() => {
@@ -87,12 +108,18 @@ export function GoogleMapsLightbox({
   }, [debouncedSearchQuery]);
 
   const handleAddressSearch = async (query: string) => {
+    if (!window.google || !window.google.maps) {
+      console.warn('GoogleMapsLightbox: Google Maps not available for search');
+      return;
+    }
+
     setIsSearching(true);
     try {
+      console.log('GoogleMapsLightbox: Searching for addresses:', query);
       const predictions = await searchAddresses(query);
       setSuggestions(predictions);
     } catch (error) {
-      console.error('Error searching addresses:', error);
+      console.error('GoogleMapsLightbox: Error searching addresses:', error);
       setSuggestions([]);
     } finally {
       setIsSearching(false);
@@ -101,6 +128,7 @@ export function GoogleMapsLightbox({
 
   const handleSuggestionSelect = async (suggestion: any) => {
     try {
+      console.log('GoogleMapsLightbox: Getting place details for:', suggestion.place_id);
       const addressData = await getPlaceDetails(suggestion.place_id);
       if (addressData) {
         const fullAddressData: AddressData = {
@@ -118,34 +146,51 @@ export function GoogleMapsLightbox({
         setSelectedAddress(fullAddressData);
         setSearchQuery(fullAddressData.fullAddress);
         setSuggestions([]);
+        console.log('GoogleMapsLightbox: Address selected:', fullAddressData);
       }
     } catch (error) {
-      console.error('Error getting place details:', error);
+      console.error('GoogleMapsLightbox: Error getting place details:', error);
     }
   };
 
   const handleMapReady = (mapElement: HTMLDivElement) => {
-    const map = initializeMap(mapElement, initialAddress);
-    
-    // Add click listener for reverse geocoding
-    map.addListener('click', async (event: any) => {
-      const lat = event.latLng.lat();
-      const lng = event.latLng.lng();
-      const addressData = await reverseGeocode(lat, lng);
-      if (addressData) {
-        setSelectedAddress(addressData);
-        setSearchQuery(addressData.fullAddress);
-      }
-    });
+    try {
+      console.log('GoogleMapsLightbox: Initializing map...');
+      const map = initializeMap(mapElement, initialAddress);
+      
+      // Add click listener for reverse geocoding
+      map.addListener('click', async (event: any) => {
+        const lat = event.latLng.lat();
+        const lng = event.latLng.lng();
+        console.log('GoogleMapsLightbox: Map clicked at:', lat, lng);
+        const addressData = await reverseGeocode(lat, lng);
+        if (addressData) {
+          setSelectedAddress(addressData);
+          setSearchQuery(addressData.fullAddress);
+        }
+      });
+
+      setMapInitialized(true);
+      console.log('GoogleMapsLightbox: Map initialized successfully');
+    } catch (error) {
+      console.error('GoogleMapsLightbox: Error initializing map:', error);
+      setMapError('Failed to initialize map. Please try again.');
+    }
   };
 
   const handleApiKeySubmit = () => {
-    window.location.reload();
+    setRetryCount(prev => prev + 1);
+  };
+
+  const handleRetryMap = () => {
+    setRetryCount(prev => prev + 1);
+    setMapError(null);
+    setMapInitialized(false);
   };
 
   const handleConfirmSelection = () => {
     if (selectedAddress) {
-      console.log('Confirming address selection:', selectedAddress);
+      console.log('GoogleMapsLightbox: Confirming address selection:', selectedAddress);
       onAddressSelect(selectedAddress);
       onClose();
     }
@@ -155,6 +200,7 @@ export function GoogleMapsLightbox({
     setSearchQuery('');
     setSuggestions([]);
     setSelectedAddress(null);
+    setMapInitialized(false);
     cleanup();
     onClose();
   };
@@ -203,11 +249,24 @@ export function GoogleMapsLightbox({
 
           {/* Map Container */}
           <div className="flex-1 min-h-[300px]">
-            <MapContainer
-              isLoading={isLoadingMaps}
-              error={mapError}
-              onMapReady={handleMapReady}
-            />
+            {mapError ? (
+              <div className="h-96 bg-red-50 rounded-lg flex items-center justify-center">
+                <div className="text-center max-w-md p-4">
+                  <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+                  <p className="text-red-600 mb-2 font-medium">Map Loading Error</p>
+                  <p className="text-sm text-red-500 mb-4">{mapError}</p>
+                  <Button onClick={handleRetryMap} variant="outline" size="sm">
+                    Retry Loading Map
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <MapContainer
+                isLoading={isLoadingMaps}
+                error={null}
+                onMapReady={handleMapReady}
+              />
+            )}
           </div>
 
           {/* Selected Address Display */}

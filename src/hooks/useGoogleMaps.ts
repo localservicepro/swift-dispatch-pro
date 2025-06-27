@@ -20,10 +20,20 @@ export function useGoogleMaps() {
 
   const initializeMap = useCallback((mapElement: HTMLDivElement, initialAddress?: string) => {
     try {
-      console.log('Initializing Google Maps...');
+      console.log('useGoogleMaps: Initializing Google Maps...');
       
       if (!window.google) {
         throw new Error('Google Maps API not loaded');
+      }
+
+      if (!window.google.maps) {
+        throw new Error('Google Maps JavaScript API not available');
+      }
+
+      // Clear any existing map
+      if (mapInstanceRef.current) {
+        console.log('useGoogleMaps: Cleaning up existing map instance');
+        cleanup();
       }
 
       const map = new window.google.maps.Map(mapElement, {
@@ -35,38 +45,40 @@ export function useGoogleMaps() {
       });
 
       mapInstanceRef.current = map;
+      console.log('useGoogleMaps: Map instance created successfully');
 
       // Add click listener to map
       map.addListener('click', (event: any) => {
         const lat = event.latLng.lat();
         const lng = event.latLng.lng();
-        console.log('Map clicked at:', lat, lng);
+        console.log('useGoogleMaps: Map clicked at:', lat, lng);
         reverseGeocode(lat, lng);
       });
 
       // If there's an initial address, try to geocode it
-      if (initialAddress) {
-        geocodeAddress(initialAddress);
+      if (initialAddress && initialAddress.trim()) {
+        console.log('useGoogleMaps: Geocoding initial address:', initialAddress);
+        setTimeout(() => geocodeAddress(initialAddress), 500); // Small delay to ensure map is ready
       }
 
-      console.log('Google Maps initialized successfully');
+      console.log('useGoogleMaps: Google Maps initialized successfully');
       return map;
     } catch (error) {
-      console.error('Error initializing map:', error);
-      throw new Error('Failed to initialize map. Please ensure Google Maps API is loaded and all required APIs are enabled.');
+      console.error('useGoogleMaps: Error initializing map:', error);
+      throw new Error(`Failed to initialize map: ${error.message}. Please ensure Google Maps API is loaded and all required APIs are enabled.`);
     }
   }, []);
 
   const geocodeAddress = async (address: string) => {
-    if (!window.google) {
-      console.error('Google Maps API not available');
+    if (!window.google || !window.google.maps) {
+      console.error('useGoogleMaps: Google Maps API not available for geocoding');
       return;
     }
 
     const geocoder = new window.google.maps.Geocoder();
     
     try {
-      console.log('Geocoding address:', address);
+      console.log('useGoogleMaps: Geocoding address:', address);
       const response = await new Promise((resolve, reject) => {
         geocoder.geocode({ address }, (results: any, status: any) => {
           if (status === 'OK') resolve(results);
@@ -78,24 +90,25 @@ export function useGoogleMaps() {
       if (result) {
         const lat = result.geometry.location.lat();
         const lng = result.geometry.location.lng();
+        console.log('useGoogleMaps: Geocoding successful, updating map location');
         updateMapLocation(lat, lng);
         return await reverseGeocode(lat, lng);
       }
     } catch (error) {
-      console.error('Geocoding failed:', error);
+      console.error('useGoogleMaps: Geocoding failed:', error);
     }
   };
 
   const reverseGeocode = async (lat: number, lng: number): Promise<AddressData | null> => {
-    if (!window.google) {
-      console.error('Google Maps API not available');
+    if (!window.google || !window.google.maps) {
+      console.error('useGoogleMaps: Google Maps API not available for reverse geocoding');
       return null;
     }
 
     const geocoder = new window.google.maps.Geocoder();
     
     try {
-      console.log('Reverse geocoding:', lat, lng);
+      console.log('useGoogleMaps: Reverse geocoding:', lat, lng);
       const response = await new Promise((resolve, reject) => {
         geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
           if (status === 'OK') resolve(results);
@@ -134,61 +147,72 @@ export function useGoogleMaps() {
         });
 
         updateMapLocation(lat, lng);
+        console.log('useGoogleMaps: Reverse geocoding successful:', addressData);
         return addressData;
       }
     } catch (error) {
-      console.error('Reverse geocoding failed:', error);
+      console.error('useGoogleMaps: Reverse geocoding failed:', error);
     }
     return null;
   };
 
   const updateMapLocation = (lat: number, lng: number) => {
-    if (!mapInstanceRef.current || !window.google) return;
+    if (!mapInstanceRef.current || !window.google) {
+      console.warn('useGoogleMaps: Cannot update map location - map not initialized');
+      return;
+    }
 
     const position = { lat, lng };
     
-    // Update map center
-    mapInstanceRef.current.setCenter(position);
-    mapInstanceRef.current.setZoom(16);
+    try {
+      // Update map center
+      mapInstanceRef.current.setCenter(position);
+      mapInstanceRef.current.setZoom(16);
 
-    // Remove existing marker
-    if (markerRef.current) {
-      markerRef.current.setMap(null);
+      // Remove existing marker
+      if (markerRef.current) {
+        markerRef.current.setMap(null);
+      }
+
+      // Add new marker
+      markerRef.current = new window.google.maps.Marker({
+        position,
+        map: mapInstanceRef.current,
+        draggable: true,
+        title: 'Selected Location'
+      });
+
+      // Add drag listener to marker
+      markerRef.current.addListener('dragend', (event: any) => {
+        const lat = event.latLng.lat();
+        const lng = event.latLng.lng();
+        console.log('useGoogleMaps: Marker dragged to:', lat, lng);
+        reverseGeocode(lat, lng);
+      });
+
+      console.log('useGoogleMaps: Map location updated successfully');
+    } catch (error) {
+      console.error('useGoogleMaps: Error updating map location:', error);
     }
-
-    // Add new marker
-    markerRef.current = new window.google.maps.Marker({
-      position,
-      map: mapInstanceRef.current,
-      draggable: true,
-      title: 'Selected Location'
-    });
-
-    // Add drag listener to marker
-    markerRef.current.addListener('dragend', (event: any) => {
-      const lat = event.latLng.lat();
-      const lng = event.latLng.lng();
-      reverseGeocode(lat, lng);
-    });
   };
 
   const searchAddresses = async (query: string) => {
     try {
-      console.log('Searching for addresses via edge function:', query);
+      console.log('useGoogleMaps: Searching for addresses via edge function:', query);
       const { data, error } = await supabase.functions.invoke('google-places', {
         body: { input: query }
       });
 
       if (error) {
-        console.error('Address search error:', error);
+        console.error('useGoogleMaps: Address search error:', error);
         // Fallback to client-side search if edge function fails
         return await clientSideSearch(query);
       }
 
-      console.log('Address search response:', data);
+      console.log('useGoogleMaps: Address search response:', data);
       return data?.predictions || [];
     } catch (error) {
-      console.error('Error searching addresses:', error);
+      console.error('useGoogleMaps: Error searching addresses:', error);
       // Fallback to client-side search
       return await clientSideSearch(query);
     }
@@ -196,11 +220,12 @@ export function useGoogleMaps() {
 
   const clientSideSearch = async (query: string) => {
     if (!window.google?.maps?.places?.AutocompleteService) {
-      console.error('Google Places AutocompleteService not available');
+      console.error('useGoogleMaps: Google Places AutocompleteService not available');
       return [];
     }
 
     try {
+      console.log('useGoogleMaps: Using client-side search for:', query);
       const service = new window.google.maps.places.AutocompleteService();
       const response = await new Promise((resolve, reject) => {
         service.getPlacePredictions(
@@ -216,30 +241,31 @@ export function useGoogleMaps() {
         );
       });
 
+      console.log('useGoogleMaps: Client-side search successful');
       return response as any[];
     } catch (error) {
-      console.error('Client-side places search failed:', error);
+      console.error('useGoogleMaps: Client-side places search failed:', error);
       return [];
     }
   };
 
   const getPlaceDetails = async (placeId: string) => {
     try {
-      console.log('Getting details for place:', placeId);
+      console.log('useGoogleMaps: Getting details for place:', placeId);
       const { data, error } = await supabase.functions.invoke('google-places-details', {
         body: { placeId }
       });
 
       if (error) {
-        console.error('Place details error:', error);
+        console.error('useGoogleMaps: Place details error:', error);
         // Fallback to client-side details
         return await clientSideDetails(placeId);
       }
 
-      console.log('Place details response:', data);
+      console.log('useGoogleMaps: Place details response:', data);
       return data?.parsedAddress;
     } catch (error) {
-      console.error('Error getting place details:', error);
+      console.error('useGoogleMaps: Error getting place details:', error);
       // Fallback to client-side details
       return await clientSideDetails(placeId);
     }
@@ -247,11 +273,12 @@ export function useGoogleMaps() {
 
   const clientSideDetails = async (placeId: string) => {
     if (!window.google?.maps?.places?.PlacesService) {
-      console.error('Google Places PlacesService not available');
+      console.error('useGoogleMaps: Google Places PlacesService not available');
       return null;
     }
 
     try {
+      console.log('useGoogleMaps: Using client-side details for place:', placeId);
       const service = new window.google.maps.places.PlacesService(
         document.createElement('div')
       );
@@ -303,19 +330,22 @@ export function useGoogleMaps() {
           }
         });
 
+        console.log('useGoogleMaps: Client-side place details successful');
         return parsedAddress;
       }
     } catch (error) {
-      console.error('Client-side place details failed:', error);
+      console.error('useGoogleMaps: Client-side place details failed:', error);
     }
     return null;
   };
 
   const cleanup = () => {
+    console.log('useGoogleMaps: Cleaning up map resources');
     if (markerRef.current) {
       markerRef.current.setMap(null);
       markerRef.current = null;
     }
+    mapInstanceRef.current = null;
   };
 
   return {
