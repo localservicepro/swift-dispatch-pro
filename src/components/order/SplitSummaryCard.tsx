@@ -1,14 +1,18 @@
 
+import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Calendar, Clock, Minus, Plus, ChevronDown, ChevronUp, MapPin, FileText } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Minus, Plus, ChevronDown, ChevronUp, MapPin, FileText } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { CartItem, SplitConfig, Customer } from "./types";
 
 interface SplitSummaryCardProps {
@@ -23,6 +27,19 @@ interface SplitSummaryCardProps {
   isCommonDateMode?: boolean;
 }
 
+const generateTimeSlots = () => {
+  const timeSlots = [];
+  for (let hour = 8; hour <= 16; hour++) {
+    const time24 = `${hour.toString().padStart(2, '0')}:00`;
+    const time12 = new Date(`2000-01-01T${time24}`).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      hour12: true
+    });
+    timeSlots.push({ value: time24, label: time12 });
+  }
+  return timeSlots;
+};
+
 export function SplitSummaryCard({ 
   split, 
   splitIndex, 
@@ -35,6 +52,16 @@ export function SplitSummaryCard({
   isCommonDateMode = false
 }: SplitSummaryCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  
+  const timeSlots = generateTimeSlots();
+  
+  // Get today's date for minimum date selection
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  // Convert string date to Date object for calendar
+  const selectedDate = split.deliveryDate ? new Date(split.deliveryDate) : undefined;
 
   const splitTotal = split.products.reduce((sum, splitProduct) => {
     const cartItem = cart.find(item => item.product.id === splitProduct.productId);
@@ -59,6 +86,16 @@ export function SplitSummaryCard({
 
   const handleSpecialInstructionsChange = (instructions: string) => {
     onUpdateSplit(splitIndex, { specialInstructions: instructions });
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      onUpdateSplit(splitIndex, { deliveryDate: format(date, 'yyyy-MM-dd') });
+    }
+  };
+
+  const handleTimeChange = (time: string) => {
+    onUpdateSplit(splitIndex, { deliveryTime: time });
   };
 
   return (
@@ -162,11 +199,11 @@ export function SplitSummaryCard({
                   </div>
 
                   {!split.sameAsBilling && (
-                    <Input
+                    <input
                       value={split.deliveryAddress || ""}
                       onChange={(e) => handleDeliveryAddressChange(e.target.value)}
                       placeholder="Enter delivery address..."
-                      className="h-7 text-xs"
+                      className="w-full h-7 text-xs px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   )}
 
@@ -181,29 +218,57 @@ export function SplitSummaryCard({
               {/* Delivery date and time (if not in common date mode) */}
               {!isCommonDateMode && (
                 <div className="grid grid-cols-2 gap-2">
+                  {/* Delivery Date */}
                   <div>
                     <Label className="text-xs font-medium mb-1 block flex items-center gap-1">
-                      <Calendar className="w-2 h-2" />
+                      <CalendarIcon className="w-2 h-2" />
                       Delivery Date
                     </Label>
-                    <Input
-                      type="date"
-                      value={split.deliveryDate}
-                      onChange={(e) => onUpdateSplit(splitIndex, { deliveryDate: e.target.value })}
-                      className="h-7 text-xs"
-                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal h-7 text-xs",
+                            !split.deliveryDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-3 w-3" />
+                          {split.deliveryDate ? format(new Date(split.deliveryDate), 'MMM dd') : 'Select date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-white" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={handleDateSelect}
+                          disabled={(date) => date < tomorrow}
+                          initialFocus
+                          className="rounded-md border pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
+
+                  {/* Delivery Time */}
                   <div>
                     <Label className="text-xs font-medium mb-1 block flex items-center gap-1">
                       <Clock className="w-2 h-2" />
                       Delivery Time
                     </Label>
-                    <Input
-                      type="time"
-                      value={split.deliveryTime}
-                      onChange={(e) => onUpdateSplit(splitIndex, { deliveryTime: e.target.value })}
-                      className="h-7 text-xs"
-                    />
+                    <Select value={split.deliveryTime} onValueChange={handleTimeChange}>
+                      <SelectTrigger className="w-full h-7 text-xs">
+                        <Clock className="mr-2 h-3 w-3" />
+                        <SelectValue placeholder="Select time" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        {timeSlots.map((slot) => (
+                          <SelectItem key={slot.value} value={slot.value}>
+                            {slot.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               )}

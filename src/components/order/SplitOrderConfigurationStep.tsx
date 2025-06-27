@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Split, Plus, Minus, Calendar, CalendarDays } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Split, Plus, Minus, Calendar as CalendarIcon, CalendarDays, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { CartItem, SplitConfig } from "./types";
 import { ProductAllocationCard } from "./ProductAllocationCard";
 import { SplitSummaryCard } from "./SplitSummaryCard";
@@ -18,6 +22,19 @@ interface SplitOrderConfigurationStepProps {
   onNext: () => void;
 }
 
+const generateTimeSlots = () => {
+  const timeSlots = [];
+  for (let hour = 8; hour <= 16; hour++) {
+    const time24 = `${hour.toString().padStart(2, '0')}:00`;
+    const time12 = new Date(`2000-01-01T${time24}`).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      hour12: true
+    });
+    timeSlots.push({ value: time24, label: time12 });
+  }
+  return timeSlots;
+};
+
 export function SplitOrderConfigurationStep({
   cart,
   splits,
@@ -29,6 +46,16 @@ export function SplitOrderConfigurationStep({
   const [useSameDateForAll, setUseSameDateForAll] = useState(false);
   const [commonDeliveryDate, setCommonDeliveryDate] = useState("");
   const [commonDeliveryTime, setCommonDeliveryTime] = useState("");
+
+  const timeSlots = generateTimeSlots();
+  
+  // Get today's date for minimum date selection
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  // Convert string date to Date object for calendar
+  const selectedCommonDate = commonDeliveryDate ? new Date(commonDeliveryDate) : undefined;
 
   const initializeSplits = (count: number) => {
     const newSplits: SplitConfig[] = [];
@@ -86,14 +113,17 @@ export function SplitOrderConfigurationStep({
     }
   };
 
-  const handleCommonDateChange = (date: string) => {
-    setCommonDeliveryDate(date);
-    if (useSameDateForAll) {
-      const updatedSplits = splits.map(split => ({
-        ...split,
-        deliveryDate: date
-      }));
-      onSplitsChange(updatedSplits);
+  const handleCommonDateSelect = (date: Date | undefined) => {
+    if (date) {
+      const dateString = format(date, 'yyyy-MM-dd');
+      setCommonDeliveryDate(dateString);
+      if (useSameDateForAll) {
+        const updatedSplits = splits.map(split => ({
+          ...split,
+          deliveryDate: dateString
+        }));
+        onSplitsChange(updatedSplits);
+      }
     }
   };
 
@@ -243,7 +273,7 @@ export function SplitOrderConfigurationStep({
               onCheckedChange={handleSameDateToggle}
             />
             <Label htmlFor="same-date" className="text-sm font-medium flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
+              <CalendarIcon className="w-4 h-4" />
               Use same delivery date and time for all splits
             </Label>
           </div>
@@ -251,23 +281,51 @@ export function SplitOrderConfigurationStep({
           {useSameDateForAll && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
+                {/* Common Delivery Date */}
                 <div>
                   <Label className="text-xs font-medium mb-1 block">Common Delivery Date</Label>
-                  <Input
-                    type="date"
-                    value={commonDeliveryDate}
-                    onChange={(e) => handleCommonDateChange(e.target.value)}
-                    className="h-7 text-xs"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal h-7 text-xs",
+                          !commonDeliveryDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-3 w-3" />
+                        {commonDeliveryDate ? format(new Date(commonDeliveryDate), 'PPP') : 'Select date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-white" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedCommonDate}
+                        onSelect={handleCommonDateSelect}
+                        disabled={(date) => date < tomorrow}
+                        initialFocus
+                        className="rounded-md border pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
+
+                {/* Common Delivery Time */}
                 <div>
                   <Label className="text-xs font-medium mb-1 block">Common Delivery Time</Label>
-                  <Input
-                    type="time"
-                    value={commonDeliveryTime}
-                    onChange={(e) => handleCommonTimeChange(e.target.value)}
-                    className="h-7 text-xs"
-                  />
+                  <Select value={commonDeliveryTime} onValueChange={handleCommonTimeChange}>
+                    <SelectTrigger className="w-full h-7 text-xs">
+                      <Clock className="mr-2 h-3 w-3" />
+                      <SelectValue placeholder="Select time" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {timeSlots.map((slot) => (
+                        <SelectItem key={slot.value} value={slot.value}>
+                          {slot.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <Button
