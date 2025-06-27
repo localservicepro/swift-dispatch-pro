@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { ProductAllocationCard } from "./ProductAllocationCard";
 import { SplitSummaryCard } from "./SplitSummaryCard";
 import { AllocationActions } from "./AllocationActions";
 import { AddProductToSplitDialog } from "./AddProductToSplitDialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface SplitOrderConfigurationStepProps {
   cart: CartItem[];
@@ -45,6 +47,7 @@ export function SplitOrderConfigurationStep({
   onBack,
   onNext
 }: SplitOrderConfigurationStepProps) {
+  const { toast } = useToast();
   const [numberOfSplits, setNumberOfSplits] = useState(splits.length || 2);
   const [useSameDateForAll, setUseSameDateForAll] = useState(false);
   const [commonDeliveryDate, setCommonDeliveryDate] = useState("");
@@ -228,32 +231,68 @@ export function SplitOrderConfigurationStep({
   };
 
   const handleAddNewProduct = (product: Product, quantity: number) => {
-    if (!onCartChange) return;
-
-    // Check if product already exists in cart
-    const existingCartItemIndex = cart.findIndex(item => item.product.id === product.id);
+    console.log('Adding new product:', product.name, 'Quantity:', quantity);
     
-    if (existingCartItemIndex >= 0) {
-      // Update existing cart item quantity
-      const updatedCart = [...cart];
-      updatedCart[existingCartItemIndex] = {
-        ...updatedCart[existingCartItemIndex],
-        quantity: updatedCart[existingCartItemIndex].quantity + quantity,
-        total_price: updatedCart[existingCartItemIndex].unit_price * (updatedCart[existingCartItemIndex].quantity + quantity)
-      };
-      onCartChange(updatedCart);
-    } else {
-      // Add new cart item
-      const newCartItem: CartItem = {
-        product,
-        quantity,
-        unit_price: product.price,
-        total_price: product.price * quantity
-      };
-      onCartChange([...cart, newCartItem]);
+    if (!onCartChange) {
+      console.error('onCartChange not provided to SplitOrderConfigurationStep');
+      toast({
+        title: "Error",
+        description: "Cannot add product - cart update function not available",
+        variant: "destructive",
+      });
+      return;
     }
 
-    console.log('Product added to cart:', product.name, 'Quantity:', quantity);
+    try {
+      // Check if product already exists in cart
+      const existingCartItemIndex = cart.findIndex(item => item.product.id === product.id);
+      
+      let updatedCart: CartItem[];
+      
+      if (existingCartItemIndex >= 0) {
+        // Update existing cart item quantity
+        console.log('Updating existing cart item');
+        updatedCart = cart.map((item, index) => {
+          if (index === existingCartItemIndex) {
+            const newQuantity = item.quantity + quantity;
+            return {
+              ...item,
+              quantity: newQuantity,
+              total_price: item.unit_price * newQuantity
+            };
+          }
+          return item;
+        });
+      } else {
+        // Add new cart item
+        console.log('Adding new cart item');
+        const newCartItem: CartItem = {
+          product,
+          quantity,
+          unit_price: product.price,
+          total_price: product.price * quantity
+        };
+        updatedCart = [...cart, newCartItem];
+      }
+
+      console.log('Updated cart:', updatedCart);
+      
+      // Force a new array reference to trigger re-render
+      onCartChange([...updatedCart]);
+
+      toast({
+        title: "Success",
+        description: `${product.name} has been added to your order`,
+      });
+
+    } catch (error) {
+      console.error('Error adding product to cart:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add product to cart. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const canProceed = () => {
@@ -276,6 +315,11 @@ export function SplitOrderConfigurationStep({
 
     return fullyAllocated && allSplitsHaveProducts && allSplitsHaveDeliveryDetails;
   };
+
+  // Log cart changes for debugging
+  useEffect(() => {
+    console.log('Cart updated in SplitOrderConfigurationStep:', cart);
+  }, [cart]);
 
   return (
     <>
