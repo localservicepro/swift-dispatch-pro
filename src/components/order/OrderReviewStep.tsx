@@ -1,6 +1,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Package, User, MapPin, Clock, CreditCard, Store, Home } from "lucide-react";
@@ -24,6 +26,7 @@ interface OrderReviewStepProps {
   onBack: () => void;
   onConfirm: () => void;
   isCreating: boolean;
+  onDeliveryFeeChange?: (fee: number) => void;
 }
 
 export function OrderReviewStep({
@@ -41,7 +44,8 @@ export function OrderReviewStep({
   sameAsBilling,
   onBack,
   onConfirm,
-  isCreating
+  isCreating,
+  onDeliveryFeeChange
 }: OrderReviewStepProps) {
   const { data: paymentSettings } = usePaymentSettings();
   const stepNumber = deliveryMethod === "pickup" ? "5" : "7";
@@ -78,6 +82,11 @@ export function OrderReviewStep({
   // Determine which address to show for delivery
   const actualDeliveryAddress = sameAsBilling ? customer.full_address : deliveryAddress;
 
+  const handleDeliveryFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value) || 0;
+    onDeliveryFeeChange?.(value);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -109,7 +118,7 @@ export function OrderReviewStep({
           </div>
         </div>
 
-        {/* Delivery Address - Only show for delivery orders and when different from billing */}
+        {/* Delivery Address - Only show for delivery orders */}
         {deliveryMethod === "delivery" && (
           <div className="space-y-3">
             <h3 className="flex items-center gap-2 font-semibold">
@@ -240,10 +249,22 @@ export function OrderReviewStep({
                 </span>
               </div>
             )}
-            {deliveryMethod === "delivery" && orderTotals.deliveryFee > 0 && (
-              <div className="flex justify-between">
-                <span>Delivery Fee:</span>
-                <span>{formatCurrency(orderTotals.deliveryFee)}</span>
+            {deliveryMethod === "delivery" && (
+              <div className="flex justify-between items-center">
+                <Label htmlFor="delivery-fee">Delivery Fee:</Label>
+                <div className="flex items-center gap-2">
+                  <span>$</span>
+                  <Input
+                    id="delivery-fee"
+                    type="number"
+                    value={deliveryFee}
+                    onChange={handleDeliveryFeeChange}
+                    className="w-20 h-8 text-right"
+                    min="0"
+                    step="0.01"
+                    disabled={isCreating}
+                  />
+                </div>
               </div>
             )}
             {orderTotals.hasSurcharge && orderTotals.surchargeAmount > 0 && (

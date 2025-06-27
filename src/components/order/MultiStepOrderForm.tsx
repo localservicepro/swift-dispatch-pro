@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
@@ -39,7 +38,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     sameAsBilling,
     useGlobalDeliveryAddress,
     selectedSuburbId,
-    deliveryRate,
+    manualDeliveryFee,
     subtotal,
     deliveryFee,
     totalAmount,
@@ -96,7 +95,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           deliveryAddress: sameAsBilling ? selectedCustomer.full_address : deliveryAddress,
           sameAsBilling,
           suburbId: selectedSuburbId,
-          deliveryRate,
           orderTotals
         });
       }
@@ -201,7 +199,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
                 full_address: deliveryAddress,
                 suburb_id: selectedSuburbId || '',
               }}
-              deliveryRate={deliveryRate}
               onFormDataChange={(updates) => {
                 if (updates.full_address !== undefined) {
                   setDeliveryAddress(updates.full_address);
@@ -255,6 +252,9 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             onBack={prevStep}
             onConfirm={handleCreateOrder}
             isCreating={isCreating}
+            onDeliveryFeeChange={(fee) => {
+              // Find a way to update deliveryFee state here
+            }}
           />
         );
       

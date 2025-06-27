@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Customer, CartItem, SplitConfig, TruckType, Truck } from "../types";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
@@ -16,7 +17,7 @@ export function useOrderFormState() {
   const [orderType, setOrderType] = useState<"single" | "split">("single");
   const [splits, setSplits] = useState<SplitConfig[]>([]);
   
-  // Single order delivery state - removed truck and driver related state
+  // Single order delivery state
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
@@ -29,7 +30,9 @@ export function useOrderFormState() {
   
   // Suburb state (no automatic rate setting)
   const [selectedSuburbId, setSelectedSuburbId] = useState("");
-  const [deliveryRate, setDeliveryRate] = useState<string>(''); // Changed from number to string
+  
+  // Manual delivery fee state (number, not string)
+  const [manualDeliveryFee, setManualDeliveryFee] = useState<number>(0);
 
   // Fetch payment settings for calculations
   const { data: paymentSettings } = usePaymentSettings();
@@ -47,7 +50,7 @@ export function useOrderFormState() {
     setDeliveryMethod(method);
     if (method === "pickup") {
       setOrderType("single"); // Auto-set to single for pickup orders
-      setDeliveryRate(''); // Clear delivery rate for pickup (empty string instead of 0)
+      setManualDeliveryFee(0); // Clear delivery fee for pickup
       setSelectedSuburbId(""); // Clear suburb for pickup
     }
   };
@@ -55,7 +58,6 @@ export function useOrderFormState() {
   // Suburb change handler - only sets suburb ID, no automatic rate
   const handleSuburbChange = (suburbId: string) => {
     setSelectedSuburbId(suburbId);
-    // Note: delivery rate is not automatically set, must be set manually
   };
 
   const nextStep = () => {
@@ -72,7 +74,7 @@ export function useOrderFormState() {
 
   // Calculate totals using payment settings
   const subtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
-  const currentDeliveryFee = deliveryMethod === "pickup" ? 0 : parseFloat(deliveryRate) || 0; // Parse string to number for calculations
+  const currentDeliveryFee = deliveryMethod === "pickup" ? 0 : manualDeliveryFee;
   
   // Use dynamic calculation with payment settings
   const orderTotals = paymentSettings ? 
@@ -107,7 +109,7 @@ export function useOrderFormState() {
     sameAsBilling,
     useGlobalDeliveryAddress,
     selectedSuburbId,
-    deliveryRate,
+    manualDeliveryFee,
     subtotal: orderTotals.subtotal,
     deliveryFee: orderTotals.deliveryFee,
     surchargeAmount: orderTotals.surchargeAmount,
@@ -131,7 +133,7 @@ export function useOrderFormState() {
     setSameAsBilling,
     setUseGlobalDeliveryAddress,
     setSelectedSuburbId,
-    setDeliveryRate,
+    setManualDeliveryFee,
     handleSuburbChange,
     
     // Navigation

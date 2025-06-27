@@ -8,7 +8,6 @@ interface DeliveryAddressStepProps {
     full_address: string;
     suburb_id: string;
   };
-  deliveryRate: string; // Changed from number to string
   onFormDataChange: (updates: Partial<DeliveryAddressStepProps['formData']>) => void;
   onSuburbChange: (suburbId: string) => void;
   onBack: () => void;
@@ -17,7 +16,6 @@ interface DeliveryAddressStepProps {
 
 export function DeliveryAddressStep({ 
   formData, 
-  deliveryRate, 
   onFormDataChange, 
   onSuburbChange,
   onBack,
@@ -38,7 +36,7 @@ export function DeliveryAddressStep({
         <h3 className="text-lg font-semibold">Delivery Address</h3>
         <CustomerAddressForm
           formData={formData}
-          deliveryRate={deliveryRate}
+          deliveryRate="" // No longer used for calculations, just reference
           onFormDataChange={onFormDataChange}
           onSuburbChange={onSuburbChange}
         />

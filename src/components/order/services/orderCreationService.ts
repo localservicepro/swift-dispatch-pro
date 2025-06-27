@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Customer, CartItem } from "../types";
 import { calculateOrderTotals } from "../utils/paymentCalculations";
@@ -16,7 +15,6 @@ interface CreateSingleOrderParams {
   deliveryAddress: string;
   sameAsBilling: boolean;
   suburbId: string;
-  deliveryRate: number;
   orderTotals: any;
 }
 
