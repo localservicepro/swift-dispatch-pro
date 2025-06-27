@@ -244,7 +244,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             cart={cart}
             subtotal={subtotal}
             adjustments={adjustments}
-            deliveryFee={parseFloat(deliveryRate) || 0}
+            deliveryFee={deliveryFee}
             deliveryMethod={deliveryMethod as "delivery" | "pickup"}
             deliveryDate={deliveryDate}
             deliveryTime={deliveryTime}
