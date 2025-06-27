@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminTeamSection } from "./team/AdminTeamSection";
 import { DriverTeamSection } from "./team/DriverTeamSection";
 import { AddTeamMemberDialog } from "./team/AddTeamMemberDialog";
+import { ErrorBoundary } from "./ErrorBoundary";
+import { useDatabaseHealth } from "@/hooks/useDatabaseHealth";
 
 interface Profile {
   id: string;
@@ -26,7 +28,9 @@ export function TeamManagement() {
   const [refreshing, setRefreshing] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [activeTab, setActiveTab] = useState("drivers");
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { healthCheck, runHealthCheck } = useDatabaseHealth();
 
   useEffect(() => {
     loadProfiles();
@@ -35,36 +39,63 @@ export function TeamManagement() {
   const loadProfiles = async () => {
     try {
       setLoading(true);
+      setError(null);
 
       const timestamp = Date.now();
-      console.log(`Loading profiles at ${timestamp}...`);
+      console.log(`[TeamManagement] Loading profiles at ${timestamp}...`);
+      
+      // Check authentication first
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('[TeamManagement] Auth error:', authError);
+        throw new Error(`Authentication error: ${authError.message}`);
+      }
+      
+      if (!user) {
+        throw new Error('No authenticated user found');
+      }
+      
+      console.log('[TeamManagement] Authenticated user:', user.id);
       
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
       
-      console.log('Profiles query result:', { data, error, count: data?.length });
+      console.log('[TeamManagement] Profiles query result:', { 
+        data, 
+        error, 
+        count: data?.length,
+        timestamp 
+      });
       
       if (error) {
-        console.error('Database error:', error);
+        console.error('[TeamManagement] Database error:', error);
         throw error;
       }
       
-      setProfiles(data || []);
+      if (!data) {
+        console.warn('[TeamManagement] No data returned from profiles query');
+        setProfiles([]);
+        return;
+      }
+      
+      setProfiles(data);
 
-      const drivers = (data || []).filter(p => p.role === 'driver');
-      const admins = (data || []).filter(p => p.role === 'admin');
-      console.log('Profile breakdown:', {
-        total: data?.length || 0,
+      const drivers = data.filter(p => p.role === 'driver');
+      const admins = data.filter(p => p.role === 'admin');
+      console.log('[TeamManagement] Profile breakdown:', {
+        total: data.length,
         drivers: drivers.length,
         admins: admins.length,
       });
     } catch (error: any) {
-      console.error('Error loading profiles:', error);
+      console.error('[TeamManagement] Error loading profiles:', error);
+      const errorMessage = error.message || 'Unknown error occurred';
+      setError(errorMessage);
       toast({
-        title: "Error",
-        description: `Failed to load team profiles: ${error.message}`,
+        title: "Error Loading Team",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -74,13 +105,15 @@ export function TeamManagement() {
   };
 
   const handleRefresh = async () => {
+    console.log('[TeamManagement] Refreshing profiles...');
     setRefreshing(true);
     await loadProfiles();
+    await runHealthCheck();
   };
 
   const updateUserRole = async (userId: string, newRole: 'admin' | 'driver' | 'customer') => {
     try {
-      console.log(`Updating user ${userId} role to ${newRole}`);
+      console.log(`[TeamManagement] Updating user ${userId} role to ${newRole}`);
       
       const { error } = await supabase
         .from('profiles')
@@ -96,7 +129,7 @@ export function TeamManagement() {
         description: `User role updated to ${newRole}`,
       });
     } catch (error: any) {
-      console.error('Error updating role:', error);
+      console.error('[TeamManagement] Error updating role:', error);
       toast({
         title: "Error",
         description: "Failed to update user role",
@@ -111,7 +144,7 @@ export function TeamManagement() {
     }
 
     try {
-      console.log(`Deleting user ${userId}`);
+      console.log(`[TeamManagement] Deleting user ${userId}`);
       
       const { error } = await supabase.auth.admin.deleteUser(userId);
       
@@ -124,7 +157,7 @@ export function TeamManagement() {
         description: "User has been removed from the system",
       });
     } catch (error: any) {
-      console.error('Error deleting user:', error);
+      console.error('[TeamManagement] Error deleting user:', error);
       toast({
         title: "Error",
         description: "Failed to delete user",
@@ -145,129 +178,166 @@ export function TeamManagement() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-800">Team Management</h2>
-          <p className="text-slate-600 mt-1">Manage team members and assign roles</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button 
-            onClick={() => setIsAddingMember(true)} 
-            className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
-          >
-            Add New Member
-          </Button>
-        </div>
-      </div>
-
-      {/* Statistics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700">Total Team</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-900">{profiles.length}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-700">Drivers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-900">{driverProfiles.length}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700">Admins</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-900">{adminProfiles.length}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-orange-700">Available Drivers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-900">{driverProfiles.length}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {driverProfiles.length === 0 && (
-        <Card className="border-yellow-200 bg-yellow-50">
+  if (error) {
+    return (
+      <ErrorBoundary fallbackTitle="Team Management Error" showRefresh>
+        <Card className="border-red-200 bg-red-50">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-yellow-600" />
+              <AlertCircle className="w-5 h-5 text-red-600" />
               <div>
-                <h3 className="font-semibold text-yellow-800">No Drivers Available</h3>
-                <p className="text-yellow-700 text-sm">
-                  You don't have any team members with the "driver" role. Create some driver accounts or update existing team roles to enable driver assignment in orders.
-                </p>
+                <h3 className="font-semibold text-red-800">Failed to Load Team Data</h3>
+                <p className="text-red-700 text-sm mt-1">{error}</p>
+                <div className="mt-3 space-y-2">
+                  <Button onClick={handleRefresh} variant="outline" size="sm">
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Retry Loading
+                  </Button>
+                  {healthCheck && (
+                    <div className="text-xs text-red-600 space-y-1">
+                      <p>Debug Info:</p>
+                      <p>• Current User: {healthCheck.currentUser.success ? `${healthCheck.currentUser.role} (${healthCheck.currentUser.id})` : healthCheck.currentUser.error}</p>
+                      <p>• Profiles Access: {healthCheck.profiles.success ? `✓ (${healthCheck.profiles.count} records)` : `✗ ${healthCheck.profiles.error}`}</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
-      )}
+      </ErrorBoundary>
+    );
+  }
 
-      {/* Team Directory with Tabs */}
-      <Card className="hover:shadow-lg transition-shadow">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-slate-800">Team Directory</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="drivers" className="flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Drivers ({driverProfiles.length})
-              </TabsTrigger>
-              <TabsTrigger value="admins" className="flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Admins ({adminProfiles.length})
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="drivers" className="mt-6">
-              <DriverTeamSection 
-                drivers={driverProfiles}
-                onUpdateRole={updateUserRole}
-                onDeleteUser={deleteUser}
-                onRefresh={handleRefresh}
-                refreshing={refreshing}
-              />
-            </TabsContent>
-            
-            <TabsContent value="admins" className="mt-6">
-              <AdminTeamSection 
-                admins={adminProfiles}
-                onUpdateRole={updateUserRole}
-                onDeleteUser={deleteUser}
-                onRefresh={handleRefresh}
-                refreshing={refreshing}
-              />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+  return (
+    <ErrorBoundary fallbackTitle="Team Management Component Error" showRefresh>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-slate-800">Team Management</h2>
+            <p className="text-slate-600 mt-1">Manage team members and assign roles</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button 
+              onClick={() => setIsAddingMember(true)} 
+              className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
+            >
+              Add New Member
+            </Button>
+          </div>
+        </div>
 
-      <AddTeamMemberDialog 
-        isOpen={isAddingMember}
-        onClose={() => setIsAddingMember(false)}
-        onMemberAdded={loadProfiles}
-        defaultRole={activeTab === "drivers" ? "driver" : "admin"}
-      />
-    </div>
+        {/* Statistics Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-blue-700">Total Team</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-900">{profiles.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-green-700">Drivers</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-900">{driverProfiles.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-purple-700">Admins</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-900">{adminProfiles.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-orange-700">Available Drivers</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-900">{driverProfiles.length}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {driverProfiles.length === 0 && (
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-yellow-600" />
+                <div>
+                  <h3 className="font-semibold text-yellow-800">No Drivers Available</h3>
+                  <p className="text-yellow-700 text-sm">
+                    You don't have any team members with the "driver" role. Create some driver accounts or update existing team roles to enable driver assignment in orders.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Team Directory with Tabs */}
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-slate-800">Team Directory</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="drivers" className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Drivers ({driverProfiles.length})
+                </TabsTrigger>
+                <TabsTrigger value="admins" className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Admins ({adminProfiles.length})
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="drivers" className="mt-6">
+                <ErrorBoundary fallbackTitle="Driver Section Error">
+                  <DriverTeamSection 
+                    drivers={driverProfiles}
+                    onUpdateRole={updateUserRole}
+                    onDeleteUser={deleteUser}
+                    onRefresh={handleRefresh}
+                    refreshing={refreshing}
+                  />
+                </ErrorBoundary>
+              </TabsContent>
+              
+              <TabsContent value="admins" className="mt-6">
+                <ErrorBoundary fallbackTitle="Admin Section Error">
+                  <AdminTeamSection 
+                    admins={adminProfiles}
+                    onUpdateRole={updateUserRole}
+                    onDeleteUser={deleteUser}
+                    onRefresh={handleRefresh}
+                    refreshing={refreshing}
+                  />
+                </ErrorBoundary>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        <AddTeamMemberDialog 
+          isOpen={isAddingMember}
+          onClose={() => setIsAddingMember(false)}
+          onMemberAdded={loadProfiles}
+          defaultRole={activeTab === "drivers" ? "driver" : "admin"}
+        />
+      </div>
+    </ErrorBoundary>
   );
 }

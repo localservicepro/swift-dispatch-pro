@@ -17,9 +17,18 @@ interface Driver {
 interface DriverSelectorProps {
   selectedDriverId: string;
   onDriverChange: (driverId: string) => void;
+  deliveryDate?: string;
+  deliveryTime?: string;
+  excludeOrderId?: string;
 }
 
-export function DriverSelector({ selectedDriverId, onDriverChange }: DriverSelectorProps) {
+export function DriverSelector({ 
+  selectedDriverId, 
+  onDriverChange,
+  deliveryDate,
+  deliveryTime,
+  excludeOrderId
+}: DriverSelectorProps) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loadingDrivers, setLoadingDrivers] = useState(true);
   const [driversError, setDriversError] = useState<string | null>(null);
@@ -34,17 +43,17 @@ export function DriverSelector({ selectedDriverId, onDriverChange }: DriverSelec
       setLoadingDrivers(true);
       setDriversError(null);
 
-      console.log('Loading profiles at', Date.now() + '...');
+      console.log('Loading profiles for driver selector at', Date.now());
       const { data: allUsers, error } = await supabase
         .from('profiles')
         .select('id, full_name, email, role, created_at, updated_at, phone')
         .order('role', { ascending: true })
         .order('full_name', { ascending: true });
 
-      console.log('Profiles query result:', { data: allUsers, error, count: allUsers?.length });
+      console.log('Driver selector profiles query result:', { data: allUsers, error, count: allUsers?.length });
 
       if (error) {
-        console.error('Error loading users:', error);
+        console.error('Error loading users for driver selector:', error);
         throw error;
       }
 
@@ -57,7 +66,7 @@ export function DriverSelector({ selectedDriverId, onDriverChange }: DriverSelec
       const driversList = allUsers.filter(user => user.role === 'driver');
       const adminsList = allUsers.filter(user => user.role === 'admin');
 
-      console.log('Profile breakdown:', {
+      console.log('Driver selector profile breakdown:', {
         total: allUsers.length,
         drivers: driversList.length,
         admins: adminsList.length,
@@ -73,7 +82,7 @@ export function DriverSelector({ selectedDriverId, onDriverChange }: DriverSelec
       setDrivers(sortedUsers);
 
     } catch (error: any) {
-      console.error('Failed to load users:', error);
+      console.error('Failed to load users in driver selector:', error);
       setDriversError('Failed to load available users. Please try again.');
       toast({
         title: "Error",
@@ -86,6 +95,7 @@ export function DriverSelector({ selectedDriverId, onDriverChange }: DriverSelec
   };
 
   const handleRefreshDrivers = () => {
+    console.log('Refreshing drivers list');
     loadDrivers();
   };
 
