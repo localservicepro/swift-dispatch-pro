@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
@@ -5,7 +6,6 @@ import { ProductSelectionStep } from "./ProductSelectionStep";
 import { DeliveryMethodSelectionStep } from "./DeliveryMethodSelectionStep";
 import { OrderTypeSelectionStep } from "./OrderTypeSelectionStep";
 import { DeliveryAddressStep } from "./DeliveryAddressStep";
-import { DeliveryDetailsStep } from "./DeliveryDetailsStep";
 import { PaymentMethodStep } from "./PaymentMethodStep";
 import { OrderReviewStep } from "./OrderReviewStep";
 import { SplitOrderConfigurationStep } from "./SplitOrderConfigurationStep";
@@ -33,11 +33,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     splits,
     deliveryDate,
     deliveryTime,
-    truckType,
-    truckId,
-    selectedTruck,
-    driverId,
-    driverName,
     specialInstructions,
     paymentMethod,
     deliveryAddress,
@@ -59,11 +54,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setSplits,
     setDeliveryDate,
     setDeliveryTime,
-    setTruckType,
-    setTruckId,
-    setSelectedTruck,
-    setDriverId,
-    setDriverName,
     setSpecialInstructions,
     setPaymentMethod,
     setDeliveryAddress,
@@ -101,9 +91,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           deliveryMethod: deliveryMethod as "delivery" | "pickup",
           deliveryDate,
           deliveryTime,
-          truckType,
-          truckId,
-          driverId,
           specialInstructions,
           paymentMethod,
           deliveryAddress: sameAsBilling ? selectedCustomer.full_address : deliveryAddress,
@@ -126,11 +113,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     } finally {
       setIsCreating(false);
     }
-  };
-
-  const handleTruckSelect = (truckId: string, truckDetails: any) => {
-    setTruckId(truckId);
-    setSelectedTruck(truckDetails);
   };
 
   const totalSteps = getTotalSteps();
@@ -203,11 +185,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               deliveryMethod={deliveryMethod}
               deliveryDate=""
               deliveryTime=""
-              truckType=""
-              driverName=""
               specialInstructions=""
               paymentMethod={paymentMethod}
-              selectedTruck={null}
               deliveryAddress=""
               sameAsBilling={true}
               onBack={prevStep}
@@ -226,11 +205,17 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               splits={splits}
               selectedSuburbId={selectedSuburbId}
               deliveryRate={deliveryRate}
+              deliveryDate={deliveryDate}
+              deliveryTime={deliveryTime}
+              specialInstructions={specialInstructions}
               onDeliveryAddressChange={setDeliveryAddress}
               onSameAsBillingChange={setSameAsBilling}
               onUseGlobalDeliveryAddressChange={setUseGlobalDeliveryAddress}
               onSplitsChange={setSplits}
               onSuburbChange={handleSuburbChange}
+              onDeliveryDateChange={setDeliveryDate}
+              onDeliveryTimeChange={setDeliveryTime}
+              onSpecialInstructionsChange={setSpecialInstructions}
               onBack={prevStep}
               onNext={nextStep}
             />
@@ -250,19 +235,10 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           );
         } else {
           return (
-            <DeliveryDetailsStep
-              deliveryDate={deliveryDate}
-              deliveryTime={deliveryTime}
-              truckType={truckType}
-              truckId={truckId}
-              driverId={driverId}
-              specialInstructions={specialInstructions}
-              onDeliveryDateChange={setDeliveryDate}
-              onDeliveryTimeChange={setDeliveryTime}
-              onTruckTypeChange={setTruckType}
-              onTruckSelect={handleTruckSelect}
-              onDriverChange={setDriverId}
-              onSpecialInstructionsChange={setSpecialInstructions}
+            <PaymentMethodStep
+              customer={selectedCustomer}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
               onBack={prevStep}
               onNext={nextStep}
             />
@@ -270,17 +246,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         }
       
       case 7:
-        return (
-          <PaymentMethodStep
-            customer={selectedCustomer}
-            paymentMethod={paymentMethod}
-            onPaymentMethodChange={setPaymentMethod}
-            onBack={prevStep}
-            onNext={nextStep}
-          />
-        );
-      
-      case 8:
         return (
           <OrderReviewStep
             customer={selectedCustomer!}
@@ -291,11 +256,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             deliveryMethod={deliveryMethod as "delivery" | "pickup"}
             deliveryDate={deliveryDate}
             deliveryTime={deliveryTime}
-            truckType={truckType}
-            driverName={driverName}
             specialInstructions={specialInstructions}
             paymentMethod={paymentMethod}
-            selectedTruck={selectedTruck}
             deliveryAddress={sameAsBilling ? selectedCustomer!.full_address : deliveryAddress}
             sameAsBilling={sameAsBilling}
             onBack={prevStep}

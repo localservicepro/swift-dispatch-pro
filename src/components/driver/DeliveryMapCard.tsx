@@ -28,12 +28,12 @@ export function DeliveryMapCard({ address, customerName, orderId }: DeliveryMapC
       // Load Google Maps script
       await loadGoogleMapsScript();
 
-      if (!mapRef.current || !window.google) return;
+      if (!mapRef.current) return;
 
       // Geocode the address
       const geocoder = new window.google.maps.Geocoder();
-      const geocodeResult = await new Promise<any[]>((resolve, reject) => {
-        geocoder.geocode({ address }, (results: any, status: any) => {
+      const geocodeResult = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
+        geocoder.geocode({ address }, (results: google.maps.GeocoderResult[], status: string) => {
           if (status === 'OK' && results) {
             resolve(results);
           } else {
