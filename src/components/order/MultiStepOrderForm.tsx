@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
@@ -59,6 +60,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setSameAsBilling,
     setUseGlobalDeliveryAddress,
     handleSuburbChange,
+    setManualDeliveryFee,
     
     // Navigation
     nextStep,
@@ -252,9 +254,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             onBack={prevStep}
             onConfirm={handleCreateOrder}
             isCreating={isCreating}
-            onDeliveryFeeChange={(fee) => {
-              // Find a way to update deliveryFee state here
-            }}
+            onDeliveryFeeChange={setManualDeliveryFee}
           />
         );
       
