@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,7 +43,6 @@ export function ProductManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isCreating, setIsCreating] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -120,7 +118,6 @@ export function ProductManagement() {
 
   const handleFormClose = () => {
     setIsCreating(false);
-    setEditingProduct(null);
   };
 
   const handleFormSuccess = () => {
@@ -170,10 +167,10 @@ export function ProductManagement() {
           onCategoryChange={setSelectedCategory}
         />
 
-        {(isCreating || editingProduct) && (
+        {isCreating && (
           <ProductForm
-            isCreating={isCreating}
-            editingProduct={editingProduct}
+            isCreating={true}
+            editingProduct={null}
             categories={categories}
             onClose={handleFormClose}
             onSuccess={handleFormSuccess}
@@ -182,9 +179,10 @@ export function ProductManagement() {
 
         <ProductList
           products={filteredProducts}
+          categories={categories}
           loading={loading}
-          onEdit={setEditingProduct}
           onDeleteSuccess={loadProducts}
+          onEditSuccess={loadProducts}
         />
       </TabsContent>
 
