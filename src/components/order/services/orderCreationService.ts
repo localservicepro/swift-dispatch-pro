@@ -1,8 +1,8 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Customer, CartItem } from "../types";
-import { calculateOrderTotals } from "../utils/paymentCalculations";
 
-// New interfaces for the exported functions
+// Interface for creating single orders
 interface CreateSingleOrderParams {
   customer: Customer;
   cart: CartItem[];
@@ -18,6 +18,7 @@ interface CreateSingleOrderParams {
   orderTotals: any;
 }
 
+// Interface for creating split orders (simplified)
 interface CreateSplitOrderParams {
   customer: Customer;
   cart: CartItem[];
@@ -79,13 +80,12 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       delivery_method: params.deliveryMethod,
       delivery_date: params.deliveryDate || null,
       delivery_time: params.deliveryTime || null,
-      // Remove truck and driver assignment - set to null
       truck_type: null,
       truck_id: null,
       driver_id: null,
       special_instructions: params.specialInstructions,
       payment_method: params.paymentMethod,
-      status: 'requested' as const, // Start with requested status
+      status: 'requested' as const,
       is_split_order: false,
       payment_status: 'pending'
     };
@@ -139,7 +139,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
     // Serialize cart items for database storage
     const serializedProducts = serializeCartItems(params.cart);
 
-    // Create master order entry - this is a summary record, not a split order itself
+    // Create master order entry - this is a summary record
     const masterOrderData = {
       order_number: masterOrderNumber,
       customer_id: params.customer.id,
@@ -155,12 +155,11 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       total_amount: params.orderTotals.totalAmount,
       delivery_method: params.deliveryMethod,
       payment_method: params.paymentMethod,
-      status: 'requested' as const, // Start with requested status
+      status: 'requested' as const,
       is_split_order: false, // Master order is not a split order itself
       master_order_id: null,
-      split_number: null, // Master order doesn't have a split number
+      split_number: null,
       payment_status: 'pending',
-      // Remove truck and driver assignment - set to null
       truck_type: null,
       truck_id: null,
       driver_id: null
@@ -184,7 +183,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       const split = params.splits[i];
       const splitOrderNumber = `${masterOrderNumber}-${i + 1}`;
       
-      // Calculate split totals by looking up prices from original cart
+      // Calculate split totals
       const splitSubtotal = split.products.reduce((sum: number, splitProduct: any) => {
         const cartItem = params.cart.find(cartItem => cartItem.product.id === splitProduct.productId);
         if (!cartItem) {
@@ -193,18 +192,6 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         }
         return sum + (cartItem.unit_price * splitProduct.quantity);
       }, 0);
-
-      console.log(`Split ${i + 1} subtotal:`, splitSubtotal);
-
-      const splitTotals = calculateOrderTotals(
-        splitSubtotal,
-        0, // No adjustments on splits
-        split.deliveryFee || 0,
-        params.paymentMethod,
-        paymentSettings
-      );
-
-      console.log(`Split ${i + 1} totals:`, splitTotals);
 
       // Convert split products to match the expected format
       const splitProducts = split.products.map((splitProduct: any) => {
@@ -220,7 +207,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
           quantity: splitProduct.quantity,
           total_price: cartItem.unit_price * splitProduct.quantity
         };
-      }).filter(Boolean); // Remove any null entries
+      }).filter(Boolean);
 
       const splitOrderData = {
         order_number: splitOrderNumber,
@@ -231,20 +218,19 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         delivery_address: split.deliveryAddress,
         same_as_billing: false,
         products: splitProducts,
-        subtotal: splitTotals.subtotal,
+        subtotal: splitSubtotal,
         adjustments: 0,
-        delivery_fee: splitTotals.deliveryFee,
-        total_amount: splitTotals.totalAmount,
+        delivery_fee: split.deliveryFee || 0,
+        total_amount: splitSubtotal + (split.deliveryFee || 0),
         delivery_method: params.deliveryMethod,
         delivery_date: split.deliveryDate,
         delivery_time: split.deliveryTime,
-        // Remove truck and driver assignment - set to null
         truck_type: null,
         truck_id: null,
         driver_id: null,
-        special_instructions: split.specialInstructions || '', // Use split-specific instructions
+        special_instructions: split.specialInstructions || '',
         payment_method: params.paymentMethod,
-        status: 'requested' as const, // Start with requested status
+        status: 'requested' as const,
         is_split_order: true,
         master_order_id: masterOrder.id,
         split_number: i + 1,

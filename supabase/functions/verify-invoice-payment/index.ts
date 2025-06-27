@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0'
@@ -48,238 +49,154 @@ const handler = async (req: Request): Promise<Response> => {
     const { sessionId, invoiceId }: VerifyPaymentRequest = await req.json()
     logStep('Processing verification request', { sessionId, invoiceId, requestId });
 
-    // Retrieve the checkout session from Stripe with retries
-    let session;
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        session = await stripe.checkout.sessions.retrieve(sessionId);
-        logStep('Stripe session retrieved successfully', {
-          id: session.id,
-          payment_status: session.payment_status,
-          metadata: session.metadata,
-          attempt: 4 - retries
-        });
-        break;
-      } catch (error: any) {
-        retries--;
-        logStep(`Stripe session retrieval failed, retries left: ${retries}`, { 
-          error: error.message,
-          requestId 
-        });
-        if (retries === 0) throw error;
-        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
-      }
-    }
+    // Retrieve the checkout session from Stripe
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    logStep('Stripe session retrieved', {
+      id: session.id,
+      payment_status: session.payment_status,
+      metadata: session.metadata
+    });
     
     if (session.payment_status === 'paid') {
       logStep('Payment confirmed as paid, starting database updates', { requestId });
 
-      // Start transaction-like operations with rollback capability
-      const updateOperations = [];
+      // Update invoice status to paid
+      const { error: invoiceUpdateError } = await supabase
+        .from('invoices')
+        .update({ 
+          status: 'paid',
+          paid_at: new Date().toISOString()
+        })
+        .eq('id', invoiceId)
 
-      try {
-        // Update invoice status to paid
-        const { error: invoiceUpdateError } = await supabase
-          .from('invoices')
+      if (invoiceUpdateError) {
+        logStep('Error updating invoice status', { error: invoiceUpdateError, requestId });
+        throw new Error('Failed to update invoice status')
+      }
+      
+      logStep('Invoice status updated to paid', { invoiceId, requestId });
+
+      // Get the order ID from the invoice
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from('invoices')
+        .select('order_id')
+        .eq('id', invoiceId)
+        .single()
+
+      if (invoiceError) {
+        logStep('Error fetching invoice for order ID', { error: invoiceError, requestId });
+        throw new Error('Failed to get order ID from invoice')
+      }
+
+      const orderId = invoiceData.order_id
+      logStep('Order ID from invoice', { orderId, requestId });
+
+      if (orderId) {
+        // Update order payment status
+        const { error: orderUpdateError } = await supabase
+          .from('orders')
           .update({ 
-            status: 'paid',
-            paid_at: new Date().toISOString()
+            payment_status: 'paid',
+            payment_date: new Date().toISOString(),
+            payment_method: 'stripe'
           })
-          .eq('id', invoiceId)
+          .eq('id', orderId)
 
-        if (invoiceUpdateError) {
-          logStep('Error updating invoice status', { error: invoiceUpdateError, requestId });
-          throw new Error('Failed to update invoice status')
+        if (orderUpdateError) {
+          logStep('Error updating order payment status', { error: orderUpdateError, requestId });
+          throw new Error('Failed to update order payment status')
         }
         
-        logStep('Invoice status updated to paid', { invoiceId, requestId });
-        updateOperations.push('invoice_updated');
+        logStep('Order payment status updated successfully', { orderId, requestId });
 
-        // Get order ID from session metadata or invoice record
-        let orderId = session.metadata?.order_id
-        logStep('Order ID from session metadata', { orderId, requestId });
-
-        if (!orderId) {
-          logStep('No order ID in metadata, fetching from invoice record', { requestId });
-          const { data: invoiceData, error: invoiceError } = await supabase
-            .from('invoices')
-            .select('order_id')
-            .eq('id', invoiceId)
-            .single()
-
-          if (invoiceError) {
-            logStep('Error fetching invoice for order ID', { error: invoiceError, requestId });
-            throw new Error('Failed to get order ID from invoice')
-          }
-
-          orderId = invoiceData?.order_id
-          logStep('Order ID from invoice record', { orderId, requestId });
-        }
-
-        if (orderId) {
-          // Update order payment status with enhanced data
-          const { error: orderUpdateError } = await supabase
+        // Send payment confirmation email
+        try {
+          const { data: orderData, error: orderFetchError } = await supabase
             .from('orders')
-            .update({ 
-              payment_status: 'paid',
-              payment_date: new Date().toISOString(),
-              payment_method: 'stripe'
-            })
+            .select(`
+              order_number,
+              customer_name,
+              products,
+              customers!orders_customer_id_fkey(email)
+            `)
             .eq('id', orderId)
+            .single();
 
-          if (orderUpdateError) {
-            logStep('Error updating order payment status', { error: orderUpdateError, requestId });
-            // Don't throw error for order update failure, but log it
-            logStep('Warning: Order payment status update failed, but invoice was updated successfully', { 
-              orderId, 
-              requestId 
+          const { data: invoiceDetailData, error: invoiceDetailError } = await supabase
+            .from('invoices')
+            .select('invoice_number, amount, currency')
+            .eq('id', invoiceId)
+            .single();
+
+          if (!orderFetchError && !invoiceDetailError && orderData?.customers?.email) {
+            // Generate receipt
+            const { data: receiptData, error: receiptError } = await supabase.functions.invoke('generate-receipt', {
+              body: { invoiceId, sessionId }
             });
-          } else {
-            logStep('Order payment status updated successfully', { orderId, requestId });
-            updateOperations.push('order_updated');
-          }
 
-          // Send payment confirmation email
-          try {
-            const { data: orderData, error: orderFetchError } = await supabase
-              .from('orders')
-              .select(`
-                order_number,
-                customer_name,
-                products,
-                customers!orders_customer_id_fkey(email)
-              `)
-              .eq('id', orderId)
-              .single();
+            const receiptDownloadUrl = receiptData?.downloadUrl || undefined;
 
-            const { data: invoiceData, error: invoiceFetchError } = await supabase
-              .from('invoices')
-              .select('invoice_number, amount, currency')
-              .eq('id', invoiceId)
-              .single();
-
-            if (!orderFetchError && !invoiceFetchError && orderData?.customers?.email) {
-              // Generate receipt
-              const { data: receiptData, error: receiptError } = await supabase.functions.invoke('generate-receipt', {
-                body: { invoiceId, sessionId }
-              });
-
-              const receiptDownloadUrl = receiptData?.downloadUrl || undefined;
-
-              // Send payment confirmation email
-              const { error: emailError } = await supabase.functions.invoke('send-emails', {
-                body: {
-                  type: 'payment-confirmation',
-                  data: {
-                    customerName: orderData.customer_name,
-                    customerEmail: orderData.customers.email,
-                    orderNumber: orderData.order_number,
-                    invoiceNumber: invoiceData.invoice_number,
-                    paymentAmount: invoiceData.amount,
-                    currency: invoiceData.currency || 'USD',
-                    paymentMethod: 'Credit Card',
-                    transactionId: sessionId,
-                    orderItems: orderData.products || [],
-                    receiptDownloadUrl,
-                    paymentDate: new Date().toLocaleDateString()
-                  }
+            // Send payment confirmation email
+            const { error: emailError } = await supabase.functions.invoke('send-emails', {
+              body: {
+                type: 'payment-confirmation',
+                data: {
+                  customerName: orderData.customer_name,
+                  customerEmail: orderData.customers.email,
+                  orderNumber: orderData.order_number,
+                  invoiceNumber: invoiceDetailData.invoice_number,
+                  paymentAmount: invoiceDetailData.amount,
+                  currency: invoiceDetailData.currency || 'USD',
+                  paymentMethod: 'Credit Card',
+                  transactionId: sessionId,
+                  orderItems: orderData.products || [],
+                  receiptDownloadUrl,
+                  paymentDate: new Date().toLocaleDateString()
                 }
-              });
-
-              if (emailError) {
-                logStep('Warning: Failed to send payment confirmation email', { 
-                  error: emailError, 
-                  requestId 
-                });
-              } else {
-                logStep('Payment confirmation email sent successfully', { requestId });
-                updateOperations.push('email_sent');
               }
-            }
-          } catch (emailError: any) {
-            logStep('Warning: Failed to send payment confirmation email', { 
-              error: emailError.message, 
-              requestId 
             });
-          }
 
-          // Log the payment verification success for audit trail
-          try {
-            await supabase
-              .from('email_logs')
-              .insert({
-                recipient_email: 'system@admin.com',
-                email_type: 'payment_verification',
-                subject: `Payment Verified - Session ${sessionId}`,
-                status: 'sent',
-                external_id: sessionId
+            if (emailError) {
+              logStep('Warning: Failed to send payment confirmation email', { 
+                error: emailError, 
+                requestId 
               });
-            logStep('Payment verification logged for audit', { requestId });
-          } catch (auditError) {
-            logStep('Warning: Failed to log payment verification for audit', { 
-              error: auditError, 
-              requestId 
-            });
+            } else {
+              logStep('Payment confirmation email sent successfully', { requestId });
+            }
           }
-        } else {
-          logStep('Warning: No order ID found to update order payment status', { requestId });
+        } catch (emailError: any) {
+          logStep('Warning: Failed to send payment confirmation email', { 
+            error: emailError.message, 
+            requestId 
+          });
         }
-
-        const processingTime = Date.now() - startTime;
-        logStep('Payment verification completed successfully', { 
-          requestId, 
-          processingTime: `${processingTime}ms`,
-          operationsCompleted: updateOperations,
-          orderId: orderId || null
-        });
-
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            status: 'paid',
-            message: 'Payment verified and statuses updated successfully',
-            orderId: orderId || null,
-            processingTime,
-            requestId,
-            operationsCompleted: updateOperations
-          }),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders,
-            },
-          }
-        )
-      } catch (updateError: any) {
-        logStep('Error during database updates, attempting rollback', { 
-          error: updateError.message, 
-          requestId,
-          completedOperations: updateOperations
-        });
-
-        // Attempt to rollback invoice update if order update failed
-        if (updateOperations.includes('invoice_updated') && !updateOperations.includes('order_updated')) {
-          try {
-            await supabase
-              .from('invoices')
-              .update({ 
-                status: 'pending',
-                paid_at: null
-              })
-              .eq('id', invoiceId);
-            logStep('Invoice status rollback completed', { requestId });
-          } catch (rollbackError) {
-            logStep('Critical: Failed to rollback invoice status', { 
-              error: rollbackError, 
-              requestId 
-            });
-          }
-        }
-
-        throw updateError;
       }
+
+      const processingTime = Date.now() - startTime;
+      logStep('Payment verification completed successfully', { 
+        requestId, 
+        processingTime: `${processingTime}ms`,
+        orderId: orderId || null
+      });
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          status: 'paid',
+          message: 'Payment verified and statuses updated successfully',
+          orderId: orderId || null,
+          processingTime,
+          requestId
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      )
     } else {
       logStep('Payment not completed', { 
         status: session.payment_status, 
@@ -308,8 +225,7 @@ const handler = async (req: Request): Promise<Response> => {
     logStep('Critical error in verify-invoice-payment', { 
       error: error.message || 'Unknown error',
       requestId,
-      processingTime: `${processingTime}ms`,
-      stack: error.stack
+      processingTime: `${processingTime}ms`
     });
     
     return new Response(
