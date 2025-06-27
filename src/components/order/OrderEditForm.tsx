@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -84,6 +85,7 @@ const convertToConflictInfo = (conflictResult?: ConflictResult): ConflictInfo =>
 
 export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormProps) {
   const [isUpdating, setIsUpdating] = useState(false);
+  const [deliveryRate, setDeliveryRate] = useState(0);
   const { toast } = useToast();
   
   const {
@@ -109,6 +111,27 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
     formData.truck_id,
     order.id
   );
+
+  // Fetch delivery rate when suburb changes
+  useEffect(() => {
+    const fetchDeliveryRate = async () => {
+      if (formData.suburb_id) {
+        const { data, error } = await supabase
+          .from('suburbs')
+          .select('delivery_rate')
+          .eq('id', formData.suburb_id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching suburb:", error);
+        } else if (data) {
+          setDeliveryRate(data.delivery_rate);
+        }
+      }
+    };
+
+    fetchDeliveryRate();
+  }, [formData.suburb_id]);
 
   // Reset truck selection when truck type changes
   useEffect(() => {

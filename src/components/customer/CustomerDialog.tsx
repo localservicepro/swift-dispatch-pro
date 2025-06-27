@@ -119,7 +119,7 @@ export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = 
       return;
     }
 
-    const customerData: Partial<Customer> = {
+    const customerData = {
       first_name: formData.first_name,
       last_name: formData.last_name,
       email: formData.email,
@@ -142,7 +142,7 @@ export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = 
       } else {
         const { error } = await supabase
           .from('customers')
-          .insert([customerData]);
+          .insert(customerData);
 
         if (error) throw error;
       }
