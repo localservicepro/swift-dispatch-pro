@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
@@ -197,27 +196,17 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         } else {
           return (
             <DeliveryAddressStep
-              customer={selectedCustomer!}
-              orderType={orderType}
-              deliveryAddress={deliveryAddress}
-              sameAsBilling={sameAsBilling}
-              useGlobalDeliveryAddress={useGlobalDeliveryAddress}
-              splits={splits}
-              selectedSuburbId={selectedSuburbId}
+              formData={{
+                full_address: deliveryAddress,
+                suburb_id: selectedSuburbId || '',
+              }}
               deliveryRate={deliveryRate}
-              deliveryDate={deliveryDate}
-              deliveryTime={deliveryTime}
-              specialInstructions={specialInstructions}
-              onDeliveryAddressChange={setDeliveryAddress}
-              onSameAsBillingChange={setSameAsBilling}
-              onUseGlobalDeliveryAddressChange={setUseGlobalDeliveryAddress}
-              onSplitsChange={setSplits}
+              onFormDataChange={(updates) => {
+                if (updates.full_address !== undefined) {
+                  setDeliveryAddress(updates.full_address);
+                }
+              }}
               onSuburbChange={handleSuburbChange}
-              onDeliveryDateChange={setDeliveryDate}
-              onDeliveryTimeChange={setDeliveryTime}
-              onSpecialInstructionsChange={setSpecialInstructions}
-              onBack={prevStep}
-              onNext={nextStep}
             />
           );
         }

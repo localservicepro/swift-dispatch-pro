@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -288,11 +287,22 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
       </div>
 
       <OrderDeliveryForm 
-        formData={formData}
-        onInputChange={handleInputChange}
+        formData={{
+          full_address: formData.customer_address,
+          suburb_id: formData.suburb_id || '',
+        }}
+        deliveryRate={deliveryRate}
+        onFormDataChange={(updates) => {
+          if (updates.full_address !== undefined) {
+            handleInputChange('customer_address', updates.full_address);
+          }
+          if (updates.suburb_id !== undefined) {
+            handleSuburbChange(updates.suburb_id, deliveryRate);
+          }
+        }}
+        onSuburbChange={handleSuburbChange}
       />
 
-      {/* Conflict Warning Section */}
       {(formData.delivery_date && formData.delivery_time) && (
         <div className="space-y-2">
           <ConflictWarning 

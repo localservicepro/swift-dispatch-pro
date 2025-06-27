@@ -255,7 +255,7 @@ export function CustomerManagement() {
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
         customer={selectedCustomer}
-        isEditMode={isEditMode}
+        isEdit={isEditMode}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["customers"] });
           setIsDialogOpen(false);

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -17,29 +18,31 @@ interface CustomerDialogProps {
   customer: Customer | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (customerData: Partial<Customer>) => void;
+  onSuccess: () => void;
   isEdit?: boolean;
 }
 
-export function CustomerDialog({ customer, isOpen, onClose, onSave, isEdit = false }: CustomerDialogProps) {
+export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = false }: CustomerDialogProps) {
   const [formData, setFormData] = useState<{
-    first_name: string | null;
-    last_name: string | null;
-    email: string | null;
-    phone: string | null;
-    full_address: string | null;
-    suburb_id: string | null;
-    notes: string | null;
-    preferences: any;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    full_address: string;
+    suburb_id: string;
+    customer_type: "trade" | "account";
+    is_active: boolean;
+    sms_notifications_enabled: boolean;
   }>({
-    first_name: null,
-    last_name: null,
-    email: null,
-    phone: null,
-    full_address: null,
-    suburb_id: null,
-    notes: null,
-    preferences: null,
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    full_address: '',
+    suburb_id: '',
+    customer_type: 'trade',
+    is_active: true,
+    sms_notifications_enabled: true,
   });
   const [activeTab, setActiveTab] = useState("personal");
   const [deliveryRate, setDeliveryRate] = useState(0);
@@ -47,14 +50,15 @@ export function CustomerDialog({ customer, isOpen, onClose, onSave, isEdit = fal
   useEffect(() => {
     if (customer) {
       setFormData({
-        first_name: customer.first_name,
-        last_name: customer.last_name,
-        email: customer.email,
-        phone: customer.phone,
-        full_address: customer.full_address,
-        suburb_id: customer.suburb_id,
-        notes: customer.notes,
-        preferences: customer.preferences,
+        first_name: customer.first_name || '',
+        last_name: customer.last_name || '',
+        email: customer.email || '',
+        phone: customer.phone || '',
+        full_address: customer.full_address || '',
+        suburb_id: customer.suburb_id || '',
+        customer_type: customer.customer_type as "trade" | "account",
+        is_active: customer.is_active,
+        sms_notifications_enabled: customer.sms_notifications_enabled,
       });
       
       // Fetch delivery rate when customer or suburb changes
@@ -68,7 +72,7 @@ export function CustomerDialog({ customer, isOpen, onClose, onSave, isEdit = fal
 
           if (error) {
             console.error("Error fetching suburb:", error);
-            toast("Error fetching suburb", { type: "error" });
+            toast("Error fetching suburb", { description: "Failed to load delivery rate" });
           } else if (data) {
             setDeliveryRate(data.delivery_rate);
           }
@@ -78,20 +82,29 @@ export function CustomerDialog({ customer, isOpen, onClose, onSave, isEdit = fal
       fetchDeliveryRate();
     } else {
       setFormData({
-        first_name: null,
-        last_name: null,
-        email: null,
-        phone: null,
-        full_address: null,
-        suburb_id: null,
-        notes: null,
-        preferences: null,
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        full_address: '',
+        suburb_id: '',
+        customer_type: 'trade',
+        is_active: true,
+        sms_notifications_enabled: true,
       });
       setDeliveryRate(0);
     }
   }, [customer]);
 
+  const handlePersonalInfoChange = (updates: Partial<{ first_name: string; last_name: string; email: string; phone: string }>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+  };
+
   const handleAddressFormChange = (updates: Partial<{ full_address: string; suburb_id: string }>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+  };
+
+  const handlePreferencesChange = (updates: Partial<{ customer_type: "trade" | "account"; is_active: boolean; sms_notifications_enabled: boolean }>) => {
     setFormData(prev => ({ ...prev, ...updates }));
   };
 
@@ -102,7 +115,7 @@ export function CustomerDialog({ customer, isOpen, onClose, onSave, isEdit = fal
 
   const handleSave = async () => {
     if (!formData.first_name || !formData.last_name || !formData.email) {
-      toast("Please fill in all required fields.", { type: "error" });
+      toast("Please fill in all required fields.", { description: "First name, last name, and email are required" });
       return;
     }
 
@@ -113,17 +126,33 @@ export function CustomerDialog({ customer, isOpen, onClose, onSave, isEdit = fal
       phone: formData.phone,
       full_address: formData.full_address,
       suburb_id: formData.suburb_id,
-      notes: formData.notes,
-      preferences: formData.preferences,
+      customer_type: formData.customer_type,
+      is_active: formData.is_active,
+      sms_notifications_enabled: formData.sms_notifications_enabled,
     };
 
     try {
-      onSave(customerData);
+      if (isEdit && customer) {
+        const { error } = await supabase
+          .from('customers')
+          .update(customerData)
+          .eq('id', customer.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('customers')
+          .insert([customerData]);
+
+        if (error) throw error;
+      }
+
+      onSuccess();
       onClose();
-      toast("Customer saved successfully!", { type: "success" });
+      toast("Customer saved successfully!", { description: `Customer ${isEdit ? 'updated' : 'created'} successfully` });
     } catch (error) {
       console.error("Error saving customer:", error);
-      toast("Error saving customer", { type: "error" });
+      toast("Error saving customer", { description: "Please try again" });
     }
   };
 
@@ -143,22 +172,31 @@ export function CustomerDialog({ customer, isOpen, onClose, onSave, isEdit = fal
             <TabsTrigger value="personal">Personal Info</TabsTrigger>
             <TabsTrigger value="address">Address</TabsTrigger>
             <TabsTrigger value="preferences">Preferences</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="stats">Stats</TabsTrigger>
+            {isEdit && customer && (
+              <>
+                <TabsTrigger value="orders">Orders</TabsTrigger>
+                <TabsTrigger value="stats">Stats</TabsTrigger>
+              </>
+            )}
           </TabsList>
           
           <TabsContent value="personal" className="space-y-4">
             <CustomerPersonalInfoForm
-              formData={formData}
-              onFormDataChange={setFormData}
+              formData={{
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                email: formData.email,
+                phone: formData.phone,
+              }}
+              onFormDataChange={handlePersonalInfoChange}
             />
           </TabsContent>
 
           <TabsContent value="address" className="space-y-4">
             <CustomerAddressForm
               formData={{
-                full_address: formData.full_address || '',
-                suburb_id: formData.suburb_id || ''
+                full_address: formData.full_address,
+                suburb_id: formData.suburb_id
               }}
               deliveryRate={deliveryRate}
               onFormDataChange={handleAddressFormChange}
@@ -168,18 +206,26 @@ export function CustomerDialog({ customer, isOpen, onClose, onSave, isEdit = fal
 
           <TabsContent value="preferences" className="space-y-4">
             <CustomerPreferencesForm
-              formData={formData}
-              onFormDataChange={setFormData}
+              formData={{
+                customer_type: formData.customer_type,
+                is_active: formData.is_active,
+                sms_notifications_enabled: formData.sms_notifications_enabled,
+              }}
+              onFormDataChange={handlePreferencesChange}
             />
           </TabsContent>
 
-          <TabsContent value="orders">
-            <CustomerOrders customerId={customer?.id} />
-          </TabsContent>
+          {isEdit && customer && (
+            <>
+              <TabsContent value="orders">
+                <CustomerOrders customer={customer} onBack={() => setActiveTab("personal")} />
+              </TabsContent>
 
-          <TabsContent value="stats">
-            <CustomerStats customerId={customer?.id} />
-          </TabsContent>
+              <TabsContent value="stats">
+                <CustomerStats customers={[customer]} />
+              </TabsContent>
+            </>
+          )}
 
           <div className="flex justify-end space-x-2 mt-6">
             <Button type="button" variant="secondary" onClick={handleCancel}>
