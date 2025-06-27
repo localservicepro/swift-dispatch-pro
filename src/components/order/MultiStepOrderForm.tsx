@@ -272,6 +272,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
                 full_address: deliveryAddress,
                 suburb_id: selectedSuburbId
               }}
+              deliveryDate={deliveryDate}
+              deliveryTime={deliveryTime}
               onFormDataChange={(updates) => {
                 if (updates.full_address !== undefined) {
                   setDeliveryAddress(updates.full_address);
@@ -281,6 +283,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
                 }
               }}
               onSuburbChange={handleSuburbChange}
+              onDeliveryDateChange={setDeliveryDate}
+              onDeliveryTimeChange={setDeliveryTime}
               onBack={prevStep}
               onNext={nextStep}
               selectedCustomer={selectedCustomer}
