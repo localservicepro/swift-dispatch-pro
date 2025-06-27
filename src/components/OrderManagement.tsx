@@ -11,7 +11,7 @@ import { OrderEditDialog } from "./order/OrderEditDialog";
 import { DeletedOrdersDialog } from "./order/DeletedOrdersDialog";
 import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Filter, X, MapPin, Truck, FileText, Trash2 } from "lucide-react";
+import { Search, Filter, X, MapPin, Truck, FileText, Trash2, Edit3 } from "lucide-react";
 import { emailService } from "@/utils/emailService";
 import { activityLogger } from "@/utils/activityLogger";
 import { useAuth } from "./auth/AuthProvider";
@@ -28,6 +28,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { EnhancedDeleteOrderDialog } from "./order/EnhancedDeleteOrderDialog";
 import { useSplitOrderGroups } from "@/hooks/useSplitOrderGroups";
+import { NotesIndicator } from "./notes/NotesIndicator";
+import { NotesDisplaySection } from "./notes/NotesDisplaySection";
+import { NotesEditDialog } from "./notes/NotesEditDialog";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -49,6 +52,8 @@ interface Order {
   suburb_id?: string;
   delivery_fee?: number;
   subtotal?: number;
+  order_notes?: string;
+  delivery_notes?: string;
 }
 
 export function OrderManagement() {
@@ -58,6 +63,7 @@ export function OrderManagement() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingNotes, setEditingNotes] = useState<Order | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { profile } = useAuth();
@@ -91,6 +97,8 @@ export function OrderManagement() {
           subtotal,
           truck_type,
           truck_id,
+          order_notes,
+          delivery_notes,
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
@@ -437,6 +445,15 @@ export function OrderManagement() {
     }
   };
 
+  const handleNotesEdit = (order: Order) => {
+    setEditingNotes(order);
+  };
+
+  const handleNotesUpdated = () => {
+    refetch();
+    setEditingNotes(null);
+  };
+
   if (error) {
     console.error('Orders query error:', error);
     return (
@@ -522,6 +539,22 @@ export function OrderManagement() {
         onConfirmDelete={handleDeleteOrder}
         isDeleting={isDeleting}
       />
+
+      {/* Notes Edit Dialog */}
+      {editingNotes && (
+        <NotesEditDialog
+          isOpen={!!editingNotes}
+          onClose={() => setEditingNotes(null)}
+          orderId={editingNotes.id}
+          orderNumber={editingNotes.order_number}
+          currentNotes={{
+            orderNotes: editingNotes.order_notes,
+            deliveryNotes: editingNotes.delivery_notes,
+            specialInstructions: editingNotes.special_instructions
+          }}
+          onNotesUpdated={handleNotesUpdated}
+        />
+      )}
 
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
@@ -613,12 +646,30 @@ export function OrderManagement() {
                         <Badge className={getStatusColor(order.status)}>
                           {getStatusLabel(order.status)}
                         </Badge>
+                        <NotesIndicator 
+                          orderNotes={order.order_notes}
+                          deliveryNotes={order.delivery_notes}
+                          specialInstructions={order.special_instructions}
+                        />
                       </div>
-                      <span className="text-lg font-bold text-green-600">
-                        ${order.total_amount.toFixed(2)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold text-green-600">
+                          ${order.total_amount.toFixed(2)}
+                        </span>
+                        {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleNotesEdit(order)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit3 className="w-4 h-4 text-slate-500 hover:text-slate-700" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     
+                    {/* Order Details Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-3">
                       <div>
                         <p className="text-slate-500">Customer</p>
@@ -675,19 +726,20 @@ export function OrderManagement() {
                       </div>
                     )}
 
-                    {/* Special Instructions */}
-                    {order.special_instructions && (
+                    {/* Notes Section */}
+                    {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
                       <div className="mb-3">
-                        <p className="text-slate-500 flex items-center gap-1 mb-1">
-                          <FileText className="w-3 h-3" />
-                          Notes
-                        </p>
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2">
-                          <p className="text-sm text-yellow-800">{order.special_instructions}</p>
-                        </div>
+                        <NotesDisplaySection
+                          orderNotes={order.order_notes}
+                          deliveryNotes={order.delivery_notes}
+                          specialInstructions={order.special_instructions}
+                          compact={false}
+                          onEditClick={() => handleNotesEdit(order)}
+                        />
                       </div>
                     )}
 
+                    {/* Order Meta Information */}
                     <div className="mt-3 text-xs text-slate-400">
                       <p>Address: {order.customer_address}</p>
                       <p>Created: {new Date(order.created_at).toLocaleDateString()}</p>
@@ -696,6 +748,7 @@ export function OrderManagement() {
                       )}
                     </div>
                     
+                    {/* Action Buttons */}
                     <div className="flex gap-2 mt-4">
                       <Button 
                         size="sm" 
