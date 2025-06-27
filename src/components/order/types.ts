@@ -1,3 +1,4 @@
+
 import { Database } from "@/integrations/supabase/types";
 
 export type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -58,9 +59,9 @@ export interface SplitConfig {
     productId: string;
     quantity: number;
   }>;
-  truckType: TruckType | "";
-  truckId: string;
-  driverId: string;
+  truckType?: TruckType | "";
+  truckId?: string;
+  driverId?: string;
   deliveryDate: string;
   deliveryTime: string;
   specialInstructions: string;

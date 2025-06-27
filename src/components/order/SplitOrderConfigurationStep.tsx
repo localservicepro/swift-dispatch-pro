@@ -37,9 +37,6 @@ export function SplitOrderConfigurationStep({
         id: `split-${i + 1}`,
         name: `Split ${i + 1}`,
         products: [],
-        truckType: "",
-        truckId: "",
-        driverId: "",
         deliveryDate: "",
         deliveryTime: "",
         specialInstructions: "",
@@ -50,7 +47,6 @@ export function SplitOrderConfigurationStep({
     return newSplits;
   };
 
-  // Initialize splits when component mounts if empty
   useEffect(() => {
     if (splits.length === 0) {
       const newSplits = initializeSplits(numberOfSplits);
@@ -191,9 +187,9 @@ export function SplitOrderConfigurationStep({
     // Check if each split has at least one product
     const allSplitsHaveProducts = splits.every(split => split.products.length > 0);
 
-    // Check if each split has truck type and truck ID assigned
+    // Check if each split has delivery date and time
     const allSplitsHaveDeliveryDetails = splits.every(split => 
-      split.truckType && split.truckId && split.deliveryDate && split.deliveryTime
+      split.deliveryDate && split.deliveryTime
     );
 
     return fullyAllocated && allSplitsHaveProducts && allSplitsHaveDeliveryDetails;
@@ -332,7 +328,7 @@ export function SplitOrderConfigurationStep({
         {!canProceed() && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="text-xs text-yellow-800">
-              Please ensure all products are fully allocated, each split has at least one product, and all delivery details (truck type, truck, date, time) are configured.
+              Please ensure all products are fully allocated, each split has at least one product, and delivery date and time are set for each split.
             </p>
           </div>
         )}

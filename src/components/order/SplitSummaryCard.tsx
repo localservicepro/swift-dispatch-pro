@@ -7,12 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Truck, Calendar, Clock, Minus, Plus, ChevronDown, ChevronUp, MapPin, FileText } from "lucide-react";
+import { Calendar, Clock, Minus, Plus, ChevronDown, ChevronUp, MapPin, FileText } from "lucide-react";
 import { useState } from "react";
 import { CartItem, SplitConfig, Customer } from "./types";
-import { TruckTypeSelector } from "./TruckTypeSelector";
-import { SpecificTruckSelector } from "./SpecificTruckSelector";
-import { DriverSelector } from "./DriverSelector";
 
 interface SplitSummaryCardProps {
   split: SplitConfig;
@@ -46,16 +43,8 @@ export function SplitSummaryCard({
 
   const totalItems = split.products.reduce((sum, p) => sum + p.quantity, 0);
 
-  const isConfigurationComplete = split.truckType && split.truckId && split.deliveryDate && split.deliveryTime &&
+  const isConfigurationComplete = split.deliveryDate && split.deliveryTime &&
     (useGlobalDeliveryAddress || split.sameAsBilling || (split.deliveryAddress && split.deliveryAddress.trim() !== ""));
-
-  const handleTruckSelect = (truckId: string, truckDetails: any) => {
-    onUpdateSplit(splitIndex, { truckId });
-  };
-
-  const handleDriverChange = (driverId: string) => {
-    onUpdateSplit(splitIndex, { driverId });
-  };
 
   const handleSameAsBillingChange = (checked: boolean) => {
     onUpdateSplit(splitIndex, { 
@@ -79,7 +68,6 @@ export function SplitSummaryCard({
           <CollapsibleTrigger asChild>
             <CardTitle className="text-base flex items-center justify-between cursor-pointer hover:bg-gray-50 -m-2 p-2 rounded">
               <div className="flex items-center gap-2">
-                <Truck className="w-4 h-4" />
                 <span>{split.name}</span>
                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </div>
@@ -189,35 +177,6 @@ export function SplitSummaryCard({
                   )}
                 </div>
               )}
-
-              {/* Truck Type Selection */}
-              <div>
-                <TruckTypeSelector
-                  selectedTruckType={split.truckType}
-                  onTruckTypeChange={(truckType) => onUpdateSplit(splitIndex, { truckType, truckId: "" })}
-                />
-              </div>
-
-              {/* Specific Truck Selection */}
-              {split.truckType && (
-                <div>
-                  <SpecificTruckSelector
-                    selectedTruckType={split.truckType}
-                    selectedTruckId={split.truckId}
-                    deliveryDate={split.deliveryDate}
-                    deliveryTime={split.deliveryTime}
-                    onTruckSelect={handleTruckSelect}
-                  />
-                </div>
-              )}
-
-              {/* Driver Selection */}
-              <div>
-                <DriverSelector
-                  selectedDriverId={split.driverId}
-                  onDriverChange={handleDriverChange}
-                />
-              </div>
 
               {/* Delivery date and time (if not in common date mode) */}
               {!isCommonDateMode && (
