@@ -120,7 +120,7 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
       name: formData.name.trim(),
       description: formData.description.trim() || null,
       price: formData.product_type === "single" ? formData.price : 0, // Set to 0 for variable products
-      stock_quantity: formData.stock_quantity,
+      stock_quantity: formData.stock_quantity || 0, // Default to 0 if empty
       sku: formData.sku.trim() || null,
       barcode: formData.barcode.trim() || null,
       weight: formData.weight || null,
@@ -312,13 +312,13 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="productStock">Stock Quantity *</Label>
+              <Label htmlFor="productStock">Stock Quantity</Label>
               <Input
                 id="productStock"
                 type="number"
                 value={formData.stock_quantity}
                 onChange={(e) => updateFormData({ stock_quantity: parseInt(e.target.value) || 0 })}
-                placeholder="0"
+                placeholder="0 (optional)"
               />
             </div>
             <div>

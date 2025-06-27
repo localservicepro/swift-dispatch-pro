@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -242,7 +241,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           type="number"
                           value={variation.stockQuantity}
                           onChange={(e) => updateVariation(variation.id, 'stockQuantity', parseInt(e.target.value) || 0)}
-                          placeholder="0"
+                          placeholder="0 (optional)"
                         />
                       </div>
                     </div>
