@@ -1,67 +1,97 @@
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CustomerPersonalInfoForm } from './CustomerPersonalInfoForm';
+import { CustomerAddressForm } from './CustomerAddressForm';
+import { CustomerPreferencesForm } from './CustomerPreferencesForm';
+import { CustomerOrders } from './CustomerOrders';
+import { CustomerStats } from './CustomerStats';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import type { Database } from '@/integrations/supabase/types';
 
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { CustomerPersonalInfoForm } from "./CustomerPersonalInfoForm";
-import { CustomerAddressForm } from "./CustomerAddressForm";
-import { CustomerPreferencesForm } from "./CustomerPreferencesForm";
+type Customer = Database['public']['Tables']['customers']['Row'];
 
 interface CustomerDialogProps {
+  customer: Customer | null;
   isOpen: boolean;
   onClose: () => void;
-  customer?: any;
-  isEditMode: boolean;
-  onSuccess: () => void;
+  onSave: (customerData: Partial<Customer>) => void;
+  isEdit?: boolean;
 }
 
-export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSuccess }: CustomerDialogProps) {
-  const [formData, setFormData] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    full_address: "",
-    customer_type: "trade" as "trade" | "account",
-    is_active: true,
-    sms_notifications_enabled: true,
-    suburb_id: "",
+export function CustomerDialog({ customer, isOpen, onClose, onSave, isEdit = false }: CustomerDialogProps) {
+  const [formData, setFormData] = useState<{
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+    phone: string | null;
+    full_address: string | null;
+    suburb_id: string | null;
+    notes: string | null;
+    preferences: any;
+  }>({
+    first_name: null,
+    last_name: null,
+    email: null,
+    phone: null,
+    full_address: null,
+    suburb_id: null,
+    notes: null,
+    preferences: null,
   });
+  const [activeTab, setActiveTab] = useState("personal");
   const [deliveryRate, setDeliveryRate] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
-    if (customer && isEditMode) {
+    if (customer) {
       setFormData({
-        first_name: customer.first_name || "",
-        last_name: customer.last_name || "",
-        email: customer.email || "",
-        phone: customer.phone || "",
-        full_address: customer.full_address || "",
-        customer_type: customer.customer_type || "trade",
-        is_active: customer.is_active ?? true,
-        sms_notifications_enabled: customer.sms_notifications_enabled ?? true,
-        suburb_id: customer.suburb_id || "",
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+        email: customer.email,
+        phone: customer.phone,
+        full_address: customer.full_address,
+        suburb_id: customer.suburb_id,
+        notes: customer.notes,
+        preferences: customer.preferences,
       });
+      
+      // Fetch delivery rate when customer or suburb changes
+      const fetchDeliveryRate = async () => {
+        if (customer.suburb_id) {
+          const { data, error } = await supabase
+            .from('suburbs')
+            .select('delivery_rate')
+            .eq('id', customer.suburb_id)
+            .single();
+
+          if (error) {
+            console.error("Error fetching suburb:", error);
+            toast("Error fetching suburb", { type: "error" });
+          } else if (data) {
+            setDeliveryRate(data.delivery_rate);
+          }
+        }
+      };
+
+      fetchDeliveryRate();
     } else {
       setFormData({
-        first_name: "",
-        last_name: "",
-        email: "",
-        phone: "",
-        full_address: "",
-        customer_type: "trade",
-        is_active: true,
-        sms_notifications_enabled: true,
-        suburb_id: "",
+        first_name: null,
+        last_name: null,
+        email: null,
+        phone: null,
+        full_address: null,
+        suburb_id: null,
+        notes: null,
+        preferences: null,
       });
       setDeliveryRate(0);
     }
-  }, [customer, isEditMode, isOpen]);
+  }, [customer]);
 
-  const handleFormDataChange = (updates: Partial<typeof formData>) => {
+  const handleAddressFormChange = (updates: Partial<{ full_address: string; suburb_id: string }>) => {
     setFormData(prev => ({ ...prev, ...updates }));
   };
 
@@ -70,100 +100,96 @@ export function CustomerDialog({ isOpen, onClose, customer, isEditMode, onSucces
     setDeliveryRate(rate);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handleSave = async () => {
+    if (!formData.first_name || !formData.last_name || !formData.email) {
+      toast("Please fill in all required fields.", { type: "error" });
+      return;
+    }
+
+    const customerData: Partial<Customer> = {
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      email: formData.email,
+      phone: formData.phone,
+      full_address: formData.full_address,
+      suburb_id: formData.suburb_id,
+      notes: formData.notes,
+      preferences: formData.preferences,
+    };
 
     try {
-      if (isEditMode && customer) {
-        const { error } = await supabase
-          .from("customers")
-          .update({
-            ...formData,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", customer.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Customer Updated",
-          description: "Customer information has been successfully updated.",
-        });
-      } else {
-        const { error } = await supabase
-          .from("customers")
-          .insert([formData]);
-
-        if (error) throw error;
-
-        toast({
-          title: "Customer Created",
-          description: "New customer has been successfully created.",
-        });
-      }
-
-      onSuccess();
+      onSave(customerData);
+      onClose();
+      toast("Customer saved successfully!", { type: "success" });
     } catch (error) {
       console.error("Error saving customer:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save customer. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+      toast("Error saving customer", { type: "error" });
     }
+  };
+
+  const handleCancel = () => {
+    onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {isEditMode ? "Edit Customer" : "Add New Customer"}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? "Edit Customer" : "Create Customer"}</DialogTitle>
         </DialogHeader>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList>
+            <TabsTrigger value="personal">Personal Info</TabsTrigger>
+            <TabsTrigger value="address">Address</TabsTrigger>
+            <TabsTrigger value="preferences">Preferences</TabsTrigger>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="stats">Stats</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="personal" className="space-y-4">
+            <CustomerPersonalInfoForm
+              formData={formData}
+              onFormDataChange={setFormData}
+            />
+          </TabsContent>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <CustomerPersonalInfoForm
-            formData={{
-              first_name: formData.first_name,
-              last_name: formData.last_name,
-              email: formData.email,
-              phone: formData.phone,
-            }}
-            onFormDataChange={handleFormDataChange}
-          />
+          <TabsContent value="address" className="space-y-4">
+            <CustomerAddressForm
+              formData={{
+                full_address: formData.full_address || '',
+                suburb_id: formData.suburb_id || ''
+              }}
+              deliveryRate={deliveryRate}
+              onFormDataChange={handleAddressFormChange}
+              onSuburbChange={handleSuburbChange}
+            />
+          </TabsContent>
 
-          <CustomerAddressForm
-            formData={{
-              full_address: formData.full_address,
-              suburb_id: formData.suburb_id,
-            }}
-            deliveryRate={deliveryRate}
-            onFormDataChange={handleFormDataChange}
-            onSuburbChange={handleSuburbChange}
-          />
+          <TabsContent value="preferences" className="space-y-4">
+            <CustomerPreferencesForm
+              formData={formData}
+              onFormDataChange={setFormData}
+            />
+          </TabsContent>
 
-          <CustomerPreferencesForm
-            formData={{
-              customer_type: formData.customer_type,
-              is_active: formData.is_active,
-              sms_notifications_enabled: formData.sms_notifications_enabled,
-            }}
-            onFormDataChange={handleFormDataChange}
-          />
+          <TabsContent value="orders">
+            <CustomerOrders customerId={customer?.id} />
+          </TabsContent>
 
-          <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+          <TabsContent value="stats">
+            <CustomerStats customerId={customer?.id} />
+          </TabsContent>
+
+          <div className="flex justify-end space-x-2 mt-6">
+            <Button type="button" variant="secondary" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading} className="flex-1">
-              {isLoading ? "Saving..." : isEditMode ? "Update" : "Create"}
+            <Button type="button" onClick={handleSave}>
+              Save
             </Button>
           </div>
-        </form>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
