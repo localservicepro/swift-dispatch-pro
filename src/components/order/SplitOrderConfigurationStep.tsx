@@ -204,6 +204,25 @@ export function SplitOrderConfigurationStep({
     updateSplit(splitIndex, { products: updatedProducts });
   };
 
+  const replaceProductInSplit = (splitIndex: number, currentProductId: string, newProduct: any, quantity: number) => {
+    const split = splits[splitIndex];
+    
+    // Remove the current product and add the new product
+    const updatedProducts = split.products
+      .filter(p => p.productId !== currentProductId)
+      .concat([{ productId: newProduct.id, quantity }]);
+    
+    updateSplit(splitIndex, { products: updatedProducts });
+
+    // Update the cart to include the new product if it's not already there
+    const existingCartItem = cart.find(item => item.product.id === newProduct.id);
+    if (!existingCartItem) {
+      // This is a simplified approach - in a real implementation, you might want to
+      // handle this through a proper cart management system
+      console.log('New product added to split:', newProduct);
+    }
+  };
+
   const canProceed = () => {
     // Check if all products are fully allocated
     const fullyAllocated = cart.every(cartItem => {
@@ -376,6 +395,7 @@ export function SplitOrderConfigurationStep({
                 onUpdateSplit={updateSplit}
                 onUpdateQuantity={updateProductQuantity}
                 onRemoveProduct={removeProductFromSplit}
+                onReplaceProduct={replaceProductInSplit}
                 isCommonDateMode={useSameDateForAll}
               />
             ))}
