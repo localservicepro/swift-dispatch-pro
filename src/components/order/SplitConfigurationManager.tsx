@@ -3,10 +3,8 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CartItem, SplitConfig, Product } from "./types";
-import { CompactProductTable } from "./CompactProductTable";
+import { SimpleProductAllocation } from "./SimpleProductAllocation";
 import { CompactSplitConfig } from "./CompactSplitConfig";
-import { SplitProgressIndicator } from "./SplitProgressIndicator";
-import { AllocationActions } from "./AllocationActions";
 import { SplitControlsHeader } from "./SplitControlsHeader";
 import { CommonDateTimeSelector } from "./CommonDateTimeSelector";
 import { AddProductToSplitDialog } from "./AddProductToSplitDialog";
@@ -198,25 +196,28 @@ export function SplitConfigurationManager({
     onSplitsChange(updatedSplits);
   };
 
-  const handleUpdateSplitQuantity = (splitIndex: number, productId: string, quantity: number) => {
-    const split = splits[splitIndex];
-    
-    if (quantity === 0) {
-      const updatedProducts = split.products.filter(p => p.productId !== productId);
-      updateSplit(splitIndex, { products: updatedProducts });
-    } else {
-      const existingProduct = split.products.find(p => p.productId === productId);
-      
-      if (existingProduct) {
-        const updatedProducts = split.products.map(p =>
-          p.productId === productId ? { ...p, quantity } : p
-        );
-        updateSplit(splitIndex, { products: updatedProducts });
-      } else {
-        const updatedProducts = [...split.products, { productId, quantity }];
-        updateSplit(splitIndex, { products: updatedProducts });
+  const handleAssignToSplit = (productId: string, splitIndex: number) => {
+    const cartItem = cart.find(item => item.product.id === productId);
+    if (!cartItem) return;
+
+    // Remove product from all other splits first
+    const clearedSplits = splits.map(split => ({
+      ...split,
+      products: split.products.filter(p => p.productId !== productId)
+    }));
+
+    // Add product to the target split with full quantity
+    const updatedSplits = clearedSplits.map((split, index) => {
+      if (index === splitIndex) {
+        return {
+          ...split,
+          products: [...split.products, { productId, quantity: cartItem.quantity }]
+        };
       }
-    }
+      return split;
+    });
+
+    onSplitsChange(updatedSplits);
   };
 
   return (
@@ -240,9 +241,6 @@ export function SplitConfigurationManager({
         />
       )}
 
-      {/* Progress Indicator */}
-      <SplitProgressIndicator cart={cart} splits={splits} />
-
       {/* Main Content - Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
@@ -255,21 +253,13 @@ export function SplitConfigurationManager({
         </TabsList>
         
         <TabsContent value="allocation" className="space-y-4 mt-4">
-          {/* Quick Actions */}
-          <AllocationActions 
-            cart={cart}
-            splits={splits}
-            onSplitsChange={onSplitsChange}
-            onCartChange={onCartChange}
-          />
-
-          {/* Product Allocation Table */}
-          <CompactProductTable
+          {/* Simple Product Allocation */}
+          <SimpleProductAllocation
             cart={cart}
             splits={splits}
             onQuantityChange={handleCartQuantityChange}
             onRemoveFromCart={handleRemoveFromCart}
-            onUpdateSplitQuantity={handleUpdateSplitQuantity}
+            onAssignToSplit={handleAssignToSplit}
           />
         </TabsContent>
         
