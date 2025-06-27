@@ -3,10 +3,11 @@ import { Input } from './input';
 import { Label } from './label';
 import { Button } from './button';
 import { Badge } from './badge';
-import { MapPin, Search, CheckCircle, AlertCircle, Map } from 'lucide-react';
+import { MapPin, Search, CheckCircle, AlertCircle, Map, Wifi, WifiOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDebounce } from '@/hooks/useDebounce';
 import { GoogleMapsLightbox } from './google-maps-lightbox';
+import { loadGoogleMapsScript } from '@/utils/googleMapsConfig';
 
 interface AddressData {
   fullAddress: string;
@@ -65,11 +66,26 @@ export function EnhancedAddressInput({
   const [sessionToken] = useState(() => Math.random().toString(36).substring(7));
   const [hasSearched, setHasSearched] = useState(false);
   const [searchAttempts, setSearchAttempts] = useState(0);
+  const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   const debouncedValue = useDebounce(value, 500);
+
+  // Load Google Maps script on component mount
+  useEffect(() => {
+    loadGoogleMapsScript()
+      .then(() => {
+        console.log('Google Maps script loaded successfully');
+        setGoogleMapsLoaded(true);
+      })
+      .catch((error) => {
+        console.error('Failed to load Google Maps:', error);
+        setGoogleMapsLoaded(false);
+      });
+  }, []);
 
   // Fetch predictions when user types
   useEffect(() => {
@@ -81,6 +97,7 @@ export function EnhancedAddressInput({
       setValidationStatus('idle');
       setHasSearched(false);
       setSearchAttempts(0);
+      setIsUsingFallback(false);
     }
   }, [debouncedValue]);
 
@@ -92,41 +109,80 @@ export function EnhancedAddressInput({
     
     try {
       console.log('Fetching predictions for:', input);
+      
+      // Try edge function first
       const { data, error } = await supabase.functions.invoke('google-places', {
         body: { input, sessionToken }
       });
 
-      if (error) {
-        console.error('Google Places API error:', error);
-        handleSearchFailure();
+      if (error || data?.error || data?.fallback) {
+        console.log('Edge function failed, trying client-side fallback:', error || data?.error);
+        await tryClientSideFallback(input);
         return;
       }
 
-      console.log('Predictions response:', data);
+      console.log('Edge function predictions response:', data);
 
       if (data.predictions && data.predictions.length > 0) {
         setPredictions(data.predictions);
         setShowDropdown(true);
         setSelectedIndex(-1);
         setValidationStatus('idle');
+        setIsUsingFallback(false);
         onValidationChange?.(true);
       } else {
-        console.log('No predictions found, will auto-open map lightbox');
-        setPredictions([]);
-        setShowDropdown(false);
-        setValidationStatus('idle');
-        
-        // Auto-open map lightbox when no results found after a delay
-        setTimeout(() => {
-          console.log('Auto-opening map lightbox due to no search results');
-          setShowMapLightbox(true);
-        }, 1000);
+        console.log('No predictions from edge function, trying client-side fallback');
+        await tryClientSideFallback(input);
       }
     } catch (error) {
       console.error('Error fetching address predictions:', error);
-      handleSearchFailure();
+      await tryClientSideFallback(input);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const tryClientSideFallback = async (input: string) => {
+    if (!googleMapsLoaded || !window.google?.maps?.places?.AutocompleteService) {
+      console.error('Google Maps not available for client-side fallback');
+      handleSearchFailure();
+      return;
+    }
+
+    try {
+      console.log('Using client-side Google Places API');
+      setIsUsingFallback(true);
+      
+      const service = new window.google.maps.places.AutocompleteService();
+      const response = await new Promise((resolve, reject) => {
+        service.getPlacePredictions(
+          {
+            input,
+            types: ['address'],
+            componentRestrictions: { country: 'au' }
+          },
+          (predictions: any, status: any) => {
+            if (status === 'OK') resolve(predictions || []);
+            else reject(new Error(`Places search failed: ${status}`));
+          }
+        );
+      });
+
+      const clientPredictions = response as any[];
+      console.log('Client-side predictions:', clientPredictions.length);
+      
+      if (clientPredictions.length > 0) {
+        setPredictions(clientPredictions);
+        setShowDropdown(true);
+        setSelectedIndex(-1);
+        setValidationStatus('idle');
+        onValidationChange?.(true);
+      } else {
+        handleSearchFailure();
+      }
+    } catch (error) {
+      console.error('Client-side places search failed:', error);
+      handleSearchFailure();
     }
   };
 
@@ -136,11 +192,11 @@ export function EnhancedAddressInput({
     setValidationStatus('idle');
     onValidationChange?.(false);
     
-    // Auto-open map lightbox on API error after a delay
+    // Auto-open map lightbox on search failure after a delay
     setTimeout(() => {
       console.log('Auto-opening map lightbox due to search failure');
       setShowMapLightbox(true);
-    }, 1000);
+    }, 1500);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,6 +209,7 @@ export function EnhancedAddressInput({
       setValidationStatus('idle');
       setHasSearched(false);
       setSearchAttempts(0);
+      setIsUsingFallback(false);
     }
   };
 
@@ -165,13 +222,16 @@ export function EnhancedAddressInput({
     // Get detailed address information
     try {
       console.log('Getting details for prediction:', prediction);
+      
+      // Try edge function first
       const { data, error } = await supabase.functions.invoke('google-places-details', {
         body: { placeId: prediction.place_id, sessionToken }
       });
 
-      if (error) {
-        console.error('Place details error:', error);
-        throw error;
+      if (error || data?.error || data?.fallback) {
+        console.log('Edge function details failed, trying client-side:', error || data?.error);
+        await tryClientSideDetails(prediction.place_id);
+        return;
       }
 
       console.log('Place details response:', data);
@@ -195,6 +255,76 @@ export function EnhancedAddressInput({
       }
     } catch (error) {
       console.error('Error getting address details:', error);
+      await tryClientSideDetails(prediction.place_id);
+    }
+  };
+
+  const tryClientSideDetails = async (placeId: string) => {
+    if (!googleMapsLoaded || !window.google?.maps?.places?.PlacesService) {
+      console.error('Google Places PlacesService not available');
+      setValidationStatus('invalid');
+      onValidationChange?.(false);
+      return;
+    }
+
+    try {
+      const service = new window.google.maps.places.PlacesService(
+        document.createElement('div')
+      );
+      
+      const response = await new Promise((resolve, reject) => {
+        service.getDetails(
+          {
+            placeId,
+            fields: ['formatted_address', 'address_components', 'geometry', 'name']
+          },
+          (place: any, status: any) => {
+            if (status === 'OK') resolve(place);
+            else reject(new Error(`Place details failed: ${status}`));
+          }
+        );
+      });
+
+      const place = response as any;
+      if (place && onAddressSelect) {
+        const addressComponents = place.address_components || [];
+        const geometry = place.geometry || {};
+        
+        const parsedAddress: AddressData = {
+          fullAddress: place.formatted_address,
+          name: place.name || '',
+          street: '',
+          city: '',
+          state: '',
+          postcode: '',
+          country: '',
+          lat: geometry.location?.lat() || null,
+          lng: geometry.location?.lng() || null,
+        };
+
+        // Parse address components
+        addressComponents.forEach((component: any) => {
+          const types = component.types || [];
+          
+          if (types.includes('street_number') || types.includes('route')) {
+            parsedAddress.street += (parsedAddress.street ? ' ' : '') + component.long_name;
+          } else if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+            parsedAddress.city = component.long_name;
+          } else if (types.includes('administrative_area_level_1')) {
+            parsedAddress.state = component.short_name;
+          } else if (types.includes('postal_code')) {
+            parsedAddress.postcode = component.long_name;
+          } else if (types.includes('country')) {
+            parsedAddress.country = component.long_name;
+          }
+        });
+
+        onAddressSelect(parsedAddress);
+        setValidationStatus('valid');
+        onValidationChange?.(true);
+      }
+    } catch (error) {
+      console.error('Client-side place details failed:', error);
       setValidationStatus('invalid');
       onValidationChange?.(false);
     }
@@ -269,6 +399,18 @@ export function EnhancedAddressInput({
     
     return (
       <div className="flex items-center gap-2 mt-1">
+        {isUsingFallback && (
+          <Badge variant="outline" className="text-orange-700 bg-orange-50">
+            <WifiOff className="w-3 h-3 mr-1" />
+            Using backup search
+          </Badge>
+        )}
+        {!isUsingFallback && predictions.length > 0 && (
+          <Badge variant="outline" className="text-green-700 bg-green-50">
+            <Wifi className="w-3 h-3 mr-1" />
+            Server search active
+          </Badge>
+        )}
         {validationStatus === 'valid' && (
           <Badge variant="secondary" className="text-green-700 bg-green-100">
             <CheckCircle className="w-3 h-3 mr-1" />

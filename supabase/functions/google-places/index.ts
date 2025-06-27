@@ -18,7 +18,10 @@ serve(async (req) => {
     if (!googleMapsApiKey) {
       console.error('GOOGLE_MAPS_API_KEY not found in environment variables');
       return new Response(
-        JSON.stringify({ error: 'Google Maps API key not configured' }),
+        JSON.stringify({ 
+          error: 'Google Maps API key not configured',
+          fallback: true // Signal to use client-side fallback
+        }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -28,9 +31,12 @@ serve(async (req) => {
 
     const { input, sessionToken } = await req.json();
 
-    if (!input) {
+    if (!input || input.trim().length < 2) {
       return new Response(
-        JSON.stringify({ error: 'Input parameter is required' }),
+        JSON.stringify({ 
+          error: 'Input parameter must be at least 2 characters',
+          predictions: []
+        }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -40,7 +46,7 @@ serve(async (req) => {
 
     // Call Google Places Autocomplete API
     const url = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json');
-    url.searchParams.append('input', input);
+    url.searchParams.append('input', input.trim());
     url.searchParams.append('key', googleMapsApiKey);
     url.searchParams.append('types', 'address');
     url.searchParams.append('components', 'country:au');
@@ -55,6 +61,33 @@ serve(async (req) => {
     const data = await response.json();
 
     console.log('Google Places API response status:', data.status);
+    console.log('Number of predictions:', data.predictions?.length || 0);
+
+    // Handle various API response statuses
+    if (data.status === 'ZERO_RESULTS') {
+      return new Response(JSON.stringify({
+        status: 'ZERO_RESULTS',
+        predictions: [],
+        message: 'No results found for this search'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (data.status !== 'OK') {
+      console.error('Google Places API error:', data.status, data.error_message);
+      return new Response(
+        JSON.stringify({ 
+          error: `Google Places API error: ${data.status}`,
+          fallback: true,
+          predictions: []
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -63,7 +96,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in google-places function:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: 'Internal server error',
+        fallback: true,
+        predictions: []
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

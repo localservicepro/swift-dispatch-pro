@@ -18,7 +18,10 @@ serve(async (req) => {
     if (!googleMapsApiKey) {
       console.error('GOOGLE_MAPS_API_KEY not found in environment variables');
       return new Response(
-        JSON.stringify({ error: 'Google Maps API key not configured' }),
+        JSON.stringify({ 
+          error: 'Google Maps API key not configured',
+          fallback: true
+        }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -54,6 +57,20 @@ serve(async (req) => {
     const data = await response.json();
 
     console.log('Google Places Details API response status:', data.status);
+
+    if (data.status !== 'OK') {
+      console.error('Google Places Details API error:', data.status, data.error_message);
+      return new Response(
+        JSON.stringify({ 
+          error: `Google Places Details API error: ${data.status}`,
+          fallback: true
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     if (data.result) {
       // Parse address components into structured format
@@ -113,7 +130,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in google-places-details function:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: 'Internal server error',
+        fallback: true
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
