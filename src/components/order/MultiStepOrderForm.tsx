@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +14,12 @@ import { ProgressIndicator } from "./ProgressIndicator";
 import { createSingleOrder, createSplitOrder } from "./services/orderCreationService";
 import { useOrderFormState } from "./hooks/useOrderFormState";
 
-export function MultiStepOrderForm() {
+interface MultiStepOrderFormProps {
+  onOrderCreated?: () => void;
+  onClose?: () => void;
+}
+
+export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFormProps) {
   const { toast } = useToast();
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
@@ -128,6 +134,11 @@ export function MultiStepOrderForm() {
         description: `Order ${result.orderNumber} created successfully`,
       });
 
+      // Call the onOrderCreated callback if provided
+      if (onOrderCreated) {
+        onOrderCreated();
+      }
+
       // Reset form after successful creation
       setCurrentStep(1);
       setSelectedCustomer(null);
@@ -180,7 +191,6 @@ export function MultiStepOrderForm() {
             onAdjustmentsChange={setAdjustments}
             onBack={prevStep}
             onNext={nextStep}
-            customer={selectedCustomer}
           />
         );
 

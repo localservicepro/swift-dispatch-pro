@@ -18,8 +18,8 @@ interface SplitSummaryCardProps {
   split: SplitConfig;
   splitIndex: number;
   cart: CartItem[];
-  customer: Customer;
-  useGlobalDeliveryAddress: boolean;
+  customer?: Customer;
+  useGlobalDeliveryAddress?: boolean;
   onUpdateSplit: (splitIndex: number, updates: Partial<SplitConfig>) => void;
   onUpdateQuantity: (splitIndex: number, productId: string, quantity: number) => void;
   onRemoveProduct: (splitIndex: number, productId: string) => void;
@@ -31,7 +31,7 @@ export function SplitSummaryCard({
   splitIndex, 
   cart, 
   customer,
-  useGlobalDeliveryAddress,
+  useGlobalDeliveryAddress = false,
   onUpdateSplit, 
   onUpdateQuantity, 
   onRemoveProduct,
@@ -60,7 +60,7 @@ export function SplitSummaryCard({
   const handleSameAsBillingChange = (checked: boolean) => {
     onUpdateSplit(splitIndex, { 
       sameAsBilling: checked,
-      deliveryAddress: checked ? customer.full_address : split.deliveryAddress
+      deliveryAddress: checked && customer ? customer.full_address : split.deliveryAddress
     });
   };
 
@@ -154,8 +154,8 @@ export function SplitSummaryCard({
                 </div>
               )}
 
-              {/* Individual Delivery Address (only show if not using global) */}
-              {!useGlobalDeliveryAddress && (
+              {/* Individual Delivery Address (only show if not using global and customer exists) */}
+              {!useGlobalDeliveryAddress && customer && (
                 <div className="border rounded-lg p-3 bg-yellow-50">
                   <Label className="text-xs font-medium mb-2 block flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
