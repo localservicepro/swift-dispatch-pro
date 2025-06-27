@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Package, User, MapPin, Clock, CreditCard, Store, Home } from "lucide-react";
+import { CheckCircle, Package, User, MapPin, Clock, CreditCard, Store, Home, FileText, Truck } from "lucide-react";
 import { Customer, CartItem } from "./types";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals, formatCurrency } from "./utils/paymentCalculations";
@@ -21,12 +22,16 @@ interface OrderReviewStepProps {
   deliveryTime: string;
   specialInstructions: string;
   paymentMethod: string;
+  orderNotes: string;
+  deliveryNotes: string;
   deliveryAddress: string;
   sameAsBilling: boolean;
   onBack: () => void;
   onConfirm: () => void;
   isCreating: boolean;
   onDeliveryFeeChange?: (fee: number) => void;
+  onOrderNotesChange?: (notes: string) => void;
+  onDeliveryNotesChange?: (notes: string) => void;
 }
 
 export function OrderReviewStep({
@@ -40,12 +45,16 @@ export function OrderReviewStep({
   deliveryTime,
   specialInstructions,
   paymentMethod,
+  orderNotes,
+  deliveryNotes,
   deliveryAddress,
   sameAsBilling,
   onBack,
   onConfirm,
   isCreating,
-  onDeliveryFeeChange
+  onDeliveryFeeChange,
+  onOrderNotesChange,
+  onDeliveryNotesChange
 }: OrderReviewStepProps) {
   const { data: paymentSettings } = usePaymentSettings();
   const stepNumber = deliveryMethod === "pickup" ? "5" : "7";
@@ -85,6 +94,14 @@ export function OrderReviewStep({
   const handleDeliveryFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value) || 0;
     onDeliveryFeeChange?.(value);
+  };
+
+  const handleOrderNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onOrderNotesChange?.(e.target.value);
+  };
+
+  const handleDeliveryNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onDeliveryNotesChange?.(e.target.value);
   };
 
   return (
@@ -212,6 +229,51 @@ export function OrderReviewStep({
             </div>
           </div>
         )}
+
+        {/* Order Notes */}
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 font-semibold">
+            <FileText className="w-4 h-4" />
+            Order Notes
+          </h3>
+          <div className="space-y-2">
+            <Label htmlFor="order-notes" className="text-sm font-medium">
+              Notes for admin and customer (will appear on invoice)
+            </Label>
+            <Textarea
+              id="order-notes"
+              value={orderNotes}
+              onChange={handleOrderNotesChange}
+              placeholder="Add any additional notes or special requirements for this order..."
+              className="min-h-[80px]"
+              disabled={isCreating}
+            />
+          </div>
+        </div>
+
+        {/* Delivery Notes */}
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 font-semibold">
+            <Truck className="w-4 h-4" />
+            Delivery Notes
+          </h3>
+          <div className="space-y-2">
+            <Label htmlFor="delivery-notes" className="text-sm font-medium">
+              Internal notes for assigned driver only
+            </Label>
+            <Textarea
+              id="delivery-notes"
+              value={deliveryNotes}
+              onChange={handleDeliveryNotesChange}
+              placeholder="Add delivery-specific instructions for the driver (access codes, special handling, etc.)..."
+              className="min-h-[80px]"
+              disabled={isCreating}
+            />
+            <p className="text-xs text-muted-foreground">
+              These notes will only be visible to the assigned driver and won't appear on invoices
+            </p>
+          </div>
+        </div>
 
         {/* Payment Method */}
         <div className="space-y-3">

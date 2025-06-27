@@ -23,6 +23,10 @@ export function useOrderFormState() {
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   
+  // New notes state
+  const [orderNotes, setOrderNotes] = useState("");
+  const [deliveryNotes, setDeliveryNotes] = useState("");
+  
   // Delivery address state
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [sameAsBilling, setSameAsBilling] = useState(true);
@@ -105,6 +109,8 @@ export function useOrderFormState() {
     deliveryTime,
     specialInstructions,
     paymentMethod,
+    orderNotes,
+    deliveryNotes,
     deliveryAddress,
     sameAsBilling,
     useGlobalDeliveryAddress,
@@ -129,6 +135,8 @@ export function useOrderFormState() {
     setDeliveryTime,
     setSpecialInstructions,
     setPaymentMethod,
+    setOrderNotes,
+    setDeliveryNotes,
     setDeliveryAddress,
     setSameAsBilling,
     setUseGlobalDeliveryAddress,

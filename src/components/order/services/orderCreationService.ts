@@ -12,6 +12,8 @@ interface CreateSingleOrderParams {
   deliveryTime: string;
   specialInstructions: string;
   paymentMethod: string;
+  orderNotes: string;
+  deliveryNotes: string;
   deliveryAddress: string;
   sameAsBilling: boolean;
   suburbId: string;
@@ -27,6 +29,8 @@ interface CreateSplitOrderParams {
   splits: any[];
   paymentMethod: string;
   specialInstructions: string;
+  orderNotes: string;
+  deliveryNotes: string;
   orderTotals: any;
 }
 
@@ -84,6 +88,8 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       truck_id: null,
       driver_id: null,
       special_instructions: params.specialInstructions,
+      order_notes: params.orderNotes,
+      delivery_notes: params.deliveryNotes,
       payment_method: params.paymentMethod,
       status: 'requested' as const,
       is_split_order: false,
@@ -155,6 +161,8 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       total_amount: params.orderTotals.totalAmount,
       delivery_method: params.deliveryMethod,
       payment_method: params.paymentMethod,
+      order_notes: params.orderNotes,
+      delivery_notes: params.deliveryNotes,
       status: 'requested' as const,
       is_split_order: false, // Master order is not a split order itself
       master_order_id: null,
@@ -229,6 +237,8 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         truck_id: null,
         driver_id: null,
         special_instructions: split.specialInstructions || '',
+        order_notes: params.orderNotes,
+        delivery_notes: params.deliveryNotes,
         payment_method: params.paymentMethod,
         status: 'requested' as const,
         is_split_order: true,

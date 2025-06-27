@@ -648,6 +648,7 @@ export type Database = {
           delivery_date: string | null
           delivery_fee: number | null
           delivery_method: Database["public"]["Enums"]["delivery_method"] | null
+          delivery_notes: string | null
           delivery_time: string | null
           driver_id: string | null
           ghl_opportunity_id: string | null
@@ -655,6 +656,7 @@ export type Database = {
           is_split_order: boolean | null
           last_synced_to_ghl: string | null
           master_order_id: string | null
+          order_notes: string | null
           order_number: string
           payment_date: string | null
           payment_method: string | null
@@ -686,6 +688,7 @@ export type Database = {
           delivery_method?:
             | Database["public"]["Enums"]["delivery_method"]
             | null
+          delivery_notes?: string | null
           delivery_time?: string | null
           driver_id?: string | null
           ghl_opportunity_id?: string | null
@@ -693,6 +696,7 @@ export type Database = {
           is_split_order?: boolean | null
           last_synced_to_ghl?: string | null
           master_order_id?: string | null
+          order_notes?: string | null
           order_number: string
           payment_date?: string | null
           payment_method?: string | null
@@ -724,6 +728,7 @@ export type Database = {
           delivery_method?:
             | Database["public"]["Enums"]["delivery_method"]
             | null
+          delivery_notes?: string | null
           delivery_time?: string | null
           driver_id?: string | null
           ghl_opportunity_id?: string | null
@@ -731,6 +736,7 @@ export type Database = {
           is_split_order?: boolean | null
           last_synced_to_ghl?: string | null
           master_order_id?: string | null
+          order_notes?: string | null
           order_number?: string
           payment_date?: string | null
           payment_method?: string | null
