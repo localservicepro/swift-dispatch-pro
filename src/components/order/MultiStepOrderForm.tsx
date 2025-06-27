@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
@@ -207,6 +208,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
                 }
               }}
               onSuburbChange={handleSuburbChange}
+              onBack={prevStep}
+              onNext={nextStep}
             />
           );
         }

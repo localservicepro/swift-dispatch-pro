@@ -161,22 +161,24 @@ export function GoogleMapsLightbox({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="w-5 h-5" />
             {title}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 min-h-0">
           {/* API Key Input */}
           {showApiKeyInput && (
-            <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />
+            <div className="flex-shrink-0">
+              <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />
+            </div>
           )}
 
           {/* Search Input */}
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Search for an address..."
@@ -200,15 +202,17 @@ export function GoogleMapsLightbox({
           </div>
 
           {/* Map Container */}
-          <MapContainer
-            isLoading={isLoadingMaps}
-            error={mapError}
-            onMapReady={handleMapReady}
-          />
+          <div className="flex-1 min-h-[300px]">
+            <MapContainer
+              isLoading={isLoadingMaps}
+              error={mapError}
+              onMapReady={handleMapReady}
+            />
+          </div>
 
           {/* Selected Address Display */}
           {selectedAddress && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex-shrink-0">
               <h4 className="font-medium text-green-900 mb-2">Selected Address:</h4>
               <p className="text-sm text-green-700">{selectedAddress.fullAddress}</p>
               {selectedAddress.lat && selectedAddress.lng && (
@@ -218,20 +222,20 @@ export function GoogleMapsLightbox({
               )}
             </div>
           )}
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-4">
-            <Button variant="outline" onClick={handleClose} className="flex-1">
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleConfirmSelection}
-              disabled={!selectedAddress || showApiKeyInput}
-              className="flex-1"
-            >
-              Confirm Selection
-            </Button>
-          </div>
+        {/* Action Buttons - Fixed at bottom */}
+        <div className="flex gap-2 pt-4 border-t flex-shrink-0">
+          <Button variant="outline" onClick={handleClose} className="flex-1">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleConfirmSelection}
+            disabled={!selectedAddress || showApiKeyInput}
+            className="flex-1"
+          >
+            Confirm Selection
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
