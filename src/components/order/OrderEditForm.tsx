@@ -320,7 +320,7 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
             handleInputChange('customer_address', updates.full_address);
           }
           if (updates.suburb_id !== undefined) {
-            handleSuburbChange(updates.suburb_id, deliveryRate);
+            handleSuburbChange(updates.suburb_id);
           }
         }}
         onSuburbChange={handleSuburbChange}
