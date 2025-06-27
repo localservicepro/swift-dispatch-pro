@@ -37,7 +37,6 @@ export function CustomerAddressForm({
           onAddressSelect={handleAddressSelect}
           placeholder="Start typing your address..."
           required
-          showMapButton={true}
           showValidation={true}
         />
       </div>
