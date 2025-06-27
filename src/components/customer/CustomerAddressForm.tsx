@@ -9,7 +9,7 @@ interface CustomerAddressFormProps {
     full_address: string;
     suburb_id: string;
   };
-  deliveryRate: number;
+  deliveryRate: string;
   onFormDataChange: (updates: Partial<CustomerAddressFormProps['formData']>) => void;
   onSuburbChange: (suburbId: string) => void;
 }
