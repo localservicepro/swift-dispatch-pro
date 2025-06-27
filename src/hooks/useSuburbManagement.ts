@@ -8,7 +8,8 @@ interface Suburb {
   name: string;
   state: string;
   postcode: string;
-  delivery_rate: number;
+  delivery_rate: string;
+  distance_km: number | null;
 }
 
 export function useSuburbManagement() {
@@ -24,7 +25,7 @@ export function useSuburbManagement() {
     try {
       const { data, error } = await supabase
         .from('suburbs')
-        .select('id, name, state, postcode, delivery_rate')
+        .select('id, name, state, postcode, delivery_rate, distance_km')
         .eq('is_active', true);
 
       if (error) throw error;
@@ -52,9 +53,11 @@ export function useSuburbManagement() {
       console.log('Auto-selecting suburb:', matchingSuburb);
       onSuburbChange(matchingSuburb.id);
       
+      const distanceText = matchingSuburb.distance_km ? ` (${matchingSuburb.distance_km}km away)` : '';
+      
       toast({
         title: "Suburb Auto-Selected",
-        description: `${matchingSuburb.name} selected based on postcode ${postcode}. Estimated delivery: AU$${matchingSuburb.delivery_rate.toFixed(2)}`,
+        description: `${matchingSuburb.name} selected based on postcode ${postcode}${distanceText}. Estimated delivery: ${matchingSuburb.delivery_rate}`,
         duration: 3000,
       });
     } else {

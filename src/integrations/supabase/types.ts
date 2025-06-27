@@ -1473,7 +1473,8 @@ export type Database = {
       suburbs: {
         Row: {
           created_at: string
-          delivery_rate: number
+          delivery_rate: string
+          distance_km: number | null
           id: string
           is_active: boolean
           name: string
@@ -1483,7 +1484,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          delivery_rate?: number
+          delivery_rate: string
+          distance_km?: number | null
           id?: string
           is_active?: boolean
           name: string
@@ -1493,7 +1495,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          delivery_rate?: number
+          delivery_rate?: string
+          distance_km?: number | null
           id?: string
           is_active?: boolean
           name?: string

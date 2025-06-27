@@ -9,7 +9,8 @@ interface Suburb {
   name: string;
   state: string;
   postcode: string;
-  delivery_rate: number;
+  delivery_rate: string;
+  distance_km: number | null;
 }
 
 interface SuburbSelectorProps {
@@ -30,7 +31,7 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
       console.log('Fetching suburbs...');
       const { data, error } = await supabase
         .from('suburbs')
-        .select('id, name, state, postcode, delivery_rate')
+        .select('id, name, state, postcode, delivery_rate, distance_km')
         .eq('is_active', true)
         .order('state, name');
 
@@ -53,7 +54,8 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
   };
 
   const getSuburbLabel = (suburb: Suburb) => {
-    return `${suburb.postcode}, ${suburb.name} - AU$${suburb.delivery_rate.toFixed(2)} (estimate)`;
+    const distanceText = suburb.distance_km ? `, ${suburb.distance_km}km` : '';
+    return `${suburb.postcode}, ${suburb.name}${distanceText} - ${suburb.delivery_rate} (estimate)`;
   };
 
   // Debug the selected suburb
