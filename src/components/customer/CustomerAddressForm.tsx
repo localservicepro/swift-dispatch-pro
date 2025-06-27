@@ -11,7 +11,7 @@ interface CustomerAddressFormProps {
   };
   deliveryRate: number;
   onFormDataChange: (updates: Partial<CustomerAddressFormProps['formData']>) => void;
-  onSuburbChange: (suburbId: string, rate: number) => void;
+  onSuburbChange: (suburbId: string) => void;
 }
 
 export function CustomerAddressForm({ 
@@ -47,11 +47,9 @@ export function CustomerAddressForm({
         onSuburbChange={onSuburbChange}
       />
 
-      {deliveryRate > 0 && (
-        <div className="text-sm text-gray-600">
-          Delivery Rate: ${deliveryRate.toFixed(2)}
-        </div>
-      )}
+      <div className="text-sm text-gray-500 mt-2">
+        <p>📝 Note: Delivery rates shown are estimates only. Final delivery fee will be set during order review.</p>
+      </div>
     </>
   );
 }

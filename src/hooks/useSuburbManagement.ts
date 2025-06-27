@@ -44,17 +44,17 @@ export function useSuburbManagement() {
 
   const handleAutoSuburbSelection = (
     postcode: string,
-    onSuburbChange: (suburbId: string, rate: number) => void
+    onSuburbChange: (suburbId: string) => void
   ) => {
     const matchingSuburb = findSuburbByPostcode(postcode);
     
     if (matchingSuburb) {
       console.log('Auto-selecting suburb:', matchingSuburb);
-      onSuburbChange(matchingSuburb.id, matchingSuburb.delivery_rate);
+      onSuburbChange(matchingSuburb.id);
       
       toast({
         title: "Suburb Auto-Selected",
-        description: `${matchingSuburb.name}, ${matchingSuburb.state} selected based on postcode ${postcode}`,
+        description: `${matchingSuburb.name} selected based on postcode ${postcode}. Estimated delivery: AU$${matchingSuburb.delivery_rate.toFixed(2)}`,
         duration: 3000,
       });
     } else {

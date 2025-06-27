@@ -10,7 +10,7 @@ interface DeliveryAddressStepProps {
   };
   deliveryRate: number;
   onFormDataChange: (updates: Partial<DeliveryAddressStepProps['formData']>) => void;
-  onSuburbChange: (suburbId: string, rate: number) => void;
+  onSuburbChange: (suburbId: string) => void;
   onBack: () => void;
   onNext: () => void;
 }

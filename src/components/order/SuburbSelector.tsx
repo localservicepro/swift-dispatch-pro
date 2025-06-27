@@ -14,7 +14,7 @@ interface Suburb {
 
 interface SuburbSelectorProps {
   selectedSuburbId?: string;
-  onSuburbChange: (suburbId: string, deliveryRate: number) => void;
+  onSuburbChange: (suburbId: string) => void;
 }
 
 export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelectorProps) {
@@ -48,12 +48,12 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
     const selectedSuburb = suburbs.find(s => s.id === suburbId);
     console.log('Suburb selected:', selectedSuburb);
     if (selectedSuburb) {
-      onSuburbChange(suburbId, selectedSuburb.delivery_rate);
+      onSuburbChange(suburbId);
     }
   };
 
   const getSuburbLabel = (suburb: Suburb) => {
-    return `${suburb.name}, ${suburb.state} (${suburb.postcode}) - $${suburb.delivery_rate.toFixed(2)}`;
+    return `${suburb.postcode}, ${suburb.name} - AU$${suburb.delivery_rate.toFixed(2)} (estimate)`;
   };
 
   // Debug the selected suburb
@@ -77,7 +77,7 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
 
   return (
     <div>
-      <Label htmlFor="suburb">Suburb</Label>
+      <Label htmlFor="suburb">Suburb (Delivery rates are estimates only)</Label>
       <Select value={selectedSuburbId || ""} onValueChange={handleSuburbChange}>
         <SelectTrigger>
           <SelectValue placeholder="Select a suburb" />

@@ -28,7 +28,7 @@ export function useOrderFormState() {
   const [sameAsBilling, setSameAsBilling] = useState(true);
   const [useGlobalDeliveryAddress, setUseGlobalDeliveryAddress] = useState(true);
   
-  // Suburb and delivery rate state
+  // Suburb state (no automatic rate setting)
   const [selectedSuburbId, setSelectedSuburbId] = useState("");
   const [deliveryRate, setDeliveryRate] = useState(0);
 
@@ -40,7 +40,7 @@ export function useOrderFormState() {
     if (deliveryMethod === "pickup") {
       return 5; // Customer → Products → Method → Payment → Review
     }
-    return 7; // Customer → Products → Method → Order Type → Address → Payment → Review (removed Details step)
+    return 7; // Customer → Products → Method → Order Type → Address → Payment → Review
   };
 
   // Enhanced delivery method setter to auto-set order type
@@ -53,10 +53,10 @@ export function useOrderFormState() {
     }
   };
 
-  // Suburb change handler
-  const handleSuburbChange = (suburbId: string, rate: number) => {
+  // Suburb change handler - only sets suburb ID, no automatic rate
+  const handleSuburbChange = (suburbId: string) => {
     setSelectedSuburbId(suburbId);
-    setDeliveryRate(rate);
+    // Note: delivery rate is not automatically set, must be set manually
   };
 
   const nextStep = () => {
