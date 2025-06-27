@@ -7,11 +7,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Split, Plus, Minus, Calendar as CalendarIcon, CalendarDays, Clock, Package } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Split, Plus, Minus, Calendar as CalendarIcon, Clock, Package, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CartItem, SplitConfig, Product } from "./types";
-import { ProductAllocationCard } from "./ProductAllocationCard";
-import { SplitSummaryCard } from "./SplitSummaryCard";
+import { CompactProductTable } from "./CompactProductTable";
+import { CompactSplitConfig } from "./CompactSplitConfig";
+import { SplitProgressIndicator } from "./SplitProgressIndicator";
 import { AllocationActions } from "./AllocationActions";
 import { AddProductToSplitDialog } from "./AddProductToSplitDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -52,15 +54,12 @@ export function SplitOrderConfigurationStep({
   const [commonDeliveryDate, setCommonDeliveryDate] = useState("");
   const [commonDeliveryTime, setCommonDeliveryTime] = useState("");
   const [addProductDialog, setAddProductDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState("allocation");
 
   const timeSlots = generateTimeSlots();
-  
-  // Get today's date for minimum date selection
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
-
-  // Convert string date to Date object for calendar
   const selectedCommonDate = commonDeliveryDate ? new Date(commonDeliveryDate) : undefined;
 
   const initializeSplits = (count: number) => {
@@ -96,24 +95,10 @@ export function SplitOrderConfigurationStep({
   const handleSameDateToggle = (checked: boolean) => {
     setUseSameDateForAll(checked);
     if (checked && commonDeliveryDate && commonDeliveryTime) {
-      // Apply common date/time to all splits
       const updatedSplits = splits.map(split => ({
         ...split,
         deliveryDate: commonDeliveryDate,
         deliveryTime: commonDeliveryTime
-      }));
-      onSplitsChange(updatedSplits);
-    }
-  };
-
-  const handleSeparateDeliveryDates = () => {
-    setUseSameDateForAll(false);
-    // Preserve current common date/time values in all splits
-    if (commonDeliveryDate || commonDeliveryTime) {
-      const updatedSplits = splits.map(split => ({
-        ...split,
-        deliveryDate: commonDeliveryDate || split.deliveryDate,
-        deliveryTime: commonDeliveryTime || split.deliveryTime
       }));
       onSplitsChange(updatedSplits);
     }
@@ -230,10 +215,7 @@ export function SplitOrderConfigurationStep({
   };
 
   const handleAddNewProduct = (product: Product, quantity: number) => {
-    console.log('Adding new product:', product.name, 'Quantity:', quantity);
-    
     if (!onCartChange) {
-      console.error('onCartChange not provided to SplitOrderConfigurationStep');
       toast({
         title: "Error",
         description: "Cannot add product - cart update function not available",
@@ -243,14 +225,11 @@ export function SplitOrderConfigurationStep({
     }
 
     try {
-      // Check if product already exists in cart
       const existingCartItemIndex = cart.findIndex(item => item.product.id === product.id);
       
       let updatedCart: CartItem[];
       
       if (existingCartItemIndex >= 0) {
-        // Update existing cart item quantity
-        console.log('Updating existing cart item');
         updatedCart = cart.map((item, index) => {
           if (index === existingCartItemIndex) {
             const newQuantity = item.quantity + quantity;
@@ -263,8 +242,6 @@ export function SplitOrderConfigurationStep({
           return item;
         });
       } else {
-        // Add new cart item
-        console.log('Adding new cart item');
         const newCartItem: CartItem = {
           product,
           quantity,
@@ -274,9 +251,6 @@ export function SplitOrderConfigurationStep({
         updatedCart = [...cart, newCartItem];
       }
 
-      console.log('Updated cart:', updatedCart);
-      
-      // Force a new array reference to trigger re-render
       onCartChange([...updatedCart]);
 
       toast({
@@ -295,7 +269,6 @@ export function SplitOrderConfigurationStep({
   };
 
   const canProceed = () => {
-    // Check if all products are fully allocated
     const fullyAllocated = cart.every(cartItem => {
       const allocatedQuantity = splits.reduce((total, split) => {
         const splitProduct = split.products.find(p => p.productId === cartItem.product.id);
@@ -304,21 +277,13 @@ export function SplitOrderConfigurationStep({
       return allocatedQuantity === cartItem.quantity;
     });
 
-    // Check if each split has at least one product
     const allSplitsHaveProducts = splits.every(split => split.products.length > 0);
-
-    // Check if each split has delivery date and time
     const allSplitsHaveDeliveryDetails = splits.every(split => 
       split.deliveryDate && split.deliveryTime
     );
 
     return fullyAllocated && allSplitsHaveProducts && allSplitsHaveDeliveryDetails;
   };
-
-  // Log cart changes for debugging
-  useEffect(() => {
-    console.log('Cart updated in SplitOrderConfigurationStep:', cart);
-  }, [cart]);
 
   const handleCartQuantityChange = (productId: string, newQuantity: number) => {
     if (!onCartChange) {
@@ -354,11 +319,9 @@ export function SplitOrderConfigurationStep({
       return;
     }
 
-    // Remove from cart
     const updatedCart = cart.filter(item => item.product.id !== productId);
     onCartChange(updatedCart);
 
-    // Remove from all splits
     const updatedSplits = splits.map(split => ({
       ...split,
       products: split.products.filter(p => p.productId !== productId)
@@ -370,11 +333,9 @@ export function SplitOrderConfigurationStep({
     const split = splits[splitIndex];
     
     if (quantity === 0) {
-      // Remove product from split if quantity is 0
       const updatedProducts = split.products.filter(p => p.productId !== productId);
       updateSplit(splitIndex, { products: updatedProducts });
     } else {
-      // Update or add product quantity
       const existingProduct = split.products.find(p => p.productId === productId);
       
       if (existingProduct) {
@@ -392,195 +353,164 @@ export function SplitOrderConfigurationStep({
   return (
     <>
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Split className="w-4 h-4" />
             Step 4: Configure Order Splits
           </CardTitle>
           <p className="text-xs text-gray-600">
-            Allocate your products across different splits and set delivery details for each.
+            Allocate products across splits and configure delivery details efficiently.
           </p>
         </CardHeader>
+        
         <CardContent className="space-y-4">
-          {/* Number of Splits Selection */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">Number of Splits</Label>
+          {/* Top Controls Row */}
+          <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+            {/* Number of Splits */}
             <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleNumberOfSplitsChange(Math.max(2, numberOfSplits - 1))}
-                disabled={numberOfSplits <= 2}
-                className="h-7 w-7 p-0"
-              >
-                <Minus className="w-3 h-3" />
-              </Button>
-              <span className="text-base font-medium w-6 text-center">{numberOfSplits}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleNumberOfSplitsChange(Math.min(5, numberOfSplits + 1))}
-                disabled={numberOfSplits >= 5}
-                className="h-7 w-7 p-0"
-              >
-                <Plus className="w-3 h-3" />
-              </Button>
-              <span className="text-xs text-gray-600">splits (2-5 allowed)</span>
+              <Label className="text-sm font-medium">Splits:</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleNumberOfSplitsChange(Math.max(2, numberOfSplits - 1))}
+                  disabled={numberOfSplits <= 2}
+                  className="h-7 w-7 p-0"
+                >
+                  <Minus className="w-3 h-3" />
+                </Button>
+                <span className="text-sm font-medium w-4 text-center">{numberOfSplits}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleNumberOfSplitsChange(Math.min(5, numberOfSplits + 1))}
+                  disabled={numberOfSplits >= 5}
+                  className="h-7 w-7 p-0"
+                >
+                  <Plus className="w-3 h-3" />
+                </Button>
+              </div>
             </div>
-          </div>
 
-          {/* Same Date for All Option */}
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <div className="flex items-center space-x-2 mb-3">
+            {/* Common Date Toggle */}
+            <div className="flex items-center space-x-2">
               <Checkbox
                 id="same-date"
                 checked={useSameDateForAll}
                 onCheckedChange={handleSameDateToggle}
               />
-              <Label htmlFor="same-date" className="text-sm font-medium flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4" />
-                Use same delivery date and time for all splits
-              </Label>
+              <Label htmlFor="same-date" className="text-sm">Same date/time for all</Label>
             </div>
-            
-            {useSameDateForAll && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Common Delivery Date */}
-                  <div>
-                    <Label className="text-xs font-medium mb-1 block">Common Delivery Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal h-7 text-xs",
-                            !commonDeliveryDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-3 w-3" />
-                          {commonDeliveryDate ? format(new Date(commonDeliveryDate), 'PPP') : 'Select date'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-white" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={selectedCommonDate}
-                          onSelect={handleCommonDateSelect}
-                          disabled={(date) => date < tomorrow}
-                          initialFocus
-                          className="rounded-md border pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
 
-                  {/* Common Delivery Time */}
-                  <div>
-                    <Label className="text-xs font-medium mb-1 block">Common Delivery Time</Label>
-                    <Select value={commonDeliveryTime} onValueChange={handleCommonTimeChange}>
-                      <SelectTrigger className="w-full h-7 text-xs">
-                        <Clock className="mr-2 h-3 w-3" />
-                        <SelectValue placeholder="Select time" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {timeSlots.map((slot) => (
-                          <SelectItem key={slot.value} value={slot.value}>
-                            {slot.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+            {/* Add Product Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAddProductDialog(true)}
+              className="text-blue-600 border-blue-300 hover:bg-blue-100"
+            >
+              <Package className="w-3 h-3 mr-1" />
+              Add Product
+            </Button>
+          </div>
+
+          {/* Common Date/Time Controls */}
+          {useSameDateForAll && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Common Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal h-8 text-xs",
+                          !commonDeliveryDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-3 w-3" />
+                        {commonDeliveryDate ? format(new Date(commonDeliveryDate), 'PPP') : 'Select date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-white" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedCommonDate}
+                        onSelect={handleCommonDateSelect}
+                        disabled={(date) => date < tomorrow}
+                        initialFocus
+                        className="rounded-md border"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSeparateDeliveryDates}
-                  className="text-xs"
-                >
-                  <CalendarDays className="w-3 h-3 mr-1" />
-                  Separate Delivery Dates
-                </Button>
+
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Common Time</Label>
+                  <Select value={commonDeliveryTime} onValueChange={handleCommonTimeChange}>
+                    <SelectTrigger className="w-full h-8 text-xs">
+                      <Clock className="mr-2 h-3 w-3" />
+                      <SelectValue placeholder="Select time" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {timeSlots.map((slot) => (
+                        <SelectItem key={slot.value} value={slot.value}>
+                          {slot.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            )}
-          </div>
-
-          {/* Quick Actions */}
-          <AllocationActions 
-            cart={cart}
-            splits={splits}
-            onSplitsChange={onSplitsChange}
-            onCartChange={onCartChange}
-          />
-
-          {/* Add New Product Button */}
-          <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-sm font-medium">Add New Products</Label>
-                <p className="text-xs text-gray-600">Add products that weren't in the original cart</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setAddProductDialog(true)}
-                className="text-blue-600 border-blue-300 hover:bg-blue-100"
-              >
-                <Package className="w-3 h-3 mr-1" />
-                Add Product
-              </Button>
-            </div>
-          </div>
-
-          {/* Product Allocation Section */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">Product Allocation</Label>
-            <div className="grid gap-2">
-              {cart.map(cartItem => (
-                <ProductAllocationCard
-                  key={cartItem.product.id}
-                  cartItem={cartItem}
-                  splits={splits}
-                  onAddToSplit={addProductToSplit}
-                  onQuantityChange={handleCartQuantityChange}
-                  onRemoveFromCart={handleRemoveFromCart}
-                  onUpdateSplitQuantity={handleUpdateSplitQuantity}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Split Summary Section */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">Split Details</Label>
-            <div className="grid gap-3">
-              {splits.map((split, index) => (
-                <SplitSummaryCard
-                  key={split.id}
-                  split={split}
-                  splitIndex={index}
-                  cart={cart}
-                  onUpdateSplit={updateSplit}
-                  onUpdateQuantity={updateProductQuantity}
-                  onRemoveProduct={removeProductFromSplit}
-                  onReplaceProduct={replaceProductInSplit}
-                  isCommonDateMode={useSameDateForAll}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Validation Message */}
-          {!canProceed() && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-xs text-yellow-800">
-                Please ensure all products are fully allocated, each split has at least one product, and delivery date and time are set for each split.
-              </p>
             </div>
           )}
 
-          <div className="flex gap-2 pt-3">
+          {/* Progress Indicator */}
+          <SplitProgressIndicator cart={cart} splits={splits} />
+
+          {/* Main Content - Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="allocation" className="text-sm">
+                Product Allocation
+              </TabsTrigger>
+              <TabsTrigger value="delivery" className="text-sm">
+                Delivery Details
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="allocation" className="space-y-4 mt-4">
+              {/* Quick Actions */}
+              <AllocationActions 
+                cart={cart}
+                splits={splits}
+                onSplitsChange={onSplitsChange}
+                onCartChange={onCartChange}
+              />
+
+              {/* Product Allocation Table */}
+              <CompactProductTable
+                cart={cart}
+                splits={splits}
+                onQuantityChange={handleCartQuantityChange}
+                onRemoveFromCart={handleRemoveFromCart}
+                onUpdateSplitQuantity={handleUpdateSplitQuantity}
+              />
+            </TabsContent>
+            
+            <TabsContent value="delivery" className="space-y-4 mt-4">
+              <CompactSplitConfig
+                splits={splits}
+                cart={cart}
+                onUpdateSplit={updateSplit}
+                isCommonDateMode={useSameDateForAll}
+              />
+            </TabsContent>
+          </Tabs>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-4 border-t">
             <Button variant="outline" onClick={onBack} size="sm">
               Back
             </Button>
