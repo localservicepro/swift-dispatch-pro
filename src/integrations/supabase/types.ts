@@ -1604,17 +1604,15 @@ export type Database = {
         Returns: boolean
       }
       log_admin_activity: {
-        Args:
-          | Record<PropertyKey, never>
-          | {
-              p_action_type: string
-              p_target_type: string
-              p_target_id?: string
-              p_target_details?: Json
-              p_old_values?: Json
-              p_new_values?: Json
-              p_description?: string
-            }
+        Args: {
+          p_action_type: string
+          p_target_type: string
+          p_target_id?: string
+          p_target_details?: Json
+          p_old_values?: Json
+          p_new_values?: Json
+          p_description?: string
+        }
         Returns: string
       }
       restore_order: {
