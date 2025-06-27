@@ -1,5 +1,3 @@
-
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +41,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     useGlobalDeliveryAddress,
     selectedSuburbId,
     manualDeliveryFee,
+    isUsingCustomerAddress,
     subtotal,
     deliveryFee,
     surchargeAmount,
@@ -68,6 +67,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setSelectedSuburbId,
     setManualDeliveryFee,
     handleSuburbChange,
+    clearDeliveryAddress,
+    resetToCustomerAddress,
     nextStep,
     prevStep,
     setCurrentStep,
@@ -282,6 +283,10 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               onSuburbChange={handleSuburbChange}
               onBack={prevStep}
               onNext={nextStep}
+              selectedCustomer={selectedCustomer}
+              isUsingCustomerAddress={isUsingCustomerAddress}
+              onClearAddress={clearDeliveryAddress}
+              onResetToCustomerAddress={resetToCustomerAddress}
             />
           );
         }
@@ -347,4 +352,3 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     </div>
   );
 }
-

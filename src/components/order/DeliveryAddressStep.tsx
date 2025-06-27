@@ -1,7 +1,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { CustomerAddressForm } from '@/components/customer/CustomerAddressForm';
+import { User, X, RotateCcw } from 'lucide-react';
 
 interface DeliveryAddressStepProps {
   formData: {
@@ -12,6 +14,14 @@ interface DeliveryAddressStepProps {
   onSuburbChange: (suburbId: string) => void;
   onBack: () => void;
   onNext: () => void;
+  selectedCustomer?: {
+    first_name: string;
+    last_name: string;
+    full_address: string;
+  } | null;
+  isUsingCustomerAddress?: boolean;
+  onClearAddress?: () => void;
+  onResetToCustomerAddress?: () => void;
 }
 
 export function DeliveryAddressStep({ 
@@ -19,7 +29,11 @@ export function DeliveryAddressStep({
   onFormDataChange, 
   onSuburbChange,
   onBack,
-  onNext
+  onNext,
+  selectedCustomer,
+  isUsingCustomerAddress,
+  onClearAddress,
+  onResetToCustomerAddress
 }: DeliveryAddressStepProps) {
   const handleContinue = () => {
     if (!formData.full_address || !formData.suburb_id) {
@@ -33,7 +47,51 @@ export function DeliveryAddressStep({
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Delivery Address</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Delivery Address</h3>
+          {isUsingCustomerAddress && selectedCustomer && (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <User className="w-3 h-3" />
+              Using {selectedCustomer.first_name}'s address
+            </Badge>
+          )}
+        </div>
+
+        {/* Address status and quick actions */}
+        {selectedCustomer && (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            {isUsingCustomerAddress ? (
+              <div className="flex items-center gap-2">
+                <span>📍 Using registered customer address</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onClearAddress}
+                  className="h-7 px-2 text-xs"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Use different address
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span>📝 Using custom delivery address</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onResetToCustomerAddress}
+                  className="h-7 px-2 text-xs"
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  Reset to customer address
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         <CustomerAddressForm
           formData={formData}
           deliveryRate="" // No longer used for calculations, just reference

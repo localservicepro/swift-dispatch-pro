@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Customer, CartItem, SplitConfig, TruckType, Truck } from "../types";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals } from "../utils/paymentCalculations";
@@ -38,8 +38,24 @@ export function useOrderFormState() {
   // Manual delivery fee state (number, not string)
   const [manualDeliveryFee, setManualDeliveryFee] = useState<number>(0);
 
+  // Track if address was auto-populated from customer
+  const [isUsingCustomerAddress, setIsUsingCustomerAddress] = useState(false);
+
   // Fetch payment settings for calculations
   const { data: paymentSettings } = usePaymentSettings();
+
+  // Auto-populate delivery address when customer is selected
+  useEffect(() => {
+    if (selectedCustomer && selectedCustomer.full_address) {
+      setDeliveryAddress(selectedCustomer.full_address);
+      setIsUsingCustomerAddress(true);
+      
+      // Also set suburb if customer has one
+      if (selectedCustomer.suburb_id) {
+        setSelectedSuburbId(selectedCustomer.suburb_id);
+      }
+    }
+  }, [selectedCustomer]);
 
   // Dynamic step calculation based on delivery method
   const getTotalSteps = () => {
@@ -62,6 +78,33 @@ export function useOrderFormState() {
   // Suburb change handler - only sets suburb ID, no automatic rate
   const handleSuburbChange = (suburbId: string) => {
     setSelectedSuburbId(suburbId);
+  };
+
+  // Clear delivery address and reset to customer address
+  const clearDeliveryAddress = () => {
+    setDeliveryAddress("");
+    setSelectedSuburbId("");
+    setIsUsingCustomerAddress(false);
+  };
+
+  const resetToCustomerAddress = () => {
+    if (selectedCustomer && selectedCustomer.full_address) {
+      setDeliveryAddress(selectedCustomer.full_address);
+      setIsUsingCustomerAddress(true);
+      
+      if (selectedCustomer.suburb_id) {
+        setSelectedSuburbId(selectedCustomer.suburb_id);
+      }
+    }
+  };
+
+  // Handle delivery address change - detect if user is manually editing
+  const handleDeliveryAddressChange = (address: string) => {
+    setDeliveryAddress(address);
+    // If user manually changes address, mark as not using customer address
+    if (isUsingCustomerAddress && address !== selectedCustomer?.full_address) {
+      setIsUsingCustomerAddress(false);
+    }
   };
 
   const nextStep = () => {
@@ -116,6 +159,7 @@ export function useOrderFormState() {
     useGlobalDeliveryAddress,
     selectedSuburbId,
     manualDeliveryFee,
+    isUsingCustomerAddress,
     subtotal: orderTotals.subtotal,
     deliveryFee: orderTotals.deliveryFee,
     surchargeAmount: orderTotals.surchargeAmount,
@@ -137,12 +181,14 @@ export function useOrderFormState() {
     setPaymentMethod,
     setOrderNotes,
     setDeliveryNotes,
-    setDeliveryAddress,
+    setDeliveryAddress: handleDeliveryAddressChange,
     setSameAsBilling,
     setUseGlobalDeliveryAddress,
     setSelectedSuburbId,
     setManualDeliveryFee,
     handleSuburbChange,
+    clearDeliveryAddress,
+    resetToCustomerAddress,
     
     // Navigation
     nextStep,
