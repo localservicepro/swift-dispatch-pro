@@ -1,11 +1,15 @@
 
 import React from 'react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CustomerAddressForm } from '@/components/customer/CustomerAddressForm';
-import { User, X, RotateCcw, Calendar, Clock } from 'lucide-react';
+import { User, X, RotateCcw, Calendar as CalendarIcon, Clock, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DeliveryAddressStepProps {
   formData: {
@@ -30,6 +34,19 @@ interface DeliveryAddressStepProps {
   onResetToCustomerAddress?: () => void;
 }
 
+const generateTimeSlots = () => {
+  const timeSlots = [];
+  for (let hour = 8; hour <= 16; hour++) {
+    const time24 = `${hour.toString().padStart(2, '0')}:00`;
+    const time12 = new Date(`2000-01-01T${time24}`).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      hour12: true
+    });
+    timeSlots.push({ value: time24, label: time12 });
+  }
+  return timeSlots;
+};
+
 export function DeliveryAddressStep({ 
   formData, 
   deliveryDate,
@@ -45,6 +62,8 @@ export function DeliveryAddressStep({
   onClearAddress,
   onResetToCustomerAddress
 }: DeliveryAddressStepProps) {
+  const timeSlots = generateTimeSlots();
+  
   const handleContinue = () => {
     if (!formData.full_address || !formData.suburb_id || !deliveryDate || !deliveryTime) {
       return; // Don't proceed if required fields are missing
@@ -54,8 +73,19 @@ export function DeliveryAddressStep({
 
   const isValid = formData.full_address && formData.suburb_id && deliveryDate && deliveryTime;
 
-  // Get today's date in YYYY-MM-DD format for minimum date
-  const today = new Date().toISOString().split('T')[0];
+  // Get today's date for minimum date selection
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  // Convert string date to Date object for calendar
+  const selectedDate = deliveryDate ? new Date(deliveryDate) : undefined;
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      onDeliveryDateChange(format(date, 'yyyy-MM-dd'));
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -121,34 +151,56 @@ export function DeliveryAddressStep({
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-gray-700">Delivery Schedule</h4>
             <div className="grid grid-cols-2 gap-4">
+              {/* Delivery Date */}
               <div className="space-y-2">
-                <Label htmlFor="delivery-date" className="text-sm font-medium flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4" />
                   Delivery Date
                 </Label>
-                <Input
-                  id="delivery-date"
-                  type="date"
-                  value={deliveryDate}
-                  onChange={(e) => onDeliveryDateChange(e.target.value)}
-                  min={today}
-                  className="w-full"
-                  placeholder="Select delivery date"
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !deliveryDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {deliveryDate ? format(new Date(deliveryDate), 'PPP') : 'Select delivery date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-white" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={handleDateSelect}
+                      disabled={(date) => date < tomorrow}
+                      initialFocus
+                      className="rounded-md border pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
+
+              {/* Delivery Time */}
               <div className="space-y-2">
-                <Label htmlFor="delivery-time" className="text-sm font-medium flex items-center gap-2">
+                <Label className="text-sm font-medium flex items-center gap-2">
                   <Clock className="w-4 h-4" />
                   Delivery Time
                 </Label>
-                <Input
-                  id="delivery-time"
-                  type="time"
-                  value={deliveryTime}
-                  onChange={(e) => onDeliveryTimeChange(e.target.value)}
-                  className="w-full"
-                  placeholder="Select delivery time"
-                />
+                <Select value={deliveryTime} onValueChange={onDeliveryTimeChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select delivery time" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {timeSlots.map((slot) => (
+                      <SelectItem key={slot.value} value={slot.value}>
+                        {slot.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
