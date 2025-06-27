@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Split, Plus, Minus, Calendar, CalendarDays } from "lucide-react";
-import { CartItem, SplitConfig, Customer } from "./types";
+import { CartItem, SplitConfig } from "./types";
 import { ProductAllocationCard } from "./ProductAllocationCard";
 import { SplitSummaryCard } from "./SplitSummaryCard";
 import { AllocationActions } from "./AllocationActions";
@@ -319,8 +319,6 @@ export function SplitOrderConfigurationStep({
                 split={split}
                 splitIndex={index}
                 cart={cart}
-                customer={{} as Customer}
-                useGlobalDeliveryAddress={false}
                 onUpdateSplit={updateSplit}
                 onUpdateQuantity={updateProductQuantity}
                 onRemoveProduct={removeProductFromSplit}

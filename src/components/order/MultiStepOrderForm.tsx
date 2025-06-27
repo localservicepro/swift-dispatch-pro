@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +18,6 @@ export function MultiStepOrderForm() {
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
   const {
-    // State
     currentStep,
     selectedCustomer,
     cart,
@@ -179,7 +177,7 @@ export function MultiStepOrderForm() {
             cart={cart}
             adjustments={adjustments}
             onCartUpdate={setCart}
-            onAdjustmentsUpdate={setAdjustments}
+            onAdjustmentsChange={setAdjustments}
             onBack={prevStep}
             onNext={nextStep}
             customer={selectedCustomer}
@@ -200,14 +198,11 @@ export function MultiStepOrderForm() {
         if (deliveryMethod === "pickup") {
           return (
             <PaymentMethodStep
+              customer={selectedCustomer!}
               paymentMethod={paymentMethod}
               onPaymentMethodChange={setPaymentMethod}
               onBack={prevStep}
               onNext={nextStep}
-              subtotal={subtotal}
-              adjustments={adjustments}
-              deliveryFee={deliveryFee}
-              deliveryMethod="pickup"
             />
           );
         } else {
@@ -250,10 +245,9 @@ export function MultiStepOrderForm() {
         } else if (orderType === "split") {
           return (
             <SplitOrderConfigurationStep
-              customer={selectedCustomer!}
               cart={cart}
               splits={splits}
-              onSplitsUpdate={setSplits}
+              onSplitsChange={setSplits}
               onBack={prevStep}
               onNext={nextStep}
             />
@@ -261,17 +255,19 @@ export function MultiStepOrderForm() {
         } else {
           return (
             <DeliveryAddressStep
-              customer={selectedCustomer!}
-              deliveryAddress={deliveryAddress}
-              sameAsBilling={sameAsBilling}
-              useGlobalDeliveryAddress={useGlobalDeliveryAddress}
-              selectedSuburbId={selectedSuburbId}
-              manualDeliveryFee={manualDeliveryFee}
-              onDeliveryAddressUpdate={setDeliveryAddress}
-              onSameAsBillingUpdate={setSameAsBilling}
-              onUseGlobalDeliveryAddressUpdate={setUseGlobalDeliveryAddress}
-              onSuburbUpdate={handleSuburbChange}
-              onManualDeliveryFeeUpdate={setManualDeliveryFee}
+              formData={{
+                full_address: deliveryAddress,
+                suburb_id: selectedSuburbId
+              }}
+              onFormDataChange={(updates) => {
+                if (updates.full_address !== undefined) {
+                  setDeliveryAddress(updates.full_address);
+                }
+                if (updates.suburb_id !== undefined) {
+                  setSelectedSuburbId(updates.suburb_id);
+                }
+              }}
+              onSuburbChange={handleSuburbChange}
               onBack={prevStep}
               onNext={nextStep}
             />
@@ -281,14 +277,11 @@ export function MultiStepOrderForm() {
       case 6:
         return (
           <PaymentMethodStep
+            customer={selectedCustomer!}
             paymentMethod={paymentMethod}
             onPaymentMethodChange={setPaymentMethod}
             onBack={prevStep}
             onNext={nextStep}
-            subtotal={subtotal}
-            adjustments={adjustments}
-            deliveryFee={deliveryFee}
-            deliveryMethod={deliveryMethod as "delivery" | "pickup"}
           />
         );
 
