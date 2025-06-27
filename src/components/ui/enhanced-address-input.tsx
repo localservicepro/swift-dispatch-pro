@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from './input';
 import { Label } from './label';
+import { Button } from './button';
 import { Badge } from './badge';
-import { Search, CheckCircle, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import { MapPin, Search, CheckCircle, AlertCircle, Map, Wifi, WifiOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDebounce } from '@/hooks/useDebounce';
+import { GoogleMapsLightbox } from './google-maps-lightbox';
+import { loadGoogleMapsScript } from '@/utils/googleMapsConfig';
 
 interface AddressData {
   fullAddress: string;
@@ -28,6 +31,7 @@ interface EnhancedAddressInputProps {
   id?: string;
   required?: boolean;
   className?: string;
+  showMapButton?: boolean;
   showValidation?: boolean;
 }
 
@@ -50,6 +54,7 @@ export function EnhancedAddressInput({
   id,
   required = false,
   className,
+  showMapButton = true,
   showValidation = true
 }: EnhancedAddressInputProps) {
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
@@ -57,15 +62,30 @@ export function EnhancedAddressInput({
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [showMapLightbox, setShowMapLightbox] = useState(false);
   const [sessionToken] = useState(() => Math.random().toString(36).substring(7));
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchAttempts, setSearchAttempts] = useState(0);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
-  const [isValidAddress, setIsValidAddress] = useState(false);
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   const debouncedValue = useDebounce(value, 500);
+
+  // Load Google Maps script on component mount
+  useEffect(() => {
+    loadGoogleMapsScript()
+      .then(() => {
+        console.log('Google Maps script loaded successfully');
+        setGoogleMapsLoaded(true);
+      })
+      .catch((error) => {
+        console.error('Failed to load Google Maps:', error);
+        setGoogleMapsLoaded(false);
+      });
+  }, []);
 
   // Fetch predictions when user types
   useEffect(() => {
@@ -76,22 +96,16 @@ export function EnhancedAddressInput({
       setShowDropdown(false);
       setValidationStatus('idle');
       setHasSearched(false);
+      setSearchAttempts(0);
       setIsUsingFallback(false);
-      setIsValidAddress(false);
     }
   }, [debouncedValue]);
-
-  // Update validation callback
-  useEffect(() => {
-    // Consider address valid if it's been selected from predictions or if it's a reasonable length
-    const isValid = isValidAddress || (value.length > 10 && value.includes(','));
-    onValidationChange?.(isValid);
-  }, [isValidAddress, value, onValidationChange]);
 
   const fetchPredictions = async (input: string) => {
     setIsLoading(true);
     setValidationStatus('validating');
     setHasSearched(true);
+    setSearchAttempts(prev => prev + 1);
     
     try {
       console.log('Fetching predictions for:', input);
@@ -115,6 +129,7 @@ export function EnhancedAddressInput({
         setSelectedIndex(-1);
         setValidationStatus('idle');
         setIsUsingFallback(false);
+        onValidationChange?.(true);
       } else {
         console.log('No predictions from edge function, trying client-side fallback');
         await tryClientSideFallback(input);
@@ -128,9 +143,9 @@ export function EnhancedAddressInput({
   };
 
   const tryClientSideFallback = async (input: string) => {
-    if (!window.google?.maps?.places?.AutocompleteService) {
-      console.log('Google Maps not available for client-side fallback');
-      setValidationStatus('invalid');
+    if (!googleMapsLoaded || !window.google?.maps?.places?.AutocompleteService) {
+      console.error('Google Maps not available for client-side fallback');
+      handleSearchFailure();
       return;
     }
 
@@ -161,13 +176,27 @@ export function EnhancedAddressInput({
         setShowDropdown(true);
         setSelectedIndex(-1);
         setValidationStatus('idle');
+        onValidationChange?.(true);
       } else {
-        setValidationStatus('invalid');
+        handleSearchFailure();
       }
     } catch (error) {
       console.error('Client-side places search failed:', error);
-      setValidationStatus('invalid');
+      handleSearchFailure();
     }
+  };
+
+  const handleSearchFailure = () => {
+    setPredictions([]);
+    setShowDropdown(false);
+    setValidationStatus('idle');
+    onValidationChange?.(false);
+    
+    // Auto-open map lightbox on search failure after a delay
+    setTimeout(() => {
+      console.log('Auto-opening map lightbox due to search failure');
+      setShowMapLightbox(true);
+    }, 1500);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,10 +208,8 @@ export function EnhancedAddressInput({
       setPredictions([]);
       setValidationStatus('idle');
       setHasSearched(false);
+      setSearchAttempts(0);
       setIsUsingFallback(false);
-      setIsValidAddress(false);
-    } else {
-      setIsValidAddress(false); // Reset validation when user types
     }
   };
 
@@ -191,7 +218,6 @@ export function EnhancedAddressInput({
     setShowDropdown(false);
     setPredictions([]);
     setValidationStatus('validating');
-    setIsValidAddress(true); // Mark as valid since it's from predictions
     
     // Get detailed address information
     try {
@@ -225,6 +251,7 @@ export function EnhancedAddressInput({
         
         onAddressSelect(addressData);
         setValidationStatus('valid');
+        onValidationChange?.(true);
       }
     } catch (error) {
       console.error('Error getting address details:', error);
@@ -233,9 +260,10 @@ export function EnhancedAddressInput({
   };
 
   const tryClientSideDetails = async (placeId: string) => {
-    if (!window.google?.maps?.places?.PlacesService) {
-      console.log('Google Places PlacesService not available');
-      setValidationStatus('valid'); // Still consider it valid since it came from predictions
+    if (!googleMapsLoaded || !window.google?.maps?.places?.PlacesService) {
+      console.error('Google Places PlacesService not available');
+      setValidationStatus('invalid');
+      onValidationChange?.(false);
       return;
     }
 
@@ -293,11 +321,22 @@ export function EnhancedAddressInput({
 
         onAddressSelect(parsedAddress);
         setValidationStatus('valid');
+        onValidationChange?.(true);
       }
     } catch (error) {
       console.error('Client-side place details failed:', error);
-      setValidationStatus('valid'); // Still consider valid since from predictions
+      setValidationStatus('invalid');
+      onValidationChange?.(false);
     }
+  };
+
+  const handleMapAddressSelect = (addressData: AddressData) => {
+    console.log('Address selected from map:', addressData);
+    onChange(addressData.fullAddress);
+    onAddressSelect?.(addressData);
+    setValidationStatus('valid');
+    onValidationChange?.(true);
+    setShowMapLightbox(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -334,6 +373,10 @@ export function EnhancedAddressInput({
         setShowDropdown(false);
       }
     }, 150);
+  };
+
+  const handleMapButtonClick = () => {
+    setShowMapLightbox(true);
   };
 
   const getValidationIcon = () => {
@@ -374,10 +417,16 @@ export function EnhancedAddressInput({
             Valid Address
           </Badge>
         )}
-        {validationStatus === 'invalid' && hasSearched && (
-          <Badge variant="secondary" className="text-red-700 bg-red-100">
+        {validationStatus === 'invalid' && (
+          <Badge variant="destructive" className="text-red-700 bg-red-100">
             <AlertCircle className="w-3 h-3 mr-1" />
-            No matching addresses found
+            Address Not Found
+          </Badge>
+        )}
+        {hasSearched && predictions.length === 0 && !isLoading && validationStatus === 'idle' && value.length > 2 && searchAttempts > 0 && (
+          <Badge variant="outline" className="text-blue-700 bg-blue-50">
+            <Map className="w-3 h-3 mr-1" />
+            No results found - try using the map to select your address
           </Badge>
         )}
       </div>
@@ -388,26 +437,38 @@ export function EnhancedAddressInput({
     <div className="relative">
       {label && <Label htmlFor={id}>{label}</Label>}
       
-      <div className="relative">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-        <Input
-          ref={inputRef}
-          id={id}
-          value={value}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
-          placeholder={placeholder}
-          required={required}
-          className={`pl-10 pr-10 ${className || ''} ${
-            validationStatus === 'invalid' ? 'border-red-300 focus:border-red-500' : ''
-          }`}
-          autoComplete="off"
-        />
-        
-        <div className="absolute right-3 top-3">
-          {getValidationIcon()}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <Input
+            ref={inputRef}
+            id={id}
+            value={value}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            placeholder={placeholder}
+            required={required}
+            className={`pl-10 pr-10 ${className || ''}`}
+            autoComplete="off"
+          />
+          
+          <div className="absolute right-3 top-3">
+            {getValidationIcon()}
+          </div>
         </div>
+        
+        {showMapButton && (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={handleMapButtonClick}
+            title="Select on map"
+          >
+            <Map className="w-4 h-4" />
+          </Button>
+        )}
       </div>
 
       {getValidationStatus()}
@@ -436,6 +497,15 @@ export function EnhancedAddressInput({
           ))}
         </div>
       )}
+
+      {/* Map Lightbox */}
+      <GoogleMapsLightbox
+        isOpen={showMapLightbox}
+        onClose={() => setShowMapLightbox(false)}
+        onAddressSelect={handleMapAddressSelect}
+        initialAddress={value}
+        title="Select Address on Map"
+      />
     </div>
   );
 }
