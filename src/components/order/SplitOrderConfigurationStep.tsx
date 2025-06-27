@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -321,6 +320,75 @@ export function SplitOrderConfigurationStep({
     console.log('Cart updated in SplitOrderConfigurationStep:', cart);
   }, [cart]);
 
+  const handleCartQuantityChange = (productId: string, newQuantity: number) => {
+    if (!onCartChange) {
+      toast({
+        title: "Error",
+        description: "Cannot update quantity - cart update function not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedCart = cart.map(item => {
+      if (item.product.id === productId) {
+        return {
+          ...item,
+          quantity: newQuantity,
+          total_price: item.unit_price * newQuantity
+        };
+      }
+      return item;
+    });
+
+    onCartChange(updatedCart);
+  };
+
+  const handleRemoveFromCart = (productId: string) => {
+    if (!onCartChange) {
+      toast({
+        title: "Error",
+        description: "Cannot remove product - cart update function not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Remove from cart
+    const updatedCart = cart.filter(item => item.product.id !== productId);
+    onCartChange(updatedCart);
+
+    // Remove from all splits
+    const updatedSplits = splits.map(split => ({
+      ...split,
+      products: split.products.filter(p => p.productId !== productId)
+    }));
+    onSplitsChange(updatedSplits);
+  };
+
+  const handleUpdateSplitQuantity = (splitIndex: number, productId: string, quantity: number) => {
+    const split = splits[splitIndex];
+    
+    if (quantity === 0) {
+      // Remove product from split if quantity is 0
+      const updatedProducts = split.products.filter(p => p.productId !== productId);
+      updateSplit(splitIndex, { products: updatedProducts });
+    } else {
+      // Update or add product quantity
+      const existingProduct = split.products.find(p => p.productId === productId);
+      
+      if (existingProduct) {
+        const updatedProducts = split.products.map(p =>
+          p.productId === productId ? { ...p, quantity } : p
+        );
+        updateSplit(splitIndex, { products: updatedProducts });
+      } else {
+        const updatedProducts = [...split.products, { productId, quantity }];
+        updateSplit(splitIndex, { products: updatedProducts });
+      }
+    }
+  };
+
   return (
     <>
       <Card>
@@ -475,6 +543,9 @@ export function SplitOrderConfigurationStep({
                   cartItem={cartItem}
                   splits={splits}
                   onAddToSplit={addProductToSplit}
+                  onQuantityChange={handleCartQuantityChange}
+                  onRemoveFromCart={handleRemoveFromCart}
+                  onUpdateSplitQuantity={handleUpdateSplitQuantity}
                 />
               ))}
             </div>
