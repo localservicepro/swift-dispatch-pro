@@ -15,7 +15,8 @@ import {
   Clock,
   CheckCircle,
   Eye,
-  Edit3
+  Edit3,
+  Camera
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { useAuth } from "../auth/AuthProvider";
@@ -24,6 +25,8 @@ import { PaymentStatusDropdown } from "./PaymentStatusDropdown";
 import { NotesIndicator } from "../notes/NotesIndicator";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { NotesEditDialog } from "../notes/NotesEditDialog";
+import { ProofOfDeliveryDialog } from "../order/ProofOfDeliveryDialog";
+import { useDeliveryPhotos } from "@/hooks/useDeliveryPhotos";
 
 interface OpportunityCardProps {
   order: any;
@@ -35,8 +38,15 @@ interface OpportunityCardProps {
 export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick }: OpportunityCardProps) {
   const [isMoving, setIsMoving] = useState(false);
   const [showNotesEdit, setShowNotesEdit] = useState(false);
+  const [showProofDialog, setShowProofDialog] = useState(false);
   const { toast } = useToast();
   const { profile } = useAuth();
+
+  // Fetch delivery photos for delivered orders
+  const { data: deliveryPhotos } = useDeliveryPhotos(
+    currentStage === 'delivered' ? order.id : null
+  );
+  const hasDeliveryPhotos = deliveryPhotos && deliveryPhotos.length > 0;
 
   const getNextStage = (current: string) => {
     const stages = ['requested', 'preparing', 'loading', 'en_route', 'delivered'];
@@ -169,6 +179,11 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
     setShowNotesEdit(true);
   };
 
+  const handleViewProof = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowProofDialog(true);
+  };
+
   const truckInfo = getTruckInfo(order.truck_type_from_truck || order.truck_type);
   const nextAction = getNextStageAction(currentStage);
   const canMove = canMoveToNextStage(currentStage);
@@ -204,6 +219,18 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
             </div>
             <div className="flex items-center gap-2">
               <PaymentStatusDropdown order={order} onStatusUpdate={onOrderMove} />
+              {/* View Proof Button for Delivered Orders */}
+              {currentStage === 'delivered' && hasDeliveryPhotos && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleViewProof}
+                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="View Proof of Delivery"
+                >
+                  <Camera className="w-3 h-3 text-green-600" />
+                </Button>
+              )}
               {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
                 <Button
                   variant="ghost"
@@ -322,9 +349,23 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
           )}
 
           {currentStage === 'delivered' && (
-            <div className="flex items-center justify-center gap-2 text-green-600 text-xs font-medium">
-              <CheckCircle className="w-3 h-3" />
-              Completed
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2 text-green-600 text-xs font-medium">
+                <CheckCircle className="w-3 h-3" />
+                Completed
+              </div>
+              {/* View Proof Button for completed orders */}
+              {hasDeliveryPhotos && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleViewProof}
+                  className="w-full flex items-center gap-2 text-xs text-green-600 border-green-300 hover:bg-green-50"
+                >
+                  <Camera className="w-3 h-3" />
+                  View Proof of Delivery
+                </Button>
+              )}
             </div>
           )}
 
@@ -347,6 +388,14 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
           specialInstructions: order.special_instructions
         }}
         onNotesUpdated={onOrderMove}
+      />
+
+      {/* Proof of Delivery Dialog */}
+      <ProofOfDeliveryDialog
+        isOpen={showProofDialog}
+        onClose={() => setShowProofDialog(false)}
+        orderId={order.id}
+        orderNumber={order.order_number}
       />
     </>
   );
