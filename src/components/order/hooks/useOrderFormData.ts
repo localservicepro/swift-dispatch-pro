@@ -80,16 +80,12 @@ export function useOrderFormData(order: Order) {
     }));
   }, []);
 
-  const handleSuburbChange = useCallback((suburbId: string, deliveryRate: number) => {
-    setFormData(prev => {
-      const newTotalAmount = prev.subtotal + deliveryRate;
-      return {
-        ...prev,
-        suburb_id: suburbId,
-        delivery_fee: deliveryRate,
-        total_amount: newTotalAmount.toString(),
-      };
-    });
+  const handleSuburbChange = useCallback((suburbId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      suburb_id: suburbId,
+      // Note: delivery fee is not automatically updated - must be set manually
+    }));
   }, []);
 
   const handleProductsChange = useCallback((products: any[]) => {

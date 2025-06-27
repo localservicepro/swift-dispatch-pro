@@ -9,7 +9,7 @@ interface OrderDeliveryFormProps {
   };
   deliveryRate: number;
   onFormDataChange: (updates: Partial<OrderDeliveryFormProps['formData']>) => void;
-  onSuburbChange: (suburbId: string, rate: number) => void;
+  onSuburbChange: (suburbId: string) => void;
 }
 
 export function OrderDeliveryForm({ 

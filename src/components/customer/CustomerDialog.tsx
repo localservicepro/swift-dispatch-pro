@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -108,9 +107,10 @@ export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = 
     setFormData(prev => ({ ...prev, ...updates }));
   };
 
-  const handleSuburbChange = (suburbId: string, rate: number) => {
+  const handleSuburbChange = (suburbId: string) => {
     setFormData(prev => ({ ...prev, suburb_id: suburbId }));
-    setDeliveryRate(rate);
+    // Note: We no longer automatically set delivery rate - it's for reference only
+    setDeliveryRate(0);
   };
 
   const handleSave = async () => {
