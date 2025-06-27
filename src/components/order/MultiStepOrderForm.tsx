@@ -1,4 +1,5 @@
 
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -186,6 +187,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         return (
           <ProductSelectionStep
             cart={cart}
+            subtotal={subtotal}
             adjustments={adjustments}
             onCartUpdate={setCart}
             onAdjustmentsChange={setAdjustments}
@@ -345,3 +347,4 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     </div>
   );
 }
+
