@@ -8,6 +8,7 @@ declare global {
         Map: any;
         Marker: any;
         Size: any;
+        Point: any;
         Geocoder: any;
         places?: {
           AutocompleteService: any;
@@ -35,6 +36,10 @@ declare global {
       
       class Size {
         constructor(width: number, height: number);
+      }
+      
+      class Point {
+        constructor(x: number, y: number);
       }
       
       class Geocoder {
