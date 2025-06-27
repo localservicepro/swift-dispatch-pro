@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -316,7 +315,7 @@ export function BulkManagementDialog({
                         <div className="flex items-start gap-3">
                           <Checkbox
                             checked={isSelected}
-                            onCheckedChange={(checked) => handleProductSelect(cartItem.product.id, checked)}
+                            onCheckedChange={(checked) => handleProductSelect(cartItem.product.id, checked === true)}
                           />
                           <div>
                             <div className="flex items-center gap-2 mb-1">
