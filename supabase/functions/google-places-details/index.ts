@@ -54,6 +54,21 @@ serve(async (req) => {
     console.log('Calling Google Places Details API for place ID:', placeId);
 
     const response = await fetch(url.toString());
+    
+    if (!response.ok) {
+      console.error('Google Places Details API HTTP error:', response.status, response.statusText);
+      return new Response(
+        JSON.stringify({ 
+          error: `HTTP error: ${response.status}`,
+          fallback: true
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     const data = await response.json();
 
     console.log('Google Places Details API response status:', data.status);

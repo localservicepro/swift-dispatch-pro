@@ -1,9 +1,8 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from './input';
 import { Label } from './label';
 import { Badge } from './badge';
-import { Search, CheckCircle, Wifi, WifiOff } from 'lucide-react';
+import { Search, CheckCircle, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDebounce } from '@/hooks/useDebounce';
 
@@ -57,10 +56,11 @@ export function EnhancedAddressInput({
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'valid'>('idle');
+  const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
   const [sessionToken] = useState(() => Math.random().toString(36).substring(7));
   const [hasSearched, setHasSearched] = useState(false);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const [isValidAddress, setIsValidAddress] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -77,13 +77,16 @@ export function EnhancedAddressInput({
       setValidationStatus('idle');
       setHasSearched(false);
       setIsUsingFallback(false);
+      setIsValidAddress(false);
     }
   }, [debouncedValue]);
 
-  // Always consider the input valid - accept any text
+  // Update validation callback
   useEffect(() => {
-    onValidationChange?.(true);
-  }, [value, onValidationChange]);
+    // Consider address valid if it's been selected from predictions or if it's a reasonable length
+    const isValid = isValidAddress || (value.length > 10 && value.includes(','));
+    onValidationChange?.(isValid);
+  }, [isValidAddress, value, onValidationChange]);
 
   const fetchPredictions = async (input: string) => {
     setIsLoading(true);
@@ -121,14 +124,13 @@ export function EnhancedAddressInput({
       await tryClientSideFallback(input);
     } finally {
       setIsLoading(false);
-      setValidationStatus('idle'); // Always end in idle state - accept any input
     }
   };
 
   const tryClientSideFallback = async (input: string) => {
     if (!window.google?.maps?.places?.AutocompleteService) {
-      console.log('Google Maps not available for client-side fallback - accepting input as-is');
-      handleSearchComplete();
+      console.log('Google Maps not available for client-side fallback');
+      setValidationStatus('invalid');
       return;
     }
 
@@ -160,20 +162,12 @@ export function EnhancedAddressInput({
         setSelectedIndex(-1);
         setValidationStatus('idle');
       } else {
-        handleSearchComplete();
+        setValidationStatus('invalid');
       }
     } catch (error) {
       console.error('Client-side places search failed:', error);
-      handleSearchComplete();
+      setValidationStatus('invalid');
     }
-  };
-
-  const handleSearchComplete = () => {
-    // Just accept whatever the user has typed - no validation required
-    setPredictions([]);
-    setShowDropdown(false);
-    setValidationStatus('idle');
-    console.log('Accepting user input as-is:', value);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,6 +180,9 @@ export function EnhancedAddressInput({
       setValidationStatus('idle');
       setHasSearched(false);
       setIsUsingFallback(false);
+      setIsValidAddress(false);
+    } else {
+      setIsValidAddress(false); // Reset validation when user types
     }
   };
 
@@ -194,6 +191,7 @@ export function EnhancedAddressInput({
     setShowDropdown(false);
     setPredictions([]);
     setValidationStatus('validating');
+    setIsValidAddress(true); // Mark as valid since it's from predictions
     
     // Get detailed address information
     try {
@@ -236,8 +234,8 @@ export function EnhancedAddressInput({
 
   const tryClientSideDetails = async (placeId: string) => {
     if (!window.google?.maps?.places?.PlacesService) {
-      console.log('Google Places PlacesService not available - accepting selection as-is');
-      setValidationStatus('valid');
+      console.log('Google Places PlacesService not available');
+      setValidationStatus('valid'); // Still consider it valid since it came from predictions
       return;
     }
 
@@ -298,7 +296,7 @@ export function EnhancedAddressInput({
       }
     } catch (error) {
       console.error('Client-side place details failed:', error);
-      setValidationStatus('valid'); // Still accept the input
+      setValidationStatus('valid'); // Still consider valid since from predictions
     }
   };
 
@@ -346,6 +344,8 @@ export function EnhancedAddressInput({
         return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900" />;
       case 'valid':
         return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'invalid':
+        return <AlertCircle className="w-4 h-4 text-red-500" />;
       default:
         return null;
     }
@@ -374,6 +374,12 @@ export function EnhancedAddressInput({
             Valid Address
           </Badge>
         )}
+        {validationStatus === 'invalid' && hasSearched && (
+          <Badge variant="secondary" className="text-red-700 bg-red-100">
+            <AlertCircle className="w-3 h-3 mr-1" />
+            No matching addresses found
+          </Badge>
+        )}
       </div>
     );
   };
@@ -393,7 +399,9 @@ export function EnhancedAddressInput({
           onBlur={handleBlur}
           placeholder={placeholder}
           required={required}
-          className={`pl-10 pr-10 ${className || ''}`}
+          className={`pl-10 pr-10 ${className || ''} ${
+            validationStatus === 'invalid' ? 'border-red-300 focus:border-red-500' : ''
+          }`}
           autoComplete="off"
         />
         

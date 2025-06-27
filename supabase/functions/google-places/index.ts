@@ -20,7 +20,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'Google Maps API key not configured',
-          fallback: true // Signal to use client-side fallback
+          fallback: true
         }),
         { 
           status: 500, 
@@ -58,12 +58,27 @@ serve(async (req) => {
     console.log('Calling Google Places API for input:', input);
 
     const response = await fetch(url.toString());
+    
+    if (!response.ok) {
+      console.error('Google Places API HTTP error:', response.status, response.statusText);
+      return new Response(
+        JSON.stringify({ 
+          error: `HTTP error: ${response.status}`,
+          fallback: true,
+          predictions: []
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     const data = await response.json();
 
     console.log('Google Places API response status:', data.status);
     console.log('Number of predictions:', data.predictions?.length || 0);
 
-    // Handle various API response statuses
     if (data.status === 'ZERO_RESULTS') {
       return new Response(JSON.stringify({
         status: 'ZERO_RESULTS',
