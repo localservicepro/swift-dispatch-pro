@@ -75,8 +75,9 @@ export function AddProductToSplitDialog({
     setSearchTerm("");
   };
 
-  const isProductInCart = (productId: string) => {
-    return existingProducts.some(item => item.product.id === productId);
+  const getExistingProductQuantity = (productId: string) => {
+    const existingItem = existingProducts.find(item => item.product.id === productId);
+    return existingItem?.quantity || 0;
   };
 
   return (
@@ -85,7 +86,7 @@ export function AddProductToSplitDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            Add New Product to Split
+            Add Product to Order
           </DialogTitle>
         </DialogHeader>
 
@@ -118,17 +119,15 @@ export function AddProductToSplitDialog({
             ) : (
               <div className="space-y-2">
                 {products.map((product) => {
-                  const inCart = isProductInCart(product.id);
+                  const existingQuantity = getExistingProductQuantity(product.id);
                   return (
                     <div
                       key={product.id}
-                      onClick={() => !inCart && setSelectedProduct(product)}
-                      className={`p-3 border rounded-lg transition-colors ${
-                        inCart 
-                          ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
-                          : selectedProduct?.id === product.id
-                          ? 'border-blue-500 bg-blue-50 cursor-pointer'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 cursor-pointer'
+                      onClick={() => setSelectedProduct(product)}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        selectedProduct?.id === product.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >
                       <div className="flex justify-between items-start">
@@ -140,9 +139,9 @@ export function AddProductToSplitDialog({
                                 {product.category.name}
                               </Badge>
                             )}
-                            {inCart && (
-                              <Badge variant="default" className="text-xs bg-gray-500">
-                                Already in cart
+                            {existingQuantity > 0 && (
+                              <Badge variant="outline" className="text-xs bg-blue-50">
+                                In cart: {existingQuantity}
                               </Badge>
                             )}
                           </div>
@@ -182,7 +181,7 @@ export function AddProductToSplitDialog({
               </div>
               
               <div className="flex items-center gap-2">
-                <Label className="text-xs font-medium">Quantity:</Label>
+                <Label className="text-xs font-medium">Quantity to add:</Label>
                 <Select value={quantity.toString()} onValueChange={(value) => setQuantity(parseInt(value))}>
                   <SelectTrigger className="w-20 h-7 text-xs">
                     <SelectValue />
@@ -214,7 +213,7 @@ export function AddProductToSplitDialog({
             className="flex-1"
           >
             <Package className="w-4 h-4 mr-2" />
-            Add Product
+            Add to Order
           </Button>
         </div>
       </DialogContent>

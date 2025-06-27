@@ -1,7 +1,8 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shuffle, RotateCcw, CheckCircle, Settings } from "lucide-react";
+import { RotateCcw, CheckCircle, Settings } from "lucide-react";
 import { CartItem, SplitConfig } from "./types";
 import { BulkManagementDialog } from "./BulkManagementDialog";
 
@@ -9,31 +10,11 @@ interface AllocationActionsProps {
   cart: CartItem[];
   splits: SplitConfig[];
   onSplitsChange: (splits: SplitConfig[]) => void;
+  onCartChange?: (cart: CartItem[]) => void;
 }
 
-export function AllocationActions({ cart, splits, onSplitsChange }: AllocationActionsProps) {
+export function AllocationActions({ cart, splits, onSplitsChange, onCartChange }: AllocationActionsProps) {
   const [bulkManagementOpen, setBulkManagementOpen] = useState(false);
-
-  const distributeEvenly = () => {
-    const updatedSplits = splits.map(split => ({ ...split, products: [] }));
-    
-    cart.forEach(cartItem => {
-      const quantityPerSplit = Math.floor(cartItem.quantity / splits.length);
-      const remainder = cartItem.quantity % splits.length;
-      
-      splits.forEach((_, index) => {
-        const quantity = quantityPerSplit + (index < remainder ? 1 : 0);
-        if (quantity > 0) {
-          updatedSplits[index].products.push({
-            productId: cartItem.product.id,
-            quantity: quantity
-          });
-        }
-      });
-    });
-    
-    onSplitsChange(updatedSplits);
-  };
 
   const moveAllToSplit = (targetSplitIndex: number) => {
     const updatedSplits = splits.map((split, index) => ({
@@ -76,16 +57,6 @@ export function AllocationActions({ cart, splits, onSplitsChange }: AllocationAc
         </div>
         
         <div className="flex flex-wrap gap-2 items-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={distributeEvenly}
-            className="text-xs h-7"
-          >
-            <Shuffle className="w-2 h-2 mr-1" />
-            Distribute Evenly
-          </Button>
-          
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-600">Move all to:</span>
             <Select onValueChange={(value) => moveAllToSplit(parseInt(value))}>
@@ -130,6 +101,7 @@ export function AllocationActions({ cart, splits, onSplitsChange }: AllocationAc
         cart={cart}
         splits={splits}
         onSplitsChange={onSplitsChange}
+        onCartChange={onCartChange}
       />
     </>
   );

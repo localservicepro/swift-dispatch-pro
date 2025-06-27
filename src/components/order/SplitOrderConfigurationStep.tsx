@@ -228,21 +228,32 @@ export function SplitOrderConfigurationStep({
   };
 
   const handleAddNewProduct = (product: Product, quantity: number) => {
-    // Create new cart item
-    const newCartItem: CartItem = {
-      product,
-      quantity,
-      unit_price: product.price,
-      total_price: product.price * quantity
-    };
+    if (!onCartChange) return;
 
-    // Add to cart if onCartChange is provided
-    if (onCartChange) {
-      const updatedCart = [...cart, newCartItem];
+    // Check if product already exists in cart
+    const existingCartItemIndex = cart.findIndex(item => item.product.id === product.id);
+    
+    if (existingCartItemIndex >= 0) {
+      // Update existing cart item quantity
+      const updatedCart = [...cart];
+      updatedCart[existingCartItemIndex] = {
+        ...updatedCart[existingCartItemIndex],
+        quantity: updatedCart[existingCartItemIndex].quantity + quantity,
+        total_price: updatedCart[existingCartItemIndex].unit_price * (updatedCart[existingCartItemIndex].quantity + quantity)
+      };
       onCartChange(updatedCart);
+    } else {
+      // Add new cart item
+      const newCartItem: CartItem = {
+        product,
+        quantity,
+        unit_price: product.price,
+        total_price: product.price * quantity
+      };
+      onCartChange([...cart, newCartItem]);
     }
 
-    console.log('New product added to cart:', newCartItem);
+    console.log('Product added to cart:', product.name, 'Quantity:', quantity);
   };
 
   const canProceed = () => {
@@ -388,6 +399,7 @@ export function SplitOrderConfigurationStep({
             cart={cart}
             splits={splits}
             onSplitsChange={onSplitsChange}
+            onCartChange={onCartChange}
           />
 
           {/* Add New Product Button */}
