@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ interface Customer {
   suburb?: {
     name: string;
     state: string;
-    delivery_rate: number;
+    delivery_rate: string;
   };
 }
 
@@ -31,7 +32,8 @@ interface Suburb {
   name: string;
   state: string;
   postcode: string;
-  delivery_rate: number;
+  delivery_rate: string;
+  distance_km: number | null;
 }
 
 interface CustomerSearchStepProps {
@@ -306,7 +308,7 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
                         <SelectContent>
                           {suburbs.map((suburb) => (
                             <SelectItem key={suburb.id} value={suburb.id}>
-                              {suburb.name}, {suburb.state} - ${suburb.delivery_rate}
+                              {suburb.name}, {suburb.state} - {suburb.delivery_rate}
                             </SelectItem>
                           ))}
                         </SelectContent>

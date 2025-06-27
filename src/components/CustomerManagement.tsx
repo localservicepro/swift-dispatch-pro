@@ -199,9 +199,9 @@ export function CustomerManagement() {
                             <MapPin className="w-3 h-3" />
                             <span>
                               {customer.suburbs.name}, {customer.suburbs.state} {customer.suburbs.postcode}
-                              {customer.suburbs.delivery_rate > 0 && (
+                              {customer.suburbs.delivery_rate && customer.suburbs.delivery_rate !== "0" && (
                                 <span className="ml-2 text-green-600 font-medium">
-                                  (Delivery: ${customer.suburbs.delivery_rate.toFixed(2)})
+                                  (Delivery: {customer.suburbs.delivery_rate})
                                 </span>
                               )}
                             </span>

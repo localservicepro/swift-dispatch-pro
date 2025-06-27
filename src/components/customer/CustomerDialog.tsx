@@ -22,7 +22,7 @@ interface CustomerDialogProps {
 }
 
 export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = false }: CustomerDialogProps) {
-  const [formData, setFormData] = useState<{
+  const [formData, setFormData<{
     first_name: string;
     last_name: string;
     email: string;
@@ -44,7 +44,7 @@ export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = 
     sms_notifications_enabled: true,
   });
   const [activeTab, setActiveTab] = useState("personal");
-  const [deliveryRate, setDeliveryRate] = useState(0);
+  const [deliveryRate, setDeliveryRate] = useState<string>('');
 
   useEffect(() => {
     if (customer) {
@@ -91,7 +91,7 @@ export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = 
         is_active: true,
         sms_notifications_enabled: true,
       });
-      setDeliveryRate(0);
+      setDeliveryRate('');
     }
   }, [customer]);
 
@@ -110,7 +110,7 @@ export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = 
   const handleSuburbChange = (suburbId: string) => {
     setFormData(prev => ({ ...prev, suburb_id: suburbId }));
     // Note: We no longer automatically set delivery rate - it's for reference only
-    setDeliveryRate(0);
+    setDeliveryRate('');
   };
 
   const handleSave = async () => {
