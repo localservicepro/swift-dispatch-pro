@@ -1,22 +1,15 @@
+
 import { useState, useEffect } from "react";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
-import { DriverSelector } from "./DriverSelector";
-import { OrderBasicInfoForm } from "./OrderBasicInfoForm";
-import { OrderPricingForm } from "./OrderPricingForm";
-import { OrderTruckSelectionForm } from "./OrderTruckSelectionForm";
-import { OrderDeliveryForm } from "./OrderDeliveryForm";
-import { DeliveryScheduler } from "./DeliveryScheduler";
-import { ConflictWarning } from "./ConflictWarning";
-import { ProductEditSection } from "./ProductEditSection";
-import { useOrderFormData, OrderFormData } from "./hooks/useOrderFormData";
+import { useOrderFormData } from "./hooks/useOrderFormData";
 import { useConflictDetection } from "./hooks/useConflictDetection";
 import { OrderEditFooter } from "./OrderEditFooter";
+import { OrderEditHeader } from "./OrderEditHeader";
+import { OrderEditSections } from "./OrderEditSections";
+import { OrderEditConflictSection } from "./OrderEditConflictSection";
 import { ConflictResult } from "@/utils/conflictDetection";
-import { Settings, User2, Calendar, Clock } from "lucide-react";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -255,109 +248,41 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
   const driverConflictInfo = convertToConflictInfo(driverConflict);
   const truckConflictInfo = convertToConflictInfo(truckConflict);
 
+  const handleFormDataChange = (updates: any) => {
+    if (updates.full_address !== undefined) {
+      handleInputChange('customer_address', updates.full_address);
+    }
+    if (updates.suburb_id !== undefined) {
+      handleSuburbChange(updates.suburb_id);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <ProductEditSection
-        currentProducts={formData.products}
+      <OrderEditHeader 
+        orderNumber={order.order_number}
+        customerName={order.customer_name}
+      />
+
+      <OrderEditSections
+        formData={formData}
+        deliveryRate={deliveryRate}
+        orderId={order.id}
+        onInputChange={handleInputChange}
+        onDriverChange={handleDriverChange}
+        onSuburbChange={handleSuburbChange}
         onProductsChange={handleProductsChange}
         onSubtotalChange={handleSubtotalChange}
+        onFormDataChange={handleFormDataChange}
       />
 
-      <OrderBasicInfoForm 
-        formData={formData}
-        onInputChange={handleInputChange}
+      <OrderEditConflictSection
+        deliveryDate={formData.delivery_date}
+        deliveryTime={formData.delivery_time}
+        driverConflict={driverConflict}
+        truckConflict={truckConflict}
+        isChecking={isChecking}
       />
-
-      <OrderDeliveryForm 
-        formData={{
-          full_address: formData.customer_address,
-          suburb_id: formData.suburb_id || '',
-        }}
-        deliveryRate={deliveryRate}
-        onFormDataChange={(updates) => {
-          if (updates.full_address !== undefined) {
-            handleInputChange('customer_address', updates.full_address);
-          }
-          if (updates.suburb_id !== undefined) {
-            handleSuburbChange(updates.suburb_id);
-          }
-        }}
-        onSuburbChange={handleSuburbChange}
-      />
-
-      <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 space-y-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Calendar className="w-5 h-5 text-teal-600" />
-          <h3 className="font-semibold text-teal-900">Delivery Schedule</h3>
-        </div>
-        
-        <DeliveryScheduler
-          deliveryDate={formData.delivery_date}
-          deliveryTime={formData.delivery_time}
-          onDeliveryDateChange={(date) => handleInputChange('delivery_date', date)}
-          onDeliveryTimeChange={(time) => handleInputChange('delivery_time', time)}
-        />
-      </div>
-
-      <OrderPricingForm 
-        formData={formData}
-        onInputChange={handleInputChange}
-      />
-
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Settings className="w-5 h-5 text-slate-600" />
-          <h3 className="font-semibold text-slate-900">Order Status</h3>
-        </div>
-        
-        <div>
-          <Label htmlFor="status" className="text-gray-700 font-medium">Status</Label>
-          <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-            <SelectTrigger className="border-slate-200 focus:border-slate-400 focus:ring-slate-200">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="preparing">Preparing</SelectItem>
-              <SelectItem value="loading">Loading</SelectItem>
-              <SelectItem value="en_route">En Route</SelectItem>
-              <SelectItem value="delivered">Delivered</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <OrderTruckSelectionForm 
-        formData={formData}
-        onInputChange={handleInputChange}
-        orderId={order.id}
-      />
-
-      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-4">
-        <div className="flex items-center gap-2 mb-3">
-          <User2 className="w-5 h-5 text-indigo-600" />
-          <h3 className="font-semibold text-indigo-900">Driver Assignment</h3>
-        </div>
-        
-        <DriverSelector
-          selectedDriverId={formData.driver_id}
-          onDriverChange={handleDriverChange}
-        />
-      </div>
-
-      {(formData.delivery_date && formData.delivery_time) && (
-        <div className="space-y-2">
-          <ConflictWarning 
-            driverConflict={driverConflict}
-            truckConflict={truckConflict}
-          />
-          {isChecking && (
-            <div className="text-sm text-muted-foreground">
-              Checking for conflicts...
-            </div>
-          )}
-        </div>
-      )}
 
       <OrderEditFooter
         isUpdating={isUpdating}
