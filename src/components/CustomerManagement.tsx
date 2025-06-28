@@ -10,7 +10,7 @@ import { CustomerDialog } from "@/components/customer/CustomerDialog";
 import { CustomerOrders } from "@/components/customer/CustomerOrders";
 import { CustomerStats } from "@/components/customer/CustomerStats";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Search, Eye, Edit, Trash2, MapPin, Bell, BellOff } from "lucide-react";
+import { UserPlus, Search, Eye, Edit, Trash2, MapPin, Bell, BellOff, Building2, User } from "lucide-react";
 
 export function CustomerManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -45,10 +45,15 @@ export function CustomerManagement() {
   });
 
   const filteredCustomers = customers?.filter((customer) => {
-    const matchesSearch = customer.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.suburbs?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchText = searchTerm.toLowerCase();
+    const matchesSearch = 
+      customer.first_name.toLowerCase().includes(searchText) ||
+      customer.last_name.toLowerCase().includes(searchText) ||
+      customer.email.toLowerCase().includes(searchText) ||
+      customer.suburbs?.name?.toLowerCase().includes(searchText) ||
+      customer.company_name?.toLowerCase().includes(searchText) ||
+      customer.business_name?.toLowerCase().includes(searchText);
+    
     const matchesType = customerTypeFilter === "all" || customer.customer_type === customerTypeFilter;
     return matchesSearch && matchesType;
   });
@@ -106,6 +111,20 @@ export function CustomerManagement() {
     );
   }
 
+  const getCustomerDisplayName = (customer: any) => {
+    if (customer.customer_type === 'account' && customer.company_name) {
+      return customer.company_name;
+    }
+    return `${customer.first_name} ${customer.last_name}`;
+  };
+
+  const getCustomerSubtitle = (customer: any) => {
+    if (customer.customer_type === 'account' && customer.company_name) {
+      return `Contact: ${customer.first_name} ${customer.last_name}`;
+    }
+    return customer.email;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -127,7 +146,7 @@ export function CustomerManagement() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                placeholder="Search customers by name, email, or suburb..."
+                placeholder="Search customers by name, email, company, or suburb..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -169,8 +188,13 @@ export function CustomerManagement() {
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
+                        {customer.customer_type === 'account' ? (
+                          <Building2 className="w-5 h-5 text-blue-600" />
+                        ) : (
+                          <User className="w-5 h-5 text-green-600" />
+                        )}
                         <h3 className="font-semibold text-lg">
-                          {customer.first_name} {customer.last_name}
+                          {getCustomerDisplayName(customer)}
                         </h3>
                         <Badge variant={customer.customer_type === "trade" ? "default" : "secondary"}>
                           {customer.customer_type}
@@ -191,8 +215,14 @@ export function CustomerManagement() {
                         )}
                       </div>
                       <div className="text-sm text-slate-600 space-y-1">
-                        <p>Email: {customer.email}</p>
+                        <p>{getCustomerSubtitle(customer)}</p>
+                        {customer.customer_type === 'account' && customer.business_name && (
+                          <p>Trading as: {customer.business_name}</p>
+                        )}
                         {customer.phone && <p>Phone: {customer.phone}</p>}
+                        {customer.contact_role && (
+                          <p>Role: {customer.contact_role}</p>
+                        )}
                         <p>Address: {customer.full_address}</p>
                         {customer.suburbs && (
                           <div className="flex items-center gap-1">

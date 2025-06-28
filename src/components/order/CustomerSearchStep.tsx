@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, User, Phone, Mail, MapPin } from "lucide-react";
+import { Search, Plus, User, Phone, Mail, MapPin, Building2 } from "lucide-react";
 import { GoogleAddressAutocomplete } from "@/components/ui/google-address-autocomplete";
 
 interface Customer {
@@ -20,6 +19,9 @@ interface Customer {
   full_address: string;
   customer_type: string;
   suburb_id: string;
+  company_name: string | null;
+  business_name: string | null;
+  contact_role: string | null;
   suburb?: {
     name: string;
     state: string;
@@ -55,7 +57,10 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
     phone: "",
     full_address: "",
     suburb_id: "",
-    customer_type: "trade"
+    customer_type: "trade",
+    company_name: "",
+    business_name: "",
+    contact_role: "Owner"
   });
   const { toast } = useToast();
 
@@ -92,7 +97,7 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
         *,
         suburb:suburbs(name, state, delivery_rate)
       `)
-      .or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`)
+      .or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%,business_name.ilike.%${searchQuery}%`)
       .eq('is_active', true)
       .limit(10);
 
@@ -112,9 +117,25 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
       return;
     }
 
+    if (newCustomer.customer_type === 'account' && !newCustomer.company_name) {
+      toast({
+        title: "Error",
+        description: "Company name is required for business accounts",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const customerData = {
+      ...newCustomer,
+      company_name: newCustomer.customer_type === 'account' ? newCustomer.company_name : null,
+      business_name: newCustomer.customer_type === 'account' ? newCustomer.business_name : null,
+      contact_role: newCustomer.customer_type === 'account' ? 'Primary Contact' : 'Owner',
+    };
+
     const { data, error } = await supabase
       .from('customers')
-      .insert([newCustomer])
+      .insert([customerData])
       .select(`
         *,
         suburb:suburbs(name, state, delivery_rate)
@@ -148,6 +169,20 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
     }));
   };
 
+  const getCustomerDisplayName = (customer: Customer) => {
+    if (customer.customer_type === 'account' && customer.company_name) {
+      return customer.company_name;
+    }
+    return `${customer.first_name} ${customer.last_name}`;
+  };
+
+  const getCustomerSubtitle = (customer: Customer) => {
+    if (customer.customer_type === 'account' && customer.company_name) {
+      return `Contact: ${customer.first_name} ${customer.last_name}`;
+    }
+    return customer.email;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -161,9 +196,16 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
           <div className="space-y-4">
             <div className="border rounded-lg p-4 bg-green-50">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-green-800">
-                  {selectedCustomer.first_name} {selectedCustomer.last_name}
-                </h3>
+                <div className="flex items-center gap-2">
+                  {selectedCustomer.customer_type === 'account' ? (
+                    <Building2 className="w-5 h-5 text-blue-600" />
+                  ) : (
+                    <User className="w-5 h-5 text-green-600" />
+                  )}
+                  <h3 className="font-semibold text-green-800">
+                    {getCustomerDisplayName(selectedCustomer)}
+                  </h3>
+                </div>
                 <Badge variant={selectedCustomer.customer_type === 'trade' ? 'default' : 'secondary'}>
                   {selectedCustomer.customer_type.toUpperCase()}
                 </Badge>
@@ -171,12 +213,24 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-gray-500" />
-                  {selectedCustomer.email}
+                  {getCustomerSubtitle(selectedCustomer)}
                 </div>
                 {selectedCustomer.phone && (
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-gray-500" />
-                    {selectedCustomer.phone}
+                    Phone: {selectedCustomer.phone}
+                  </div>
+                )}
+                {selectedCustomer.customer_type === 'account' && selectedCustomer.business_name && (
+                  <div className="flex items-center gap-2 md:col-span-2">
+                    <Building2 className="w-4 h-4 text-gray-500" />
+                    Trading as: {selectedCustomer.business_name}
+                  </div>
+                )}
+                {selectedCustomer.contact_role && (
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-gray-500" />
+                    Role: {selectedCustomer.contact_role}
                   </div>
                 )}
                 <div className="flex items-center gap-2 md:col-span-2">
@@ -200,7 +254,7 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search customers by name or email..."
+                  placeholder="Search customers by name, email, or company..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -227,15 +281,22 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
                     onClick={() => onCustomerSelect(customer)}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">
-                        {customer.first_name} {customer.last_name}
-                      </h4>
+                      <div className="flex items-center gap-2">
+                        {customer.customer_type === 'account' ? (
+                          <Building2 className="w-4 h-4 text-blue-600" />
+                        ) : (
+                          <User className="w-4 h-4 text-green-600" />
+                        )}
+                        <h4 className="font-medium">
+                          {getCustomerDisplayName(customer)}
+                        </h4>
+                      </div>
                       <Badge variant={customer.customer_type === 'trade' ? 'default' : 'secondary'}>
                         {customer.customer_type.toUpperCase()}
                       </Badge>
                     </div>
                     <div className="text-sm text-gray-600">
-                      <div>{customer.email}</div>
+                      <div>{getCustomerSubtitle(customer)}</div>
                       <div>{customer.full_address}</div>
                     </div>
                   </div>
@@ -249,22 +310,63 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
                   <CardTitle className="text-lg">Create New Customer</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="first_name">First Name *</Label>
-                      <Input
-                        id="first_name"
-                        value={newCustomer.first_name}
-                        onChange={(e) => setNewCustomer({...newCustomer, first_name: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="last_name">Last Name *</Label>
-                      <Input
-                        id="last_name"
-                        value={newCustomer.last_name}
-                        onChange={(e) => setNewCustomer({...newCustomer, last_name: e.target.value})}
-                      />
+                  <div>
+                    <Label htmlFor="customer_type">Customer Type *</Label>
+                    <Select value={newCustomer.customer_type} onValueChange={(value) => setNewCustomer({...newCustomer, customer_type: value, contact_role: value === 'account' ? 'Primary Contact' : 'Owner'})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="trade">Trade (Individual)</SelectItem>
+                        <SelectItem value="account">Account (Business)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {newCustomer.customer_type === 'account' && (
+                    <>
+                      <div>
+                        <Label htmlFor="company_name">Company Name *</Label>
+                        <Input
+                          id="company_name"
+                          value={newCustomer.company_name}
+                          onChange={(e) => setNewCustomer({...newCustomer, company_name: e.target.value})}
+                          placeholder="Enter company name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="business_name">Business Name</Label>
+                        <Input
+                          id="business_name"
+                          value={newCustomer.business_name}
+                          onChange={(e) => setNewCustomer({...newCustomer, business_name: e.target.value})}
+                          placeholder="Trading name or DBA name"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium mb-3">
+                      {newCustomer.customer_type === 'account' ? 'Primary Contact' : 'Contact Information'}
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="first_name">First Name *</Label>
+                        <Input
+                          id="first_name"
+                          value={newCustomer.first_name}
+                          onChange={(e) => setNewCustomer({...newCustomer, first_name: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="last_name">Last Name *</Label>
+                        <Input
+                          id="last_name"
+                          value={newCustomer.last_name}
+                          onChange={(e) => setNewCustomer({...newCustomer, last_name: e.target.value})}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -315,16 +417,13 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="customer_type">Customer Type *</Label>
-                      <Select value={newCustomer.customer_type} onValueChange={(value) => setNewCustomer({...newCustomer, customer_type: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="trade">Trade (Direct Billing)</SelectItem>
-                          <SelectItem value="account">Account (Monthly Billing)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="contact_role">Role</Label>
+                      <Input
+                        id="contact_role"
+                        value={newCustomer.contact_role}
+                        onChange={(e) => setNewCustomer({...newCustomer, contact_role: e.target.value})}
+                        placeholder={newCustomer.customer_type === 'account' ? 'e.g. Manager, Owner' : 'e.g. Owner, Director'}
+                      />
                     </div>
                   </div>
 

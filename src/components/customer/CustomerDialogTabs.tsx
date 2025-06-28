@@ -1,9 +1,11 @@
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CustomerPersonalInfoForm } from './CustomerPersonalInfoForm';
+import { CustomerCompanyForm } from './CustomerCompanyForm';
+import { CustomerContactForm } from './CustomerContactForm';
 import { CustomerAddressForm } from './CustomerAddressForm';
 import { CustomerPreferencesForm } from './CustomerPreferencesForm';
+import { CustomerContactsManager } from './CustomerContactsManager';
 import { CustomerOrders } from './CustomerOrders';
 import { CustomerStats } from './CustomerStats';
 import type { Database } from '@/integrations/supabase/types';
@@ -23,11 +25,15 @@ interface CustomerDialogTabsProps {
     customer_type: "trade" | "account";
     is_active: boolean;
     sms_notifications_enabled: boolean;
+    company_name: string;
+    business_name: string;
+    contact_role: string;
   };
   deliveryRate: string;
   customer: Customer | null;
   isEdit: boolean;
-  onPersonalInfoChange: (updates: Partial<{ first_name: string; last_name: string; email: string; phone: string }>) => void;
+  onCompanyChange: (updates: Partial<{ company_name: string; business_name: string; customer_type: "trade" | "account" }>) => void;
+  onContactChange: (updates: Partial<{ first_name: string; last_name: string; email: string; phone: string; contact_role: string }>) => void;
   onAddressFormChange: (updates: Partial<{ full_address: string; suburb_id: string }>) => void;
   onPreferencesChange: (updates: Partial<{ customer_type: "trade" | "account"; is_active: boolean; sms_notifications_enabled: boolean }>) => void;
   onSuburbChange: (suburbId: string) => void;
@@ -40,7 +46,8 @@ export function CustomerDialogTabs({
   deliveryRate,
   customer,
   isEdit,
-  onPersonalInfoChange,
+  onCompanyChange,
+  onContactChange,
   onAddressFormChange,
   onPreferencesChange,
   onSuburbChange
@@ -48,9 +55,13 @@ export function CustomerDialogTabs({
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList>
-        <TabsTrigger value="personal">Personal Info</TabsTrigger>
+        <TabsTrigger value="company">Company</TabsTrigger>
+        <TabsTrigger value="contact">Contact</TabsTrigger>
         <TabsTrigger value="address">Address</TabsTrigger>
         <TabsTrigger value="preferences">Preferences</TabsTrigger>
+        {isEdit && customer && formData.customer_type === 'account' && (
+          <TabsTrigger value="contacts">Contacts</TabsTrigger>
+        )}
         {isEdit && customer && (
           <>
             <TabsTrigger value="orders">Orders</TabsTrigger>
@@ -59,15 +70,28 @@ export function CustomerDialogTabs({
         )}
       </TabsList>
       
-      <TabsContent value="personal" className="space-y-4">
-        <CustomerPersonalInfoForm
+      <TabsContent value="company" className="space-y-4">
+        <CustomerCompanyForm
+          formData={{
+            company_name: formData.company_name,
+            business_name: formData.business_name,
+            customer_type: formData.customer_type,
+          }}
+          onFormDataChange={onCompanyChange}
+        />
+      </TabsContent>
+
+      <TabsContent value="contact" className="space-y-4">
+        <CustomerContactForm
           formData={{
             first_name: formData.first_name,
             last_name: formData.last_name,
             email: formData.email,
             phone: formData.phone,
+            contact_role: formData.contact_role,
           }}
-          onFormDataChange={onPersonalInfoChange}
+          customerType={formData.customer_type}
+          onFormDataChange={onContactChange}
         />
       </TabsContent>
 
@@ -94,10 +118,19 @@ export function CustomerDialogTabs({
         />
       </TabsContent>
 
+      {isEdit && customer && formData.customer_type === 'account' && (
+        <TabsContent value="contacts">
+          <CustomerContactsManager 
+            customerId={customer.id}
+            customerType={formData.customer_type}
+          />
+        </TabsContent>
+      )}
+
       {isEdit && customer && (
         <>
           <TabsContent value="orders">
-            <CustomerOrders customer={customer} onBack={() => setActiveTab("personal")} />
+            <CustomerOrders customer={customer} onBack={() => setActiveTab("company")} />
           </TabsContent>
 
           <TabsContent value="stats">

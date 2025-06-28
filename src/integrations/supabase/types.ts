@@ -62,6 +62,56 @@ export type Database = {
           },
         ]
       }
+      customer_contacts: {
+        Row: {
+          contact_role: string | null
+          created_at: string
+          customer_id: string
+          email: string | null
+          first_name: string
+          id: string
+          is_active: boolean
+          is_primary_contact: boolean
+          last_name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_role?: string | null
+          created_at?: string
+          customer_id: string
+          email?: string | null
+          first_name: string
+          id?: string
+          is_active?: boolean
+          is_primary_contact?: boolean
+          last_name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_role?: string | null
+          created_at?: string
+          customer_id?: string
+          email?: string | null
+          first_name?: string
+          id?: string
+          is_active?: boolean
+          is_primary_contact?: boolean
+          last_name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_contacts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_payment_methods: {
         Row: {
           card_brand: string
@@ -161,6 +211,9 @@ export type Database = {
         Row: {
           auth_user_id: string | null
           billing_preferences: Json | null
+          business_name: string | null
+          company_name: string | null
+          contact_role: string | null
           created_at: string
           customer_type: string
           email: string
@@ -181,6 +234,9 @@ export type Database = {
         Insert: {
           auth_user_id?: string | null
           billing_preferences?: Json | null
+          business_name?: string | null
+          company_name?: string | null
+          contact_role?: string | null
           created_at?: string
           customer_type: string
           email: string
@@ -201,6 +257,9 @@ export type Database = {
         Update: {
           auth_user_id?: string | null
           billing_preferences?: Json | null
+          business_name?: string | null
+          company_name?: string | null
+          contact_role?: string | null
           created_at?: string
           customer_type?: string
           email?: string

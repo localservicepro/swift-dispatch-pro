@@ -1,69 +1,128 @@
 
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
 type Customer = Database['public']['Tables']['customers']['Row'];
 
-interface CustomerFormData {
+interface FormData {
   first_name: string;
   last_name: string;
   email: string;
   phone: string;
   full_address: string;
   suburb_id: string;
-  customer_type: "trade" | "account";
+  customer_type: 'trade' | 'account';
   is_active: boolean;
   sms_notifications_enabled: boolean;
+  company_name: string;
+  business_name: string;
+  contact_role: string;
 }
 
 export function useCustomerDialogActions(
-  formData: CustomerFormData,
+  formData: FormData,
   customer: Customer | null,
   isEdit: boolean,
   onSuccess: () => void,
   onClose: () => void
 ) {
+  const { toast } = useToast();
+
   const handleSave = async () => {
+    // Validation
     if (!formData.first_name || !formData.last_name || !formData.email) {
-      toast("Please fill in all required fields.", { description: "First name, last name, and email are required" });
+      toast({
+        title: "Error",
+        description: "First name, last name, and email are required",
+        variant: "destructive",
+      });
       return;
     }
 
-    const customerData = {
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      email: formData.email,
-      phone: formData.phone,
-      full_address: formData.full_address,
-      suburb_id: formData.suburb_id,
-      customer_type: formData.customer_type,
-      is_active: formData.is_active,
-      sms_notifications_enabled: formData.sms_notifications_enabled,
-    };
+    if (formData.customer_type === 'account' && !formData.company_name) {
+      toast({
+        title: "Error",
+        description: "Company name is required for business accounts",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      const customerData = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone || null,
+        full_address: formData.full_address,
+        suburb_id: formData.suburb_id || null,
+        customer_type: formData.customer_type,
+        is_active: formData.is_active,
+        sms_notifications_enabled: formData.sms_notifications_enabled,
+        company_name: formData.customer_type === 'account' ? formData.company_name : null,
+        business_name: formData.customer_type === 'account' ? formData.business_name : null,
+        contact_role: formData.contact_role,
+        updated_at: new Date().toISOString(),
+      };
+
       if (isEdit && customer) {
+        // Update existing customer
         const { error } = await supabase
           .from('customers')
           .update(customerData)
           .eq('id', customer.id);
 
         if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Customer updated successfully!",
+        });
       } else {
-        const { error } = await supabase
+        // Create new customer
+        const { data: newCustomer, error } = await supabase
           .from('customers')
-          .insert(customerData);
+          .insert([{ ...customerData, created_at: new Date().toISOString() }])
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // For account customers, create primary contact record
+        if (formData.customer_type === 'account' && newCustomer) {
+          const { error: contactError } = await supabase
+            .from('customer_contacts')
+            .insert([{
+              customer_id: newCustomer.id,
+              first_name: formData.first_name,
+              last_name: formData.last_name,
+              email: formData.email,
+              phone: formData.phone || null,
+              contact_role: formData.contact_role,
+              is_primary_contact: true,
+            }]);
+
+          if (contactError) {
+            console.error('Error creating primary contact:', contactError);
+            // Don't fail the entire operation for this
+          }
+        }
+
+        toast({
+          title: "Success",
+          description: "Customer created successfully!",
+        });
       }
 
       onSuccess();
-      onClose();
-      toast("Customer saved successfully!", { description: `Customer ${isEdit ? 'updated' : 'created'} successfully` });
-    } catch (error) {
-      console.error("Error saving customer:", error);
-      toast("Error saving customer", { description: "Please try again" });
+    } catch (error: any) {
+      console.error('Error saving customer:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save customer. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -73,6 +132,6 @@ export function useCustomerDialogActions(
 
   return {
     handleSave,
-    handleCancel
+    handleCancel,
   };
 }
