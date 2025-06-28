@@ -18,7 +18,7 @@ import {
   Truck,
   Clock,
   Package,
-  FileText
+  Navigation
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 
@@ -197,15 +197,15 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
           {/* Order Details */}
           <OrderDetailsCard order={order} />
 
-          {/* Special Instructions */}
-          {order.special_instructions && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+          {/* Delivery Notes (For Driver) */}
+          {order.delivery_notes && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <div className="flex items-center gap-2 mb-1">
-                <FileText className="w-4 h-4 text-yellow-600" />
-                <span className="text-sm font-medium text-yellow-800">Special Instructions:</span>
+                <Navigation className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">Delivery Notes (For Driver):</span>
               </div>
-              <div className="text-sm text-yellow-700">
-                {order.special_instructions}
+              <div className="text-sm text-blue-700">
+                {order.delivery_notes}
               </div>
             </div>
           )}
