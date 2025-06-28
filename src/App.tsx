@@ -2,6 +2,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import { AuthPage } from "@/components/auth/AuthPage";
@@ -10,6 +11,8 @@ import DriverPortal from "./pages/DriverPortal";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
+
+const queryClient = new QueryClient();
 
 function AuthenticatedApp() {
   const { user, profile, loading } = useAuth();
@@ -72,13 +75,15 @@ function AppRoutes() {
 }
 
 const App = () => (
-  <TooltipProvider>
-    <AuthProvider>
-      <Toaster />
-      <Sonner />
-      <AppRoutes />
-    </AuthProvider>
-  </TooltipProvider>
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <AppRoutes />
+      </AuthProvider>
+    </TooltipProvider>
+  </QueryClientProvider>
 );
 
 export default App;

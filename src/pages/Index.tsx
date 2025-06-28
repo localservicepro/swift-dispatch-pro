@@ -4,8 +4,8 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { MobileHeader } from "@/components/MobileHeader";
-import { OptimizedDashboardOverview } from "@/components/OptimizedDashboardOverview";
-import { OptimizedOpportunityPipeline } from "@/components/OptimizedOpportunityPipeline";
+import { DashboardOverview } from "@/components/DashboardOverview";
+import { OpportunityPipeline } from "@/components/OpportunityPipeline";
 import { OrderManagement } from "@/components/OrderManagement";
 import { ProductManagement } from "@/components/ProductManagement";
 import { PaymentManagement } from "@/components/PaymentManagement";
@@ -44,9 +44,9 @@ const Index = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <OptimizedDashboardOverview />;
+        return <DashboardOverview />;
       case "opportunities":
-        return <OptimizedOpportunityPipeline />;
+        return <OpportunityPipeline />;
       case "orders":
         return <OrderManagement />;
       case "products":
@@ -64,7 +64,7 @@ const Index = () => {
       case "settings":
         return <Settings />;
       default:
-        return <OptimizedDashboardOverview />;
+        return <DashboardOverview />;
     }
   };
 
