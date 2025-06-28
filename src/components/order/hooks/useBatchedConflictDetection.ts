@@ -9,6 +9,8 @@ interface ConflictResult {
   hasConflict: boolean;
   conflictType: 'exact' | 'overlap' | 'same-day' | 'none';
   message: string;
+  contextualStatus: 'available' | 'assigned_elsewhere' | 'conflicted' | 'maintenance' | 'out_of_service';
+  globalStatus: string;
 }
 
 interface TruckConflictMap {
@@ -34,10 +36,10 @@ export function useBatchedConflictDetection(
       setIsChecking(true);
 
       try {
-        // First, get all trucks of the selected type
+        // Get all trucks of the selected type with their status
         const { data: trucks, error: trucksError } = await supabase
           .from('trucks')
-          .select('id')
+          .select('id, status')
           .eq('truck_type', truckType)
           .eq('is_active', true);
 
@@ -65,14 +67,40 @@ export function useBatchedConflictDetection(
         // Process conflicts for each truck
         const conflicts: TruckConflictMap = {};
 
-        truckIds.forEach(truckId => {
-          const truckOrders = orders?.filter(order => order.truck_id === truckId) || [];
+        trucks.forEach(truck => {
+          const truckOrders = orders?.filter(order => order.truck_id === truck.id) || [];
           
+          // Check global status first (maintenance, out of service)
+          if (truck.status === 'maintenance') {
+            conflicts[truck.id] = {
+              hasConflict: true,
+              conflictType: 'none',
+              message: 'Under maintenance',
+              contextualStatus: 'maintenance',
+              globalStatus: truck.status
+            };
+            return;
+          }
+
+          if (truck.status === 'out_of_service') {
+            conflicts[truck.id] = {
+              hasConflict: true,
+              conflictType: 'none',
+              message: 'Out of service',
+              contextualStatus: 'out_of_service',
+              globalStatus: truck.status
+            };
+            return;
+          }
+
+          // For available or assigned trucks, check time-based conflicts
           if (truckOrders.length === 0) {
-            conflicts[truckId] = {
+            conflicts[truck.id] = {
               hasConflict: false,
               conflictType: 'none',
-              message: ''
+              message: 'Available for this time slot',
+              contextualStatus: 'available',
+              globalStatus: truck.status
             };
             return;
           }
@@ -81,19 +109,23 @@ export function useBatchedConflictDetection(
           const exactConflicts = truckOrders.filter(order => order.delivery_time === deliveryTime);
           
           if (exactConflicts.length > 0) {
-            conflicts[truckId] = {
+            conflicts[truck.id] = {
               hasConflict: true,
               conflictType: 'exact',
-              message: `Truck has ${exactConflicts.length} delivery(ies) at the exact same time`
+              message: `Conflicted - has ${exactConflicts.length} delivery(ies) at the same time`,
+              contextualStatus: 'conflicted',
+              globalStatus: truck.status
             };
             return;
           }
 
-          // For now, only block exact conflicts - treat same day as info only
-          conflicts[truckId] = {
+          // Truck is assigned to other times on the same day but available for this slot
+          conflicts[truck.id] = {
             hasConflict: false,
             conflictType: 'same-day',
-            message: `Truck has ${truckOrders.length} other delivery(ies) on the same day`
+            message: `Available for this slot (has ${truckOrders.length} other delivery(ies) on same day)`,
+            contextualStatus: 'assigned_elsewhere',
+            globalStatus: truck.status
           };
         });
 

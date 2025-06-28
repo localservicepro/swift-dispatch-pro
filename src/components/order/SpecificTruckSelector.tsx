@@ -1,7 +1,7 @@
 
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Truck, Wrench, CheckCircle, AlertTriangle, Info } from "lucide-react";
+import { Truck, Wrench, CheckCircle, AlertTriangle, Info, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
@@ -65,51 +65,53 @@ export function SpecificTruckSelector({
     excludeOrderId
   );
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  const getContextualStatusColor = (contextualStatus: string) => {
+    switch (contextualStatus) {
       case 'available': return 'bg-green-100 text-green-800';
-      case 'assigned': return 'bg-yellow-100 text-yellow-800';
+      case 'assigned_elsewhere': return 'bg-blue-100 text-blue-800';
+      case 'conflicted': return 'bg-red-100 text-red-800';
       case 'maintenance': return 'bg-orange-100 text-orange-800';
-      case 'out_of_service': return 'bg-red-100 text-red-800';
+      case 'out_of_service': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
+  const getContextualStatusIcon = (contextualStatus: string) => {
+    switch (contextualStatus) {
       case 'available': return <CheckCircle className="w-4 h-4" />;
+      case 'assigned_elsewhere': return <Clock className="w-4 h-4" />;
+      case 'conflicted': return <AlertTriangle className="w-4 h-4" />;
       case 'maintenance': return <Wrench className="w-4 h-4" />;
       default: return <Truck className="w-4 h-4" />;
     }
   };
 
+  const getContextualStatusText = (contextualStatus: string) => {
+    switch (contextualStatus) {
+      case 'available': return 'AVAILABLE';
+      case 'assigned_elsewhere': return 'AVAILABLE FOR SLOT';
+      case 'conflicted': return 'CONFLICTED';
+      case 'maintenance': return 'MAINTENANCE';
+      case 'out_of_service': return 'OUT OF SERVICE';
+      default: return 'UNKNOWN';
+    }
+  };
+
   const canSelectTruck = (truck: Truck) => {
-    // Always allow selection if truck is available
-    if (truck.status === 'available') return true;
-    
-    // Always allow if it's already selected (for editing)
+    // Always allow selection if it's already selected (for editing)
     if (truck.id === selectedTruckId) return true;
     
-    // Don't allow selection for maintenance or out of service
-    if (truck.status === 'maintenance' || truck.status === 'out_of_service') return false;
-    
-    // For assigned trucks, check conflicts
-    if (truck.status === 'assigned') {
-      // If we don't have date/time, don't allow selection
-      if (!deliveryDate || !deliveryTime) return false;
-      
-      // If still checking conflicts, allow selection (optimistic)
-      if (isChecking) return true;
-      
-      // Check conflict results
-      const conflict = truckConflicts[truck.id];
-      if (!conflict) return true; // No conflict data means available
-      
-      // Only block if there's an actual conflict (exact time)
-      return !conflict.hasConflict;
+    // If we don't have date/time, only allow based on global status
+    if (!deliveryDate || !deliveryTime) {
+      return truck.status === 'available';
     }
     
-    return false;
+    // Check contextual availability
+    const conflict = truckConflicts[truck.id];
+    if (!conflict) return truck.status === 'available'; // Fallback to global status
+    
+    // Allow selection for available and assigned_elsewhere, block for others
+    return ['available', 'assigned_elsewhere'].includes(conflict.contextualStatus);
   };
 
   const getTruckBorderColor = (truck: Truck, isSelected: boolean, isSelectable: boolean) => {
@@ -118,20 +120,19 @@ export function SpecificTruckSelector({
     if (!isSelectable) return 'border-gray-200 bg-gray-50 opacity-60';
     
     const conflict = truckConflicts[truck.id];
-    if (truck.status === 'assigned' && conflict?.hasConflict) {
-      return 'border-red-300 bg-red-50';
-    }
+    if (!conflict) return 'border-gray-200 hover:border-gray-300';
     
-    if (truck.status === 'assigned' && deliveryDate && deliveryTime) {
-      return 'border-yellow-300 bg-yellow-50 hover:border-yellow-400';
+    switch (conflict.contextualStatus) {
+      case 'available': return 'border-green-300 bg-green-50 hover:border-green-400';
+      case 'assigned_elsewhere': return 'border-blue-300 bg-blue-50 hover:border-blue-400';
+      case 'conflicted': return 'border-red-300 bg-red-50';
+      default: return 'border-gray-200 hover:border-gray-300';
     }
-    
-    return 'border-gray-200 hover:border-gray-300';
   };
 
   const getConflictIcon = (truck: Truck) => {
     const conflict = truckConflicts[truck.id];
-    if (!conflict || !conflict.hasConflict) return null;
+    if (!conflict) return null;
     
     switch (conflict.conflictType) {
       case 'exact': return <AlertTriangle className="w-4 h-4 text-red-500" />;
@@ -142,26 +143,19 @@ export function SpecificTruckSelector({
 
   const getSelectionMessage = (truck: Truck, isSelectable: boolean) => {
     if (truck.id === selectedTruckId) {
-      return truck.status === 'assigned' ? 'Currently selected for this order' : 'Selected';
+      return 'Currently selected for this order';
     }
     
-    if (!isSelectable) {
-      if (truck.status === 'maintenance') return 'Under maintenance';
-      if (truck.status === 'out_of_service') return 'Out of service';
-      if (truck.status === 'assigned' && (!deliveryDate || !deliveryTime)) {
+    if (!deliveryDate || !deliveryTime) {
+      if (!isSelectable) {
         return 'Set delivery date and time to check availability';
       }
-      const conflict = truckConflicts[truck.id];
-      if (truck.status === 'assigned' && conflict?.hasConflict) {
-        return `Conflict: ${conflict.message}`;
-      }
+      return null;
     }
     
-    if (truck.status === 'assigned') {
-      const conflict = truckConflicts[truck.id];
-      if (conflict && !conflict.hasConflict && conflict.conflictType === 'same-day') {
-        return 'Available for this time slot';
-      }
+    const conflict = truckConflicts[truck.id];
+    if (conflict) {
+      return conflict.message;
     }
     
     return null;
@@ -197,7 +191,7 @@ export function SpecificTruckSelector({
         <>
           {isChecking && (
             <div className="text-sm text-blue-600 mb-2">
-              Checking availability...
+              Checking availability for {deliveryDate} at {deliveryTime}...
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -207,6 +201,7 @@ export function SpecificTruckSelector({
               const borderColor = getTruckBorderColor(truck, isSelected, isSelectable);
               const conflictIcon = getConflictIcon(truck);
               const message = getSelectionMessage(truck, isSelectable);
+              const conflict = truckConflicts[truck.id];
               
               return (
                 <div
@@ -225,9 +220,19 @@ export function SpecificTruckSelector({
                       <div className="font-semibold text-lg">{truck.registration_number}</div>
                       {conflictIcon}
                     </div>
-                    <Badge className={`flex items-center gap-1 ${getStatusColor(truck.status)}`}>
-                      {getStatusIcon(truck.status)}
-                      {truck.status.replace('_', ' ').toUpperCase()}
+                    <Badge className={`flex items-center gap-1 ${
+                      conflict 
+                        ? getContextualStatusColor(conflict.contextualStatus)
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {conflict 
+                        ? getContextualStatusIcon(conflict.contextualStatus)
+                        : <Truck className="w-4 h-4" />
+                      }
+                      {conflict 
+                        ? getContextualStatusText(conflict.contextualStatus)
+                        : truck.status.replace('_', ' ').toUpperCase()
+                      }
                     </Badge>
                   </div>
                   
@@ -245,10 +250,10 @@ export function SpecificTruckSelector({
 
                   {message && (
                     <div className={`text-xs mt-2 ${
-                      isSelectable && truck.status === 'assigned' 
-                        ? 'text-green-600' 
-                        : isSelected 
+                      isSelected 
                         ? 'text-blue-600' 
+                        : isSelectable 
+                        ? 'text-green-600' 
                         : 'text-red-600'
                     }`}>
                       {message}
