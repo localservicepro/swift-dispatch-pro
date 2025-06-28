@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar as CalendarIcon, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { generateTimeSlots } from "@/utils/timeSlotUtils";
 
 interface CommonDateTimeSelectorProps {
   commonDeliveryDate: string;
@@ -14,19 +15,6 @@ interface CommonDateTimeSelectorProps {
   onDateSelect: (date: Date | undefined) => void;
   onTimeChange: (time: string) => void;
 }
-
-const generateTimeSlots = () => {
-  const timeSlots = [];
-  for (let hour = 8; hour <= 16; hour++) {
-    const time24 = `${hour.toString().padStart(2, '0')}:00`;
-    const time12 = new Date(`2000-01-01T${time24}`).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      hour12: true
-    });
-    timeSlots.push({ value: time24, label: time12 });
-  }
-  return timeSlots;
-};
 
 export function CommonDateTimeSelector({
   commonDeliveryDate,

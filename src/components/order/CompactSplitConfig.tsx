@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Calendar as CalendarIcon, Clock, MapPin, FileText, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CartItem, SplitConfig, Customer } from "./types";
+import { generateTimeSlots } from "@/utils/timeSlotUtils";
 
 interface CompactSplitConfigProps {
   splits: SplitConfig[];
@@ -21,19 +21,6 @@ interface CompactSplitConfigProps {
   onUpdateSplit: (splitIndex: number, updates: Partial<SplitConfig>) => void;
   isCommonDateMode?: boolean;
 }
-
-const generateTimeSlots = () => {
-  const timeSlots = [];
-  for (let hour = 8; hour <= 16; hour++) {
-    const time24 = `${hour.toString().padStart(2, '0')}:00`;
-    const time12 = new Date(`2000-01-01T${time24}`).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      hour12: true
-    });
-    timeSlots.push({ value: time24, label: time12 });
-  }
-  return timeSlots;
-};
 
 export function CompactSplitConfig({ 
   splits, 
