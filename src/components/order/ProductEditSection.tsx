@@ -43,7 +43,7 @@ export function ProductEditSection({
 
   // Calculate subtotal from current products
   const subtotal = useMemo(() => {
-    return currentProducts.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    return currentProducts.reduce((sum, item) => sum + (item.price * parseFloat(item.quantity)), 0);
   }, [currentProducts]);
 
   // Update parent when subtotal changes
@@ -107,9 +107,10 @@ export function ProductEditSection({
     
     if (existingItemIndex >= 0) {
       const updatedProducts = [...currentProducts];
+      const currentQty = parseFloat(updatedProducts[existingItemIndex].quantity);
       updatedProducts[existingItemIndex] = {
         ...updatedProducts[existingItemIndex],
-        quantity: updatedProducts[existingItemIndex].quantity + 1
+        quantity: currentQty + 1
       };
       onProductsChange(updatedProducts);
     } else {
@@ -123,7 +124,37 @@ export function ProductEditSection({
     }
   }, [currentProducts, onProductsChange]);
 
-  const updateQuantity = useCallback((productId: string, newQuantity: number) => {
+  const parseQuantityInput = (input: string): number => {
+    // Handle fractional input like "1 1/4" or "1.25"
+    const fractionMatch = input.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+    if (fractionMatch) {
+      const whole = parseInt(fractionMatch[1]);
+      const numerator = parseInt(fractionMatch[2]);
+      const denominator = parseInt(fractionMatch[3]);
+      return whole + (numerator / denominator);
+    }
+    
+    // Handle simple fraction like "1/4"
+    const simpleFractionMatch = input.match(/^(\d+)\/(\d+)$/);
+    if (simpleFractionMatch) {
+      const numerator = parseInt(simpleFractionMatch[1]);
+      const denominator = parseInt(simpleFractionMatch[2]);
+      return numerator / denominator;
+    }
+    
+    // Handle decimal input
+    const decimal = parseFloat(input);
+    return isNaN(decimal) ? 0 : decimal;
+  };
+
+  const formatQuantity = (quantity: number): string => {
+    // Format to show up to 3 decimal places, removing trailing zeros
+    return quantity % 1 === 0 ? quantity.toString() : quantity.toFixed(3).replace(/\.?0+$/, '');
+  };
+
+  const updateQuantity = useCallback((productId: string, input: string | number) => {
+    const newQuantity = typeof input === 'string' ? parseQuantityInput(input) : input;
+    
     if (newQuantity <= 0) {
       const updatedProducts = currentProducts.filter(item => item.id !== productId);
       onProductsChange(updatedProducts);
@@ -145,7 +176,7 @@ export function ProductEditSection({
 
   const getCartQuantity = useCallback((productId: string) => {
     const item = currentProducts.find(item => item.id === productId);
-    return item ? item.quantity : 0;
+    return item ? parseFloat(item.quantity) : 0;
   }, [currentProducts]);
 
   return (
@@ -190,22 +221,28 @@ export function ProductEditSection({
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.id, Math.max(0, parseFloat(item.quantity) - 0.25))}
                         >
                           <Minus className="w-3 h-3" />
                         </Button>
-                        <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
+                        <Input
+                          className="w-16 h-6 text-xs text-center"
+                          value={formatQuantity(parseFloat(item.quantity))}
+                          onChange={(e) => updateQuantity(item.id, e.target.value)}
+                          placeholder="1.25"
+                          step="0.25"
+                        />
                         <Button
                           type="button"
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.id, parseFloat(item.quantity) + 0.25)}
                         >
                           <Plus className="w-3 h-3" />
                         </Button>
                       </div>
-                      <div className="font-medium text-sm w-16 text-right">${(item.price * item.quantity).toFixed(2)}</div>
+                      <div className="font-medium text-sm w-16 text-right">${(item.price * parseFloat(item.quantity)).toFixed(2)}</div>
                       <Button
                         type="button"
                         size="sm"
@@ -271,7 +308,7 @@ export function ProductEditSection({
                       </div>
                       <div className="text-right">
                         <div className="font-semibold text-green-600">${product.price.toFixed(2)}</div>
-                        <div className="text-xs text-gray-500">Stock: {product.stock_quantity}</div>
+                        <div className="text-xs text-gray-500">Stock: {formatQuantity(product.stock_quantity)}</div>
                       </div>
                     </div>
                     
@@ -286,16 +323,16 @@ export function ProductEditSection({
                             type="button"
                             size="sm"
                             variant="outline"
-                            onClick={() => updateQuantity(product.id, getCartQuantity(product.id) - 1)}
+                            onClick={() => updateQuantity(product.id, Math.max(0, getCartQuantity(product.id) - 0.25))}
                           >
                             <Minus className="w-3 h-3" />
                           </Button>
-                          <span className="font-medium">{getCartQuantity(product.id)}</span>
+                          <span className="font-medium">{formatQuantity(getCartQuantity(product.id))}</span>
                           <Button
                             type="button"
                             size="sm"
                             variant="outline"
-                            onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + 1)}
+                            onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + 0.25)}
                           >
                             <Plus className="w-3 h-3" />
                           </Button>

@@ -38,7 +38,7 @@ export interface Product {
 
 export interface CartItem {
   product: Product;
-  quantity: number;
+  quantity: number; // Now supports decimal values
   unit_price: number;
   total_price: number;
 }
@@ -60,7 +60,7 @@ export interface SplitConfig {
   name: string;
   products: Array<{
     productId: string;
-    quantity: number;
+    quantity: number; // Now supports decimal values
   }>;
   truckType?: TruckType | "";
   truckId?: string;

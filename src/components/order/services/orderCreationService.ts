@@ -42,7 +42,7 @@ const serializeCartItems = (cart: CartItem[]) => {
     id: item.product.id,
     name: item.product.name,
     price: item.unit_price,
-    quantity: item.quantity,
+    quantity: parseFloat(item.quantity.toString()), // Ensure decimal support
     total_price: item.total_price
   }));
 };
@@ -195,14 +195,14 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       const split = params.splits[i];
       const splitOrderNumber = `${masterOrderNumber}-${i + 1}`;
       
-      // Calculate split totals
+      // Calculate split totals with decimal quantity support
       const splitSubtotal = split.products.reduce((sum: number, splitProduct: any) => {
         const cartItem = params.cart.find(cartItem => cartItem.product.id === splitProduct.productId);
         if (!cartItem) {
           console.error(`Product not found in cart: ${splitProduct.productId}`);
           return sum;
         }
-        return sum + (cartItem.unit_price * splitProduct.quantity);
+        return sum + (cartItem.unit_price * parseFloat(splitProduct.quantity.toString()));
       }, 0);
 
       // Convert split products to match the expected format
@@ -216,8 +216,8 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
           id: cartItem.product.id,
           name: cartItem.product.name,
           price: cartItem.unit_price,
-          quantity: splitProduct.quantity,
-          total_price: cartItem.unit_price * splitProduct.quantity
+          quantity: parseFloat(splitProduct.quantity.toString()),
+          total_price: cartItem.unit_price * parseFloat(splitProduct.quantity.toString())
         };
       }).filter(Boolean);
 

@@ -27,6 +27,34 @@ export function CompactProductTable({
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
   const [tempQuantity, setTempQuantity] = useState("");
 
+  const parseQuantityInput = (input: string): number => {
+    // Handle fractional input like "1 1/4" or "1.25"
+    const fractionMatch = input.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+    if (fractionMatch) {
+      const whole = parseInt(fractionMatch[1]);
+      const numerator = parseInt(fractionMatch[2]);
+      const denominator = parseInt(fractionMatch[3]);
+      return whole + (numerator / denominator);
+    }
+    
+    // Handle simple fraction like "1/4"
+    const simpleFractionMatch = input.match(/^(\d+)\/(\d+)$/);
+    if (simpleFractionMatch) {
+      const numerator = parseInt(simpleFractionMatch[1]);
+      const denominator = parseInt(simpleFractionMatch[2]);
+      return numerator / denominator;
+    }
+    
+    // Handle decimal input
+    const decimal = parseFloat(input);
+    return isNaN(decimal) ? 0 : decimal;
+  };
+
+  const formatQuantity = (quantity: number): string => {
+    // Format to show up to 3 decimal places, removing trailing zeros
+    return quantity % 1 === 0 ? quantity.toString() : quantity.toFixed(3).replace(/\.?0+$/, '');
+  };
+
   const getTotalAllocated = (productId: string) => {
     return splits.reduce((total, split) => {
       const splitProduct = split.products.find(p => p.productId === productId);
@@ -36,17 +64,17 @@ export function CompactProductTable({
 
   const handleQuantityEdit = (productId: string, currentQuantity: number) => {
     setEditingQuantity(productId);
-    setTempQuantity(currentQuantity.toString());
+    setTempQuantity(formatQuantity(currentQuantity));
   };
 
   const handleQuantitySubmit = (productId: string) => {
-    const newQuantity = parseInt(tempQuantity);
+    const newQuantity = parseQuantityInput(tempQuantity);
     const totalAllocated = getTotalAllocated(productId);
     
-    if (isNaN(newQuantity) || newQuantity < 1) {
+    if (isNaN(newQuantity) || newQuantity <= 0) {
       toast({
         title: "Invalid quantity",
-        description: "Please enter a valid quantity (minimum 1)",
+        description: "Please enter a valid quantity (minimum 0.01)",
         variant: "destructive",
       });
       return;
@@ -137,11 +165,13 @@ export function CompactProductTable({
                       <Input
                         value={tempQuantity}
                         onChange={(e) => setTempQuantity(e.target.value)}
-                        className="h-6 w-12 text-xs text-center"
+                        className="h-6 w-16 text-xs text-center"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleQuantitySubmit(cartItem.product.id);
                           if (e.key === 'Escape') setEditingQuantity(null);
                         }}
+                        placeholder="1.25"
+                        step="0.25"
                         autoFocus
                       />
                       <Button
@@ -155,7 +185,7 @@ export function CompactProductTable({
                     </div>
                   ) : (
                     <div className="flex items-center justify-center gap-1">
-                      <span className="text-sm font-medium">{cartItem.quantity}</span>
+                      <span className="text-sm font-medium">{formatQuantity(cartItem.quantity)}</span>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -178,17 +208,17 @@ export function CompactProductTable({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, -1)}
+                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, -0.25)}
                           disabled={splitQuantity <= 0}
                           className="h-5 w-5 p-0"
                         >
                           <Minus className="w-2 h-2" />
                         </Button>
-                        <span className="text-xs font-medium w-6 text-center">{splitQuantity}</span>
+                        <span className="text-xs font-medium w-8 text-center">{formatQuantity(splitQuantity)}</span>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, 1)}
+                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, 0.25)}
                           disabled={remainingQuantity <= 0}
                           className="h-5 w-5 p-0"
                         >
@@ -204,7 +234,7 @@ export function CompactProductTable({
                     variant={isFullyAllocated ? "default" : remainingQuantity > 0 ? "secondary" : "destructive"}
                     className="text-xs"
                   >
-                    {totalAllocated}/{cartItem.quantity}
+                    {formatQuantity(totalAllocated)}/{formatQuantity(cartItem.quantity)}
                   </Badge>
                 </TableCell>
 

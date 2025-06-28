@@ -27,6 +27,34 @@ export function SimpleProductAllocation({
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
   const [tempQuantity, setTempQuantity] = useState("");
 
+  const parseQuantityInput = (input: string): number => {
+    // Handle fractional input like "1 1/4" or "1.25"
+    const fractionMatch = input.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+    if (fractionMatch) {
+      const whole = parseInt(fractionMatch[1]);
+      const numerator = parseInt(fractionMatch[2]);
+      const denominator = parseInt(fractionMatch[3]);
+      return whole + (numerator / denominator);
+    }
+    
+    // Handle simple fraction like "1/4"
+    const simpleFractionMatch = input.match(/^(\d+)\/(\d+)$/);
+    if (simpleFractionMatch) {
+      const numerator = parseInt(simpleFractionMatch[1]);
+      const denominator = parseInt(simpleFractionMatch[2]);
+      return numerator / denominator;
+    }
+    
+    // Handle decimal input
+    const decimal = parseFloat(input);
+    return isNaN(decimal) ? 0 : decimal;
+  };
+
+  const formatQuantity = (quantity: number): string => {
+    // Format to show up to 3 decimal places, removing trailing zeros
+    return quantity % 1 === 0 ? quantity.toString() : quantity.toFixed(3).replace(/\.?0+$/, '');
+  };
+
   const getProductSplitAssignment = (productId: string) => {
     for (let i = 0; i < splits.length; i++) {
       const split = splits[i];
@@ -39,16 +67,16 @@ export function SimpleProductAllocation({
 
   const handleQuantityEdit = (productId: string, currentQuantity: number) => {
     setEditingQuantity(productId);
-    setTempQuantity(currentQuantity.toString());
+    setTempQuantity(formatQuantity(currentQuantity));
   };
 
   const handleQuantitySubmit = (productId: string) => {
-    const newQuantity = parseInt(tempQuantity);
+    const newQuantity = parseQuantityInput(tempQuantity);
     
-    if (isNaN(newQuantity) || newQuantity < 1) {
+    if (isNaN(newQuantity) || newQuantity <= 0) {
       toast({
         title: "Invalid quantity",
-        description: "Please enter a valid quantity (minimum 1)",
+        description: "Please enter a valid quantity (minimum 0.01)",
         variant: "destructive",
       });
       return;
@@ -92,11 +120,13 @@ export function SimpleProductAllocation({
                         <Input
                           value={tempQuantity}
                           onChange={(e) => setTempQuantity(e.target.value)}
-                          className="h-7 w-16 text-xs text-center"
+                          className="h-7 w-20 text-xs text-center"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleQuantitySubmit(cartItem.product.id);
                             if (e.key === 'Escape') setEditingQuantity(null);
                           }}
+                          placeholder="1.25"
+                          step="0.25"
                           autoFocus
                         />
                         <Button
@@ -110,7 +140,7 @@ export function SimpleProductAllocation({
                       </div>
                     ) : (
                       <div className="flex items-center gap-1">
-                        <span className="text-sm font-medium">{cartItem.quantity}</span>
+                        <span className="text-sm font-medium">{formatQuantity(cartItem.quantity)}</span>
                         <Button
                           variant="ghost"
                           size="sm"
