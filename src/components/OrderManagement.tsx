@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MultiStepOrderForm } from "./order/MultiStepOrderForm";
 import { OrderEditDialog } from "./order/OrderEditDialog";
 import { DeletedOrdersDialog } from "./order/DeletedOrdersDialog";
+import { PurchaseOrderDisplay } from "./order/PurchaseOrderDisplay";
 import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Filter, X, MapPin, Truck, FileText, Trash2, Edit3 } from "lucide-react";
@@ -37,6 +38,7 @@ type OrderStatus = Database["public"]["Enums"]["order_status"];
 interface Order {
   id: string;
   order_number: string;
+  purchase_order?: string;
   customer_name: string;
   customer_phone?: string;
   customer_address: string;
@@ -81,6 +83,7 @@ export function OrderManagement() {
         .select(`
           id,
           order_number,
+          purchase_order,
           customer_name,
           customer_phone,
           customer_address,
@@ -196,7 +199,8 @@ export function OrderManagement() {
       filtered = filtered.filter(order => 
         order.order_number.toLowerCase().includes(query) ||
         order.customer_name.toLowerCase().includes(query) ||
-        (order.customer_phone && order.customer_phone.toLowerCase().includes(query))
+        (order.customer_phone && order.customer_phone.toLowerCase().includes(query)) ||
+        (order.purchase_order && order.purchase_order.toLowerCase().includes(query))
       );
     }
 
@@ -586,7 +590,7 @@ export function OrderManagement() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Search by order number, customer name, or phone..."
+                placeholder="Search by order number, customer name, phone, or purchase order..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -646,6 +650,10 @@ export function OrderManagement() {
                         <Badge className={getStatusColor(order.status)}>
                           {getStatusLabel(order.status)}
                         </Badge>
+                        <PurchaseOrderDisplay 
+                          purchaseOrder={order.purchase_order}
+                          variant="secondary"
+                        />
                         <NotesIndicator 
                           orderNotes={order.order_notes}
                           deliveryNotes={order.delivery_notes}
