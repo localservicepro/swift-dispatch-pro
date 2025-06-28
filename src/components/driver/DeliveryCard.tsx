@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { DeliveryActionDialog } from "./DeliveryActionDialog";
 import { OrderDetailsCard } from "./OrderDetailsCard";
 import { DeliveryMapCard } from "./DeliveryMapCard";
+import { PurchaseOrderDisplay } from "@/components/order/PurchaseOrderDisplay";
 import { Database } from "@/integrations/supabase/types";
 import { 
   MapPin, 
@@ -124,8 +125,15 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
         <CardContent className="p-4 space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="font-semibold text-slate-800">
-              {order.order_number}
+            <div className="flex flex-col">
+              <div className="font-semibold text-slate-800">
+                {order.order_number}
+              </div>
+              <PurchaseOrderDisplay 
+                purchaseOrder={order.purchase_order}
+                className="mt-1"
+                variant="secondary"
+              />
             </div>
             <Badge className={getStatusColor(order.status)}>
               <div className="flex items-center gap-1">
