@@ -24,8 +24,8 @@ export function OrderTruckSelectionForm({ formData, onInputChange, orderId }: Or
         <div>
           <Label className="text-gray-700 font-medium">Truck Type</Label>
           <TruckTypeSelector
-            selectedType={formData.truck_type}
-            onTypeChange={(type) => onInputChange('truck_type', type)}
+            selectedTruckType={formData.truck_type}
+            onTruckTypeChange={(type) => onInputChange('truck_type', type)}
           />
         </div>
 
@@ -33,9 +33,11 @@ export function OrderTruckSelectionForm({ formData, onInputChange, orderId }: Or
           <div>
             <Label className="text-gray-700 font-medium">Specific Truck</Label>
             <SpecificTruckSelector
-              truckType={formData.truck_type}
+              selectedTruckType={formData.truck_type}
               selectedTruckId={formData.truck_id}
-              onTruckChange={(truckId) => onInputChange('truck_id', truckId)}
+              deliveryDate={formData.delivery_date}
+              deliveryTime={formData.delivery_time}
+              onTruckSelect={(truckId) => onInputChange('truck_id', truckId)}
               excludeOrderId={orderId}
             />
           </div>
