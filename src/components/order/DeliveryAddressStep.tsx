@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CustomerAddressForm } from '@/components/customer/CustomerAddressForm';
 import { User, X, RotateCcw, Calendar as CalendarIcon, Clock, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { generateTimeSlots } from '@/utils/timeSlotUtils';
 
 interface DeliveryAddressStepProps {
   formData: {
@@ -33,19 +33,6 @@ interface DeliveryAddressStepProps {
   onClearAddress?: () => void;
   onResetToCustomerAddress?: () => void;
 }
-
-const generateTimeSlots = () => {
-  const timeSlots = [];
-  for (let hour = 8; hour <= 16; hour++) {
-    const time24 = `${hour.toString().padStart(2, '0')}:00`;
-    const time12 = new Date(`2000-01-01T${time24}`).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      hour12: true
-    });
-    timeSlots.push({ value: time24, label: time12 });
-  }
-  return timeSlots;
-};
 
 export function DeliveryAddressStep({ 
   formData, 
