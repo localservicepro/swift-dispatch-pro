@@ -13,6 +13,14 @@ interface OrderTruckSelectionFormProps {
 }
 
 export function OrderTruckSelectionForm({ formData, onInputChange, orderId }: OrderTruckSelectionFormProps) {
+  // Convert between form data format ('none') and component interface format ('')
+  const selectedTruckType = formData.truck_type === 'none' ? '' : formData.truck_type;
+  
+  const handleTruckTypeChange = (type: string) => {
+    // Convert empty string back to 'none' for form data
+    onInputChange('truck_type', type === '' ? 'none' : type);
+  };
+
   return (
     <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-4">
       <div className="flex items-center gap-2 mb-3">
@@ -24,8 +32,8 @@ export function OrderTruckSelectionForm({ formData, onInputChange, orderId }: Or
         <div>
           <Label className="text-gray-700 font-medium">Truck Type</Label>
           <TruckTypeSelector
-            selectedTruckType={formData.truck_type}
-            onTruckTypeChange={(type) => onInputChange('truck_type', type)}
+            selectedTruckType={selectedTruckType}
+            onTruckTypeChange={handleTruckTypeChange}
           />
         </div>
 
