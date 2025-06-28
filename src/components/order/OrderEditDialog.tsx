@@ -39,7 +39,10 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <OrderEditHeader orderNumber={order.order_number} />
+        <OrderEditHeader 
+          orderNumber={order.order_number} 
+          customerName={order.customer_name}
+        />
         <OrderEditForm 
           order={order}
           onOrderUpdated={onOrderUpdated}
