@@ -19,53 +19,12 @@ interface MobileHeaderProps {
   };
 }
 
-const getPageTitle = (activeTab: string) => {
-  switch (activeTab) {
-    case "dashboard":
-      return "Dashboard";
-    case "opportunities":
-      return "Opportunity Pipeline";
-    case "orders":
-      return "Order Management";
-    case "products":
-      return "Product Management";
-    case "customers":
-      return "Customer Management";
-    case "payments":
-      return "Payment Management";
-    case "trucks":
-      return "Fleet Management";
-    case "drivers":
-      return "Team Management";
-    case "emails":
-      return "Email Management";
-    case "settings":
-      return "Settings";
-    default:
-      return "Admin Panel";
-  }
-};
-
 export function MobileHeader({ activeTab, setActiveTab, profile }: MobileHeaderProps) {
-  const renderTitle = () => {
-    if (activeTab === "dashboard") {
-      return (
-        <div className="text-base font-semibold text-slate-800">
-          <PersonalizedGreeting profile={profile} />
-        </div>
-      );
-    }
-    
-    return (
-      <h1 className="text-lg font-semibold text-slate-800">
-        {getPageTitle(activeTab)}
-      </h1>
-    );
-  };
-
   return (
     <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-      {renderTitle()}
+      <div className="text-base font-semibold text-slate-800">
+        <PersonalizedGreeting profile={profile} />
+      </div>
       
       <Sheet>
         <SheetTrigger asChild>
