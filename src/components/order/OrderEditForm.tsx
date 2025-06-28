@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { DriverSelector } from "./DriverSelector";
-import { SuburbSelector } from "./SuburbSelector";
 import { OrderBasicInfoForm } from "./OrderBasicInfoForm";
 import { OrderPricingForm } from "./OrderPricingForm";
 import { OrderTruckSelectionForm } from "./OrderTruckSelectionForm";
@@ -16,6 +15,7 @@ import { useOrderFormData, OrderFormData } from "./hooks/useOrderFormData";
 import { useConflictDetection } from "./hooks/useConflictDetection";
 import { OrderEditFooter } from "./OrderEditFooter";
 import { ConflictResult } from "@/utils/conflictDetection";
+import { Settings, User2, Calendar } from "lucide-react";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -267,47 +267,6 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
         onInputChange={handleInputChange}
       />
 
-      <div>
-        <SuburbSelector
-          selectedSuburbId={formData.suburb_id}
-          onSuburbChange={handleSuburbChange}
-        />
-      </div>
-
-      <OrderPricingForm 
-        formData={formData}
-        onInputChange={handleInputChange}
-      />
-
-      <div>
-        <Label htmlFor="status">Status</Label>
-        <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="preparing">Preparing</SelectItem>
-            <SelectItem value="loading">Loading</SelectItem>
-            <SelectItem value="en_route">En Route</SelectItem>
-            <SelectItem value="delivered">Delivered</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <OrderTruckSelectionForm 
-        formData={formData}
-        onInputChange={handleInputChange}
-        orderId={order.id}
-      />
-
-      <div>
-        <DriverSelector
-          selectedDriverId={formData.driver_id}
-          onDriverChange={handleDriverChange}
-        />
-      </div>
-
       <OrderDeliveryForm 
         formData={{
           full_address: formData.customer_address,
@@ -324,6 +283,52 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
         }}
         onSuburbChange={handleSuburbChange}
       />
+
+      <OrderPricingForm 
+        formData={formData}
+        onInputChange={handleInputChange}
+      />
+
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Settings className="w-5 h-5 text-slate-600" />
+          <h3 className="font-semibold text-slate-900">Order Status</h3>
+        </div>
+        
+        <div>
+          <Label htmlFor="status" className="text-gray-700 font-medium">Status</Label>
+          <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+            <SelectTrigger className="border-slate-200 focus:border-slate-400 focus:ring-slate-200">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="preparing">Preparing</SelectItem>
+              <SelectItem value="loading">Loading</SelectItem>
+              <SelectItem value="en_route">En Route</SelectItem>
+              <SelectItem value="delivered">Delivered</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <OrderTruckSelectionForm 
+        formData={formData}
+        onInputChange={handleInputChange}
+        orderId={order.id}
+      />
+
+      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-4">
+        <div className="flex items-center gap-2 mb-3">
+          <User2 className="w-5 h-5 text-indigo-600" />
+          <h3 className="font-semibold text-indigo-900">Driver Assignment</h3>
+        </div>
+        
+        <DriverSelector
+          selectedDriverId={formData.driver_id}
+          onDriverChange={handleDriverChange}
+        />
+      </div>
 
       {(formData.delivery_date && formData.delivery_time) && (
         <div className="space-y-2">
