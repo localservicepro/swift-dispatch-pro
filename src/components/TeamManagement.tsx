@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,6 @@ import { DriverTeamSection } from "./team/DriverTeamSection";
 import { AddTeamMemberDialog } from "./team/AddTeamMemberDialog";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useDatabaseHealth } from "@/hooks/useDatabaseHealth";
-
 interface Profile {
   id: string;
   full_name: string | null;
@@ -21,7 +19,6 @@ interface Profile {
   role: 'admin' | 'driver' | 'customer';
   created_at: string;
 }
-
 export function TeamManagement() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,65 +26,66 @@ export function TeamManagement() {
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [activeTab, setActiveTab] = useState("drivers");
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
-  const { healthCheck, runHealthCheck } = useDatabaseHealth();
-
+  const {
+    toast
+  } = useToast();
+  const {
+    healthCheck,
+    runHealthCheck
+  } = useDatabaseHealth();
   useEffect(() => {
     loadProfiles();
   }, []);
-
   const loadProfiles = async () => {
     try {
       setLoading(true);
       setError(null);
-
       const timestamp = Date.now();
       console.log(`[TeamManagement] Loading profiles at ${timestamp}...`);
-      
+
       // Check authentication first
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        },
+        error: authError
+      } = await supabase.auth.getUser();
       if (authError) {
         console.error('[TeamManagement] Auth error:', authError);
         throw new Error(`Authentication error: ${authError.message}`);
       }
-      
       if (!user) {
         throw new Error('No authenticated user found');
       }
-      
       console.log('[TeamManagement] Authenticated user:', user.id);
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      console.log('[TeamManagement] Profiles query result:', { 
-        data, 
-        error, 
-        count: data?.length,
-        timestamp 
+      const {
+        data,
+        error
+      } = await supabase.from('profiles').select('*').order('created_at', {
+        ascending: false
       });
-      
+      console.log('[TeamManagement] Profiles query result:', {
+        data,
+        error,
+        count: data?.length,
+        timestamp
+      });
       if (error) {
         console.error('[TeamManagement] Database error:', error);
         throw error;
       }
-      
       if (!data) {
         console.warn('[TeamManagement] No data returned from profiles query');
         setProfiles([]);
         return;
       }
-      
       setProfiles(data);
-
       const drivers = data.filter(p => p.role === 'driver');
       const admins = data.filter(p => p.role === 'admin');
       console.log('[TeamManagement] Profile breakdown:', {
         total: data.length,
         drivers: drivers.length,
-        admins: admins.length,
+        admins: admins.length
       });
     } catch (error: any) {
       console.error('[TeamManagement] Error loading profiles:', error);
@@ -96,91 +94,76 @@ export function TeamManagement() {
       toast({
         title: "Error Loading Team",
         description: errorMessage,
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
-
   const handleRefresh = async () => {
     console.log('[TeamManagement] Refreshing profiles...');
     setRefreshing(true);
     await loadProfiles();
     await runHealthCheck();
   };
-
   const updateUserRole = async (userId: string, newRole: 'admin' | 'driver' | 'customer') => {
     try {
       console.log(`[TeamManagement] Updating user ${userId} role to ${newRole}`);
-      
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
-
+      const {
+        error
+      } = await supabase.from('profiles').update({
+        role: newRole
+      }).eq('id', userId);
       if (error) throw error;
-
       loadProfiles();
-
       toast({
         title: "Success",
-        description: `User role updated to ${newRole}`,
+        description: `User role updated to ${newRole}`
       });
     } catch (error: any) {
       console.error('[TeamManagement] Error updating role:', error);
       toast({
         title: "Error",
         description: "Failed to update user role",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const deleteUser = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       return;
     }
-
     try {
       console.log(`[TeamManagement] Deleting user ${userId}`);
-      
-      const { error } = await supabase.auth.admin.deleteUser(userId);
-      
+      const {
+        error
+      } = await supabase.auth.admin.deleteUser(userId);
       if (error) throw error;
-
       loadProfiles();
-      
       toast({
         title: "User Deleted",
-        description: "User has been removed from the system",
+        description: "User has been removed from the system"
       });
     } catch (error: any) {
       console.error('[TeamManagement] Error deleting user:', error);
       toast({
         title: "Error",
         description: "Failed to delete user",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const driverProfiles = profiles.filter(p => p.role === 'driver');
   const adminProfiles = profiles.filter(p => p.role === 'admin');
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center p-12">
+    return <div className="flex items-center justify-center p-12">
         <Loader2 className="w-8 h-8 animate-spin" />
         <span className="ml-2">Loading team...</span>
-      </div>
-    );
+      </div>;
   }
-
   if (error) {
-    return (
-      <ErrorBoundary fallbackTitle="Team Management Error" showRefresh>
+    return <ErrorBoundary fallbackTitle="Team Management Error" showRefresh>
         <Card className="border-red-200 bg-red-50">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
@@ -193,28 +176,23 @@ export function TeamManagement() {
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Retry Loading
                   </Button>
-                  {healthCheck && (
-                    <div className="text-xs text-red-600 space-y-1">
+                  {healthCheck && <div className="text-xs text-red-600 space-y-1">
                       <p>Debug Info:</p>
                       <p>• Current User: {healthCheck.currentUser.success ? `${healthCheck.currentUser.role} (${healthCheck.currentUser.id})` : healthCheck.currentUser.error}</p>
                       <p>• Profiles Access: {healthCheck.profiles.success ? `✓ (${healthCheck.profiles.count} records)` : `✗ ${healthCheck.profiles.error}`}</p>
-                    </div>
-                  )}
+                    </div>}
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
-      </ErrorBoundary>
-    );
+      </ErrorBoundary>;
   }
-
-  return (
-    <ErrorBoundary fallbackTitle="Team Management Component Error" showRefresh>
+  return <ErrorBoundary fallbackTitle="Team Management Component Error" showRefresh>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-slate-800">Team Management</h2>
+            <h2 className="font-bold text-slate-800 text-lg">Team Management</h2>
             <p className="text-slate-600 mt-1">Manage team members and assign roles</p>
           </div>
           <div className="flex gap-2">
@@ -222,10 +200,7 @@ export function TeamManagement() {
               <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button 
-              onClick={() => setIsAddingMember(true)} 
-              className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
-            >
+            <Button onClick={() => setIsAddingMember(true)} className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800">
               Add New Member
             </Button>
           </div>
@@ -270,8 +245,7 @@ export function TeamManagement() {
           </Card>
         </div>
 
-        {driverProfiles.length === 0 && (
-          <Card className="border-yellow-200 bg-yellow-50">
+        {driverProfiles.length === 0 && <Card className="border-yellow-200 bg-yellow-50">
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-yellow-600" />
@@ -283,8 +257,7 @@ export function TeamManagement() {
                 </div>
               </div>
             </CardContent>
-          </Card>
-        )}
+          </Card>}
 
         {/* Team Directory with Tabs */}
         <Card className="hover:shadow-lg transition-shadow">
@@ -306,38 +279,20 @@ export function TeamManagement() {
               
               <TabsContent value="drivers" className="mt-6">
                 <ErrorBoundary fallbackTitle="Driver Section Error">
-                  <DriverTeamSection 
-                    drivers={driverProfiles}
-                    onUpdateRole={updateUserRole}
-                    onDeleteUser={deleteUser}
-                    onRefresh={handleRefresh}
-                    refreshing={refreshing}
-                  />
+                  <DriverTeamSection drivers={driverProfiles} onUpdateRole={updateUserRole} onDeleteUser={deleteUser} onRefresh={handleRefresh} refreshing={refreshing} />
                 </ErrorBoundary>
               </TabsContent>
               
               <TabsContent value="admins" className="mt-6">
                 <ErrorBoundary fallbackTitle="Admin Section Error">
-                  <AdminTeamSection 
-                    admins={adminProfiles}
-                    onUpdateRole={updateUserRole}
-                    onDeleteUser={deleteUser}
-                    onRefresh={handleRefresh}
-                    refreshing={refreshing}
-                  />
+                  <AdminTeamSection admins={adminProfiles} onUpdateRole={updateUserRole} onDeleteUser={deleteUser} onRefresh={handleRefresh} refreshing={refreshing} />
                 </ErrorBoundary>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
 
-        <AddTeamMemberDialog 
-          isOpen={isAddingMember}
-          onClose={() => setIsAddingMember(false)}
-          onMemberAdded={loadProfiles}
-          defaultRole={activeTab === "drivers" ? "driver" : "admin"}
-        />
+        <AddTeamMemberDialog isOpen={isAddingMember} onClose={() => setIsAddingMember(false)} onMemberAdded={loadProfiles} defaultRole={activeTab === "drivers" ? "driver" : "admin"} />
       </div>
-    </ErrorBoundary>
-  );
+    </ErrorBoundary>;
 }
