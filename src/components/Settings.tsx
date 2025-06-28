@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ActivityLog } from "./settings/ActivityLog";
 import { EmailSettingsDialog } from "./EmailSettingsDialog";
-
 export function Settings() {
   const [businessInfo, setBusinessInfo] = useState({
     name: "Premium Delivery Co.",
@@ -17,7 +16,6 @@ export function Settings() {
     email: "contact@premiumdelivery.com",
     website: "www.premiumdelivery.com"
   });
-
   const [notifications, setNotifications] = useState({
     orderConfirmation: true,
     paymentReceived: true,
@@ -26,27 +24,24 @@ export function Settings() {
     weeklyReports: false,
     monthlyReports: true
   });
-
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   const handleSaveBusinessInfo = () => {
     toast({
       title: "Business Information Updated",
-      description: "Your business profile has been saved successfully",
+      description: "Your business profile has been saved successfully"
     });
   };
-
   const handleSaveNotifications = () => {
     toast({
       title: "Notification Settings Updated",
-      description: "Your email preferences have been saved",
+      description: "Your email preferences have been saved"
     });
   };
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-slate-800">Settings</h2>
+        <h2 className="font-bold text-slate-800 text-lg">Settings</h2>
         <p className="text-slate-600 mt-1">Manage your business profile, preferences, and activity logs</p>
       </div>
 
@@ -60,56 +55,46 @@ export function Settings() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="businessName">Business Name</Label>
-              <Input
-                id="businessName"
-                value={businessInfo.name}
-                onChange={(e) => setBusinessInfo({...businessInfo, name: e.target.value})}
-              />
+              <Input id="businessName" value={businessInfo.name} onChange={e => setBusinessInfo({
+              ...businessInfo,
+              name: e.target.value
+            })} />
             </div>
             <div>
               <Label htmlFor="businessEmail">Business Email</Label>
-              <Input
-                id="businessEmail"
-                type="email"
-                value={businessInfo.email}
-                onChange={(e) => setBusinessInfo({...businessInfo, email: e.target.value})}
-              />
+              <Input id="businessEmail" type="email" value={businessInfo.email} onChange={e => setBusinessInfo({
+              ...businessInfo,
+              email: e.target.value
+            })} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="businessPhone">Phone Number</Label>
-              <Input
-                id="businessPhone"
-                value={businessInfo.phone}
-                onChange={(e) => setBusinessInfo({...businessInfo, phone: e.target.value})}
-              />
+              <Input id="businessPhone" value={businessInfo.phone} onChange={e => setBusinessInfo({
+              ...businessInfo,
+              phone: e.target.value
+            })} />
             </div>
             <div>
               <Label htmlFor="businessWebsite">Website</Label>
-              <Input
-                id="businessWebsite"
-                value={businessInfo.website}
-                onChange={(e) => setBusinessInfo({...businessInfo, website: e.target.value})}
-              />
+              <Input id="businessWebsite" value={businessInfo.website} onChange={e => setBusinessInfo({
+              ...businessInfo,
+              website: e.target.value
+            })} />
             </div>
           </div>
 
           <div>
             <Label htmlFor="businessAddress">Business Address</Label>
-            <Textarea
-              id="businessAddress"
-              value={businessInfo.address}
-              onChange={(e) => setBusinessInfo({...businessInfo, address: e.target.value})}
-              rows={3}
-            />
+            <Textarea id="businessAddress" value={businessInfo.address} onChange={e => setBusinessInfo({
+            ...businessInfo,
+            address: e.target.value
+          })} rows={3} />
           </div>
 
-          <Button 
-            onClick={handleSaveBusinessInfo}
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-          >
+          <Button onClick={handleSaveBusinessInfo} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
             Save Business Information
           </Button>
         </CardContent>
@@ -144,11 +129,10 @@ export function Settings() {
                 <Label htmlFor="orderConfirmation">Order Confirmation Emails</Label>
                 <p className="text-sm text-slate-500">Send confirmation emails when new orders are created</p>
               </div>
-              <Switch
-                id="orderConfirmation"
-                checked={notifications.orderConfirmation}
-                onCheckedChange={(checked) => setNotifications({...notifications, orderConfirmation: checked})}
-              />
+              <Switch id="orderConfirmation" checked={notifications.orderConfirmation} onCheckedChange={checked => setNotifications({
+              ...notifications,
+              orderConfirmation: checked
+            })} />
             </div>
 
             <div className="flex items-center justify-between">
@@ -156,11 +140,10 @@ export function Settings() {
                 <Label htmlFor="paymentReceived">Payment Notifications</Label>
                 <p className="text-sm text-slate-500">Notify when payments are received</p>
               </div>
-              <Switch
-                id="paymentReceived"
-                checked={notifications.paymentReceived}
-                onCheckedChange={(checked) => setNotifications({...notifications, paymentReceived: checked})}
-              />
+              <Switch id="paymentReceived" checked={notifications.paymentReceived} onCheckedChange={checked => setNotifications({
+              ...notifications,
+              paymentReceived: checked
+            })} />
             </div>
 
             <div className="flex items-center justify-between">
@@ -168,11 +151,10 @@ export function Settings() {
                 <Label htmlFor="deliveryUpdates">Delivery Status Updates</Label>
                 <p className="text-sm text-slate-500">Send updates when delivery status changes</p>
               </div>
-              <Switch
-                id="deliveryUpdates"
-                checked={notifications.deliveryUpdates}
-                onCheckedChange={(checked) => setNotifications({...notifications, deliveryUpdates: checked})}
-              />
+              <Switch id="deliveryUpdates" checked={notifications.deliveryUpdates} onCheckedChange={checked => setNotifications({
+              ...notifications,
+              deliveryUpdates: checked
+            })} />
             </div>
 
             <div className="flex items-center justify-between">
@@ -180,11 +162,10 @@ export function Settings() {
                 <Label htmlFor="systemAlerts">System Alerts</Label>
                 <p className="text-sm text-slate-500">Important system notifications and alerts</p>
               </div>
-              <Switch
-                id="systemAlerts"
-                checked={notifications.systemAlerts}
-                onCheckedChange={(checked) => setNotifications({...notifications, systemAlerts: checked})}
-              />
+              <Switch id="systemAlerts" checked={notifications.systemAlerts} onCheckedChange={checked => setNotifications({
+              ...notifications,
+              systemAlerts: checked
+            })} />
             </div>
 
             <div className="flex items-center justify-between">
@@ -192,11 +173,10 @@ export function Settings() {
                 <Label htmlFor="weeklyReports">Weekly Reports</Label>
                 <p className="text-sm text-slate-500">Receive weekly business performance reports</p>
               </div>
-              <Switch
-                id="weeklyReports"
-                checked={notifications.weeklyReports}
-                onCheckedChange={(checked) => setNotifications({...notifications, weeklyReports: checked})}
-              />
+              <Switch id="weeklyReports" checked={notifications.weeklyReports} onCheckedChange={checked => setNotifications({
+              ...notifications,
+              weeklyReports: checked
+            })} />
             </div>
 
             <div className="flex items-center justify-between">
@@ -204,18 +184,14 @@ export function Settings() {
                 <Label htmlFor="monthlyReports">Monthly Reports</Label>
                 <p className="text-sm text-slate-500">Receive monthly business summaries</p>
               </div>
-              <Switch
-                id="monthlyReports"
-                checked={notifications.monthlyReports}
-                onCheckedChange={(checked) => setNotifications({...notifications, monthlyReports: checked})}
-              />
+              <Switch id="monthlyReports" checked={notifications.monthlyReports} onCheckedChange={checked => setNotifications({
+              ...notifications,
+              monthlyReports: checked
+            })} />
             </div>
           </div>
 
-          <Button 
-            onClick={handleSaveNotifications}
-            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
-          >
+          <Button onClick={handleSaveNotifications} className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800">
             Save Notification Preferences
           </Button>
         </CardContent>
@@ -250,6 +226,5 @@ export function Settings() {
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
