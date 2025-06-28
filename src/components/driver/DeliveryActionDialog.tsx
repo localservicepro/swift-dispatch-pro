@@ -1,3 +1,4 @@
+
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -45,7 +46,7 @@ export function DeliveryActionDialog({
   const isDelivered = action === "delivered";
   const title = isDelivered ? "Mark as Delivered" : "Cancel Delivery";
   const description = isDelivered 
-    ? "Please add notes about the delivery. Photo is optional but recommended."
+    ? "Please upload a delivery photo. Notes are optional but recommended for additional context."
     : "Please explain why this delivery is being cancelled.";
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,10 +138,20 @@ export function DeliveryActionDialog({
   };
 
   const handleSubmit = async () => {
-    if (!notes.trim()) {
+    // Validation: For delivered orders, require photo; for cancelled orders, require notes
+    if (isDelivered && !photoUploaded) {
+      toast({
+        title: "Photo Required",
+        description: "Please upload a delivery photo before marking as delivered.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isDelivered && !notes.trim()) {
       toast({
         title: "Notes Required",
-        description: "Please provide notes before proceeding.",
+        description: "Please explain why this delivery is being cancelled.",
         variant: "destructive",
       });
       return;
@@ -151,7 +162,7 @@ export function DeliveryActionDialog({
       const { error } = await supabase.rpc('update_order_status', {
         order_id: order.id,
         new_status: action as OrderStatus,
-        notes: notes.trim()
+        notes: notes.trim() || null
       });
 
       if (error) throw error;
@@ -177,6 +188,9 @@ export function DeliveryActionDialog({
     }
   };
 
+  // Determine if submit button should be disabled
+  const isSubmitDisabled = updating || (isDelivered ? !photoUploaded : !notes.trim());
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-md">
@@ -198,11 +212,13 @@ export function DeliveryActionDialog({
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="notes">Notes *</Label>
+            <Label htmlFor="notes">
+              Notes {!isDelivered && "*"}
+            </Label>
             <Textarea
               id="notes"
               placeholder={isDelivered 
-                ? "e.g., Delivered to front door, customer was home, package secured..."
+                ? "e.g., Delivered to front door, customer was home, package secured... (optional)"
                 : "e.g., Customer not available, address incorrect, weather conditions..."
               }
               value={notes}
@@ -213,7 +229,7 @@ export function DeliveryActionDialog({
 
           {isDelivered && (
             <div className="space-y-2">
-              <Label>Delivery Photo (Optional)</Label>
+              <Label>Delivery Photo *</Label>
               
               {selectedFile && (
                 <div className="relative">
@@ -274,7 +290,7 @@ export function DeliveryActionDialog({
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleSubmit}
-            disabled={updating || !notes.trim()}
+            disabled={isSubmitDisabled}
             className={isDelivered ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
           >
             {updating ? 'Processing...' : (isDelivered ? 'Complete Delivery' : 'Cancel Delivery')}
