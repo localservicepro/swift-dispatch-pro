@@ -1,29 +1,14 @@
 
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { DeliveryActionDialog } from "./DeliveryActionDialog";
 import { OrderDetailsCard } from "./OrderDetailsCard";
 import { DeliveryMapCard } from "./DeliveryMapCard";
-import { PurchaseOrderDisplay } from "@/components/order/PurchaseOrderDisplay";
-import { Database } from "@/integrations/supabase/types";
-import { 
-  MapPin, 
-  Phone, 
-  CheckCircle,
-  AlertCircle,
-  XCircle,
-  Truck,
-  Clock,
-  Package,
-  Navigation
-} from "lucide-react";
-import { getTruckInfo } from "@/utils/truckUtils";
-
-type OrderStatus = Database["public"]["Enums"]["order_status"];
+import { DeliveryCardHeader } from "./DeliveryCardHeader";
+import { DeliveryCardCustomerInfo } from "./DeliveryCardCustomerInfo";
+import { DeliveryCardTruckAssignment } from "./DeliveryCardTruckAssignment";
+import { DeliveryCardActions } from "./DeliveryCardActions";
+import { Navigation } from "lucide-react";
 
 interface DeliveryCardProps {
   order: any;
@@ -31,7 +16,6 @@ interface DeliveryCardProps {
 }
 
 export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
-  const [updating, setUpdating] = useState(false);
   const [actionDialog, setActionDialog] = useState<{
     open: boolean;
     action: "delivered" | "cancelled" | null;
@@ -39,72 +23,6 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
     open: false,
     action: null
   });
-  const { toast } = useToast();
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'preparing': return 'bg-orange-100 text-orange-800';
-      case 'loading': return 'bg-blue-100 text-blue-800';
-      case 'en_route': return 'bg-purple-100 text-purple-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'preparing': return <Package className="w-4 h-4" />;
-      case 'loading': return <Clock className="w-4 h-4" />;
-      case 'en_route': return <Truck className="w-4 h-4" />;
-      case 'delivered': return <CheckCircle className="w-4 h-4" />;
-      case 'cancelled': return <XCircle className="w-4 h-4" />;
-      default: return <AlertCircle className="w-4 h-4" />;
-    }
-  };
-
-  const getNextStatus = (currentStatus: string): OrderStatus | null => {
-    switch (currentStatus) {
-      case 'preparing': return 'loading';
-      case 'loading': return 'en_route';
-      default: return null;
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'preparing': return 'Start Loading';
-      case 'loading': return 'Start Delivery';
-      default: return null;
-    }
-  };
-
-  const updateStatus = async (newStatus: OrderStatus) => {
-    setUpdating(true);
-    try {
-      const { error } = await supabase.rpc('update_order_status', {
-        order_id: order.id,
-        new_status: newStatus
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Status Updated",
-        description: `Order marked as ${newStatus.replace('_', ' ')}`,
-      });
-
-      onStatusUpdate();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setUpdating(false);
-    }
-  };
 
   const openActionDialog = (action: "delivered" | "cancelled") => {
     setActionDialog({ open: true, action });
@@ -114,62 +32,15 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
     setActionDialog({ open: false, action: null });
   };
 
-  const nextStatus = getNextStatus(order.status);
-  const statusLabel = getStatusLabel(order.status);
-
-  const truckInfo = getTruckInfo(order.truck_type);
-
   return (
     <>
       <Card className="overflow-hidden">
         <CardContent className="p-4 space-y-4">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col">
-              <div className="font-semibold text-slate-800">
-                {order.order_number}
-              </div>
-              <PurchaseOrderDisplay 
-                purchaseOrder={order.purchase_order}
-                className="mt-1"
-                variant="secondary"
-              />
-            </div>
-            <Badge className={getStatusColor(order.status)}>
-              <div className="flex items-center gap-1">
-                {getStatusIcon(order.status)}
-                {order.status.replace('_', ' ').toUpperCase()}
-              </div>
-            </Badge>
-          </div>
+          <DeliveryCardHeader order={order} />
 
           {/* Customer Info */}
-          <div className="space-y-2">
-            <div className="flex items-start gap-2 text-slate-700">
-              <MapPin className="w-4 h-4 text-slate-500 mt-0.5" />
-              <div className="flex-1">
-                <div className="font-medium">{order.customer_name}</div>
-                <div className="text-sm text-slate-600">{order.customer_address}</div>
-                {order.suburb_name && (
-                  <div className="text-xs text-slate-500">
-                    {order.suburb_name}, {order.suburb_state}
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {order.customer_phone && (
-              <div className="flex items-center gap-2 text-slate-700 ml-6">
-                <Phone className="w-4 h-4 text-slate-500" />
-                <a 
-                  href={`tel:${order.customer_phone}`}
-                  className="text-blue-600 hover:underline text-sm"
-                >
-                  {order.customer_phone}
-                </a>
-              </div>
-            )}
-          </div>
+          <DeliveryCardCustomerInfo order={order} />
 
           {/* Google Maps Integration */}
           <DeliveryMapCard
@@ -179,40 +50,7 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
           />
 
           {/* Enhanced Truck Assignment */}
-          {(order.truck_type || order.truck_registration) && (
-            <div className={`rounded-lg p-3 border ${truckInfo ? truckInfo.bgClass + ' border-' + truckInfo.colorClass.replace('text-', '') + '-200' : 'bg-gray-50 border-gray-200'}`}>
-              <div className="flex items-center gap-3">
-                {truckInfo && (
-                  <truckInfo.icon className={`w-5 h-5 ${truckInfo.colorClass}`} />
-                )}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`font-semibold ${truckInfo ? truckInfo.colorClass : 'text-gray-700'}`}>
-                      Assigned Truck
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    {truckInfo && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{truckInfo.label}</span>
-                        <span className={`text-xs px-2 py-1 rounded ${truckInfo.bgClass} ${truckInfo.colorClass}`}>
-                          {truckInfo.capacity}
-                        </span>
-                      </div>
-                    )}
-                    {order.truck_registration && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-slate-700">Registration:</span>
-                        <span className="text-sm font-bold text-slate-800 bg-white px-2 py-1 rounded border">
-                          {order.truck_registration}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <DeliveryCardTruckAssignment order={order} />
 
           {/* Order Details */}
           <OrderDetailsCard order={order} />
@@ -231,39 +69,11 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
           )}
 
           {/* Action Buttons */}
-          <div className="space-y-2">
-            {/* Regular status progression button */}
-            {nextStatus && statusLabel && (
-              <Button
-                onClick={() => updateStatus(nextStatus)}
-                disabled={updating}
-                className="w-full"
-                variant="outline"
-              >
-                {updating ? 'Updating...' : statusLabel}
-              </Button>
-            )}
-
-            {/* Delivery completion buttons (only show when en_route) */}
-            {order.status === 'en_route' && (
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  onClick={() => openActionDialog('delivered')}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Delivered
-                </Button>
-                <Button
-                  onClick={() => openActionDialog('cancelled')}
-                  variant="destructive"
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Cancel
-                </Button>
-              </div>
-            )}
-          </div>
+          <DeliveryCardActions 
+            order={order}
+            onStatusUpdate={onStatusUpdate}
+            onActionDialog={openActionDialog}
+          />
         </CardContent>
       </Card>
 
