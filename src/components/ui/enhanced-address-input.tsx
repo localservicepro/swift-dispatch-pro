@@ -68,6 +68,7 @@ export function EnhancedAddressInput({
   const [searchAttempts, setSearchAttempts] = useState(0);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+  const [isUserTyping, setIsUserTyping] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -89,8 +90,16 @@ export function EnhancedAddressInput({
 
   // Fetch predictions when user types
   useEffect(() => {
-    if (debouncedValue && debouncedValue.length > 2) {
+    if (debouncedValue && debouncedValue.length > 2 && isUserTyping) {
       fetchPredictions(debouncedValue);
+    } else if (!isUserTyping) {
+      // Reset validation state when component loads with existing data
+      setPredictions([]);
+      setShowDropdown(false);
+      setValidationStatus('idle');
+      setHasSearched(false);
+      setSearchAttempts(0);
+      setIsUsingFallback(false);
     } else {
       setPredictions([]);
       setShowDropdown(false);
@@ -99,7 +108,7 @@ export function EnhancedAddressInput({
       setSearchAttempts(0);
       setIsUsingFallback(false);
     }
-  }, [debouncedValue]);
+  }, [debouncedValue, isUserTyping]);
 
   const fetchPredictions = async (input: string) => {
     setIsLoading(true);
@@ -192,16 +201,14 @@ export function EnhancedAddressInput({
     setValidationStatus('idle');
     onValidationChange?.(false);
     
-    // Auto-open map lightbox on search failure after a delay
-    setTimeout(() => {
-      console.log('Auto-opening map lightbox due to search failure');
-      setShowMapLightbox(true);
-    }, 1500);
+    // Remove the automatic map opening - users can manually click the map button if needed
+    console.log('Search failed - use map button to select address manually');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
+    setIsUserTyping(true);
     
     if (newValue.length <= 2) {
       setShowDropdown(false);
@@ -211,6 +218,10 @@ export function EnhancedAddressInput({
       setSearchAttempts(0);
       setIsUsingFallback(false);
     }
+  };
+
+  const handleInputFocus = () => {
+    setIsUserTyping(true);
   };
 
   const handlePredictionSelect = async (prediction: PlacePrediction) => {
@@ -337,6 +348,7 @@ export function EnhancedAddressInput({
     setValidationStatus('valid');
     onValidationChange?.(true);
     setShowMapLightbox(false);
+    setIsUserTyping(false); // Reset typing flag after map selection
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -423,10 +435,10 @@ export function EnhancedAddressInput({
             Address Not Found
           </Badge>
         )}
-        {hasSearched && predictions.length === 0 && !isLoading && validationStatus === 'idle' && value.length > 2 && searchAttempts > 0 && (
+        {hasSearched && predictions.length === 0 && !isLoading && validationStatus === 'idle' && value.length > 2 && searchAttempts > 0 && isUserTyping && (
           <Badge variant="outline" className="text-blue-700 bg-blue-50">
             <Map className="w-3 h-3 mr-1" />
-            No results found - try using the map to select your address
+            No results found - try using the map button to select your address
           </Badge>
         )}
       </div>
@@ -445,6 +457,7 @@ export function EnhancedAddressInput({
             id={id}
             value={value}
             onChange={handleInputChange}
+            onFocus={handleInputFocus}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             placeholder={placeholder}
