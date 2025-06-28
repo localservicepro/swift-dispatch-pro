@@ -81,7 +81,7 @@ const Index = () => {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Mobile Header with user info */}
           <div className="md:hidden">
-            <MobileHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+            <MobileHeader activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} />
           </div>
           
           {/* Desktop header with personalized greeting */}
