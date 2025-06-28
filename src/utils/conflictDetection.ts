@@ -43,6 +43,7 @@ export const checkDriverConflicts = async (
   deliveryTime: string,
   excludeOrderId?: string
 ): Promise<ConflictResult> => {
+  // Early return for invalid inputs
   if (!driverId || driverId === 'unassigned' || !deliveryDate || !deliveryTime) {
     return {
       hasConflict: false,
@@ -53,15 +54,23 @@ export const checkDriverConflicts = async (
   }
 
   try {
-    const { data: orders, error } = await supabase
+    let query = supabase
       .from('orders')
       .select('id, order_number, customer_name, customer_address, delivery_date, delivery_time')
       .eq('driver_id', driverId)
       .eq('delivery_date', deliveryDate)
-      .not('status', 'in', '(delivered,cancelled)')
-      .not('id', 'eq', excludeOrderId || '');
+      .not('status', 'in', '(delivered,cancelled)');
 
-    if (error) throw error;
+    if (excludeOrderId) {
+      query = query.not('id', 'eq', excludeOrderId);
+    }
+
+    const { data: orders, error } = await query;
+
+    if (error) {
+      console.error('Error checking driver conflicts:', error);
+      throw error;
+    }
 
     if (!orders || orders.length === 0) {
       return {
@@ -148,6 +157,7 @@ export const checkTruckConflicts = async (
   deliveryTime: string,
   excludeOrderId?: string
 ): Promise<ConflictResult> => {
+  // Early return for invalid inputs
   if (!truckId || truckId === 'none' || !deliveryDate || !deliveryTime) {
     return {
       hasConflict: false,
@@ -158,15 +168,23 @@ export const checkTruckConflicts = async (
   }
 
   try {
-    const { data: orders, error } = await supabase
+    let query = supabase
       .from('orders')
       .select('id, order_number, customer_name, customer_address, delivery_date, delivery_time')
       .eq('truck_id', truckId)
       .eq('delivery_date', deliveryDate)
-      .not('status', 'in', '(delivered,cancelled)')
-      .not('id', 'eq', excludeOrderId || '');
+      .not('status', 'in', '(delivered,cancelled)');
 
-    if (error) throw error;
+    if (excludeOrderId) {
+      query = query.not('id', 'eq', excludeOrderId);
+    }
+
+    const { data: orders, error } = await query;
+
+    if (error) {
+      console.error('Error checking truck conflicts:', error);
+      throw error;
+    }
 
     if (!orders || orders.length === 0) {
       return {
@@ -186,8 +204,7 @@ export const checkTruckConflicts = async (
     for (const order of orders) {
       const orderData = {
         id: order.id,
-        order_number: order.order_number,
-        customer_name: order.customer_name,
+        order_number: order.customer_name,
         customer_address: order.customer_address,
         delivery_date: order.delivery_date || '',
         delivery_time: order.delivery_time || ''

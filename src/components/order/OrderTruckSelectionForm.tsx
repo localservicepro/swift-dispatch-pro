@@ -19,6 +19,14 @@ export function OrderTruckSelectionForm({ formData, onInputChange, orderId }: Or
   const handleTruckTypeChange = (type: string) => {
     // Convert empty string back to 'none' for form data
     onInputChange('truck_type', type === '' ? 'none' : type);
+    // Reset truck selection when type changes
+    if (type !== formData.truck_type) {
+      onInputChange('truck_id', 'none');
+    }
+  };
+
+  const handleTruckSelect = (truckId: string, truckDetails: any) => {
+    onInputChange('truck_id', truckId);
   };
 
   return (
@@ -45,7 +53,7 @@ export function OrderTruckSelectionForm({ formData, onInputChange, orderId }: Or
               selectedTruckId={formData.truck_id}
               deliveryDate={formData.delivery_date}
               deliveryTime={formData.delivery_time}
-              onTruckSelect={(truckId) => onInputChange('truck_id', truckId)}
+              onTruckSelect={handleTruckSelect}
               excludeOrderId={orderId}
             />
           </div>

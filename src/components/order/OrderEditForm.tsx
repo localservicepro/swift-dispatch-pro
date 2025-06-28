@@ -9,13 +9,14 @@ import { OrderBasicInfoForm } from "./OrderBasicInfoForm";
 import { OrderPricingForm } from "./OrderPricingForm";
 import { OrderTruckSelectionForm } from "./OrderTruckSelectionForm";
 import { OrderDeliveryForm } from "./OrderDeliveryForm";
+import { DeliveryScheduler } from "./DeliveryScheduler";
 import { ConflictWarning } from "./ConflictWarning";
 import { ProductEditSection } from "./ProductEditSection";
 import { useOrderFormData, OrderFormData } from "./hooks/useOrderFormData";
 import { useConflictDetection } from "./hooks/useConflictDetection";
 import { OrderEditFooter } from "./OrderEditFooter";
 import { ConflictResult } from "@/utils/conflictDetection";
-import { Settings, User2, Calendar } from "lucide-react";
+import { Settings, User2, Calendar, Clock } from "lucide-react";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -283,6 +284,20 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
         }}
         onSuburbChange={handleSuburbChange}
       />
+
+      <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 space-y-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Calendar className="w-5 h-5 text-teal-600" />
+          <h3 className="font-semibold text-teal-900">Delivery Schedule</h3>
+        </div>
+        
+        <DeliveryScheduler
+          deliveryDate={formData.delivery_date}
+          deliveryTime={formData.delivery_time}
+          onDeliveryDateChange={(date) => handleInputChange('delivery_date', date)}
+          onDeliveryTimeChange={(time) => handleInputChange('delivery_time', time)}
+        />
+      </div>
 
       <OrderPricingForm 
         formData={formData}
