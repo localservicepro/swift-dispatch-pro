@@ -15,6 +15,7 @@ type TruckType = Database["public"]["Enums"]["truck_type"];
 interface Order {
   id: string;
   order_number: string;
+  purchase_order?: string;
   customer_name: string;
   customer_phone?: string;
   customer_address: string;
@@ -160,6 +161,7 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
         .from('orders')
         .update({
           customer_name: formData.customer_name,
+          purchase_order: formData.purchase_order || null,
           customer_phone: formData.customer_phone || null,
           customer_address: formData.customer_address,
           products: formData.products,

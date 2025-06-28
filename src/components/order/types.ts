@@ -71,3 +71,26 @@ export interface SplitConfig {
   deliveryAddress?: string;
   sameAsBilling: boolean;
 }
+
+export interface Order {
+  id: string;
+  order_number: string;
+  purchase_order?: string | null;
+  customer_name: string;
+  customer_phone?: string;
+  customer_address: string;
+  products: any;
+  total_amount: number;
+  status: any;
+  driver_id?: string;
+  created_at: string;
+  delivery_date?: string;
+  delivery_time?: string;
+  special_instructions?: string;
+  customer_id?: string;
+  suburb_id?: string;
+  delivery_fee?: number;
+  subtotal?: number;
+  truck_type?: TruckType;
+  truck_id?: string;
+}

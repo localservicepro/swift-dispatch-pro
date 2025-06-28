@@ -721,6 +721,7 @@ export type Database = {
           payment_method: string | null
           payment_status: string | null
           products: Json
+          purchase_order: string | null
           same_as_billing: boolean | null
           special_instructions: string | null
           split_number: number | null
@@ -761,6 +762,7 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string | null
           products: Json
+          purchase_order?: string | null
           same_as_billing?: boolean | null
           special_instructions?: string | null
           split_number?: number | null
@@ -801,6 +803,7 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string | null
           products?: Json
+          purchase_order?: string | null
           same_as_billing?: boolean | null
           special_instructions?: string | null
           split_number?: number | null

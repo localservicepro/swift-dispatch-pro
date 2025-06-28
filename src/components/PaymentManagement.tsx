@@ -12,10 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PaymentSearchFilters } from "@/components/payment/PaymentSearchFilters";
 import { PaymentSettings } from "@/components/payment/PaymentSettings";
 import { usePaymentFilters } from "@/hooks/usePaymentFilters";
+import { PurchaseOrderDisplay } from "@/components/order/PurchaseOrderDisplay";
 
 interface PaymentOrder {
   id: string;
   order_number: string;
+  purchase_order?: string;
   customer_id?: string;
   customer_name: string;
   customer_email?: string;
@@ -62,6 +64,7 @@ export function PaymentManagement() {
       } = await supabase.from('orders').select(`
           id,
           order_number,
+          purchase_order,
           customer_id,
           customer_name,
           customer_phone,
@@ -546,7 +549,14 @@ export function PaymentManagement() {
                         onChange={() => togglePaymentSelection(payment.id)} 
                         className="w-4 h-4 text-blue-600 rounded" 
                       />
-                      <h3 className="font-semibold text-slate-800">{payment.order_number}</h3>
+                      <div className="flex flex-col gap-1">
+                        <h3 className="font-semibold text-slate-800">{payment.order_number}</h3>
+                        <PurchaseOrderDisplay 
+                          purchaseOrder={payment.purchase_order} 
+                          variant="outline"
+                          className="text-xs"
+                        />
+                      </div>
                       <Badge className={getStatusColor(payment.payment_status)}>
                         {payment.payment_status}
                       </Badge>

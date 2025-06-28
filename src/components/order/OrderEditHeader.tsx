@@ -1,20 +1,28 @@
 
 import React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { PurchaseOrderDisplay } from './PurchaseOrderDisplay';
 
 interface OrderEditHeaderProps {
   orderNumber: string;
+  purchaseOrder?: string;
   customerName: string;
 }
 
-export function OrderEditHeader({ orderNumber, customerName }: OrderEditHeaderProps) {
+export function OrderEditHeader({ orderNumber, purchaseOrder, customerName }: OrderEditHeaderProps) {
   return (
-    <div className="mb-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-2">
-        Edit Order {orderNumber}
-      </h2>
-      <p className="text-gray-600">
-        Customer: {customerName}
-      </p>
+    <div className="space-y-2 pb-4 border-b">
+      <div className="flex items-center gap-3">
+        <h2 className="text-2xl font-bold text-slate-800">Edit Order</h2>
+        <Badge variant="outline" className="text-sm">
+          {orderNumber}
+        </Badge>
+        <PurchaseOrderDisplay 
+          purchaseOrder={purchaseOrder} 
+          variant="outline"
+        />
+      </div>
+      <p className="text-slate-600">Customer: <span className="font-medium">{customerName}</span></p>
     </div>
   );
 }

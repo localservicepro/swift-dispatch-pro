@@ -1,111 +1,88 @@
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { Database } from "@/integrations/supabase/types";
-import { convertTimeToFormFormat } from "@/utils/dateTimeUtils";
-
-type OrderStatus = Database["public"]["Enums"]["order_status"];
-type TruckType = Database["public"]["Enums"]["truck_type"];
-
-interface Order {
-  id: string;
-  order_number: string;
-  customer_name: string;
-  customer_phone?: string;
-  customer_address: string;
-  products: any;
-  total_amount: number;
-  status: OrderStatus;
-  driver_id?: string;
-  created_at: string;
-  delivery_date?: string;
-  delivery_time?: string;
-  special_instructions?: string;
-  customer_id?: string;
-  suburb_id?: string;
-  delivery_fee?: number;
-  subtotal?: number;
-  truck_type?: TruckType;
-  truck_id?: string;
-}
+import { useState, useEffect } from 'react';
 
 export interface OrderFormData {
   customer_name: string;
+  purchase_order: string;
   customer_phone: string;
   customer_address: string;
+  products: any[];
   total_amount: string;
-  status: OrderStatus;
+  subtotal: number;
+  delivery_fee: number;
+  status: string;
   delivery_date: string;
   delivery_time: string;
   special_instructions: string;
   driver_id: string;
-  suburb_id: string;
-  delivery_fee: number;
-  subtotal: number;
-  truck_type: TruckType | 'none';
+  truck_type: string;
   truck_id: string;
-  products: any[];
+  suburb_id: string;
 }
 
-export function useOrderFormData(order: Order) {
-  const initialFormData = useMemo(() => ({
-    customer_name: order.customer_name,
-    customer_phone: order.customer_phone || '',
-    customer_address: order.customer_address,
-    total_amount: order.total_amount.toString(),
-    status: order.status,
-    delivery_date: order.delivery_date || '',
-    delivery_time: convertTimeToFormFormat(order.delivery_time) || '',
-    special_instructions: order.special_instructions || '',
-    driver_id: order.driver_id || 'unassigned',
-    suburb_id: order.suburb_id || '',
-    delivery_fee: order.delivery_fee || 0,
-    subtotal: order.subtotal || (order.total_amount - (order.delivery_fee || 0)),
-    truck_type: (order.truck_type || 'none') as TruckType | 'none',
-    truck_id: order.truck_id || 'none',
-    products: Array.isArray(order.products) ? order.products : [],
-  }), [order]);
+export function useOrderFormData(initialOrder: any) {
+  const [formData, setFormData] = useState<OrderFormData>({
+    customer_name: initialOrder?.customer_name || '',
+    purchase_order: initialOrder?.purchase_order || '',
+    customer_phone: initialOrder?.customer_phone || '',
+    customer_address: initialOrder?.customer_address || '',
+    products: initialOrder?.products || [],
+    total_amount: initialOrder?.total_amount?.toString() || '0',
+    subtotal: initialOrder?.subtotal || 0,
+    delivery_fee: initialOrder?.delivery_fee || 0,
+    status: initialOrder?.status || 'preparing',
+    delivery_date: initialOrder?.delivery_date || '',
+    delivery_time: initialOrder?.delivery_time || '',
+    special_instructions: initialOrder?.special_instructions || '',
+    driver_id: initialOrder?.driver_id || 'unassigned',
+    truck_type: initialOrder?.truck_type || 'none',
+    truck_id: initialOrder?.truck_id || 'none',
+    suburb_id: initialOrder?.suburb_id || '',
+  });
 
-  const [formData, setFormData] = useState<OrderFormData>(initialFormData);
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
-  const handleInputChange = useCallback((field: string, value: string | number) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  }, []);
+  const handleDriverChange = (driverId: string) => {
+    setFormData(prev => ({ ...prev, driver_id: driverId }));
+  };
 
-  const handleDriverChange = useCallback((driverId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      driver_id: driverId
-    }));
-  }, []);
+  const handleSuburbChange = (suburbId: string) => {
+    setFormData(prev => ({ ...prev, suburb_id: suburbId }));
+  };
 
-  const handleSuburbChange = useCallback((suburbId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      suburb_id: suburbId,
-      // Note: delivery fee is not automatically updated - must be set manually
-    }));
-  }, []);
+  const handleProductsChange = (products: any[]) => {
+    setFormData(prev => ({ ...prev, products }));
+  };
 
-  const handleProductsChange = useCallback((products: any[]) => {
-    setFormData(prev => ({
-      ...prev,
-      products
-    }));
-  }, []);
+  const handleSubtotalChange = (subtotal: number) => {
+    setFormData(prev => ({ ...prev, subtotal }));
+  };
 
-  const handleSubtotalChange = useCallback((subtotal: number) => {
-    setFormData(prev => {
-      const newTotalAmount = subtotal + prev.delivery_fee;
-      return {
-        ...prev,
-        subtotal,
-        total_amount: newTotalAmount.toString()
-      };
-    });
-  }, []);
+  // Update form data when initial order changes
+  useEffect(() => {
+    if (initialOrder) {
+      setFormData({
+        customer_name: initialOrder.customer_name || '',
+        purchase_order: initialOrder.purchase_order || '',
+        customer_phone: initialOrder.customer_phone || '',
+        customer_address: initialOrder.customer_address || '',
+        products: initialOrder.products || [],
+        total_amount: initialOrder.total_amount?.toString() || '0',
+        subtotal: initialOrder.subtotal || 0,
+        delivery_fee: initialOrder.delivery_fee || 0,
+        status: initialOrder.status || 'preparing',
+        delivery_date: initialOrder.delivery_date || '',
+        delivery_time: initialOrder.delivery_time || '',
+        special_instructions: initialOrder.special_instructions || '',
+        driver_id: initialOrder.driver_id || 'unassigned',
+        truck_type: initialOrder.truck_type || 'none',
+        truck_id: initialOrder.truck_id || 'none',
+        suburb_id: initialOrder.suburb_id || '',
+      });
+    }
+  }, [initialOrder]);
 
   return {
     formData,

@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { Calendar, Settings, User2 } from 'lucide-react';
+import { Calendar, Settings, User2, FileText } from 'lucide-react';
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DriverSelector } from "./DriverSelector";
 import { OrderBasicInfoForm } from "./OrderBasicInfoForm";
@@ -42,6 +43,27 @@ export function OrderEditSections({
         onProductsChange={onProductsChange}
         onSubtotalChange={onSubtotalChange}
       />
+
+      {/* Purchase Order Section */}
+      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 space-y-4">
+        <div className="flex items-center gap-2 mb-3">
+          <FileText className="w-5 h-5 text-orange-600" />
+          <h3 className="font-semibold text-orange-900">Purchase Order Reference</h3>
+        </div>
+        
+        <div>
+          <Label htmlFor="purchase_order" className="text-gray-700 font-medium">Purchase Order Number</Label>
+          <Input
+            id="purchase_order"
+            type="text"
+            placeholder="Enter customer PO number (optional)"
+            value={formData.purchase_order || ''}
+            onChange={(e) => onInputChange('purchase_order', e.target.value)}
+            className="border-orange-200 focus:border-orange-400 focus:ring-orange-200"
+          />
+          <p className="text-xs text-orange-600 mt-1">Customer's purchase order number for reference</p>
+        </div>
+      </div>
 
       <OrderBasicInfoForm 
         formData={formData}

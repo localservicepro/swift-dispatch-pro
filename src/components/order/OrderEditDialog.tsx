@@ -10,6 +10,7 @@ type TruckType = Database["public"]["Enums"]["truck_type"];
 interface Order {
   id: string;
   order_number: string;
+  purchase_order?: string;
   customer_name: string;
   customer_phone?: string;
   customer_address: string;
@@ -40,7 +41,8 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <OrderEditHeader 
-          orderNumber={order.order_number} 
+          orderNumber={order.order_number}
+          purchaseOrder={order.purchase_order}
           customerName={order.customer_name}
         />
         <OrderEditForm 

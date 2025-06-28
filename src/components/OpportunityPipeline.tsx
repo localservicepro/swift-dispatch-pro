@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,7 +97,11 @@ export function OpportunityPipeline() {
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(order => order.order_number.toLowerCase().includes(query) || order.customer_name.toLowerCase().includes(query));
+      filtered = filtered.filter(order => 
+        order.order_number.toLowerCase().includes(query) || 
+        order.customer_name.toLowerCase().includes(query) ||
+        (order.purchase_order && order.purchase_order.toLowerCase().includes(query))
+      );
     }
 
     // Apply date filter
@@ -497,7 +502,7 @@ export function OpportunityPipeline() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
-                    placeholder="Search by order number or customer name..."
+                    placeholder="Search by order number, customer name, or PO number..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
