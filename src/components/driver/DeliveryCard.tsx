@@ -178,26 +178,38 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
             orderId={order.id}
           />
 
-          {/* Truck Information */}
+          {/* Enhanced Truck Assignment */}
           {(order.truck_type || order.truck_registration) && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Truck className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-800">Truck Assignment</span>
-              </div>
-              <div className="space-y-1">
+            <div className={`rounded-lg p-3 border ${truckInfo ? truckInfo.bgClass + ' border-' + truckInfo.colorClass.replace('text-', '') + '-200' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center gap-3">
                 {truckInfo && (
-                  <div className="flex items-center gap-2">
-                    <truckInfo.icon className={`w-4 h-4 ${truckInfo.colorClass}`} />
-                    <span className="text-sm font-medium">{truckInfo.label}</span>
-                    <span className="text-xs text-blue-600">({truckInfo.capacity})</span>
-                  </div>
+                  <truckInfo.icon className={`w-5 h-5 ${truckInfo.colorClass}`} />
                 )}
-                {order.truck_registration && (
-                  <div className="text-sm text-blue-700">
-                    Vehicle: {order.truck_registration}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`font-semibold ${truckInfo ? truckInfo.colorClass : 'text-gray-700'}`}>
+                      Assigned Truck
+                    </span>
                   </div>
-                )}
+                  <div className="space-y-1">
+                    {truckInfo && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{truckInfo.label}</span>
+                        <span className={`text-xs px-2 py-1 rounded ${truckInfo.bgClass} ${truckInfo.colorClass}`}>
+                          {truckInfo.capacity}
+                        </span>
+                      </div>
+                    )}
+                    {order.truck_registration && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-slate-700">Registration:</span>
+                        <span className="text-sm font-bold text-slate-800 bg-white px-2 py-1 rounded border">
+                          {order.truck_registration}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
