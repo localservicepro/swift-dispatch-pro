@@ -12,7 +12,6 @@ import { PaymentSearchFilters } from "@/components/payment/PaymentSearchFilters"
 import { PaymentSettings } from "@/components/payment/PaymentSettings";
 import { usePaymentFilters } from "@/hooks/usePaymentFilters";
 import { PurchaseOrderDisplay } from "@/components/order/PurchaseOrderDisplay";
-
 interface PaymentOrder {
   id: string;
   order_number: string;
@@ -30,21 +29,24 @@ interface PaymentOrder {
   delivery_fee?: number;
   subtotal?: number;
 }
-
 export function PaymentManagement() {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [sendingInvoices, setSendingInvoices] = useState<string[]>([]);
   const [generatingInvoices, setGeneratingInvoices] = useState<string[]>([]);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [showSettings, setShowSettings] = useState(false);
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const queryClient = useQueryClient();
 
   // Set up real-time payment updates
-  useRealTimePayments((update) => {
+  useRealTimePayments(update => {
     console.log('Payment update received in PaymentManagement:', update);
     setLastUpdateTime(new Date());
-    queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
+    queryClient.invalidateQueries({
+      queryKey: ['payment-orders']
+    });
   });
 
   // Fetch orders for payment management
@@ -102,29 +104,23 @@ export function PaymentManagement() {
     clearAllFilters,
     activeFilterCount
   } = usePaymentFilters(payments);
-
   const generateAndSendInvoice = async (orderId: string) => {
     if (generatingInvoices.includes(orderId)) return;
     setGeneratingInvoices(prev => [...prev, orderId]);
-
     try {
       const order = payments.find(p => p.id === orderId);
       if (!order) throw new Error('Order not found');
-
       console.log('Starting invoice generation for order:', order.order_number);
 
       // Check if invoice already exists for this order
-      const { data: existingInvoice, error: checkError } = await supabase
-        .from('invoices')
-        .select('id')
-        .eq('order_id', orderId)
-        .maybeSingle();
-
+      const {
+        data: existingInvoice,
+        error: checkError
+      } = await supabase.from('invoices').select('id').eq('order_id', orderId).maybeSingle();
       if (checkError) {
         console.error('Error checking existing invoice:', checkError);
         throw new Error(`Failed to check existing invoice: ${checkError.message}`);
       }
-
       if (existingInvoice) {
         throw new Error('Invoice already exists for this order');
       }
@@ -134,46 +130,45 @@ export function PaymentManagement() {
       const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
       // Create invoice record
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('invoices')
-        .insert({
-          invoice_number: invoiceNumber,
-          order_id: orderId,
-          customer_email: order.customer_email,
-          amount: order.total_amount,
-          currency: 'USD',
-          status: 'pending',
-          due_date: dueDate
-        })
-        .select()
-        .single();
-
+      const {
+        data: invoice,
+        error: invoiceError
+      } = await supabase.from('invoices').insert({
+        invoice_number: invoiceNumber,
+        order_id: orderId,
+        customer_email: order.customer_email,
+        amount: order.total_amount,
+        currency: 'USD',
+        status: 'pending',
+        due_date: dueDate
+      }).select().single();
       if (invoiceError) {
         console.error('Invoice creation error:', invoiceError);
         throw new Error(`Failed to create invoice: ${invoiceError.message}`);
       }
-
       console.log('Invoice created:', invoice.id);
 
       // Create payment session
-      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-invoice-payment', {
-        body: { invoiceId: invoice.id }
+      const {
+        data: paymentData,
+        error: paymentError
+      } = await supabase.functions.invoke('create-invoice-payment', {
+        body: {
+          invoiceId: invoice.id
+        }
       });
-
       if (paymentError) {
         console.error('Payment session error:', paymentError);
         // Clean up the invoice if payment session creation fails
         await supabase.from('invoices').delete().eq('id', invoice.id);
         throw new Error(`Failed to create payment session: ${paymentError.message}`);
       }
-
       if (!paymentData.success) {
         console.error('Payment session failed:', paymentData);
         // Clean up the invoice if payment session creation fails
         await supabase.from('invoices').delete().eq('id', invoice.id);
         throw new Error(paymentData.error || 'Failed to create payment session');
       }
-
       console.log('Payment session created:', paymentData.sessionId);
 
       // Parse products for email
@@ -199,7 +194,9 @@ export function PaymentManagement() {
       }
 
       // Send invoice email with payment link
-      const { error: emailError } = await supabase.functions.invoke('send-emails', {
+      const {
+        error: emailError
+      } = await supabase.functions.invoke('send-emails', {
         body: {
           type: 'invoice',
           data: {
@@ -217,7 +214,6 @@ export function PaymentManagement() {
           }
         }
       });
-
       if (emailError) {
         console.error('Email sending error:', emailError);
         toast({
@@ -228,22 +224,20 @@ export function PaymentManagement() {
       } else {
         // Update payment status to "invoiced" when email is sent successfully
         await updatePaymentStatus(orderId, 'invoiced');
-        
         toast({
           title: "Invoice Generated & Sent",
           description: `Invoice ${invoiceNumber} sent to ${order.customer_name} with payment link`,
-          action: (
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
+          action: <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="w-4 h-4 mr-1" />
               Refresh
             </Button>
-          )
         });
       }
 
       // Refresh data
-      queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
-      
+      queryClient.invalidateQueries({
+        queryKey: ['payment-orders']
+      });
     } catch (error: any) {
       console.error('Error generating invoice:', error);
       toast({
@@ -255,7 +249,6 @@ export function PaymentManagement() {
       setGeneratingInvoices(prev => prev.filter(id => id !== orderId));
     }
   };
-
   const sendInvoice = async (orderId: string) => {
     if (sendingInvoices.includes(orderId)) return;
     setSendingInvoices(prev => [...prev, orderId]);
@@ -304,10 +297,9 @@ export function PaymentManagement() {
         }
       });
       if (error) throw error;
-      
+
       // Update payment status to "invoiced" when simple invoice is sent successfully
       await updatePaymentStatus(orderId, 'invoiced');
-      
       toast({
         title: "Invoice Sent",
         description: `Invoice for ${order.order_number} has been sent to ${order.customer_name}`
@@ -323,7 +315,6 @@ export function PaymentManagement() {
       setSendingInvoices(prev => prev.filter(id => id !== orderId));
     }
   };
-  
   const sendBatchInvoices = async () => {
     if (selectedPayments.length === 0) {
       toast({
@@ -353,7 +344,6 @@ export function PaymentManagement() {
       setSendingInvoices(prev => prev.filter(id => !selectedPayments.includes(id)));
     }
   };
-  
   const updatePaymentStatus = async (orderId: string, newStatus: string) => {
     try {
       const {
@@ -377,7 +367,6 @@ export function PaymentManagement() {
       });
     }
   };
-  
   const getStatusColor = (status: string) => {
     switch (status) {
       case "paid":
@@ -394,7 +383,6 @@ export function PaymentManagement() {
         return "bg-gray-100 text-gray-800";
     }
   };
-  
   const togglePaymentSelection = (paymentId: string) => {
     setSelectedPayments(prev => prev.includes(paymentId) ? prev.filter(id => id !== paymentId) : [...prev, paymentId]);
   };
@@ -404,7 +392,6 @@ export function PaymentManagement() {
   const pendingPayments = filteredPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total_amount, 0);
   const invoicedPayments = filteredPayments.filter(p => p.payment_status === 'invoiced').reduce((sum, p) => sum + p.total_amount, 0);
   const overduePayments = filteredPayments.filter(p => p.payment_status === 'overdue').reduce((sum, p) => sum + p.total_amount, 0);
-  
   if (error) {
     return <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -424,11 +411,10 @@ export function PaymentManagement() {
         </Card>
       </div>;
   }
-  
   return <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-slate-800">Payment Management</h2>
+          <h2 className="font-bold text-slate-800 text-lg">Payment Management</h2>
           <div className="flex items-center gap-2 mt-1">
             <p className="text-slate-600">Track payments and manage invoicing • Real-time updates enabled</p>
             <Bell className="w-4 h-4 text-green-500" />
@@ -443,11 +429,7 @@ export function PaymentManagement() {
             {selectedPayments.some(id => sendingInvoices.includes(id)) && <Loader2 className="w-4 h-4 animate-spin" />}
             Batch Invoice ({selectedPayments.length})
           </Button>
-          <Button 
-            onClick={() => setShowSettings(true)} 
-            variant="outline"
-            className="flex items-center gap-2"
-          >
+          <Button onClick={() => setShowSettings(true)} variant="outline" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
             Settings
           </Button>
@@ -455,20 +437,10 @@ export function PaymentManagement() {
       </div>
 
       {/* Payment Settings Modal */}
-      <PaymentSettings 
-        isOpen={showSettings} 
-        onClose={() => setShowSettings(false)} 
-      />
+      <PaymentSettings isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
       {/* Search and Filter Controls */}
-      <PaymentSearchFilters
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onClearFilters={clearAllFilters}
-        activeFilterCount={activeFilterCount}
-      />
+      <PaymentSearchFilters searchTerm={searchTerm} onSearchChange={setSearchTerm} filters={filters} onFilterChange={handleFilterChange} onClearFilters={clearAllFilters} activeFilterCount={activeFilterCount} />
 
       {/* Payment Statistics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -533,28 +505,17 @@ export function PaymentManagement() {
               <p className="mt-2 text-slate-600">Loading payment records...</p>
             </div> : filteredPayments.length === 0 ? <div className="text-center py-8 text-slate-500">
               <p>{payments.length === 0 ? "No payment records found." : "No payment records match your search criteria."}</p>
-              {activeFilterCount > 0 && (
-                <Button variant="outline" onClick={clearAllFilters} className="mt-2">
+              {activeFilterCount > 0 && <Button variant="outline" onClick={clearAllFilters} className="mt-2">
                   Clear all filters
-                </Button>
-              )}
+                </Button>}
             </div> : <div className="space-y-4">
               {filteredPayments.map(payment => <div key={payment.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedPayments.includes(payment.id)} 
-                        onChange={() => togglePaymentSelection(payment.id)} 
-                        className="w-4 h-4 text-blue-600 rounded" 
-                      />
+                      <input type="checkbox" checked={selectedPayments.includes(payment.id)} onChange={() => togglePaymentSelection(payment.id)} className="w-4 h-4 text-blue-600 rounded" />
                       <div className="flex flex-col gap-1">
                         <h3 className="font-semibold text-slate-800">{payment.order_number}</h3>
-                        <PurchaseOrderDisplay 
-                          purchaseOrder={payment.purchase_order} 
-                          variant="outline"
-                          className="text-xs"
-                        />
+                        <PurchaseOrderDisplay purchaseOrder={payment.purchase_order} variant="outline" className="text-xs" />
                       </div>
                       <Badge className={getStatusColor(payment.payment_status)}>
                         {payment.payment_status}
@@ -584,27 +545,11 @@ export function PaymentManagement() {
                   </div>
                   
                   <div className="flex gap-2 mt-4">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => generateAndSendInvoice(payment.id)}
-                      disabled={generatingInvoices.includes(payment.id)}
-                      className="flex items-center gap-2"
-                    >
-                      {generatingInvoices.includes(payment.id) ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Receipt className="w-4 h-4" />
-                      )}
+                    <Button size="sm" variant="outline" onClick={() => generateAndSendInvoice(payment.id)} disabled={generatingInvoices.includes(payment.id)} className="flex items-center gap-2">
+                      {generatingInvoices.includes(payment.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
                       {generatingInvoices.includes(payment.id) ? "Generating..." : "Generate Invoice"}
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => sendInvoice(payment.id)} 
-                      disabled={sendingInvoices.includes(payment.id)} 
-                      className="flex items-center gap-2"
-                    >
+                    <Button size="sm" variant="outline" onClick={() => sendInvoice(payment.id)} disabled={sendingInvoices.includes(payment.id)} className="flex items-center gap-2">
                       {sendingInvoices.includes(payment.id) && <Loader2 className="w-4 h-4 animate-spin" />}
                       {sendingInvoices.includes(payment.id) ? "Sending..." : "Send Simple Invoice"}
                     </Button>
