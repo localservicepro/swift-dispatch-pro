@@ -1,3 +1,4 @@
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,16 +8,11 @@ import {
   Users,
   CreditCard,
   Mail,
-  Settings,
   Users2,
   Target,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
   Truck,
 } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useState } from "react";
 
 const menuItems = [
   { title: "Dashboard", icon: BarChart3, id: "dashboard" },
@@ -28,7 +24,6 @@ const menuItems = [
   { title: "Fleet", icon: Truck, id: "trucks" },
   { title: "Team", icon: Users2, id: "drivers" },
   { title: "Emails", icon: Mail, id: "emails" },
-  { title: "Settings", icon: Settings, id: "settings" },
 ];
 
 interface MobileBottomNavProps {

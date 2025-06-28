@@ -1,5 +1,5 @@
 
-import { Menu, Settings } from "lucide-react";
+import { Menu, Settings, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -9,6 +9,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { PersonalizedGreeting } from "./PersonalizedGreeting";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useToast } from "@/hooks/use-toast";
 
 interface MobileHeaderProps {
   activeTab: string;
@@ -20,6 +22,26 @@ interface MobileHeaderProps {
 }
 
 export function MobileHeader({ activeTab, setActiveTab, profile }: MobileHeaderProps) {
+  const { signOut, signingOut } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    
+    if (error) {
+      toast({
+        title: "Sign Out Failed",
+        description: "There was an error signing out. Please try again.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Signed Out",
+        description: "You have been successfully signed out.",
+      });
+    }
+  };
+
   return (
     <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
       <div className="text-base font-semibold text-slate-800">
@@ -36,7 +58,7 @@ export function MobileHeader({ activeTab, setActiveTab, profile }: MobileHeaderP
           <SheetHeader>
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
-          <div className="mt-6">
+          <div className="mt-6 space-y-2">
             <button
               onClick={() => setActiveTab("settings")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
@@ -47,6 +69,19 @@ export function MobileHeader({ activeTab, setActiveTab, profile }: MobileHeaderP
             >
               <Settings className="w-4 h-4" />
               <span>Settings</span>
+            </button>
+            
+            <button
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors hover:bg-slate-100 disabled:opacity-50"
+            >
+              {signingOut ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <LogOut className="w-4 h-4" />
+              )}
+              <span>{signingOut ? "Signing Out..." : "Sign Out"}</span>
             </button>
           </div>
         </SheetContent>
