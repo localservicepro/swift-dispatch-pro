@@ -7,7 +7,8 @@ interface CustomerCompanyFormProps {
   formData: {
     company_name: string;
     business_name: string;
-    customer_type: "trade" | "account";
+    customer_type: "residential" | "trade" | "account";
+    entity_type: "individual" | "business";
   };
   onFormDataChange: (updates: Partial<CustomerCompanyFormProps['formData']>) => void;
 }
@@ -19,19 +20,36 @@ export function CustomerCompanyForm({ formData, onFormDataChange }: CustomerComp
         <Label htmlFor="customer_type">Customer Type</Label>
         <Select 
           value={formData.customer_type} 
-          onValueChange={(value: "trade" | "account") => onFormDataChange({ customer_type: value })}
+          onValueChange={(value: "residential" | "trade" | "account") => onFormDataChange({ customer_type: value })}
         >
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="trade">Trade (Individual)</SelectItem>
-            <SelectItem value="account">Account (Business)</SelectItem>
+            <SelectItem value="residential">Residential (Homeowners)</SelectItem>
+            <SelectItem value="trade">Trade (Professionals)</SelectItem>
+            <SelectItem value="account">Account (Volume/Credit)</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {formData.customer_type === 'account' && (
+      <div>
+        <Label htmlFor="entity_type">Entity Type</Label>
+        <Select 
+          value={formData.entity_type} 
+          onValueChange={(value: "individual" | "business") => onFormDataChange({ entity_type: value })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="individual">Individual</SelectItem>
+            <SelectItem value="business">Business/Company</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {formData.entity_type === 'business' && (
         <>
           <div>
             <Label htmlFor="company_name">Company Name *</Label>
@@ -54,6 +72,20 @@ export function CustomerCompanyForm({ formData, onFormDataChange }: CustomerComp
             />
           </div>
         </>
+      )}
+
+      {formData.entity_type === 'individual' && formData.customer_type !== 'residential' && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p className="text-sm text-blue-800">
+            <strong>Individual {formData.customer_type === 'trade' ? 'Trade' : 'Account'} Customer</strong>
+          </p>
+          <p className="text-xs text-blue-600 mt-1">
+            {formData.customer_type === 'trade' 
+              ? 'Individual tradesperson or contractor working independently'
+              : 'Individual customer with account privileges'
+            }
+          </p>
+        </div>
       )}
     </>
   );

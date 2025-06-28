@@ -13,7 +13,8 @@ export function useCustomerDialogData(customer: Customer | null) {
     phone: '',
     full_address: '',
     suburb_id: '',
-    customer_type: 'trade' as 'trade' | 'account',
+    customer_type: 'residential' as 'residential' | 'trade' | 'account',
+    entity_type: 'individual' as 'individual' | 'business',
     is_active: true,
     sms_notifications_enabled: true,
     company_name: '',
@@ -32,12 +33,13 @@ export function useCustomerDialogData(customer: Customer | null) {
         phone: customer.phone || '',
         full_address: customer.full_address || '',
         suburb_id: customer.suburb_id || '',
-        customer_type: (customer.customer_type as 'trade' | 'account') || 'trade',
+        customer_type: (customer.customer_type as 'residential' | 'trade' | 'account') || 'residential',
+        entity_type: (customer.entity_type as 'individual' | 'business') || 'individual',
         is_active: customer.is_active ?? true,
         sms_notifications_enabled: customer.sms_notifications_enabled ?? true,
         company_name: customer.company_name || '',
         business_name: customer.business_name || '',
-        contact_role: customer.contact_role || (customer.customer_type === 'account' ? 'Primary Contact' : 'Owner'),
+        contact_role: customer.contact_role || getDefaultContactRole(customer.customer_type as any, customer.entity_type as any),
       });
 
       // Load delivery rate if suburb_id exists
@@ -53,7 +55,8 @@ export function useCustomerDialogData(customer: Customer | null) {
         phone: '',
         full_address: '',
         suburb_id: '',
-        customer_type: 'trade',
+        customer_type: 'residential',
+        entity_type: 'individual',
         is_active: true,
         sms_notifications_enabled: true,
         company_name: '',
@@ -62,6 +65,19 @@ export function useCustomerDialogData(customer: Customer | null) {
       });
     }
   }, [customer]);
+
+  const getDefaultContactRole = (customerType: 'residential' | 'trade' | 'account', entityType: 'individual' | 'business') => {
+    if (entityType === 'business') {
+      return 'Primary Contact';
+    }
+    if (customerType === 'residential') {
+      return 'Owner';
+    }
+    if (customerType === 'trade') {
+      return 'Tradesperson';
+    }
+    return 'Contact';
+  };
 
   const loadDeliveryRate = async (suburbId: string) => {
     const { data, error } = await supabase
@@ -75,13 +91,16 @@ export function useCustomerDialogData(customer: Customer | null) {
     }
   };
 
-  const handleCompanyChange = (updates: Partial<{ company_name: string; business_name: string; customer_type: 'trade' | 'account' }>) => {
+  const handleCompanyChange = (updates: Partial<{ company_name: string; business_name: string; customer_type: 'residential' | 'trade' | 'account'; entity_type: 'individual' | 'business' }>) => {
     setFormData(prev => {
       const newData = { ...prev, ...updates };
       
-      // Update contact role based on customer type
-      if (updates.customer_type) {
-        newData.contact_role = updates.customer_type === 'account' ? 'Primary Contact' : 'Owner';
+      // Update contact role based on customer type and entity type
+      if (updates.customer_type || updates.entity_type) {
+        newData.contact_role = getDefaultContactRole(
+          updates.customer_type || prev.customer_type,
+          updates.entity_type || prev.entity_type
+        );
       }
       
       return newData;
@@ -100,13 +119,16 @@ export function useCustomerDialogData(customer: Customer | null) {
     }
   };
 
-  const handlePreferencesChange = (updates: Partial<{ customer_type: 'trade' | 'account'; is_active: boolean; sms_notifications_enabled: boolean }>) => {
+  const handlePreferencesChange = (updates: Partial<{ customer_type: 'residential' | 'trade' | 'account'; entity_type: 'individual' | 'business'; is_active: boolean; sms_notifications_enabled: boolean }>) => {
     setFormData(prev => {
       const newData = { ...prev, ...updates };
       
-      // Update contact role based on customer type
-      if (updates.customer_type) {
-        newData.contact_role = updates.customer_type === 'account' ? 'Primary Contact' : 'Owner';
+      // Update contact role based on customer type and entity type
+      if (updates.customer_type || updates.entity_type) {
+        newData.contact_role = getDefaultContactRole(
+          updates.customer_type || prev.customer_type,
+          updates.entity_type || prev.entity_type
+        );
       }
       
       return newData;

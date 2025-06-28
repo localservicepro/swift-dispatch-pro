@@ -10,11 +10,12 @@ import { CustomerDialog } from "@/components/customer/CustomerDialog";
 import { CustomerOrders } from "@/components/customer/CustomerOrders";
 import { CustomerStats } from "@/components/customer/CustomerStats";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Search, Eye, Edit, Trash2, MapPin, Bell, BellOff, Building2, User } from "lucide-react";
+import { UserPlus, Search, Eye, Edit, Trash2, MapPin, Bell, BellOff, Building2, User, Home, Wrench } from "lucide-react";
 
 export function CustomerManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [customerTypeFilter, setCustomerTypeFilter] = useState<string>("all");
+  const [entityTypeFilter, setEntityTypeFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -54,8 +55,10 @@ export function CustomerManagement() {
       customer.company_name?.toLowerCase().includes(searchText) ||
       customer.business_name?.toLowerCase().includes(searchText);
     
-    const matchesType = customerTypeFilter === "all" || customer.customer_type === customerTypeFilter;
-    return matchesSearch && matchesType;
+    const matchesCustomerType = customerTypeFilter === "all" || customer.customer_type === customerTypeFilter;
+    const matchesEntityType = entityTypeFilter === "all" || customer.entity_type === entityTypeFilter;
+    
+    return matchesSearch && matchesCustomerType && matchesEntityType;
   });
 
   const handleAddCustomer = () => {
@@ -112,17 +115,43 @@ export function CustomerManagement() {
   }
 
   const getCustomerDisplayName = (customer: any) => {
-    if (customer.customer_type === 'account' && customer.company_name) {
+    if (customer.entity_type === 'business' && customer.company_name) {
       return customer.company_name;
     }
     return `${customer.first_name} ${customer.last_name}`;
   };
 
   const getCustomerSubtitle = (customer: any) => {
-    if (customer.customer_type === 'account' && customer.company_name) {
+    if (customer.entity_type === 'business' && customer.company_name) {
       return `Contact: ${customer.first_name} ${customer.last_name}`;
     }
     return customer.email;
+  };
+
+  const getCustomerTypeIcon = (customerType: string) => {
+    switch (customerType) {
+      case 'residential': return <Home className="w-5 h-5 text-green-600" />;
+      case 'trade': return <Wrench className="w-5 h-5 text-orange-600" />;
+      case 'account': return <Building2 className="w-5 h-5 text-purple-600" />;
+      default: return <User className="w-5 h-5 text-gray-600" />;
+    }
+  };
+
+  const getCustomerTypeColor = (customerType: string) => {
+    switch (customerType) {
+      case 'residential': return 'bg-green-100 text-green-800';
+      case 'trade': return 'bg-orange-100 text-orange-800';
+      case 'account': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getEntityTypeColor = (entityType: string) => {
+    switch (entityType) {
+      case 'individual': return 'bg-blue-100 text-blue-800';
+      case 'business': return 'bg-indigo-100 text-indigo-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
@@ -130,7 +159,7 @@ export function CustomerManagement() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-800">Customer Management</h1>
-          <p className="text-slate-600">Manage Trade and Account customers</p>
+          <p className="text-slate-600">Manage Residential, Trade, and Account customers</p>
         </div>
         <Button onClick={handleAddCustomer} className="flex items-center gap-2">
           <UserPlus className="w-4 h-4" />
@@ -152,25 +181,60 @@ export function CustomerManagement() {
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant={customerTypeFilter === "all" ? "default" : "outline"}
-                onClick={() => setCustomerTypeFilter("all")}
-              >
-                All
-              </Button>
-              <Button
-                variant={customerTypeFilter === "trade" ? "default" : "outline"}
-                onClick={() => setCustomerTypeFilter("trade")}
-              >
-                Trade
-              </Button>
-              <Button
-                variant={customerTypeFilter === "account" ? "default" : "outline"}
-                onClick={() => setCustomerTypeFilter("account")}
-              >
-                Account
-              </Button>
+            <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2">
+                <Button
+                  variant={customerTypeFilter === "all" ? "default" : "outline"}
+                  onClick={() => setCustomerTypeFilter("all")}
+                  size="sm"
+                >
+                  All Types
+                </Button>
+                <Button
+                  variant={customerTypeFilter === "residential" ? "default" : "outline"}
+                  onClick={() => setCustomerTypeFilter("residential")}
+                  size="sm"
+                >
+                  Residential
+                </Button>
+                <Button
+                  variant={customerTypeFilter === "trade" ? "default" : "outline"}
+                  onClick={() => setCustomerTypeFilter("trade")}
+                  size="sm"
+                >
+                  Trade
+                </Button>
+                <Button
+                  variant={customerTypeFilter === "account" ? "default" : "outline"}
+                  onClick={() => setCustomerTypeFilter("account")}
+                  size="sm"
+                >
+                  Account
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={entityTypeFilter === "all" ? "default" : "outline"}
+                  onClick={() => setEntityTypeFilter("all")}
+                  size="sm"
+                >
+                  All Entities
+                </Button>
+                <Button
+                  variant={entityTypeFilter === "individual" ? "default" : "outline"}
+                  onClick={() => setEntityTypeFilter("individual")}
+                  size="sm"
+                >
+                  Individual
+                </Button>
+                <Button
+                  variant={entityTypeFilter === "business" ? "default" : "outline"}
+                  onClick={() => setEntityTypeFilter("business")}
+                  size="sm"
+                >
+                  Business
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -187,17 +251,16 @@ export function CustomerManagement() {
                 <div key={customer.id} className="border rounded-lg p-4 hover:bg-slate-50">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        {customer.customer_type === 'account' ? (
-                          <Building2 className="w-5 h-5 text-blue-600" />
-                        ) : (
-                          <User className="w-5 h-5 text-green-600" />
-                        )}
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        {getCustomerTypeIcon(customer.customer_type)}
                         <h3 className="font-semibold text-lg">
                           {getCustomerDisplayName(customer)}
                         </h3>
-                        <Badge variant={customer.customer_type === "trade" ? "default" : "secondary"}>
+                        <Badge className={getCustomerTypeColor(customer.customer_type)}>
                           {customer.customer_type}
+                        </Badge>
+                        <Badge className={getEntityTypeColor(customer.entity_type)}>
+                          {customer.entity_type}
                         </Badge>
                         {!customer.is_active && (
                           <Badge variant="destructive">Inactive</Badge>
@@ -216,7 +279,7 @@ export function CustomerManagement() {
                       </div>
                       <div className="text-sm text-slate-600 space-y-1">
                         <p>{getCustomerSubtitle(customer)}</p>
-                        {customer.customer_type === 'account' && customer.business_name && (
+                        {customer.entity_type === 'business' && customer.business_name && (
                           <p>Trading as: {customer.business_name}</p>
                         )}
                         {customer.phone && <p>Phone: {customer.phone}</p>}
@@ -231,7 +294,7 @@ export function CustomerManagement() {
                               {customer.suburbs.name}, {customer.suburbs.state} {customer.suburbs.postcode}
                               {customer.suburbs.delivery_rate && customer.suburbs.delivery_rate !== "0" && (
                                 <span className="ml-2 text-green-600 font-medium">
-                                  (Delivery: {customer.suburbs.delivery_rate})
+                                  (Delivery: ${customer.suburbs.delivery_rate})
                                 </span>
                               )}
                             </span>

@@ -12,7 +12,8 @@ interface FormData {
   phone: string;
   full_address: string;
   suburb_id: string;
-  customer_type: 'trade' | 'account';
+  customer_type: 'residential' | 'trade' | 'account';
+  entity_type: 'individual' | 'business';
   is_active: boolean;
   sms_notifications_enabled: boolean;
   company_name: string;
@@ -40,10 +41,10 @@ export function useCustomerDialogActions(
       return;
     }
 
-    if (formData.customer_type === 'account' && !formData.company_name) {
+    if (formData.entity_type === 'business' && !formData.company_name) {
       toast({
         title: "Error",
-        description: "Company name is required for business accounts",
+        description: "Company name is required for business entities",
         variant: "destructive",
       });
       return;
@@ -58,10 +59,11 @@ export function useCustomerDialogActions(
         full_address: formData.full_address,
         suburb_id: formData.suburb_id || null,
         customer_type: formData.customer_type,
+        entity_type: formData.entity_type,
         is_active: formData.is_active,
         sms_notifications_enabled: formData.sms_notifications_enabled,
-        company_name: formData.customer_type === 'account' ? formData.company_name : null,
-        business_name: formData.customer_type === 'account' ? formData.business_name : null,
+        company_name: formData.entity_type === 'business' ? formData.company_name : null,
+        business_name: formData.entity_type === 'business' ? formData.business_name : null,
         contact_role: formData.contact_role,
         updated_at: new Date().toISOString(),
       };
@@ -89,8 +91,8 @@ export function useCustomerDialogActions(
 
         if (error) throw error;
 
-        // For account customers, create primary contact record
-        if (formData.customer_type === 'account' && newCustomer) {
+        // For business customers, create primary contact record
+        if (formData.entity_type === 'business' && newCustomer) {
           const { error: contactError } = await supabase
             .from('customer_contacts')
             .insert([{
