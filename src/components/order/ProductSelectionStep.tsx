@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Package, Plus, Minus, ShoppingCart, Star, Clock } from "lucide-react";
+import { Search, Package, Plus, Minus, ShoppingCart, Star, Clock, Edit3, Trash2 } from "lucide-react";
 import { useSpecialPricing } from "@/hooks/useSpecialPricing";
 import { format } from "date-fns";
 
@@ -58,8 +57,39 @@ export function ProductSelectionStep({
   const [loading, setLoading] = useState(false);
   const [adjustmentType, setAdjustmentType] = useState<"percentage" | "fixed">("percentage");
   const [adjustmentValue, setAdjustmentValue] = useState<string>("");
+  const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState("");
   const { toast } = useToast();
   const { loadSpecialsForProducts, hasActiveSpecial, getSpecialForProduct, applySpecialDiscount } = useSpecialPricing();
+
+  // Add decimal input parsing function
+  const parseQuantityInput = (input: string): number => {
+    // Handle fractional input like "1 1/4" or "1.25"
+    const fractionMatch = input.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+    if (fractionMatch) {
+      const whole = parseInt(fractionMatch[1]);
+      const numerator = parseInt(fractionMatch[2]);
+      const denominator = parseInt(fractionMatch[3]);
+      return whole + (numerator / denominator);
+    }
+    
+    // Handle simple fraction like "1/4"
+    const simpleFractionMatch = input.match(/^(\d+)\/(\d+)$/);
+    if (simpleFractionMatch) {
+      const numerator = parseInt(simpleFractionMatch[1]);
+      const denominator = parseInt(simpleFractionMatch[2]);
+      return numerator / denominator;
+    }
+    
+    // Handle decimal input
+    const decimal = parseFloat(input);
+    return isNaN(decimal) ? 0 : decimal;
+  };
+
+  const formatQuantity = (quantity: number): string => {
+    // Format to show up to 3 decimal places, removing trailing zeros
+    return quantity % 1 === 0 ? quantity.toString() : quantity.toFixed(3).replace(/\.?0+$/, '');
+  };
 
   useEffect(() => {
     loadCategories();
@@ -149,32 +179,30 @@ export function ProductSelectionStep({
     const price = getProductPrice(product);
     
     if (existingItem) {
-      updateQuantity(product.id, existingItem.quantity + 1);
+      updateQuantity(product.id, existingItem.quantity + 0.25);
     } else {
       const newItem: CartItem = {
         product,
-        quantity: 1,
+        quantity: 0.25,
         unit_price: price,
-        total_price: price
+        total_price: price * 0.25
       };
       onCartUpdate([...cart, newItem]);
     }
   };
 
   const updateQuantity = (productId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
+    // Set minimum quantity to 0.25 instead of removing
+    const finalQuantity = Math.max(0.25, newQuantity);
 
     const updatedCart = cart.map(item => {
       if (item.product.id === productId) {
         const price = getProductPrice(item.product);
         return { 
           ...item, 
-          quantity: newQuantity, 
+          quantity: finalQuantity, 
           unit_price: price,
-          total_price: price * newQuantity 
+          total_price: price * finalQuantity 
         };
       }
       return item;
@@ -184,6 +212,35 @@ export function ProductSelectionStep({
 
   const removeFromCart = (productId: string) => {
     onCartUpdate(cart.filter(item => item.product.id !== productId));
+  };
+
+  const handleQuantityEdit = (productId: string, currentQuantity: number) => {
+    setEditingQuantity(productId);
+    setInputValue(formatQuantity(currentQuantity));
+  };
+
+  const handleQuantitySubmit = (productId: string) => {
+    const newQuantity = parseQuantityInput(inputValue);
+    
+    if (isNaN(newQuantity) || newQuantity < 0) {
+      toast({
+        title: "Invalid quantity",
+        description: "Please enter a valid quantity (minimum 0.25)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Set minimum quantity to 0.25 if user enters 0
+    const finalQuantity = newQuantity === 0 ? 0.25 : newQuantity;
+    updateQuantity(productId, finalQuantity);
+    setEditingQuantity(null);
+    setInputValue("");
+  };
+
+  const handleQuantityCancel = () => {
+    setEditingQuantity(null);
+    setInputValue("");
   };
 
   const applyAdjustment = () => {
@@ -256,7 +313,6 @@ export function ProductSelectionStep({
 
                 return (
                   <div key={product.id} className="border rounded-lg p-4 relative">
-                    {/* Special Badge */}
                     {hasSpecial && (
                       <div className="absolute top-2 right-2 z-10">
                         <Badge className="bg-red-500 text-white flex items-center gap-1 text-xs">
@@ -335,15 +391,15 @@ export function ProductSelectionStep({
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => updateQuantity(product.id, getCartQuantity(product.id) - 1)}
+                            onClick={() => updateQuantity(product.id, getCartQuantity(product.id) - 0.25)}
                           >
                             <Minus className="w-3 h-3" />
                           </Button>
-                          <span className="font-medium">{getCartQuantity(product.id)}</span>
+                          <span className="font-medium">{formatQuantity(getCartQuantity(product.id))}</span>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + 1)}
+                            onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + 0.25)}
                           >
                             <Plus className="w-3 h-3" />
                           </Button>
@@ -407,21 +463,62 @@ export function ProductSelectionStep({
                               size="sm"
                               variant="ghost"
                               className="h-6 w-6 p-0"
-                              onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                              onClick={() => updateQuantity(item.product.id, item.quantity - 0.25)}
                             >
                               <Minus className="w-3 h-3" />
                             </Button>
-                            <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
+                            
+                            {editingQuantity === item.product.id ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  value={inputValue}
+                                  onChange={(e) => setInputValue(e.target.value)}
+                                  className="h-6 w-16 text-xs text-center"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleQuantitySubmit(item.product.id);
+                                    if (e.key === 'Escape') handleQuantityCancel();
+                                  }}
+                                  onBlur={() => handleQuantitySubmit(item.product.id)}
+                                  placeholder="1.25"
+                                  step="0.25"
+                                  autoFocus
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleQuantitySubmit(item.product.id)}
+                                  className="h-5 w-5 p-0 text-green-600"
+                                >
+                                  ✓
+                                </Button>
+                              </div>
+                            ) : (
+                              <span 
+                                className="text-sm font-medium w-12 text-center cursor-pointer hover:bg-gray-100 px-1 py-1 rounded"
+                                onClick={() => handleQuantityEdit(item.product.id, item.quantity)}
+                              >
+                                {formatQuantity(item.quantity)}
+                              </span>
+                            )}
+                            
                             <Button
                               size="sm"
                               variant="ghost"
                               className="h-6 w-6 p-0"
-                              onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                              onClick={() => updateQuantity(item.product.id, item.quantity + 0.25)}
                             >
                               <Plus className="w-3 h-3" />
                             </Button>
                           </div>
                           <div className="font-medium text-sm">AU${item.total_price.toFixed(2)}</div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                            onClick={() => removeFromCart(item.product.id)}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
                         </div>
                       </div>
                     );
