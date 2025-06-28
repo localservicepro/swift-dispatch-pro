@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -167,7 +168,7 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
           products: formData.products,
           total_amount: parseFloat(formData.total_amount),
           subtotal: formData.subtotal,
-          status: formData.status,
+          status: formData.status as OrderStatus,
           delivery_date: formData.delivery_date || null,
           delivery_time: formData.delivery_time || null,
           special_instructions: formData.special_instructions || null,
