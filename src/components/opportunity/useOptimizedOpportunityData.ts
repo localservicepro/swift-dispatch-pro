@@ -48,8 +48,8 @@ export function useOptimizedOpportunityData() {
           trucks!orders_truck_id_fkey(registration_number, truck_type)
         `)
         .is('deleted_at', null)
-        .order('delivery_date', { ascending: true, nullsLast: true })
-        .order('delivery_time', { ascending: true, nullsLast: true })
+        .order('delivery_date', { ascending: true, nullsFirst: false })
+        .order('delivery_time', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false });
 
       if (error) {
