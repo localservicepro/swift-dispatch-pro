@@ -1,3 +1,4 @@
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -87,9 +88,11 @@ export function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarProps) {
     <Sidebar className="border-r">
       <SidebarHeader className="border-b px-6 py-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Package className="h-4 w-4" />
-          </div>
+          <img 
+            src="/lovable-uploads/299f278a-b44f-48ee-80b0-722271e302f3.png" 
+            alt="SwiftDispatch Pro" 
+            className="h-8 w-8"
+          />
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-semibold">SwiftDispatch Pro</span>
             <span className="truncate text-xs text-muted-foreground">
