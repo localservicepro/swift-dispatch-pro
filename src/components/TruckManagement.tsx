@@ -1,86 +1,59 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { 
-  Truck, 
-  Plus, 
-  Search, 
-  Filter,
-  Grid3X3,
-  List
-} from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Truck, Plus, Search, Filter, Grid3X3, List } from "lucide-react";
 import { useTruckData } from "@/hooks/useTruckData";
 import { TruckStatsOverview } from "@/components/truck/TruckStatsOverview";
 import { TruckStatusCard } from "@/components/truck/TruckStatusCard";
 import { Database } from "@/integrations/supabase/types";
-
 type Truck = Database["public"]["Tables"]["trucks"]["Row"];
 type TruckStatus = "available" | "assigned" | "maintenance" | "out_of_service";
-
 export function TruckManagement() {
-  const { 
-    trucks, 
-    isLoading, 
-    getTruckStats, 
+  const {
+    trucks,
+    isLoading,
+    getTruckStats,
     updateTruckStatus,
-    isUpdatingStatus 
+    isUpdatingStatus
   } = useTruckData();
-
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [truckTypeFilter, setTruckTypeFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-
   const stats = getTruckStats();
 
   // Filter trucks based on search and filters
   const filteredTrucks = trucks.filter(truck => {
-    const matchesSearch = truck.registration_number
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    
+    const matchesSearch = truck.registration_number.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || truck.status === statusFilter;
-    
     const matchesType = truckTypeFilter === "all" || truck.truck_type === truckTypeFilter;
-
     return matchesSearch && matchesStatus && matchesType;
   });
-
   const handleStatusChange = (truckId: string, status: TruckStatus) => {
-    updateTruckStatus({ truckId, status });
+    updateTruckStatus({
+      truckId,
+      status
+    });
   };
-
   const handleEditTruck = (truck: Truck) => {
     // TODO: Implement truck editing dialog
     console.log("Edit truck:", truck);
   };
-
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
+    return <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Truck className="w-8 h-8 animate-pulse mx-auto mb-2" />
           <p>Loading fleet data...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Fleet Management</h1>
+          <h1 className="font-bold tracking-tight text-lg">Fleet Management</h1>
           <p className="text-muted-foreground">
             Monitor and manage your vehicle fleet
           </p>
@@ -108,12 +81,7 @@ export function TruckManagement() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search by registration number..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+                <Input placeholder="Search by registration number..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
               </div>
             </div>
 
@@ -147,20 +115,10 @@ export function TruckManagement() {
 
             {/* View Mode Toggle */}
             <div className="flex border rounded-lg">
-              <Button
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("grid")}
-                className="rounded-r-none"
-              >
+              <Button variant={viewMode === "grid" ? "default" : "ghost"} size="sm" onClick={() => setViewMode("grid")} className="rounded-r-none">
                 <Grid3X3 className="w-4 h-4" />
               </Button>
-              <Button
-                variant={viewMode === "list" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("list")}
-                className="rounded-l-none"
-              >
+              <Button variant={viewMode === "list" ? "default" : "ghost"} size="sm" onClick={() => setViewMode("list")} className="rounded-l-none">
                 <List className="w-4 h-4" />
               </Button>
             </div>
@@ -169,35 +127,16 @@ export function TruckManagement() {
       </Card>
 
       {/* Trucks Grid/List */}
-      {filteredTrucks.length === 0 ? (
-        <Card>
+      {filteredTrucks.length === 0 ? <Card>
           <CardContent className="py-8 text-center">
             <Truck className="w-12 h-12 mx-auto mb-4 text-gray-400" />
             <h3 className="text-lg font-semibold mb-2">No trucks found</h3>
             <p className="text-muted-foreground">
-              {searchTerm || statusFilter !== "all" || truckTypeFilter !== "all"
-                ? "Try adjusting your filters"
-                : "Add your first truck to get started"}
+              {searchTerm || statusFilter !== "all" || truckTypeFilter !== "all" ? "Try adjusting your filters" : "Add your first truck to get started"}
             </p>
           </CardContent>
-        </Card>
-      ) : (
-        <div className={
-          viewMode === "grid" 
-            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-            : "space-y-4"
-        }>
-          {filteredTrucks.map((truck) => (
-            <TruckStatusCard
-              key={truck.id}
-              truck={truck}
-              onStatusChange={handleStatusChange}
-              onEdit={handleEditTruck}
-              isUpdating={isUpdatingStatus}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
+        </Card> : <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
+          {filteredTrucks.map(truck => <TruckStatusCard key={truck.id} truck={truck} onStatusChange={handleStatusChange} onEdit={handleEditTruck} isUpdating={isUpdatingStatus} />)}
+        </div>}
+    </div>;
 }
