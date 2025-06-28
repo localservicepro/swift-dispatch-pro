@@ -1,4 +1,3 @@
-
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,6 +23,7 @@ import {
   Trash2,
   Truck,
 } from "lucide-react";
+import { useState } from "react";
 
 const menuItems = [
   {
@@ -84,15 +84,35 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarProps) {
+  const [logoError, setLogoError] = useState(false);
+
+  const handleLogoError = () => {
+    console.error("Logo failed to load:", "/lovable-uploads/299f278a-b44f-48ee-80b0-722271e302f3.png");
+    setLogoError(true);
+  };
+
+  const handleLogoLoad = () => {
+    console.log("Logo loaded successfully");
+  };
+
   return (
     <Sidebar className="border-r">
       <SidebarHeader className="border-b px-6 py-4">
         <div className="flex items-center gap-2">
-          <img 
-            src="/lovable-uploads/299f278a-b44f-48ee-80b0-722271e302f3.png" 
-            alt="SwiftDispatch Pro" 
-            className="h-8 w-8"
-          />
+          {!logoError ? (
+            <img 
+              src="/lovable-uploads/299f278a-b44f-48ee-80b0-722271e302f3.png" 
+              alt="SwiftDispatch Pro" 
+              className="h-8 w-8 object-contain"
+              onError={handleLogoError}
+              onLoad={handleLogoLoad}
+              loading="eager"
+            />
+          ) : (
+            <div className="h-8 w-8 bg-primary text-primary-foreground rounded flex items-center justify-center">
+              <Package className="h-4 w-4" />
+            </div>
+          )}
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-semibold">SwiftDispatch Pro</span>
             <span className="truncate text-xs text-muted-foreground">
