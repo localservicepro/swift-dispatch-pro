@@ -32,6 +32,7 @@ export function useOpportunityData() {
         .select(`
           id,
           order_number,
+          purchase_order,
           customer_name,
           customer_phone,
           customer_address,

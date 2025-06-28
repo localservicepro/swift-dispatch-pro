@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 interface PaymentOrder {
   id: string;
   order_number: string;
+  purchase_order?: string;
   customer_id?: string;
   customer_name: string;
   customer_email?: string;
@@ -45,7 +46,8 @@ export function usePaymentFilters(payments: PaymentOrder[]) {
         payment.customer_name.toLowerCase().includes(searchLower) ||
         payment.customer_email?.toLowerCase().includes(searchLower) ||
         payment.customer_phone?.includes(searchTerm) ||
-        payment.payment_method?.toLowerCase().includes(searchLower)
+        payment.payment_method?.toLowerCase().includes(searchLower) ||
+        payment.purchase_order?.toLowerCase().includes(searchLower)
       );
     }
 
