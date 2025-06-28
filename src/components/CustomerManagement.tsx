@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,16 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CustomerDialog } from "@/components/customer/CustomerDialog";
 import { CustomerOrders } from "@/components/customer/CustomerOrders";
 import { CustomerStats } from "@/components/customer/CustomerStats";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Search, Eye, Edit, Trash2, MapPin, Bell, BellOff, Building2, User, Home, Wrench } from "lucide-react";
+import { UserPlus, Search, Eye, Edit, Trash2, MapPin, Bell, BellOff, Building2, User, Home, Wrench, Filter, X } from "lucide-react";
 
 export function CustomerManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [customerTypeFilter, setCustomerTypeFilter] = useState<string>("all");
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -57,8 +58,11 @@ export function CustomerManagement() {
     
     const matchesCustomerType = customerTypeFilter === "all" || customer.customer_type === customerTypeFilter;
     const matchesEntityType = entityTypeFilter === "all" || customer.entity_type === entityTypeFilter;
+    const matchesStatus = statusFilter === "all" || 
+      (statusFilter === "active" && customer.is_active) ||
+      (statusFilter === "inactive" && !customer.is_active);
     
-    return matchesSearch && matchesCustomerType && matchesEntityType;
+    return matchesSearch && matchesCustomerType && matchesEntityType && matchesStatus;
   });
 
   const handleAddCustomer = () => {
@@ -103,6 +107,22 @@ export function CustomerManagement() {
         variant: "destructive",
       });
     }
+  };
+
+  const clearAllFilters = () => {
+    setCustomerTypeFilter("all");
+    setEntityTypeFilter("all");
+    setStatusFilter("all");
+    setSearchTerm("");
+  };
+
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (customerTypeFilter !== "all") count++;
+    if (entityTypeFilter !== "all") count++;
+    if (statusFilter !== "all") count++;
+    if (searchTerm.trim()) count++;
+    return count;
   };
 
   if (showOrders && selectedCustomer) {
@@ -154,6 +174,8 @@ export function CustomerManagement() {
     }
   };
 
+  const activeFilterCount = getActiveFilterCount();
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -171,74 +193,142 @@ export function CustomerManagement() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search customers by name, email, company, or suburb..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Filter className="w-5 h-5" />
+            Search & Filter Customers
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {activeFilterCount} active
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              placeholder="Search by name, email, company, or suburb..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                onClick={() => setSearchTerm("")}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* Filter Controls */}
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {/* Customer Type Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Customer Type</label>
+              <Select value={customerTypeFilter} onValueChange={setCustomerTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="residential">
+                    <div className="flex items-center gap-2">
+                      <Home className="w-4 h-4 text-green-600" />
+                      Residential
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="trade">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="w-4 h-4 text-orange-600" />
+                      Trade
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="account">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-purple-600" />
+                      Account
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <div className="flex gap-2">
-                <Button
-                  variant={customerTypeFilter === "all" ? "default" : "outline"}
-                  onClick={() => setCustomerTypeFilter("all")}
-                  size="sm"
-                >
-                  All Types
-                </Button>
-                <Button
-                  variant={customerTypeFilter === "residential" ? "default" : "outline"}
-                  onClick={() => setCustomerTypeFilter("residential")}
-                  size="sm"
-                >
-                  Residential
-                </Button>
-                <Button
-                  variant={customerTypeFilter === "trade" ? "default" : "outline"}
-                  onClick={() => setCustomerTypeFilter("trade")}
-                  size="sm"
-                >
-                  Trade
-                </Button>
-                <Button
-                  variant={customerTypeFilter === "account" ? "default" : "outline"}
-                  onClick={() => setCustomerTypeFilter("account")}
-                  size="sm"
-                >
-                  Account
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={entityTypeFilter === "all" ? "default" : "outline"}
-                  onClick={() => setEntityTypeFilter("all")}
-                  size="sm"
-                >
-                  All Entities
-                </Button>
-                <Button
-                  variant={entityTypeFilter === "individual" ? "default" : "outline"}
-                  onClick={() => setEntityTypeFilter("individual")}
-                  size="sm"
-                >
-                  Individual
-                </Button>
-                <Button
-                  variant={entityTypeFilter === "business" ? "default" : "outline"}
-                  onClick={() => setEntityTypeFilter("business")}
-                  size="sm"
-                >
-                  Business
-                </Button>
-              </div>
+
+            {/* Entity Type Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Entity Type</label>
+              <Select value={entityTypeFilter} onValueChange={setEntityTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Entities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Entities</SelectItem>
+                  <SelectItem value="individual">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-blue-600" />
+                      Individual
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="business">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-indigo-600" />
+                      Business
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Status</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active Only</SelectItem>
+                  <SelectItem value="inactive">Inactive Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Clear Filters */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 opacity-0">Actions</label>
+              <Button
+                variant="outline"
+                onClick={clearAllFilters}
+                disabled={activeFilterCount === 0}
+                className="w-full flex items-center gap-2"
+              >
+                <X className="w-4 h-4" />
+                Clear All
+              </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
+
+          {/* Results Summary */}
+          <div className="flex items-center justify-between text-sm text-slate-600 border-t pt-4">
+            <span>
+              Showing {filteredCustomers?.length || 0} of {customers?.length || 0} customers
+            </span>
+            {activeFilterCount > 0 && (
+              <span className="text-blue-600">
+                {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} applied
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-0">
           {isLoading ? (
             <div className="text-center py-8">Loading customers...</div>
           ) : error ? (
@@ -246,7 +336,7 @@ export function CustomerManagement() {
               Error loading customers. Please try again.
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 p-6">
               {filteredCustomers?.map((customer) => (
                 <div key={customer.id} className="border rounded-lg p-4 hover:bg-slate-50">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -336,7 +426,16 @@ export function CustomerManagement() {
               ))}
               {filteredCustomers?.length === 0 && (
                 <div className="text-center py-8 text-slate-500">
-                  No customers found matching your criteria.
+                  {activeFilterCount > 0 ? (
+                    <div className="space-y-2">
+                      <p>No customers found matching your criteria.</p>
+                      <Button variant="link" onClick={clearAllFilters} className="text-blue-600">
+                        Clear all filters to see all customers
+                      </Button>
+                    </div>
+                  ) : (
+                    "No customers found."
+                  )}
                 </div>
               )}
             </div>
