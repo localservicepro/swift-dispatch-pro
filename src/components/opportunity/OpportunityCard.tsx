@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +27,7 @@ import { NotesIndicator } from "../notes/NotesIndicator";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { NotesEditDialog } from "../notes/NotesEditDialog";
 import { ProofOfDeliveryDialog } from "../order/ProofOfDeliveryDialog";
+import { PurchaseOrderDisplay } from "../order/PurchaseOrderDisplay";
 import { useDeliveryPhotos } from "@/hooks/useDeliveryPhotos";
 import { formatDeliveryDate, formatDeliveryTime, formatCreatedDate, formatCreatedTime } from "@/utils/dateTimeUtils";
 
@@ -205,6 +205,11 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-slate-800 text-sm">{order.order_number}</h3>
+              <PurchaseOrderDisplay 
+                purchaseOrder={order.purchase_order}
+                variant="secondary"
+                showIcon={false}
+              />
               <Eye className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
               <NotesIndicator 
                 orderNotes={order.order_notes}
