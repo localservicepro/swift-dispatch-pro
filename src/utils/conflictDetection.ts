@@ -204,7 +204,8 @@ export const checkTruckConflicts = async (
     for (const order of orders) {
       const orderData = {
         id: order.id,
-        order_number: order.customer_name,
+        order_number: order.order_number,
+        customer_name: order.customer_name,
         customer_address: order.customer_address,
         delivery_date: order.delivery_date || '',
         delivery_time: order.delivery_time || ''
