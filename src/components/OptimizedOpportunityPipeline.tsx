@@ -13,7 +13,7 @@ export function OptimizedOpportunityPipeline() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // Group orders by status
+  // Group orders by status using correct enum values
   const ordersByStatus = React.useMemo(() => {
     let filtered = orders;
 
@@ -30,18 +30,22 @@ export function OptimizedOpportunityPipeline() {
     }
 
     return {
+      requested: filtered.filter(order => order.status === 'requested'),
       preparing: filtered.filter(order => order.status === 'preparing'),
-      ready: filtered.filter(order => order.status === 'ready'),
-      in_transit: filtered.filter(order => order.status === 'in_transit'),
-      delivered: filtered.filter(order => order.status === 'delivered')
+      loading: filtered.filter(order => order.status === 'loading'),
+      en_route: filtered.filter(order => order.status === 'en_route'),
+      delivered: filtered.filter(order => order.status === 'delivered'),
+      cancelled: filtered.filter(order => order.status === 'cancelled')
     };
   }, [orders, searchTerm, statusFilter]);
 
   const statusColumns = [
+    { key: 'requested', title: 'Requested', color: 'bg-gray-100 border-gray-300' },
     { key: 'preparing', title: 'Preparing', color: 'bg-yellow-100 border-yellow-300' },
-    { key: 'ready', title: 'Ready', color: 'bg-blue-100 border-blue-300' },
-    { key: 'in_transit', title: 'In Transit', color: 'bg-orange-100 border-orange-300' },
-    { key: 'delivered', title: 'Delivered', color: 'bg-green-100 border-green-300' }
+    { key: 'loading', title: 'Loading', color: 'bg-blue-100 border-blue-300' },
+    { key: 'en_route', title: 'En Route', color: 'bg-orange-100 border-orange-300' },
+    { key: 'delivered', title: 'Delivered', color: 'bg-green-100 border-green-300' },
+    { key: 'cancelled', title: 'Cancelled', color: 'bg-red-100 border-red-300' }
   ];
 
   if (isLoading) {
@@ -54,8 +58,8 @@ export function OptimizedOpportunityPipeline() {
             <Skeleton className="h-10 w-32" />
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="h-96">
               <CardHeader>
                 <Skeleton className="h-6 w-24" />
@@ -95,20 +99,22 @@ export function OptimizedOpportunityPipeline() {
             className="px-3 py-2 border border-gray-300 rounded-md text-sm"
           >
             <option value="all">All Status</option>
+            <option value="requested">Requested</option>
             <option value="preparing">Preparing</option>
-            <option value="ready">Ready</option>
-            <option value="in_transit">In Transit</option>
+            <option value="loading">Loading</option>
+            <option value="en_route">En Route</option>
             <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
           </select>
         </div>
       </div>
 
       {/* Pipeline Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {statusColumns.map((column) => (
           <Card key={column.key} className={`${column.color} min-h-96`}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-sm">
                 {column.title}
                 <Badge variant="secondary">
                   {ordersByStatus[column.key as keyof typeof ordersByStatus].length}
@@ -119,23 +125,23 @@ export function OptimizedOpportunityPipeline() {
               <div className="space-y-3">
                 {ordersByStatus[column.key as keyof typeof ordersByStatus].map((order) => (
                   <Card key={order.id} className="bg-white hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
+                    <CardContent className="p-3">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm">{order.order_number}</span>
+                          <span className="font-medium text-xs">{order.order_number}</span>
                           <Badge variant="outline" className="text-xs">
                             {order.payment_status}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600">{order.customer_name}</p>
-                        <p className="text-sm font-medium">${order.total_amount?.toFixed(2)}</p>
+                        <p className="text-xs text-gray-600 truncate">{order.customer_name}</p>
+                        <p className="text-xs font-medium">${order.total_amount?.toFixed(2)}</p>
                         {order.delivery_date && (
                           <p className="text-xs text-gray-500">
                             {new Date(order.delivery_date).toLocaleDateString()}
                             {order.delivery_time && ` at ${order.delivery_time}`}
                           </p>
                         )}
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 truncate">
                           Driver: {order.driver_name}
                         </p>
                       </div>
@@ -145,7 +151,7 @@ export function OptimizedOpportunityPipeline() {
                 
                 {ordersByStatus[column.key as keyof typeof ordersByStatus].length === 0 && (
                   <div className="text-center py-8 text-gray-500">
-                    <p className="text-sm">No orders in this stage</p>
+                    <p className="text-xs">No orders in this stage</p>
                   </div>
                 )}
               </div>
