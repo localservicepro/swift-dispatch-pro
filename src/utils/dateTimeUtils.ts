@@ -101,15 +101,21 @@ export const getCurrentTime = (): string => {
   });
 };
 
-export const extractFirstName = (email: string): string => {
-  if (!email) return 'User';
+export const extractFirstName = (fullName?: string, email?: string): string => {
+  // First try to extract from full_name if available
+  if (fullName && fullName.trim()) {
+    const nameParts = fullName.trim().split(/\s+/);
+    const firstName = nameParts[0];
+    return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+  }
   
-  // Extract name from email (everything before @)
-  const namePart = email.split('@')[0];
+  // Fallback to email extraction if no full_name
+  if (email) {
+    const namePart = email.split('@')[0];
+    const firstName = namePart.split(/[._-]/)[0];
+    return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+  }
   
-  // Split by common separators and take first part
-  const firstName = namePart.split(/[._-]/)[0];
-  
-  // Capitalize first letter
-  return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+  // Final fallback
+  return 'User';
 };

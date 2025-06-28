@@ -3,10 +3,13 @@ import { useState, useEffect } from "react";
 import { getTimeBasedGreeting, getCurrentTime, extractFirstName } from "@/utils/dateTimeUtils";
 
 interface PersonalizedGreetingProps {
-  userEmail?: string;
+  profile?: {
+    full_name?: string;
+    email?: string;
+  };
 }
 
-export function PersonalizedGreeting({ userEmail }: PersonalizedGreetingProps) {
+export function PersonalizedGreeting({ profile }: PersonalizedGreetingProps) {
   const [currentTime, setCurrentTime] = useState(getCurrentTime());
   const [greeting, setGreeting] = useState(getTimeBasedGreeting());
 
@@ -25,7 +28,7 @@ export function PersonalizedGreeting({ userEmail }: PersonalizedGreetingProps) {
     return () => clearInterval(interval);
   }, []);
 
-  const firstName = userEmail ? extractFirstName(userEmail) : 'User';
+  const firstName = extractFirstName(profile?.full_name, profile?.email);
 
   return (
     <div className="flex items-center gap-2 text-xl font-semibold text-slate-800">

@@ -86,7 +86,7 @@ const Index = () => {
           
           {/* Desktop header with personalized greeting */}
           <div className="hidden md:flex justify-between items-center p-4 bg-white border-b">
-            <PersonalizedGreeting userEmail={profile?.email} />
+            <PersonalizedGreeting profile={profile} />
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">{profile?.email}</span>
               <Button 
