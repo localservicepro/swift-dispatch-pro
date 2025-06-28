@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +5,6 @@ import { Database } from "@/integrations/supabase/types";
 import { useOrderFormData } from "./hooks/useOrderFormData";
 import { useConflictDetection } from "./hooks/useConflictDetection";
 import { OrderEditFooter } from "./OrderEditFooter";
-import { OrderEditHeader } from "./OrderEditHeader";
 import { OrderEditSections } from "./OrderEditSections";
 import { OrderEditConflictSection } from "./OrderEditConflictSection";
 import { ConflictResult } from "@/utils/conflictDetection";
@@ -259,11 +257,6 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <OrderEditHeader 
-        orderNumber={order.order_number}
-        customerName={order.customer_name}
-      />
-
       <OrderEditSections
         formData={formData}
         deliveryRate={deliveryRate}
