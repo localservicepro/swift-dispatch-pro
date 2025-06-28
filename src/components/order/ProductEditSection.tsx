@@ -39,6 +39,8 @@ export function ProductEditSection({
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [loading, setLoading] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState("");
   const { toast } = useToast();
 
   // Calculate subtotal from current products
@@ -152,18 +154,45 @@ export function ProductEditSection({
     return quantity % 1 === 0 ? quantity.toString() : quantity.toFixed(3).replace(/\.?0+$/, '');
   };
 
-  const updateQuantity = useCallback((productId: string, input: string | number) => {
-    const newQuantity = typeof input === 'string' ? parseQuantityInput(input) : input;
+  const handleQuantityEdit = (productId: string, currentQuantity: number) => {
+    setEditingQuantity(productId);
+    setInputValue(formatQuantity(currentQuantity));
+  };
+
+  const handleQuantitySubmit = (productId: string) => {
+    const newQuantity = parseQuantityInput(inputValue);
     
-    if (newQuantity <= 0) {
-      const updatedProducts = currentProducts.filter(item => item.id !== productId);
-      onProductsChange(updatedProducts);
+    if (isNaN(newQuantity) || newQuantity < 0) {
+      toast({
+        title: "Invalid quantity",
+        description: "Please enter a valid quantity (minimum 0)",
+        variant: "destructive",
+      });
       return;
     }
 
+    // Set minimum quantity to 0.25 if user enters 0
+    const finalQuantity = newQuantity === 0 ? 0.25 : newQuantity;
+    
     const updatedProducts = currentProducts.map(item => 
       item.id === productId 
-        ? { ...item, quantity: newQuantity }
+        ? { ...item, quantity: finalQuantity }
+        : item
+    );
+    onProductsChange(updatedProducts);
+    setEditingQuantity(null);
+    setInputValue("");
+  };
+
+  const handleQuantityCancel = () => {
+    setEditingQuantity(null);
+    setInputValue("");
+  };
+
+  const updateQuantity = useCallback((productId: string, change: number) => {
+    const updatedProducts = currentProducts.map(item => 
+      item.id === productId 
+        ? { ...item, quantity: Math.max(0.25, parseFloat(item.quantity) + change) }
         : item
     );
     onProductsChange(updatedProducts);
@@ -221,23 +250,40 @@ export function ProductEditSection({
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
-                          onClick={() => updateQuantity(item.id, Math.max(0, parseFloat(item.quantity) - 0.25))}
+                          onClick={() => updateQuantity(item.id, -0.25)}
                         >
                           <Minus className="w-3 h-3" />
                         </Button>
-                        <Input
-                          className="w-16 h-6 text-xs text-center"
-                          value={formatQuantity(parseFloat(item.quantity))}
-                          onChange={(e) => updateQuantity(item.id, e.target.value)}
-                          placeholder="1.25"
-                          step="0.25"
-                        />
+                        {editingQuantity === item.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              className="w-20 h-6 text-xs text-center"
+                              value={inputValue}
+                              onChange={(e) => setInputValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleQuantitySubmit(item.id);
+                                if (e.key === 'Escape') handleQuantityCancel();
+                              }}
+                              onBlur={() => handleQuantitySubmit(item.id)}
+                              placeholder="1.25"
+                              step="0.25"
+                              autoFocus
+                            />
+                          </div>
+                        ) : (
+                          <div 
+                            className="w-20 h-6 flex items-center justify-center text-xs font-medium cursor-pointer hover:bg-gray-100 rounded"
+                            onClick={() => handleQuantityEdit(item.id, parseFloat(item.quantity))}
+                          >
+                            {formatQuantity(parseFloat(item.quantity))}
+                          </div>
+                        )}
                         <Button
                           type="button"
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
-                          onClick={() => updateQuantity(item.id, parseFloat(item.quantity) + 0.25)}
+                          onClick={() => updateQuantity(item.id, 0.25)}
                         >
                           <Plus className="w-3 h-3" />
                         </Button>
@@ -323,7 +369,7 @@ export function ProductEditSection({
                             type="button"
                             size="sm"
                             variant="outline"
-                            onClick={() => updateQuantity(product.id, Math.max(0, getCartQuantity(product.id) - 0.25))}
+                            onClick={() => updateQuantity(product.id, -0.25)}
                           >
                             <Minus className="w-3 h-3" />
                           </Button>
@@ -332,7 +378,7 @@ export function ProductEditSection({
                             type="button"
                             size="sm"
                             variant="outline"
-                            onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + 0.25)}
+                            onClick={() => updateQuantity(product.id, 0.25)}
                           >
                             <Plus className="w-3 h-3" />
                           </Button>

@@ -25,7 +25,7 @@ export function SimpleProductAllocation({
 }: SimpleProductAllocationProps) {
   const { toast } = useToast();
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
-  const [tempQuantity, setTempQuantity] = useState("");
+  const [inputValue, setInputValue] = useState("");
 
   const parseQuantityInput = (input: string): number => {
     // Handle fractional input like "1 1/4" or "1.25"
@@ -67,23 +67,31 @@ export function SimpleProductAllocation({
 
   const handleQuantityEdit = (productId: string, currentQuantity: number) => {
     setEditingQuantity(productId);
-    setTempQuantity(formatQuantity(currentQuantity));
+    setInputValue(formatQuantity(currentQuantity));
   };
 
   const handleQuantitySubmit = (productId: string) => {
-    const newQuantity = parseQuantityInput(tempQuantity);
+    const newQuantity = parseQuantityInput(inputValue);
     
-    if (isNaN(newQuantity) || newQuantity <= 0) {
+    if (isNaN(newQuantity) || newQuantity < 0) {
       toast({
         title: "Invalid quantity",
-        description: "Please enter a valid quantity (minimum 0.01)",
+        description: "Please enter a valid quantity (minimum 0)",
         variant: "destructive",
       });
       return;
     }
 
-    onQuantityChange?.(productId, newQuantity);
+    // Set minimum quantity to 0.25 if user enters 0
+    const finalQuantity = newQuantity === 0 ? 0.25 : newQuantity;
+    onQuantityChange?.(productId, finalQuantity);
     setEditingQuantity(null);
+    setInputValue("");
+  };
+
+  const handleQuantityCancel = () => {
+    setEditingQuantity(null);
+    setInputValue("");
   };
 
   const handleAssignToSplit = (productId: string, splitIndex: number) => {
@@ -118,13 +126,14 @@ export function SimpleProductAllocation({
                     {editingQuantity === cartItem.product.id ? (
                       <div className="flex items-center gap-1">
                         <Input
-                          value={tempQuantity}
-                          onChange={(e) => setTempQuantity(e.target.value)}
+                          value={inputValue}
+                          onChange={(e) => setInputValue(e.target.value)}
                           className="h-7 w-20 text-xs text-center"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleQuantitySubmit(cartItem.product.id);
-                            if (e.key === 'Escape') setEditingQuantity(null);
+                            if (e.key === 'Escape') handleQuantityCancel();
                           }}
+                          onBlur={() => handleQuantitySubmit(cartItem.product.id)}
                           placeholder="1.25"
                           step="0.25"
                           autoFocus
@@ -140,7 +149,12 @@ export function SimpleProductAllocation({
                       </div>
                     ) : (
                       <div className="flex items-center gap-1">
-                        <span className="text-sm font-medium">{formatQuantity(cartItem.quantity)}</span>
+                        <span 
+                          className="text-sm font-medium cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                          onClick={() => handleQuantityEdit(cartItem.product.id, cartItem.quantity)}
+                        >
+                          {formatQuantity(cartItem.quantity)}
+                        </span>
                         <Button
                           variant="ghost"
                           size="sm"
