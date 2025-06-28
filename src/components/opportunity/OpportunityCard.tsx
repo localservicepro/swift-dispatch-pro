@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,8 @@ import {
   CheckCircle,
   Eye,
   Edit3,
-  Camera
+  Camera,
+  CalendarDays
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { useAuth } from "../auth/AuthProvider";
@@ -27,6 +29,7 @@ import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { NotesEditDialog } from "../notes/NotesEditDialog";
 import { ProofOfDeliveryDialog } from "../order/ProofOfDeliveryDialog";
 import { useDeliveryPhotos } from "@/hooks/useDeliveryPhotos";
+import { formatDeliveryDate, formatDeliveryTime, formatCreatedDate, formatCreatedTime } from "@/utils/dateTimeUtils";
 
 interface OpportunityCardProps {
   order: any;
@@ -188,15 +191,8 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
   const nextAction = getNextStageAction(currentStage);
   const canMove = canMoveToNextStage(currentStage);
 
-  // Format time for display
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    });
-  };
+  // Check if delivery is scheduled
+  const hasDeliverySchedule = order.delivery_date && order.delivery_time;
 
   return (
     <>
@@ -267,13 +263,28 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
 
           {/* Date and Time Information */}
           <div className="space-y-1 mb-3 text-xs text-slate-500">
+            {/* Delivery Schedule - Show if available */}
+            {hasDeliverySchedule && (
+              <>
+                <div className="flex items-center gap-2 text-blue-600 font-medium">
+                  <CalendarDays className="w-3 h-3" />
+                  <span>Scheduled: {formatDeliveryDate(order.delivery_date)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-blue-600 font-medium">
+                  <Clock className="w-3 h-3" />
+                  <span>{formatDeliveryTime(order.delivery_time)}</span>
+                </div>
+              </>
+            )}
+            
+            {/* Created Date - Always show */}
             <div className="flex items-center gap-2">
               <Calendar className="w-3 h-3" />
-              <span>{new Date(order.created_at).toLocaleDateString()}</span>
+              <span>Created: {formatCreatedDate(order.created_at)}</span>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="w-3 h-3" />
-              <span>{formatTime(order.created_at)}</span>
+              <span>{formatCreatedTime(order.created_at)}</span>
             </div>
             
             {order.suburb_name && (

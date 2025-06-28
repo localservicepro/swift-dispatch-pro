@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Database } from "@/integrations/supabase/types";
+import { convertTimeToFormFormat } from "@/utils/dateTimeUtils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -53,7 +54,7 @@ export function useOrderFormData(order: Order) {
     total_amount: order.total_amount.toString(),
     status: order.status,
     delivery_date: order.delivery_date || '',
-    delivery_time: order.delivery_time || '',
+    delivery_time: convertTimeToFormFormat(order.delivery_time) || '',
     special_instructions: order.special_instructions || '',
     driver_id: order.driver_id || 'unassigned',
     suburb_id: order.suburb_id || '',
