@@ -18,6 +18,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, Loader2 } from "lucide-react";
 import { TeamManagement } from "@/components/TeamManagement";
+import { PersonalizedGreeting } from "@/components/PersonalizedGreeting";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -83,9 +84,9 @@ const Index = () => {
             <MobileHeader activeTab={activeTab} setActiveTab={setActiveTab} />
           </div>
           
-          {/* Desktop header with user info */}
+          {/* Desktop header with personalized greeting */}
           <div className="hidden md:flex justify-between items-center p-4 bg-white border-b">
-            <h1 className="text-xl font-semibold">Order Management System</h1>
+            <PersonalizedGreeting userEmail={profile?.email} />
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">{profile?.email}</span>
               <Button 

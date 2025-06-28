@@ -78,3 +78,38 @@ export const formatCreatedTime = (dateString: string): string => {
     return '';
   }
 };
+
+export const getTimeBasedGreeting = (): string => {
+  const now = new Date();
+  const hour = now.getHours();
+  
+  if (hour < 12) {
+    return 'Good morning';
+  } else if (hour < 17) {
+    return 'Good afternoon';
+  } else {
+    return 'Good evening';
+  }
+};
+
+export const getCurrentTime = (): string => {
+  const now = new Date();
+  return now.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
+export const extractFirstName = (email: string): string => {
+  if (!email) return 'User';
+  
+  // Extract name from email (everything before @)
+  const namePart = email.split('@')[0];
+  
+  // Split by common separators and take first part
+  const firstName = namePart.split(/[._-]/)[0];
+  
+  // Capitalize first letter
+  return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+};
