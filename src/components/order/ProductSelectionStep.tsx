@@ -183,9 +183,9 @@ export function ProductSelectionStep({
     } else {
       const newItem: CartItem = {
         product,
-        quantity: 0.25,
+        quantity: 1,
         unit_price: price,
-        total_price: price * 0.25
+        total_price: price * 1
       };
       onCartUpdate([...cart, newItem]);
     }
