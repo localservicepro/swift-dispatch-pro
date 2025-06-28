@@ -20,7 +20,7 @@ export function OrderPricingForm({ formData, onInputChange }: OrderPricingFormPr
       
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="subtotal" className="text-gray-700 font-medium">Subtotal</Label>
+          <Label htmlFor="subtotal" className="text-gray-700 font-medium">Subtotal (AU$)</Label>
           <Input
             id="subtotal"
             type="number"
@@ -28,10 +28,11 @@ export function OrderPricingForm({ formData, onInputChange }: OrderPricingFormPr
             value={formData.subtotal?.toString() || ''}
             onChange={(e) => onInputChange('subtotal', e.target.value)}
             className="border-amber-200 focus:border-amber-400 focus:ring-amber-200"
+            placeholder="0.00"
           />
         </div>
         <div>
-          <Label htmlFor="delivery_fee" className="text-gray-700 font-medium">Delivery Fee</Label>
+          <Label htmlFor="delivery_fee" className="text-gray-700 font-medium">Delivery Fee (AU$)</Label>
           <Input
             id="delivery_fee"
             type="number"
@@ -39,12 +40,13 @@ export function OrderPricingForm({ formData, onInputChange }: OrderPricingFormPr
             value={formData.delivery_fee?.toString() || ''}
             onChange={(e) => onInputChange('delivery_fee', e.target.value)}
             className="border-amber-200 focus:border-amber-400 focus:ring-amber-200"
+            placeholder="0.00"
           />
         </div>
       </div>
 
       <div>
-        <Label htmlFor="total_amount" className="text-gray-700 font-medium">Total Amount</Label>
+        <Label htmlFor="total_amount" className="text-gray-700 font-medium">Total Amount (AU$)</Label>
         <Input
           id="total_amount"
           type="number"
@@ -53,6 +55,7 @@ export function OrderPricingForm({ formData, onInputChange }: OrderPricingFormPr
           onChange={(e) => onInputChange('total_amount', e.target.value)}
           required
           className="border-amber-200 focus:border-amber-400 focus:ring-amber-200 font-semibold"
+          placeholder="0.00"
         />
       </div>
 

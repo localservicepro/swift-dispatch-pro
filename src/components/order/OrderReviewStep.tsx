@@ -200,10 +200,10 @@ export function OrderReviewStep({
                 <div>
                   <p className="font-medium">{item.product.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    ${item.unit_price.toFixed(2)} × {item.quantity}
+                    AU${item.unit_price.toFixed(2)} × {item.quantity}
                   </p>
                 </div>
-                <p className="font-semibold">${item.total_price.toFixed(2)}</p>
+                <p className="font-semibold">AU${item.total_price.toFixed(2)}</p>
               </div>
             ))}
           </div>
@@ -329,13 +329,13 @@ export function OrderReviewStep({
           <div className="bg-gray-50 p-4 rounded-lg space-y-2">
             <div className="flex justify-between">
               <span>Subtotal:</span>
-              <span>{formatCurrency(orderTotals.subtotal)}</span>
+              <span>AU${orderTotals.subtotal.toFixed(2)}</span>
             </div>
             {orderTotals.adjustments !== 0 && (
               <div className="flex justify-between">
                 <span>Adjustments:</span>
                 <span className={orderTotals.adjustments > 0 ? "text-green-600" : "text-red-600"}>
-                  {orderTotals.adjustments > 0 ? '+' : ''}{formatCurrency(orderTotals.adjustments)}
+                  {orderTotals.adjustments > 0 ? '+' : ''}AU${orderTotals.adjustments.toFixed(2)}
                 </span>
               </div>
             )}
@@ -343,11 +343,11 @@ export function OrderReviewStep({
               <div className="flex justify-between items-center">
                 <Label htmlFor="delivery-fee">Delivery Fee:</Label>
                 <div className="flex items-center gap-2">
-                  <span>$</span>
+                  <span>AU$</span>
                   <Input
                     id="delivery-fee"
                     type="number"
-                    value={deliveryFee}
+                    value={deliveryFee.toFixed(2)}
                     onChange={handleDeliveryFeeChange}
                     className="w-20 h-8 text-right"
                     min="0"
@@ -360,17 +360,17 @@ export function OrderReviewStep({
             {orderTotals.hasSurcharge && orderTotals.surchargeAmount > 0 && (
               <div className="flex justify-between text-orange-600">
                 <span>Surcharge ({paymentSettings?.service_charge_rate || 0}%):</span>
-                <span>{formatCurrency(orderTotals.surchargeAmount)}</span>
+                <span>AU${orderTotals.surchargeAmount.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between text-blue-600">
               <span>{paymentSettings?.gst_label || 'GST'} ({paymentSettings?.gst_rate || 10}%):</span>
-              <span>{formatCurrency(orderTotals.gstAmount)}</span>
+              <span>AU${orderTotals.gstAmount.toFixed(2)}</span>
             </div>
             <Separator />
             <div className="flex justify-between font-semibold text-lg">
               <span>Total:</span>
-              <span>{formatCurrency(orderTotals.totalAmount)}</span>
+              <span>AU${orderTotals.totalAmount.toFixed(2)}</span>
             </div>
           </div>
         </div>

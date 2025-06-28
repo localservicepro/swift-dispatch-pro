@@ -75,5 +75,5 @@ export function calculateOrderTotals(
 }
 
 export function formatCurrency(amount: number, currency: string = 'AUD'): string {
-  return `$${amount.toFixed(2)}`;
+  return `AU$${amount.toFixed(2)}`;
 }

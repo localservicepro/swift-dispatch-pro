@@ -82,7 +82,7 @@ export function SimpleProductAllocation({
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
                     <h4 className="font-medium text-sm">{cartItem.product.name}</h4>
-                    <p className="text-xs text-gray-500">${cartItem.unit_price.toFixed(2)} each</p>
+                    <p className="text-xs text-gray-500">AU${cartItem.unit_price.toFixed(2)} each</p>
                   </div>
                   
                   <div className="flex items-center gap-2">

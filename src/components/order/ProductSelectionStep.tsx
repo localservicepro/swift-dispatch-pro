@@ -287,15 +287,15 @@ export function ProductSelectionStep({
                         {hasSpecial ? (
                           <div>
                             <div className="text-xs text-gray-500 line-through">
-                              ${originalPrice.toFixed(2)}
+                              AU${originalPrice.toFixed(2)}
                             </div>
                             <div className="font-semibold text-red-600">
-                              ${currentPrice.toFixed(2)}
+                              AU${currentPrice.toFixed(2)}
                             </div>
                           </div>
                         ) : (
                           <div className="font-semibold text-green-600">
-                            ${currentPrice.toFixed(2)}
+                            AU${currentPrice.toFixed(2)}
                           </div>
                         )}
                         <div className="text-xs text-gray-500">Stock: {product.stock_quantity}</div>
@@ -311,7 +311,7 @@ export function ProductSelectionStep({
                         <div className="text-red-600">
                           {productSpecial.discount_type === 'percentage' 
                             ? `${productSpecial.discount_value}% off` 
-                            : `$${productSpecial.discount_value} off`
+                            : `AU$${productSpecial.discount_value.toFixed(2)} off`
                           }
                         </div>
                         <div className="flex items-center gap-1 text-red-600">
@@ -393,11 +393,11 @@ export function ProductSelectionStep({
                           <div className="text-xs text-gray-500">
                             {hasSpecial ? (
                               <>
-                                <span className="line-through">${originalPrice.toFixed(2)}</span>
-                                <span className="text-red-600 ml-1">${item.unit_price.toFixed(2)} each</span>
+                                <span className="line-through">AU${originalPrice.toFixed(2)}</span>
+                                <span className="text-red-600 ml-1">AU${item.unit_price.toFixed(2)} each</span>
                               </>
                             ) : (
-                              `$${item.unit_price.toFixed(2)} each`
+                              `AU${item.unit_price.toFixed(2)} each`
                             )}
                           </div>
                         </div>
@@ -421,7 +421,7 @@ export function ProductSelectionStep({
                               <Plus className="w-3 h-3" />
                             </Button>
                           </div>
-                          <div className="font-medium text-sm">${item.total_price.toFixed(2)}</div>
+                          <div className="font-medium text-sm">AU${item.total_price.toFixed(2)}</div>
                         </div>
                       </div>
                     );
@@ -431,7 +431,7 @@ export function ProductSelectionStep({
                 <div className="border-t pt-4 space-y-3">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span className="font-medium">${subtotal.toFixed(2)}</span>
+                    <span className="font-medium">AU${subtotal.toFixed(2)}</span>
                   </div>
 
                   {/* Price Adjustments */}
@@ -444,13 +444,13 @@ export function ProductSelectionStep({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="percentage">%</SelectItem>
-                          <SelectItem value="fixed">$</SelectItem>
+                          <SelectItem value="fixed">AU$</SelectItem>
                         </SelectContent>
                       </Select>
                       <Input
                         type="number"
                         step="0.01"
-                        placeholder="0"
+                        placeholder="0.00"
                         value={adjustmentValue}
                         onChange={(e) => setAdjustmentValue(e.target.value)}
                         className="flex-1"
@@ -465,14 +465,14 @@ export function ProductSelectionStep({
                     <div className="flex justify-between">
                       <span>Adjustments:</span>
                       <span className={adjustments > 0 ? "text-red-600" : "text-green-600"}>
-                        {adjustments > 0 ? '+' : ''}${adjustments.toFixed(2)}
+                        {adjustments > 0 ? '+' : ''}AU${adjustments.toFixed(2)}
                       </span>
                     </div>
                   )}
 
                   <div className="flex justify-between font-semibold text-lg border-t pt-2">
                     <span>Total:</span>
-                    <span>${grandTotal.toFixed(2)}</span>
+                    <span>AU${grandTotal.toFixed(2)}</span>
                   </div>
                 </div>
               </>

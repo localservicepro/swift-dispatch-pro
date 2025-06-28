@@ -137,7 +137,7 @@ export function SplitSummaryCard({
                 </div>
                 <div className="flex gap-2">
                   <Badge variant="secondary" className="text-xs">{totalItems} items</Badge>
-                  <Badge variant="outline" className="text-xs">${splitTotal.toFixed(2)}</Badge>
+                  <Badge variant="outline" className="text-xs">AU${splitTotal.toFixed(2)}</Badge>
                   {isConfigurationComplete && (
                     <Badge variant="default" className="text-xs bg-green-500">Complete</Badge>
                   )}
@@ -161,7 +161,7 @@ export function SplitSummaryCard({
                             <div className="flex-1">
                               <span className="font-medium">{cartItem.product.name}</span>
                               <div className="text-gray-500">
-                                ${cartItem.unit_price.toFixed(2)} each
+                                AU${cartItem.unit_price.toFixed(2)} each
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
