@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +37,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     paymentMethod,
     orderNotes,
     deliveryNotes,
+    purchaseOrder,
     deliveryAddress,
     sameAsBilling,
     useGlobalDeliveryAddress,
@@ -61,6 +63,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setPaymentMethod,
     setOrderNotes,
     setDeliveryNotes,
+    setPurchaseOrder,
     setDeliveryAddress,
     setSameAsBilling,
     setUseGlobalDeliveryAddress,
@@ -111,6 +114,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           paymentMethod,
           orderNotes,
           deliveryNotes,
+          purchaseOrder,
           deliveryAddress,
           sameAsBilling,
           suburbId: selectedSuburbId,
@@ -127,6 +131,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           specialInstructions,
           orderNotes,
           deliveryNotes,
+          purchaseOrder,
           orderTotals
         });
       }
@@ -155,6 +160,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       setPaymentMethod("");
       setOrderNotes("");
       setDeliveryNotes("");
+      setPurchaseOrder("");
       setDeliveryAddress("");
       setSameAsBilling(true);
       setUseGlobalDeliveryAddress(true);
@@ -245,6 +251,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               paymentMethod={paymentMethod}
               orderNotes={orderNotes}
               deliveryNotes={deliveryNotes}
+              purchaseOrder={purchaseOrder}
               deliveryAddress={deliveryAddress}
               sameAsBilling={sameAsBilling}
               onBack={prevStep}
@@ -253,6 +260,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               onDeliveryFeeChange={setManualDeliveryFee}
               onOrderNotesChange={setOrderNotes}
               onDeliveryNotesChange={setDeliveryNotes}
+              onPurchaseOrderChange={setPurchaseOrder}
             />
           );
         } else if (orderType === "split") {
@@ -322,6 +330,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             paymentMethod={paymentMethod}
             orderNotes={orderNotes}
             deliveryNotes={deliveryNotes}
+            purchaseOrder={purchaseOrder}
             deliveryAddress={deliveryAddress}
             sameAsBilling={sameAsBilling}
             onBack={prevStep}
@@ -330,6 +339,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             onDeliveryFeeChange={setManualDeliveryFee}
             onOrderNotesChange={setOrderNotes}
             onDeliveryNotesChange={setDeliveryNotes}
+            onPurchaseOrderChange={setPurchaseOrder}
           />
         );
 

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Package, User, MapPin, Clock, CreditCard, Store, Home, FileText, Truck } from "lucide-react";
+import { CheckCircle, Package, User, MapPin, Clock, CreditCard, Store, Home, FileText, Truck, Receipt } from "lucide-react";
 import { Customer, CartItem } from "./types";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals, formatCurrency } from "./utils/paymentCalculations";
@@ -24,6 +24,7 @@ interface OrderReviewStepProps {
   paymentMethod: string;
   orderNotes: string;
   deliveryNotes: string;
+  purchaseOrder: string;
   deliveryAddress: string;
   sameAsBilling: boolean;
   onBack: () => void;
@@ -32,6 +33,7 @@ interface OrderReviewStepProps {
   onDeliveryFeeChange?: (fee: number) => void;
   onOrderNotesChange?: (notes: string) => void;
   onDeliveryNotesChange?: (notes: string) => void;
+  onPurchaseOrderChange?: (purchaseOrder: string) => void;
 }
 
 export function OrderReviewStep({
@@ -47,6 +49,7 @@ export function OrderReviewStep({
   paymentMethod,
   orderNotes,
   deliveryNotes,
+  purchaseOrder,
   deliveryAddress,
   sameAsBilling,
   onBack,
@@ -54,7 +57,8 @@ export function OrderReviewStep({
   isCreating,
   onDeliveryFeeChange,
   onOrderNotesChange,
-  onDeliveryNotesChange
+  onDeliveryNotesChange,
+  onPurchaseOrderChange
 }: OrderReviewStepProps) {
   const { data: paymentSettings } = usePaymentSettings();
   const stepNumber = deliveryMethod === "pickup" ? "5" : "7";
@@ -104,6 +108,10 @@ export function OrderReviewStep({
     onDeliveryNotesChange?.(e.target.value);
   };
 
+  const handlePurchaseOrderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onPurchaseOrderChange?.(e.target.value);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -119,18 +127,36 @@ export function OrderReviewStep({
             <User className="w-4 h-4" />
             Customer Information
           </h3>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="font-medium">{customer.first_name} {customer.last_name}</p>
-            <p className="text-sm text-muted-foreground">{customer.email}</p>
-            {customer.phone && (
-              <p className="text-sm text-muted-foreground">{customer.phone}</p>
-            )}
-            <div className="mt-2">
-              <p className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                <Home className="w-3 h-3" />
-                Billing Address:
-              </p>
-              <p className="text-sm text-muted-foreground">{customer.full_address}</p>
+          <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+            <div>
+              <p className="font-medium">{customer.first_name} {customer.last_name}</p>
+              <p className="text-sm text-muted-foreground">{customer.email}</p>
+              {customer.phone && (
+                <p className="text-sm text-muted-foreground">{customer.phone}</p>
+              )}
+              <div className="mt-2">
+                <p className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                  <Home className="w-3 h-3" />
+                  Billing Address:
+                </p>
+                <p className="text-sm text-muted-foreground">{customer.full_address}</p>
+              </div>
+            </div>
+            
+            {/* Purchase Order Field */}
+            <div className="space-y-2">
+              <Label htmlFor="purchase-order" className="text-sm font-medium flex items-center gap-1">
+                <Receipt className="w-3 h-3" />
+                Purchase Order Number
+              </Label>
+              <Input
+                id="purchase-order"
+                value={purchaseOrder}
+                onChange={handlePurchaseOrderChange}
+                placeholder="Enter customer's PO number (optional)"
+                disabled={isCreating}
+                className="text-sm"
+              />
             </div>
           </div>
         </div>
