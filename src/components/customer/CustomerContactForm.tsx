@@ -10,24 +10,44 @@ interface CustomerContactFormProps {
     phone: string;
     contact_role: string;
   };
-  customerType: "trade" | "account";
+  customerType: "residential" | "trade" | "account";
+  entityType: "individual" | "business";
   onFormDataChange: (updates: Partial<CustomerContactFormProps['formData']>) => void;
 }
 
-export function CustomerContactForm({ formData, customerType, onFormDataChange }: CustomerContactFormProps) {
-  const contactLabel = customerType === 'account' ? 'Primary Contact' : 'Contact Information';
-  const roleLabel = customerType === 'account' ? 'Contact Role' : 'Role';
+export function CustomerContactForm({ formData, customerType, entityType, onFormDataChange }: CustomerContactFormProps) {
+  const getContactLabel = () => {
+    if (entityType === 'business') {
+      return 'Primary Contact';
+    }
+    return 'Contact Information';
+  };
+  
+  const getContactDescription = () => {
+    if (entityType === 'business') {
+      return 'Primary contact person for this business';
+    }
+    if (customerType === 'residential') {
+      return 'Homeowner information';
+    }
+    return 'Individual customer information';
+  };
+  
+  const getRolePlaceholder = () => {
+    if (entityType === 'business') {
+      return 'e.g. Manager, Owner, Admin';
+    }
+    if (customerType === 'residential') {
+      return 'e.g. Owner, Tenant';
+    }
+    return 'e.g. Owner, Director';
+  };
   
   return (
     <>
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">{contactLabel}</h3>
-        <p className="text-sm text-gray-600">
-          {customerType === 'account' 
-            ? 'Primary contact person for this business' 
-            : 'Individual customer information'
-          }
-        </p>
+        <h3 className="text-lg font-semibold text-gray-800">{getContactLabel()}</h3>
+        <p className="text-sm text-gray-600">{getContactDescription()}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -72,12 +92,12 @@ export function CustomerContactForm({ formData, customerType, onFormDataChange }
       </div>
 
       <div>
-        <Label htmlFor="contact_role">{roleLabel}</Label>
+        <Label htmlFor="contact_role">Role</Label>
         <Input
           id="contact_role"
           value={formData.contact_role}
           onChange={(e) => onFormDataChange({ contact_role: e.target.value })}
-          placeholder={customerType === 'account' ? 'e.g. Manager, Owner, Admin' : 'e.g. Owner, Director'}
+          placeholder={getRolePlaceholder()}
         />
       </div>
     </>

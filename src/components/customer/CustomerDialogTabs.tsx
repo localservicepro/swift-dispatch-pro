@@ -22,7 +22,8 @@ interface CustomerDialogTabsProps {
     phone: string;
     full_address: string;
     suburb_id: string;
-    customer_type: "trade" | "account";
+    customer_type: "residential" | "trade" | "account";
+    entity_type: "individual" | "business";
     is_active: boolean;
     sms_notifications_enabled: boolean;
     company_name: string;
@@ -32,10 +33,10 @@ interface CustomerDialogTabsProps {
   deliveryRate: string;
   customer: Customer | null;
   isEdit: boolean;
-  onCompanyChange: (updates: Partial<{ company_name: string; business_name: string; customer_type: "trade" | "account" }>) => void;
+  onCompanyChange: (updates: Partial<{ company_name: string; business_name: string; customer_type: "residential" | "trade" | "account"; entity_type: "individual" | "business" }>) => void;
   onContactChange: (updates: Partial<{ first_name: string; last_name: string; email: string; phone: string; contact_role: string }>) => void;
   onAddressFormChange: (updates: Partial<{ full_address: string; suburb_id: string }>) => void;
-  onPreferencesChange: (updates: Partial<{ customer_type: "trade" | "account"; is_active: boolean; sms_notifications_enabled: boolean }>) => void;
+  onPreferencesChange: (updates: Partial<{ customer_type: "residential" | "trade" | "account"; entity_type: "individual" | "business"; is_active: boolean; sms_notifications_enabled: boolean }>) => void;
   onSuburbChange: (suburbId: string) => void;
 }
 
@@ -59,7 +60,7 @@ export function CustomerDialogTabs({
         <TabsTrigger value="contact">Contact</TabsTrigger>
         <TabsTrigger value="address">Address</TabsTrigger>
         <TabsTrigger value="preferences">Preferences</TabsTrigger>
-        {isEdit && customer && formData.customer_type === 'account' && (
+        {isEdit && customer && formData.entity_type === 'business' && formData.customer_type === 'account' && (
           <TabsTrigger value="contacts">Contacts</TabsTrigger>
         )}
         {isEdit && customer && (
@@ -76,6 +77,7 @@ export function CustomerDialogTabs({
             company_name: formData.company_name,
             business_name: formData.business_name,
             customer_type: formData.customer_type,
+            entity_type: formData.entity_type,
           }}
           onFormDataChange={onCompanyChange}
         />
@@ -91,6 +93,7 @@ export function CustomerDialogTabs({
             contact_role: formData.contact_role,
           }}
           customerType={formData.customer_type}
+          entityType={formData.entity_type}
           onFormDataChange={onContactChange}
         />
       </TabsContent>
@@ -111,6 +114,7 @@ export function CustomerDialogTabs({
         <CustomerPreferencesForm
           formData={{
             customer_type: formData.customer_type,
+            entity_type: formData.entity_type,
             is_active: formData.is_active,
             sms_notifications_enabled: formData.sms_notifications_enabled,
           }}
@@ -118,7 +122,7 @@ export function CustomerDialogTabs({
         />
       </TabsContent>
 
-      {isEdit && customer && formData.customer_type === 'account' && (
+      {isEdit && customer && formData.entity_type === 'business' && formData.customer_type === 'account' && (
         <TabsContent value="contacts">
           <CustomerContactsManager 
             customerId={customer.id}

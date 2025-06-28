@@ -57,7 +57,8 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
     phone: "",
     full_address: "",
     suburb_id: "",
-    customer_type: "trade",
+    customer_type: "trade" as "residential" | "trade" | "account",
+    entity_type: "individual" as "individual" | "business",
     company_name: "",
     business_name: "",
     contact_role: "Owner"
@@ -117,20 +118,31 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
       return;
     }
 
-    if (newCustomer.customer_type === 'account' && !newCustomer.company_name) {
+    if (newCustomer.entity_type === 'business' && !newCustomer.company_name) {
       toast({
         title: "Error",
-        description: "Company name is required for business accounts",
+        description: "Company name is required for business entities",
         variant: "destructive",
       });
       return;
     }
 
     const customerData = {
-      ...newCustomer,
-      company_name: newCustomer.customer_type === 'account' ? newCustomer.company_name : null,
-      business_name: newCustomer.customer_type === 'account' ? newCustomer.business_name : null,
-      contact_role: newCustomer.customer_type === 'account' ? 'Primary Contact' : 'Owner',
+      first_name: newCustomer.first_name,
+      last_name: newCustomer.last_name,
+      email: newCustomer.email,
+      phone: newCustomer.phone || null,
+      full_address: newCustomer.full_address,
+      suburb_id: newCustomer.suburb_id || null,
+      customer_type: newCustomer.customer_type,
+      entity_type: newCustomer.entity_type,
+      is_active: true,
+      sms_notifications_enabled: true,
+      company_name: newCustomer.entity_type === 'business' ? newCustomer.company_name : null,
+      business_name: newCustomer.entity_type === 'business' ? newCustomer.business_name : null,
+      contact_role: getDefaultContactRole(newCustomer.customer_type, newCustomer.entity_type),
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
     };
 
     const { data, error } = await supabase
@@ -159,6 +171,19 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
         description: "Customer created successfully!",
       });
     }
+  };
+
+  const getDefaultContactRole = (customerType: "residential" | "trade" | "account", entityType: "individual" | "business") => {
+    if (entityType === 'business') {
+      return 'Primary Contact';
+    }
+    if (customerType === 'residential') {
+      return 'Owner';
+    }
+    if (customerType === 'trade') {
+      return 'Tradesperson';
+    }
+    return 'Contact';
   };
 
   const handleNewCustomerAddressSelect = (addressData: any) => {
@@ -312,18 +337,32 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
                 <CardContent className="space-y-4">
                   <div>
                     <Label htmlFor="customer_type">Customer Type *</Label>
-                    <Select value={newCustomer.customer_type} onValueChange={(value) => setNewCustomer({...newCustomer, customer_type: value, contact_role: value === 'account' ? 'Primary Contact' : 'Owner'})}>
+                    <Select value={newCustomer.customer_type} onValueChange={(value: "residential" | "trade" | "account") => setNewCustomer({...newCustomer, customer_type: value, entity_type: value === 'residential' ? 'individual' : newCustomer.entity_type, contact_role: getDefaultContactRole(value, newCustomer.entity_type)})}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="trade">Trade (Individual)</SelectItem>
+                        <SelectItem value="residential">Residential (Homeowners)</SelectItem>
+                        <SelectItem value="trade">Trade (Professionals)</SelectItem>
                         <SelectItem value="account">Account (Business)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {newCustomer.customer_type === 'account' && (
+                  <div>
+                    <Label htmlFor="entity_type">Entity Type *</Label>
+                    <Select value={newCustomer.entity_type} onValueChange={(value: "individual" | "business") => setNewCustomer({...newCustomer, entity_type: value, contact_role: getDefaultContactRole(newCustomer.customer_type, value)})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="individual">Individual</SelectItem>
+                        <SelectItem value="business">Business/Company</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {newCustomer.entity_type === 'business' && (
                     <>
                       <div>
                         <Label htmlFor="company_name">Company Name *</Label>
@@ -348,7 +387,7 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
 
                   <div className="border-t pt-4">
                     <h4 className="font-medium mb-3">
-                      {newCustomer.customer_type === 'account' ? 'Primary Contact' : 'Contact Information'}
+                      {newCustomer.entity_type === 'business' ? 'Primary Contact' : 'Contact Information'}
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -422,7 +461,7 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
                         id="contact_role"
                         value={newCustomer.contact_role}
                         onChange={(e) => setNewCustomer({...newCustomer, contact_role: e.target.value})}
-                        placeholder={newCustomer.customer_type === 'account' ? 'e.g. Manager, Owner' : 'e.g. Owner, Director'}
+                        placeholder={newCustomer.entity_type === 'business' ? 'e.g. Manager, Owner' : 'e.g. Owner, Director'}
                       />
                     </div>
                   </div>
