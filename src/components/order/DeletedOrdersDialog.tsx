@@ -7,6 +7,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Trash2 } from "lucide-react";
@@ -30,16 +31,16 @@ export function DeletedOrdersDialog() {
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-6xl max-h-[80vh]">
-        <DialogHeader>
+      <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Trash2 className="w-5 h-5 text-red-600" />
             Deleted Orders Management
           </DialogTitle>
         </DialogHeader>
-        <div className="overflow-y-auto">
+        <ScrollArea className="flex-1 pr-4">
           <DeletedOrdersList />
-        </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
