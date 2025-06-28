@@ -18,12 +18,13 @@ interface CustomerDialogProps {
 }
 
 export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = false }: CustomerDialogProps) {
-  const [activeTab, setActiveTab] = useState("personal");
+  const [activeTab, setActiveTab] = useState("company");
   
   const {
     formData,
     deliveryRate,
-    handlePersonalInfoChange,
+    handleCompanyChange,
+    handleContactChange,
     handleAddressFormChange,
     handlePreferencesChange,
     handleSuburbChange
@@ -48,7 +49,8 @@ export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = 
           deliveryRate={deliveryRate}
           customer={customer}
           isEdit={isEdit}
-          onPersonalInfoChange={handlePersonalInfoChange}
+          onCompanyChange={handleCompanyChange}
+          onContactChange={handleContactChange}
           onAddressFormChange={handleAddressFormChange}
           onPreferencesChange={handlePreferencesChange}
           onSuburbChange={handleSuburbChange}

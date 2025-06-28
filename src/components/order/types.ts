@@ -13,6 +13,9 @@ export interface Customer {
   full_address: string;
   customer_type: string;
   suburb_id: string;
+  company_name: string | null;
+  business_name: string | null;
+  contact_role: string | null;
   suburb?: {
     name: string;
     state: string;
