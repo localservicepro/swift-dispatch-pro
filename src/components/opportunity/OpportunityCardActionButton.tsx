@@ -60,56 +60,36 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
 
     setIsMoving(true);
     try {
-      let updateData: any = {};
-      
-      switch (nextStage) {
-        case 'preparing':
-          updateData = { 
-            payment_status: 'paid',
-            status: 'preparing'
-          };
-          break;
-        case 'loading':
-          updateData = { status: 'loading' };
-          break;
-        case 'en_route':
-          updateData = { status: 'en_route' };
-          break;
-        case 'delivered':
-          updateData = { status: 'delivered' };
-          break;
-      }
-
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          ...updateData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', order.id);
+      // Use RPC function instead of direct table update
+      const { error } = await supabase.rpc('update_order_status', {
+        order_id: order.id,
+        new_status: nextStage as any
+      });
 
       if (error) throw error;
 
-      if (profile?.full_name) {
-        if (nextStage === 'preparing') {
-          await activityLogger.orderStatusUpdate(
-            order.id,
-            order.order_number,
-            order.customer_name,
-            'requested',
-            'preparing',
-            profile.full_name
-          );
-        } else {
-          await activityLogger.orderStatusUpdate(
-            order.id,
-            order.order_number,
-            order.customer_name,
-            order.status,
-            updateData.status,
-            profile.full_name
-          );
+      // Handle payment status update for preparing stage
+      if (nextStage === 'preparing' && order.payment_status !== 'paid') {
+        const { error: paymentError } = await supabase.rpc('update_payment_status', {
+          p_order_id: order.id,
+          p_new_status: 'paid'
+        });
+
+        if (paymentError) {
+          console.warn('Failed to update payment status:', paymentError);
         }
+      }
+
+      // Log the activity
+      if (profile?.full_name) {
+        await activityLogger.orderStatusUpdate(
+          order.id,
+          order.order_number,
+          order.customer_name,
+          currentStage,
+          nextStage,
+          profile.full_name
+        );
       }
 
       const actionText = getNextStageAction(currentStage);
@@ -120,6 +100,7 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
 
       onOrderMove();
     } catch (error: any) {
+      console.error('Failed to move order:', error);
       toast({
         title: "Error",
         description: "Failed to update order status",

@@ -2014,52 +2014,161 @@ export type Database = {
       orders_export_view: {
         Row: {
           adjustments: number | null
-          assigned_truck_type: Database["public"]["Enums"]["truck_type"] | null
-          billing_address: string | null
-          business_name: string | null
-          company_name: string | null
+          admin_id: string | null
           created_at: string | null
-          created_at_formatted: string | null
-          customer_email: string | null
-          customer_first_name: string | null
-          customer_last_name: string | null
+          customer_address: string | null
+          customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
           deleted_at: string | null
-          deleted_by_name: string | null
+          deleted_by: string | null
           delivery_address: string | null
           delivery_date: string | null
-          delivery_date_formatted: string | null
           delivery_fee: number | null
           delivery_method: Database["public"]["Enums"]["delivery_method"] | null
           delivery_notes: string | null
           delivery_time: string | null
-          delivery_time_formatted: string | null
-          driver_name: string | null
+          driver_id: string | null
+          ghl_opportunity_id: string | null
           id: string | null
           is_split_order: boolean | null
+          last_synced_to_ghl: string | null
           master_order_id: string | null
           order_notes: string | null
           order_number: string | null
-          order_status: Database["public"]["Enums"]["order_status"] | null
+          payment_date: string | null
           payment_method: string | null
           payment_status: string | null
-          product_count: number | null
-          products_formatted: string | null
+          products: Json | null
           purchase_order: string | null
-          record_status: string | null
+          same_as_billing: boolean | null
           special_instructions: string | null
           split_number: number | null
+          status: Database["public"]["Enums"]["order_status"] | null
           subtotal: number | null
-          suburb_name: string | null
-          suburb_postcode: string | null
-          suburb_state: string | null
           total_amount: number | null
-          truck_registration: string | null
+          truck_id: string | null
           truck_type: Database["public"]["Enums"]["truck_type"] | null
           updated_at: string | null
         }
+        Insert: {
+          adjustments?: number | null
+          admin_id?: string | null
+          created_at?: string | null
+          customer_address?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          delivery_address?: string | null
+          delivery_date?: string | null
+          delivery_fee?: number | null
+          delivery_method?:
+            | Database["public"]["Enums"]["delivery_method"]
+            | null
+          delivery_notes?: string | null
+          delivery_time?: string | null
+          driver_id?: string | null
+          ghl_opportunity_id?: string | null
+          id?: string | null
+          is_split_order?: boolean | null
+          last_synced_to_ghl?: string | null
+          master_order_id?: string | null
+          order_notes?: string | null
+          order_number?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          products?: Json | null
+          purchase_order?: string | null
+          same_as_billing?: boolean | null
+          special_instructions?: string | null
+          split_number?: number | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+          subtotal?: number | null
+          total_amount?: number | null
+          truck_id?: string | null
+          truck_type?: Database["public"]["Enums"]["truck_type"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          adjustments?: number | null
+          admin_id?: string | null
+          created_at?: string | null
+          customer_address?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          delivery_address?: string | null
+          delivery_date?: string | null
+          delivery_fee?: number | null
+          delivery_method?:
+            | Database["public"]["Enums"]["delivery_method"]
+            | null
+          delivery_notes?: string | null
+          delivery_time?: string | null
+          driver_id?: string | null
+          ghl_opportunity_id?: string | null
+          id?: string | null
+          is_split_order?: boolean | null
+          last_synced_to_ghl?: string | null
+          master_order_id?: string | null
+          order_notes?: string | null
+          order_number?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          products?: Json | null
+          purchase_order?: string | null
+          same_as_billing?: boolean | null
+          special_instructions?: string | null
+          split_number?: number | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+          subtotal?: number | null
+          total_amount?: number | null
+          truck_id?: string | null
+          truck_type?: Database["public"]["Enums"]["truck_type"] | null
+          updated_at?: string | null
+        }
         Relationships: [
+          {
+            foreignKeyName: "orders_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_classification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_master_order_id_fkey"
             columns: ["master_order_id"]
@@ -2072,6 +2181,13 @@ export type Database = {
             columns: ["master_order_id"]
             isOneToOne: false
             referencedRelation: "orders_export_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_truck_id_fkey"
+            columns: ["truck_id"]
+            isOneToOne: false
+            referencedRelation: "trucks"
             referencedColumns: ["id"]
           },
         ]
@@ -2103,6 +2219,14 @@ export type Database = {
       create_driver: {
         Args: { driver_id: string; driver_name: string; driver_license: string }
         Returns: undefined
+      }
+      create_single_order: {
+        Args: { p_order_data: Json }
+        Returns: string
+      }
+      create_split_order: {
+        Args: { p_master_order_data: Json; p_split_orders: Json[] }
+        Returns: string[]
       }
       get_active_specials_for_product: {
         Args: { product_id_param: string; customer_tier_param?: string }
@@ -2184,6 +2308,14 @@ export type Database = {
           new_status: Database["public"]["Enums"]["order_status"]
           notes?: string
           location?: Json
+        }
+        Returns: undefined
+      }
+      update_payment_status: {
+        Args: {
+          p_order_id: string
+          p_new_status: string
+          p_payment_date?: string
         }
         Returns: undefined
       }
