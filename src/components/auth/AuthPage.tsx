@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,7 +68,7 @@ export function AuthPage() {
         <CardHeader>
           <div className="flex flex-col items-center space-y-4">
             <img 
-              src="/lovable-uploads/2947dc38-8dec-4272-8805-b013a99012a4.png"
+              src="/lovable-uploads/db33e7b2-9d4c-4826-a2f7-9bdcdeff7d23.png"
               alt="Swift Dispatch Pro Logo"
               className="w-16 h-16 object-contain"
             />
