@@ -15,6 +15,14 @@ export function DeliveryCardTruckAssignment({ order }: DeliveryCardTruckAssignme
 
   return (
     <div className="space-y-1 text-xs text-slate-600">
+      {/* Truck Registration - Most Important */}
+      {order.truck_registration && (
+        <div className="flex items-center gap-2">
+          <Truck className="w-4 h-4" />
+          <span>Truck: <span className="font-semibold text-slate-800 text-sm">#{order.truck_registration}</span></span>
+        </div>
+      )}
+      
       {/* Truck Type */}
       {truckInfo && (
         <div className="flex items-center gap-2">
@@ -23,14 +31,6 @@ export function DeliveryCardTruckAssignment({ order }: DeliveryCardTruckAssignme
           <span className={`text-xs px-2 py-0.5 rounded text-white ${truckInfo.colorClass.replace('text-', 'bg-')}`}>
             {truckInfo.capacity}
           </span>
-        </div>
-      )}
-      
-      {/* Truck Registration */}
-      {order.truck_registration && (
-        <div className="flex items-center gap-2">
-          <Truck className="w-4 h-4" />
-          <span>Registration: <span className="font-medium text-slate-800">#{order.truck_registration}</span></span>
         </div>
       )}
       

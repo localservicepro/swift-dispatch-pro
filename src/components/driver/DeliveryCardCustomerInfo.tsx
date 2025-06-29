@@ -11,7 +11,7 @@ export function DeliveryCardCustomerInfo({ order }: DeliveryCardCustomerInfoProp
       <div className="flex items-start gap-2 text-slate-700">
         <MapPin className="w-4 h-4 text-slate-500 mt-0.5" />
         <div className="flex-1">
-          <div className="font-medium">{order.customer_name}</div>
+          <div className="font-medium text-slate-800">{order.customer_name}</div>
           <div className="text-sm text-slate-600">{order.customer_address}</div>
           {order.suburb_name && (
             <div className="text-xs text-slate-500">
