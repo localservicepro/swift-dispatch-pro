@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -132,7 +131,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
     try {
-      const redirectUrl = `${window.location.origin}/shop`;
+      const redirectUrl = `${window.location.origin}/`;
       
       const { data, error: authError } = await supabase.auth.signUp({
         email,

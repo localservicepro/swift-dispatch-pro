@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export const signIn = async (email: string, password: string) => {
@@ -16,7 +15,7 @@ export const signIn = async (email: string, password: string) => {
 
 export const signUp = async (email: string, password: string, fullName?: string) => {
   try {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `${window.location.origin}/admin`;
     
     const { error } = await supabase.auth.signUp({
       email,

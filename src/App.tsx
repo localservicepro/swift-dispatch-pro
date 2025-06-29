@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -51,11 +52,11 @@ function AuthenticatedApp() {
     );
   }
 
-  // If user is authenticated but has no admin/driver profile, redirect to shop
+  // If user is authenticated but has no admin/driver profile, redirect to shop (root)
   // Only do this after loading is complete to ensure we have accurate profile data
   if (user && !loading && !profile) {
     console.log('User authenticated but no admin/driver profile found, redirecting to shop');
-    return <Navigate to="/shop" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // User is authenticated and has admin/driver profile
@@ -63,12 +64,12 @@ function AuthenticatedApp() {
   return (
     <Routes>
       <Route 
-        path="/" 
+        path="/admin" 
         element={
-          profile?.role === 'driver' ? (
-            <Navigate to="/driver" replace />
-          ) : (
+          profile?.role === 'admin' ? (
             <Index />
+          ) : (
+            <Navigate to="/" replace />
           )
         } 
       />
@@ -91,16 +92,20 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public shop routes - no authentication required */}
-        <Route path="/shop" element={<ShopPage />} />
-        <Route path="/shop/account" element={<CustomerAccount />} />
+        {/* Public shop routes - now at root */}
+        <Route path="/" element={<ShopPage />} />
+        <Route path="/account" element={<CustomerAccount />} />
         
         {/* Public payment routes - no authentication required */}
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
         
-        {/* All other routes require admin/driver authentication */}
-        <Route path="/*" element={<AuthenticatedApp />} />
+        {/* Admin and driver routes require authentication */}
+        <Route path="/admin/*" element={<AuthenticatedApp />} />
+        <Route path="/driver" element={<AuthenticatedApp />} />
+        
+        {/* Catch all other routes */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );
