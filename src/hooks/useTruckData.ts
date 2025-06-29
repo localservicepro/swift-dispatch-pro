@@ -139,6 +139,36 @@ export function useTruckData() {
     },
   });
 
+  // Remove truck (soft delete)
+  const removeTruck = useMutation({
+    mutationFn: async (truckId: string) => {
+      const { error } = await supabase
+        .from('trucks')
+        .update({
+          is_active: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', truckId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trucks'] });
+      toast({
+        title: "Success",
+        description: "Truck removed successfully",
+      });
+    },
+    onError: (error) => {
+      console.error('Error removing truck:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove truck",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     trucks,
     isLoading,
@@ -148,8 +178,10 @@ export function useTruckData() {
     updateTruckStatus: updateTruckStatus.mutate,
     addTruck: addTruck.mutate,
     updateTruck: updateTruck.mutate,
+    removeTruck: removeTruck.mutate,
     isUpdatingStatus: updateTruckStatus.isPending,
     isAddingTruck: addTruck.isPending,
     isUpdatingTruck: updateTruck.isPending,
+    isRemovingTruck: removeTruck.isPending,
   };
 }

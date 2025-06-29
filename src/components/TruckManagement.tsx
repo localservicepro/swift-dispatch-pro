@@ -8,6 +8,8 @@ import { useTruckData } from "@/hooks/useTruckData";
 import { TruckStatsOverview } from "@/components/truck/TruckStatsOverview";
 import { TruckStatusCard } from "@/components/truck/TruckStatusCard";
 import { AddTruckDialog } from "@/components/truck/AddTruckDialog";
+import { EditTruckDialog } from "@/components/truck/EditTruckDialog";
+import { RemoveTruckDialog } from "@/components/truck/RemoveTruckDialog";
 import { Database } from "@/integrations/supabase/types";
 
 type Truck = Database["public"]["Tables"]["trucks"]["Row"];
@@ -20,8 +22,12 @@ export function TruckManagement() {
     getTruckStats,
     updateTruckStatus,
     addTruck,
+    updateTruck,
+    removeTruck,
     isUpdatingStatus,
-    isAddingTruck
+    isAddingTruck,
+    isUpdatingTruck,
+    isRemovingTruck
   } = useTruckData();
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,6 +35,9 @@ export function TruckManagement() {
   const [truckTypeFilter, setTruckTypeFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [selectedTruck, setSelectedTruck] = useState<Truck | null>(null);
   
   const stats = getTruckStats();
 
@@ -48,13 +57,32 @@ export function TruckManagement() {
   };
 
   const handleEditTruck = (truck: Truck) => {
-    // TODO: Implement truck editing dialog
-    console.log("Edit truck:", truck);
+    setSelectedTruck(truck);
+    setShowEditDialog(true);
+  };
+
+  const handleRemoveTruck = (truck: Truck) => {
+    setSelectedTruck(truck);
+    setShowRemoveDialog(true);
   };
 
   const handleAddTruck = (truckData: any) => {
     addTruck(truckData);
     setShowAddDialog(false);
+  };
+
+  const handleUpdateTruck = (truckId: string, updates: any) => {
+    updateTruck({ truckId, updates });
+    setShowEditDialog(false);
+    setSelectedTruck(null);
+  };
+
+  const handleConfirmRemove = () => {
+    if (selectedTruck) {
+      removeTruck(selectedTruck.id);
+      setShowRemoveDialog(false);
+      setSelectedTruck(null);
+    }
   };
 
   if (isLoading) {
@@ -168,19 +196,36 @@ export function TruckManagement() {
               key={truck.id} 
               truck={truck} 
               onStatusChange={handleStatusChange} 
-              onEdit={handleEditTruck} 
+              onEdit={handleEditTruck}
+              onRemove={handleRemoveTruck}
               isUpdating={isUpdatingStatus} 
             />
           ))}
         </div>
       )}
 
-      {/* Add Truck Dialog */}
+      {/* Dialogs */}
       <AddTruckDialog
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
         onAddTruck={handleAddTruck}
         isLoading={isAddingTruck}
+      />
+
+      <EditTruckDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        onUpdateTruck={handleUpdateTruck}
+        truck={selectedTruck}
+        isLoading={isUpdatingTruck}
+      />
+
+      <RemoveTruckDialog
+        open={showRemoveDialog}
+        onOpenChange={setShowRemoveDialog}
+        onConfirm={handleConfirmRemove}
+        truck={selectedTruck}
+        isLoading={isRemovingTruck}
       />
     </div>
   );

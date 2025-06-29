@@ -7,7 +7,9 @@ import {
   Calendar, 
   Wrench, 
   AlertTriangle,
-  MapPin 
+  MapPin,
+  Edit,
+  Trash
 } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { getTruckInfo } from "@/utils/truckUtils";
@@ -26,6 +28,7 @@ interface TruckStatusCardProps {
   truck: Truck;
   onStatusChange: (truckId: string, status: TruckStatus) => void;
   onEdit: (truck: Truck) => void;
+  onRemove: (truck: Truck) => void;
   isUpdating?: boolean;
 }
 
@@ -33,6 +36,7 @@ export function TruckStatusCard({
   truck, 
   onStatusChange, 
   onEdit,
+  onRemove,
   isUpdating = false 
 }: TruckStatusCardProps) {
   const truckInfo = getTruckInfo(truck.truck_type);
@@ -151,8 +155,23 @@ export function TruckStatusCard({
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          <Button variant="outline" onClick={() => onEdit(truck)} className="flex-1">
+          <Button 
+            variant="outline" 
+            onClick={() => onEdit(truck)} 
+            className="flex-1"
+            disabled={isUpdating}
+          >
+            <Edit className="w-4 h-4 mr-2" />
             Edit Details
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => onRemove(truck)}
+            className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+            disabled={isUpdating}
+          >
+            <Trash className="w-4 h-4 mr-2" />
+            Remove
           </Button>
         </div>
 
