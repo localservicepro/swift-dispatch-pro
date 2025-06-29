@@ -87,7 +87,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       status: 'requested' as const,
       is_split_order: false,
       payment_status: 'pending'
-      // Note: products_formatted will be automatically populated by the database trigger
+      // Note: driver_name, truck_registration, truck_type_display will be automatically populated by the database trigger
     };
 
     console.log('Creating single order with data:', orderData);
@@ -241,7 +241,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         master_order_id: masterOrder.id,
         split_number: i + 1,
         payment_status: 'pending'
-        // Note: products_formatted will be automatically populated by the database trigger
+        // Note: driver_name, truck_registration, truck_type_display will be automatically populated by the database trigger
       };
 
       console.log(`Creating split order ${i + 1}:`, splitOrderData);

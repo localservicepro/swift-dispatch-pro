@@ -737,6 +737,7 @@ export type Database = {
           delivery_notes: string | null
           delivery_time: string | null
           driver_id: string | null
+          driver_name: string | null
           ghl_opportunity_id: string | null
           id: string
           is_split_order: boolean | null
@@ -757,7 +758,9 @@ export type Database = {
           subtotal: number | null
           total_amount: number
           truck_id: string | null
+          truck_registration: string | null
           truck_type: Database["public"]["Enums"]["truck_type"] | null
+          truck_type_display: string | null
           updated_at: string | null
         }
         Insert: {
@@ -779,6 +782,7 @@ export type Database = {
           delivery_notes?: string | null
           delivery_time?: string | null
           driver_id?: string | null
+          driver_name?: string | null
           ghl_opportunity_id?: string | null
           id?: string
           is_split_order?: boolean | null
@@ -799,7 +803,9 @@ export type Database = {
           subtotal?: number | null
           total_amount: number
           truck_id?: string | null
+          truck_registration?: string | null
           truck_type?: Database["public"]["Enums"]["truck_type"] | null
+          truck_type_display?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -821,6 +827,7 @@ export type Database = {
           delivery_notes?: string | null
           delivery_time?: string | null
           driver_id?: string | null
+          driver_name?: string | null
           ghl_opportunity_id?: string | null
           id?: string
           is_split_order?: boolean | null
@@ -841,7 +848,9 @@ export type Database = {
           subtotal?: number | null
           total_amount?: number
           truck_id?: string | null
+          truck_registration?: string | null
           truck_type?: Database["public"]["Enums"]["truck_type"] | null
+          truck_type_display?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1794,6 +1803,10 @@ export type Database = {
           customer_type_param?: string
         }
         Returns: number
+      }
+      get_truck_display_info: {
+        Args: { truck_type_param: Database["public"]["Enums"]["truck_type"] }
+        Returns: string
       }
       is_current_user_admin: {
         Args: Record<PropertyKey, never>

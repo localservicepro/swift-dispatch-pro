@@ -23,7 +23,9 @@ import { useSplitOrderGroups } from "@/hooks/useSplitOrderGroups";
 import { NotesIndicator } from "./notes/NotesIndicator";
 import { NotesDisplaySection } from "./notes/NotesDisplaySection";
 import { NotesEditDialog } from "./notes/NotesEditDialog";
+
 type OrderStatus = Database["public"]["Enums"]["order_status"];
+
 interface Order {
   id: string;
   order_number: string;
@@ -45,7 +47,12 @@ interface Order {
   subtotal?: number;
   order_notes?: string;
   delivery_notes?: string;
+  // New denormalized fields
+  driver_name?: string;
+  truck_registration?: string;
+  truck_type_display?: string;
 }
+
 export function OrderManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -54,33 +61,20 @@ export function OrderManagement() {
   const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingNotes, setEditingNotes] = useState<Order | null>(null);
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
-  const {
-    profile
-  } = useAuth();
-  const {
-    deleteSplitOrderGroup
-  } = useSplitOrderGroups();
+  const { profile } = useAuth();
+  const { deleteSplitOrderGroup } = useSplitOrderGroups();
 
-  // Fetch orders from database with enhanced suburb retrieval and products_formatted
-  const {
-    data: orders = [],
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
+  // Fetch orders from database with the new denormalized fields
+  const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
-      console.log('Fetching orders from database with enhanced suburb lookup and products_formatted...');
+      console.log('Fetching orders from database with denormalized fields...');
 
-      // First, get all orders with their basic relationships including products_formatted
-      const {
-        data: ordersData,
-        error: ordersError
-      } = await supabase.from('orders').select(`
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
           id,
           order_number,
           purchase_order,
@@ -103,81 +97,43 @@ export function OrderManagement() {
           truck_id,
           order_notes,
           delivery_notes,
+          driver_name,
+          truck_registration,
+          truck_type_display,
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
             suburbs(id, name, state, postcode)
-          ),
-          profiles!orders_driver_id_fkey(full_name),
-          trucks!orders_truck_id_fkey(registration_number, truck_type)
-        `).order('created_at', {
-        ascending: false
-      });
+          )
+        `)
+        .order('created_at', { ascending: false });
+
       if (ordersError) {
         console.error('Error fetching orders:', ordersError);
         throw ordersError;
       }
+
       console.log('Raw orders data:', ordersData);
 
-      // Now get all unique customer IDs that might be missing suburb data
-      const customerIds = ordersData?.filter(order => order.customer_id && (!order.customers?.suburbs || !order.customers.suburb_id)).map(order => order.customer_id).filter(Boolean) as string[];
-
-      // Fetch additional customer data for those missing suburb info
-      let additionalCustomerData: any[] = [];
-      if (customerIds.length > 0) {
-        console.log('Fetching additional customer data for:', customerIds);
-        const {
-          data: customerData,
-          error: customerError
-        } = await supabase.from('customers').select(`
-            id,
-            suburb_id,
-            suburbs(id, name, state, postcode)
-          `).in('id', customerIds);
-        if (!customerError) {
-          additionalCustomerData = customerData || [];
-          console.log('Additional customer data:', additionalCustomerData);
-        }
-      }
-
-      // Map the data with enhanced suburb resolution
+      // Map the data using the denormalized fields
       const mappedOrders = ordersData?.map(order => {
-        // Primary suburb source: from the main query
-        let suburbData = order.customers?.suburbs;
-        let suburbId = order.customers?.suburb_id;
+        const suburbData = order.customers?.suburbs;
+        const suburbId = order.customers?.suburb_id;
 
-        // Fallback: check additional customer data if primary is missing
-        if (!suburbData && order.customer_id) {
-          const additionalCustomer = additionalCustomerData.find(c => c.id === order.customer_id);
-          if (additionalCustomer?.suburbs) {
-            suburbData = additionalCustomer.suburbs;
-            suburbId = additionalCustomer.suburb_id;
-            console.log(`Found suburb data for order ${order.order_number} via fallback:`, suburbData);
-          }
-        }
-        const mappedOrder = {
+        return {
           ...order,
           suburb_id: suburbId || null,
           suburb_name: suburbData?.name || null,
           suburb_state: suburbData?.state || null,
           suburb_postcode: suburbData?.postcode || null,
-          driver_name: order.profiles?.full_name || 'Not Assigned',
-          truck_registration: order.trucks?.registration_number || null,
-          truck_type_from_truck: order.trucks?.truck_type || order.truck_type
+          // Use denormalized fields directly
+          driver_name: order.driver_name || 'Not Assigned',
+          truck_registration: order.truck_registration || null,
+          truck_type_display: order.truck_type_display || null
         };
-
-        // Debug logging for orders without suburb data
-        if (!suburbData && order.customer_id) {
-          console.warn(`Order ${order.order_number} missing suburb data:`, {
-            customer_id: order.customer_id,
-            has_customer_relation: !!order.customers,
-            customer_suburb_id: order.customers?.suburb_id,
-            has_suburb_relation: !!order.customers?.suburbs
-          });
-        }
-        return mappedOrder;
       }) || [];
-      console.log('Final mapped orders:', mappedOrders);
+
+      console.log('Final mapped orders with denormalized fields:', mappedOrders);
       return mappedOrders;
     }
   });
@@ -189,13 +145,19 @@ export function OrderManagement() {
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(order => order.order_number.toLowerCase().includes(query) || order.customer_name.toLowerCase().includes(query) || order.customer_phone && order.customer_phone.toLowerCase().includes(query) || order.purchase_order && order.purchase_order.toLowerCase().includes(query));
+      filtered = filtered.filter(order => 
+        order.order_number.toLowerCase().includes(query) ||
+        order.customer_name.toLowerCase().includes(query) ||
+        (order.customer_phone && order.customer_phone.toLowerCase().includes(query)) ||
+        (order.purchase_order && order.purchase_order.toLowerCase().includes(query))
+      );
     }
 
     // Apply status filter
     if (statusFilter !== "all") {
       filtered = filtered.filter(order => order.status === statusFilter);
     }
+
     return filtered;
   }, [orders, searchQuery, statusFilter]);
 
@@ -211,6 +173,7 @@ export function OrderManagement() {
   // Enhanced delete handler that supports both single and group deletion
   const handleDeleteOrder = async (orderId: string, deleteType: 'single' | 'group') => {
     if (!deletingOrder || isDeleting) return;
+
     setIsDeleting(true);
     try {
       if (deleteType === 'group') {
@@ -218,18 +181,24 @@ export function OrderManagement() {
         await deleteSplitOrderGroup(orderId, 'Admin deletion');
       } else {
         // Use regular single order deletion
-        const {
-          error
-        } = await supabase.rpc('soft_delete_order', {
+        const { error } = await supabase.rpc('soft_delete_order', {
           p_order_id: orderId,
           p_reason: 'Admin deletion'
         });
+
         if (error) throw error;
 
         // Log the activity
         if (profile?.full_name) {
-          await activityLogger.orderSoftDelete(orderId, deletingOrder.order_number, deletingOrder.customer_name, 'Admin deletion', profile.full_name);
+          await activityLogger.orderSoftDelete(
+            orderId,
+            deletingOrder.order_number,
+            deletingOrder.customer_name,
+            'Admin deletion',
+            profile.full_name
+          );
         }
+
         toast({
           title: "Order Deleted",
           description: `Order ${deletingOrder.order_number} has been moved to deleted orders`
@@ -254,59 +223,53 @@ export function OrderManagement() {
   // Set up real-time subscription for order updates with email notifications
   useEffect(() => {
     console.log('Setting up real-time subscription for orders...');
-    const channel = supabase.channel('orders-realtime').on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'orders'
-    }, async payload => {
-      console.log('Real-time order update received:', payload);
+    const channel = supabase
+      .channel('orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, async (payload) => {
+        console.log('Real-time order update received:', payload);
 
-      // Invalidate and refetch orders when any change occurs
-      queryClient.invalidateQueries({
-        queryKey: ['orders']
-      });
+        // Invalidate and refetch orders when any change occurs
+        queryClient.invalidateQueries({ queryKey: ['orders'] });
 
-      // Handle status updates with email notifications
-      if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
-        const oldStatus = payload.old.status;
-        const newStatus = payload.new.status;
-        if (oldStatus !== newStatus) {
-          toast({
-            title: "Order Status Updated",
-            description: `Order ${payload.new.order_number} changed from ${oldStatus} to ${newStatus}`
-          });
+        // Handle status updates with email notifications
+        if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
+          const oldStatus = payload.old.status;
+          const newStatus = payload.new.status;
 
-          // Send email notification to customer
-          try {
-            // Get driver name if driver_id exists
-            let driverName;
-            if (payload.new.driver_id) {
-              const {
-                data: driver
-              } = await supabase.from('profiles').select('full_name').eq('id', payload.new.driver_id).single();
-              driverName = driver?.full_name;
+          if (oldStatus !== newStatus) {
+            toast({
+              title: "Order Status Updated",
+              description: `Order ${payload.new.order_number} changed from ${oldStatus} to ${newStatus}`
+            });
+
+            // Send email notification to customer
+            try {
+              // Use denormalized driver_name field
+              const driverName = payload.new.driver_name;
+              await emailService.sendOrderStatusUpdate(payload.new.id, oldStatus, newStatus, driverName);
+            } catch (error) {
+              console.error('Failed to send status update email:', error);
+              // Don't show error toast to admin as email is background process
             }
-            await emailService.sendOrderStatusUpdate(payload.new.id, oldStatus, newStatus, driverName);
-          } catch (error) {
-            console.error('Failed to send status update email:', error);
-            // Don't show error toast to admin as email is background process
           }
         }
-      }
 
-      // Show toast for new orders
-      if (payload.eventType === 'INSERT' && payload.new) {
-        toast({
-          title: "New Order Created",
-          description: `Order ${payload.new.order_number} has been created`
-        });
-      }
-    }).subscribe();
+        // Show toast for new orders
+        if (payload.eventType === 'INSERT' && payload.new) {
+          toast({
+            title: "New Order Created",
+            description: `Order ${payload.new.order_number} has been created`
+          });
+        }
+      })
+      .subscribe();
+
     return () => {
       console.log('Cleaning up real-time subscription...');
       supabase.removeChannel(channel);
     };
   }, [queryClient, toast]);
+
   const handleOrderCreated = () => {
     // Refresh orders list from database
     refetch();
@@ -315,6 +278,7 @@ export function OrderManagement() {
       description: "Order created successfully!"
     });
   };
+
   const handleOrderUpdated = () => {
     // Refresh orders list from database
     refetch();
@@ -324,6 +288,7 @@ export function OrderManagement() {
       description: "Order updated successfully!"
     });
   };
+
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
       case "delivered":
@@ -340,6 +305,7 @@ export function OrderManagement() {
         return "bg-gray-100 text-gray-800";
     }
   };
+
   const getStatusLabel = (status: OrderStatus) => {
     switch (status) {
       case "en_route":
@@ -379,12 +345,14 @@ export function OrderManagement() {
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
     try {
       const oldStatus = currentOrder.status;
-      const {
-        error
-      } = await supabase.from('orders').update({
-        status: newStatus,
-        updated_at: new Date().toISOString()
-      }).eq('id', orderId);
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
       if (error) throw error;
 
       // Log the activity
@@ -395,6 +363,7 @@ export function OrderManagement() {
           await activityLogger.orderStatusUpdate(orderId, currentOrder.order_number, currentOrder.customer_name, oldStatus, newStatus, profile.full_name);
         }
       }
+
       toast({
         title: "Status Updated",
         description: `Order ${currentOrder.order_number} status updated to ${newStatus.replace('_', ' ')}`
@@ -410,16 +379,20 @@ export function OrderManagement() {
       });
     }
   };
+
   const handleNotesEdit = (order: Order) => {
     setEditingNotes(order);
   };
+
   const handleNotesUpdated = () => {
     refetch();
     setEditingNotes(null);
   };
+
   if (error) {
     console.error('Orders query error:', error);
-    return <div className="space-y-6">
+    return (
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold text-slate-800">Order Management</h2>
@@ -438,9 +411,12 @@ export function OrderManagement() {
             </div>
           </CardContent>
         </Card>
-      </div>;
+      </div>
+    );
   }
-  return <div className="space-y-6">
+
+  return (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-bold text-slate-800 text-lg">Order Management</h2>
@@ -454,7 +430,8 @@ export function OrderManagement() {
         </div>
       </div>
 
-      {isCreating && <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      {isCreating && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -466,19 +443,41 @@ export function OrderManagement() {
               <MultiStepOrderForm onOrderCreated={handleOrderCreated} onClose={() => setIsCreating(false)} />
             </div>
           </div>
-        </div>}
+        </div>
+      )}
 
-      {editingOrder && <OrderEditDialog order={editingOrder} onOrderUpdated={handleOrderUpdated} onClose={() => setEditingOrder(null)} />}
+      {editingOrder && (
+        <OrderEditDialog 
+          order={editingOrder} 
+          onOrderUpdated={handleOrderUpdated} 
+          onClose={() => setEditingOrder(null)} 
+        />
+      )}
 
       {/* Enhanced Delete Confirmation Dialog */}
-      <EnhancedDeleteOrderDialog order={deletingOrder} open={!!deletingOrder} onOpenChange={() => setDeletingOrder(null)} onConfirmDelete={handleDeleteOrder} isDeleting={isDeleting} />
+      <EnhancedDeleteOrderDialog
+        order={deletingOrder}
+        open={!!deletingOrder}
+        onOpenChange={() => setDeletingOrder(null)}
+        onConfirmDelete={handleDeleteOrder}
+        isDeleting={isDeleting}
+      />
 
       {/* Notes Edit Dialog */}
-      {editingNotes && <NotesEditDialog isOpen={!!editingNotes} onClose={() => setEditingNotes(null)} orderId={editingNotes.id} orderNumber={editingNotes.order_number} currentNotes={{
-      orderNotes: editingNotes.order_notes,
-      deliveryNotes: editingNotes.delivery_notes,
-      specialInstructions: editingNotes.special_instructions
-    }} onNotesUpdated={handleNotesUpdated} />}
+      {editingNotes && (
+        <NotesEditDialog
+          isOpen={!!editingNotes}
+          onClose={() => setEditingNotes(null)}
+          orderId={editingNotes.id}
+          orderNumber={editingNotes.order_number}
+          currentNotes={{
+            orderNotes: editingNotes.order_notes,
+            deliveryNotes: editingNotes.delivery_notes,
+            specialInstructions: editingNotes.special_instructions
+          }}
+          onNotesUpdated={handleNotesUpdated}
+        />
+      )}
 
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
@@ -486,21 +485,30 @@ export function OrderManagement() {
             <CardTitle className="text-lg font-semibold text-slate-800">
               Recent Orders 
               {isLoading && <span className="text-sm font-normal text-slate-500">(Loading...)</span>}
-              {!isLoading && <span className="text-sm font-normal text-slate-500">
+              {!isLoading && (
+                <span className="text-sm font-normal text-slate-500">
                   ({filteredOrders.length} of {orders.length} orders)
-                </span>}
+                </span>
+              )}
             </CardTitle>
-            {hasActiveFilters && <Button variant="outline" size="sm" onClick={clearFilters} className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <Button variant="outline" size="sm" onClick={clearFilters} className="flex items-center gap-2">
                 <X className="h-4 w-4" />
                 Clear Filters
-              </Button>}
+              </Button>
+            )}
           </div>
           
           {/* Search and Filter Controls */}
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input placeholder="Search by order number, customer name, phone, or purchase order..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+              <Input
+                placeholder="Search by order number, customer name, phone, or purchase order..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
             </div>
             <div className="flex items-center gap-2 sm:w-48">
               <Filter className="h-4 w-4 text-slate-400" />
@@ -521,20 +529,39 @@ export function OrderManagement() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? <div className="text-center py-8">
+          {isLoading ? (
+            <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               <p className="mt-2 text-slate-600">Loading orders...</p>
-            </div> : filteredOrders.length === 0 ? <div className="text-center py-8 text-slate-500">
-              {hasActiveFilters ? <div>
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              {hasActiveFilters ? (
+                <div>
                   <p>No orders match your current filters.</p>
                   <Button variant="outline" onClick={clearFilters} className="mt-2">
                     Clear Filters
                   </Button>
-                </div> : <p>No orders found. Create your first order to get started!</p>}
-            </div> : <div className="space-y-4">
-              {filteredOrders.map(order => {
-            const truckInfo = getTruckInfo(order.truck_type_from_truck || order.truck_type);
-            return <div key={order.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
+                </div>
+              ) : (
+                <p>No orders found. Create your first order to get started!</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredOrders.map((order) => {
+                // Create formatted truck info using denormalized fields
+                let truckDisplayInfo = '';
+                if (order.truck_type_display && order.truck_registration) {
+                  truckDisplayInfo = `${order.truck_type_display} ${order.truck_registration}`;
+                } else if (order.truck_type_display) {
+                  truckDisplayInfo = order.truck_type_display;
+                } else if (order.truck_registration) {
+                  truckDisplayInfo = order.truck_registration;
+                }
+
+                return (
+                  <div key={order.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <h3 className="font-semibold text-slate-800">{order.order_number}</h3>
@@ -542,15 +569,26 @@ export function OrderManagement() {
                           {getStatusLabel(order.status)}
                         </Badge>
                         <PurchaseOrderDisplay purchaseOrder={order.purchase_order} variant="secondary" />
-                        <NotesIndicator orderNotes={order.order_notes} deliveryNotes={order.delivery_notes} specialInstructions={order.special_instructions} />
+                        <NotesIndicator 
+                          orderNotes={order.order_notes} 
+                          deliveryNotes={order.delivery_notes} 
+                          specialInstructions={order.special_instructions} 
+                        />
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-lg font-bold text-green-600">
                           ${order.total_amount.toFixed(2)}
                         </span>
-                        {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && <Button variant="ghost" size="sm" onClick={() => handleNotesEdit(order)} className="h-8 w-8 p-0">
+                        {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleNotesEdit(order)}
+                            className="h-8 w-8 p-0"
+                          >
                             <Edit3 className="w-4 h-4 text-slate-500 hover:text-slate-700" />
-                          </Button>}
+                          </Button>
+                        )}
                       </div>
                     </div>
                     
@@ -575,41 +613,47 @@ export function OrderManagement() {
                           Suburb
                         </p>
                         <p className="font-medium">
-                          {order.suburb_name ? `${order.suburb_name}, ${order.suburb_state}${order.suburb_postcode ? ` (${order.suburb_postcode})` : ''}` : 'Not specified'}
+                          {order.suburb_name ? 
+                            `${order.suburb_name}, ${order.suburb_state}${order.suburb_postcode ? ` (${order.suburb_postcode})` : ''}` : 
+                            'Not specified'
+                          }
                         </p>
                       </div>
                     </div>
 
-                    {/* Truck Information */}
-                    {(order.truck_type || order.truck_registration) && <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
+                    {/* Truck Information using denormalized fields */}
+                    {truckDisplayInfo && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
                         <div>
                           <p className="text-slate-500 flex items-center gap-1">
                             <Truck className="w-3 h-3" />
-                            Truck Type
+                            Assigned Truck
                           </p>
-                          <div className="flex items-center gap-2">
-                            {truckInfo && <>
-                                <truckInfo.icon className={`w-4 h-4 ${truckInfo.colorClass}`} />
-                                <span className="font-medium">{truckInfo.label}</span>
-                              </>}
-                          </div>
+                          <p className="font-medium">{truckDisplayInfo}</p>
                         </div>
-                        {order.truck_registration && <div>
-                            <p className="text-slate-500">Selected Truck</p>
-                            <p className="font-medium">{order.truck_registration}</p>
-                          </div>}
-                      </div>}
+                      </div>
+                    )}
 
                     {/* Notes Section */}
-                    {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && <div className="mb-3">
-                        <NotesDisplaySection orderNotes={order.order_notes} deliveryNotes={order.delivery_notes} specialInstructions={order.special_instructions} compact={false} onEditClick={() => handleNotesEdit(order)} />
-                      </div>}
+                    {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
+                      <div className="mb-3">
+                        <NotesDisplaySection
+                          orderNotes={order.order_notes}
+                          deliveryNotes={order.delivery_notes}
+                          specialInstructions={order.special_instructions}
+                          compact={false}
+                          onEditClick={() => handleNotesEdit(order)}
+                        />
+                      </div>
+                    )}
 
                     {/* Order Meta Information */}
                     <div className="mt-3 text-xs text-slate-400">
                       <p>Address: {order.customer_address}</p>
                       <p>Created: {new Date(order.created_at).toLocaleDateString()}</p>
-                      {order.delivery_date && <p>Delivery: {order.delivery_date} {order.delivery_time && `at ${order.delivery_time}`}</p>}
+                      {order.delivery_date && (
+                        <p>Delivery: {order.delivery_date} {order.delivery_time && `at ${order.delivery_time}`}</p>
+                      )}
                     </div>
                     
                     {/* Action Buttons */}
@@ -619,31 +663,65 @@ export function OrderManagement() {
                       </Button>
                       
                       {/* Quick status update buttons for admin */}
-                      {order.status === 'preparing' && <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.id, 'loading', order)} className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                      {order.status === 'preparing' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateOrderStatus(order.id, 'loading', order)}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        >
                           Mark Loading
-                        </Button>}
+                        </Button>
+                      )}
                       
-                      {order.status === 'loading' && <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.id, 'en_route', order)} className="text-purple-600 border-purple-200 hover:bg-purple-50">
+                      {order.status === 'loading' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateOrderStatus(order.id, 'en_route', order)}
+                          className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                        >
                           Mark En Route
-                        </Button>}
+                        </Button>
+                      )}
                       
-                      {order.status === 'en_route' && <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.id, 'delivered', order)} className="text-green-600 border-green-200 hover:bg-green-50">
+                      {order.status === 'en_route' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateOrderStatus(order.id, 'delivered', order)}
+                          className="text-green-600 border-green-200 hover:bg-green-50"
+                        >
                           Mark Delivered
-                        </Button>}
+                        </Button>
+                      )}
                       
-                      <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => updateOrderStatus(order.id, 'cancelled', order)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => updateOrderStatus(order.id, 'cancelled', order)}
+                      >
                         Cancel
                       </Button>
 
-                      <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setDeletingOrder(order)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => setDeletingOrder(order)}
+                      >
                         <Trash2 className="w-4 h-4 mr-1" />
                         Delete
                       </Button>
                     </div>
-                  </div>;
-          })}
-            </div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 }

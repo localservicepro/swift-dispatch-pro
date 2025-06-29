@@ -7,9 +7,12 @@ interface DeliveryCardTruckAssignmentProps {
 }
 
 export function DeliveryCardTruckAssignment({ order }: DeliveryCardTruckAssignmentProps) {
-  const truckInfo = getTruckInfo(order.truck_type);
+  // Use denormalized truck_type_display field or fallback to truck_type
+  const truckType = order.truck_type_display || order.truck_type;
+  const truckInfo = getTruckInfo(truckType);
 
-  if (!order.truck_type && !order.truck_registration) {
+  // Check if we have truck information using denormalized fields
+  if (!order.truck_type_display && !order.truck_registration && !order.truck_type) {
     return null;
   }
 
@@ -20,11 +23,11 @@ export function DeliveryCardTruckAssignment({ order }: DeliveryCardTruckAssignme
         <span className="text-sm font-medium text-blue-800">Your Assigned Truck</span>
       </div>
       
-      {/* Truck Type and Registration Combined */}
-      {truckInfo && order.truck_registration && (
+      {/* Truck Type and Registration Combined using denormalized fields */}
+      {order.truck_type_display && order.truck_registration && (
         <div className="mb-2">
           <div className="text-lg font-bold text-blue-900">
-            {truckInfo.label} - {order.truck_registration}
+            {order.truck_type_display} - {order.truck_registration}
           </div>
         </div>
       )}
@@ -41,11 +44,13 @@ export function DeliveryCardTruckAssignment({ order }: DeliveryCardTruckAssignme
         </div>
       )}
       
-      {/* Driver Assignment */}
+      {/* Driver Assignment using denormalized field */}
       {order.driver_name && order.driver_name !== 'Not Assigned' && (
         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-blue-200">
           <User className="w-4 h-4 text-blue-600" />
-          <span className="text-sm text-blue-700">Driver: <span className="font-medium text-blue-800">{order.driver_name}</span></span>
+          <span className="text-sm text-blue-700">
+            Driver: <span className="font-medium text-blue-800">{order.driver_name}</span>
+          </span>
         </div>
       )}
     </div>

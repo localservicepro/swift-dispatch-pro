@@ -63,29 +63,68 @@ const handler = async (req: Request): Promise<Response> => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Call the export function to get comprehensive order data
-    console.log(`Fetching export data for order: ${payload.record.id}`);
+    // Get the order with the new denormalized fields included
+    console.log(`Fetching order data for: ${payload.record.id}`);
     
-    const { data: exportData, error: exportError } = await supabase
-      .rpc('get_order_export_data', { 
-        order_id_param: payload.record.id 
-      });
+    const { data: orderData, error: orderError } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        order_number,
+        purchase_order,
+        created_at,
+        customer_name,
+        customer_phone,
+        customer_address,
+        delivery_address,
+        subtotal,
+        adjustments,
+        delivery_fee,
+        total_amount,
+        payment_method,
+        payment_status,
+        status,
+        driver_name,
+        truck_type_display,
+        truck_registration,
+        delivery_date,
+        delivery_time,
+        products_formatted,
+        order_notes,
+        delivery_notes,
+        special_instructions,
+        customers!orders_customer_id_fkey(
+          email,
+          suburbs(name, state, postcode)
+        )
+      `)
+      .eq('id', payload.record.id)
+      .single();
 
-    if (exportError) {
-      console.error('Error fetching export data:', exportError);
-      throw new Error(`Failed to fetch export data: ${exportError.message}`);
+    if (orderError) {
+      console.error('Error fetching order data:', orderError);
+      throw new Error(`Failed to fetch order data: ${orderError.message}`);
     }
 
-    if (!exportData || exportData.length === 0) {
-      console.log('No export data found for order');
-      return new Response('No export data found', { 
+    if (!orderData) {
+      console.log('No order data found');
+      return new Response('No order data found', { 
         status: 200, 
         headers: corsHeaders 
       });
     }
 
-    const orderData = exportData[0];
-    console.log('Retrieved order export data:', JSON.stringify(orderData, null, 2));
+    console.log('Retrieved order data:', JSON.stringify(orderData, null, 2));
+
+    // Create formatted truck info in the format "Small Truck 1JT6HU"
+    let truckInfo = '';
+    if (orderData.truck_type_display && orderData.truck_registration) {
+      truckInfo = `${orderData.truck_type_display} ${orderData.truck_registration}`;
+    } else if (orderData.truck_type_display) {
+      truckInfo = orderData.truck_type_display;
+    } else if (orderData.truck_registration) {
+      truckInfo = orderData.truck_registration;
+    }
 
     // Format the data for Make/Google Sheets
     const formattedData = {
@@ -97,17 +136,18 @@ const handler = async (req: Request): Promise<Response> => {
       order_id: orderData.id,
       order_number: orderData.order_number,
       purchase_order: orderData.purchase_order || '',
-      created_at: orderData.created_at_formatted,
+      created_at: orderData.created_at,
       
       // Customer information
       customer_name: orderData.customer_name,
       customer_phone: orderData.customer_phone || '',
-      customer_email: orderData.customer_email || '',
+      customer_email: orderData.customers?.email || '',
       
       // Address information
-      billing_address: orderData.billing_address,
+      billing_address: orderData.customer_address,
       delivery_address: orderData.delivery_address,
-      suburb_full: orderData.suburb_full,
+      suburb_full: orderData.customers?.suburbs ? 
+        `${orderData.customers.suburbs.name}, ${orderData.customers.suburbs.state} ${orderData.customers.suburbs.postcode}` : '',
       
       // Financial information
       subtotal: orderData.subtotal || 0,
@@ -118,15 +158,25 @@ const handler = async (req: Request): Promise<Response> => {
       payment_status: orderData.payment_status || '',
       
       // Order status and logistics
-      order_status: orderData.order_status,
-      driver_name: orderData.driver_name,
-      truck_info: orderData.truck_info,
-      delivery_schedule: orderData.delivery_schedule,
+      order_status: orderData.status,
+      driver_name: orderData.driver_name || 'Not Assigned',
+      truck_info: truckInfo || 'Not Assigned',
+      truck_type: orderData.truck_type_display || '',
+      truck_registration: orderData.truck_registration || '',
+      delivery_schedule: orderData.delivery_date && orderData.delivery_time ? 
+        `${orderData.delivery_date} at ${orderData.delivery_time}` : 
+        (orderData.delivery_date || ''),
       
       // Products and notes
-      products_formatted: orderData.products_formatted,
-      all_notes: orderData.all_notes || '',
-      record_status: orderData.record_status
+      products_formatted: orderData.products_formatted || 'No products',
+      order_notes: orderData.order_notes || '',
+      delivery_notes: orderData.delivery_notes || '',
+      special_instructions: orderData.special_instructions || '',
+      all_notes: [
+        orderData.order_notes,
+        orderData.delivery_notes,
+        orderData.special_instructions
+      ].filter(Boolean).join(' | ') || ''
     };
 
     console.log('Formatted data for webhook:', JSON.stringify(formattedData, null, 2));
