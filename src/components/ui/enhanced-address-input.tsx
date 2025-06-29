@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from './input';
 import { Label } from './label';
@@ -69,11 +70,37 @@ export function EnhancedAddressInput({
   const [isUsingFallback, setIsUsingFallback] = useState(false);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   const [isUserTyping, setIsUserTyping] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   const debouncedValue = useDebounce(value, 500);
+
+  // Initialize component state based on pre-existing value
+  useEffect(() => {
+    if (value && !isInitialized) {
+      console.log('EnhancedAddressInput: Initializing with existing value:', value);
+      setIsInitialized(true);
+      setValidationStatus('idle');
+      setIsUserTyping(false);
+      // If we have a pre-existing value, consider it valid initially
+      if (value.length > 10) { // Basic validation for existing addresses
+        setValidationStatus('valid');
+        onValidationChange?.(true);
+      }
+    } else if (!value && isInitialized) {
+      // Reset when value is cleared
+      setIsInitialized(false);
+      setValidationStatus('idle');
+      setIsUserTyping(false);
+      setHasSearched(false);
+      setSearchAttempts(0);
+      setIsUsingFallback(false);
+      setPredictions([]);
+      setShowDropdown(false);
+    }
+  }, [value, isInitialized, onValidationChange]);
 
   // Load Google Maps script on component mount
   useEffect(() => {
@@ -88,19 +115,21 @@ export function EnhancedAddressInput({
       });
   }, []);
 
-  // Fetch predictions when user types
+  // Fetch predictions when user types (but not when initializing)
   useEffect(() => {
-    if (debouncedValue && debouncedValue.length > 2 && isUserTyping) {
+    if (debouncedValue && debouncedValue.length > 2 && isUserTyping && isInitialized) {
+      console.log('EnhancedAddressInput: User is typing, fetching predictions for:', debouncedValue);
       fetchPredictions(debouncedValue);
-    } else if (!isUserTyping) {
-      // Reset validation state when component loads with existing data
+    } else if (!isUserTyping && isInitialized) {
+      // User stopped typing or component just loaded with data
+      console.log('EnhancedAddressInput: Not fetching predictions - user not actively typing');
       setPredictions([]);
       setShowDropdown(false);
-      setValidationStatus('idle');
-      setHasSearched(false);
-      setSearchAttempts(0);
-      setIsUsingFallback(false);
-    } else {
+      if (!hasSearched) {
+        setValidationStatus('idle');
+      }
+    } else if (!isInitialized && debouncedValue.length <= 2) {
+      // Reset states for short inputs
       setPredictions([]);
       setShowDropdown(false);
       setValidationStatus('idle');
@@ -108,7 +137,7 @@ export function EnhancedAddressInput({
       setSearchAttempts(0);
       setIsUsingFallback(false);
     }
-  }, [debouncedValue, isUserTyping]);
+  }, [debouncedValue, isUserTyping, isInitialized, hasSearched]);
 
   const fetchPredictions = async (input: string) => {
     setIsLoading(true);
@@ -201,14 +230,19 @@ export function EnhancedAddressInput({
     setValidationStatus('idle');
     onValidationChange?.(false);
     
-    // Remove the automatic map opening - users can manually click the map button if needed
     console.log('Search failed - use map button to select address manually');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
-    setIsUserTyping(true);
+    
+    // Mark as user typing only if component is initialized or user is actively changing
+    if (!isInitialized || newValue !== value) {
+      console.log('EnhancedAddressInput: User input detected, setting isUserTyping to true');
+      setIsUserTyping(true);
+      setIsInitialized(true);
+    }
     
     if (newValue.length <= 2) {
       setShowDropdown(false);
@@ -221,7 +255,11 @@ export function EnhancedAddressInput({
   };
 
   const handleInputFocus = () => {
-    setIsUserTyping(true);
+    console.log('EnhancedAddressInput: Input focused');
+    // Only set user typing if there's actual content and we're initialized
+    if (value && isInitialized) {
+      setIsUserTyping(true);
+    }
   };
 
   const handlePredictionSelect = async (prediction: PlacePrediction) => {
@@ -229,6 +267,7 @@ export function EnhancedAddressInput({
     setShowDropdown(false);
     setPredictions([]);
     setValidationStatus('validating');
+    setIsUserTyping(false); // User has selected, not typing anymore
     
     // Get detailed address information
     try {
@@ -383,6 +422,8 @@ export function EnhancedAddressInput({
     setTimeout(() => {
       if (!dropdownRef.current?.contains(document.activeElement)) {
         setShowDropdown(false);
+        // Stop user typing when they blur away
+        setIsUserTyping(false);
       }
     }, 150);
   };
@@ -411,7 +452,7 @@ export function EnhancedAddressInput({
     
     return (
       <div className="flex items-center gap-2 mt-1">
-        {isUsingFallback && (
+        {isUsingFallback && isLoading && (
           <Badge variant="outline" className="text-orange-700 bg-orange-50">
             <WifiOff className="w-3 h-3 mr-1" />
             Using backup search
