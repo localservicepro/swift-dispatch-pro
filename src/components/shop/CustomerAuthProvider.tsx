@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,6 +28,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
 
   const fetchCustomerProfile = async (userId: string, userEmail?: string) => {
     try {
@@ -81,8 +83,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let mounted = true;
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+        
         console.log('Customer auth state changed:', event);
         
         if (event === 'SIGNED_OUT' || !session) {
@@ -90,6 +96,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           setSession(null);
           setProfile(null);
           setLoading(false);
+          setInitializing(false);
           return;
         }
         
@@ -97,24 +104,68 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await fetchCustomerProfile(session.user.id, session.user.email);
+          try {
+            await fetchCustomerProfile(session.user.id, session.user.email);
+          } catch (error) {
+            console.error('Customer profile fetch error:', error);
+          } finally {
+            if (mounted) {
+              setLoading(false);
+              setInitializing(false);
+            }
+          }
+        } else {
+          setLoading(false);
+          setInitializing(false);
         }
-        
-        setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setSession(session);
-        setUser(session.user);
-        fetchCustomerProfile(session.user.id, session.user.email);
-      } else {
-        setLoading(false);
+    const initializeCustomerAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting customer session:', error);
+          setLoading(false);
+          setInitializing(false);
+          return;
+        }
+        
+        if (session?.user && mounted) {
+          setSession(session);
+          setUser(session.user);
+          try {
+            await fetchCustomerProfile(session.user.id, session.user.email);
+          } catch (error) {
+            console.error('Initial customer profile fetch error:', error);
+          } finally {
+            if (mounted) {
+              setLoading(false);
+              setInitializing(false);
+            }
+          }
+        } else {
+          if (mounted) {
+            setLoading(false);
+            setInitializing(false);
+          }
+        }
+      } catch (error) {
+        console.error('Customer auth initialization error:', error);
+        if (mounted) {
+          setLoading(false);
+          setInitializing(false);
+        }
       }
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    initializeCustomerAuth();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -190,7 +241,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     user,
     session,
     profile,
-    loading,
+    loading: loading || initializing,
     signIn,
     signUp,
     signOut,

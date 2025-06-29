@@ -38,20 +38,6 @@ function AuthenticatedApp() {
     return <AuthPage />;
   }
 
-  // If user is authenticated but we're still loading profile data, keep showing loading
-  // This is crucial to prevent premature redirects
-  if (user && loading) {
-    console.log('User authenticated but profile still loading');
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
-
   // If user is authenticated but has no admin/driver profile, redirect to shop (root)
   // Only do this after loading is complete to ensure we have accurate profile data
   if (user && !loading && !profile) {
