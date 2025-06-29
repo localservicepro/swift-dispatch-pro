@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthProvider';
 import { Loader2 } from 'lucide-react';
+
 export function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -59,10 +60,19 @@ export function AuthPage() {
     }
     setLoading(false);
   };
-  return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center text-2xl font-bold">Swift Dispatch Pro</CardTitle>
+          <div className="flex flex-col items-center space-y-4">
+            <img 
+              src="/lovable-uploads/2947dc38-8dec-4272-8805-b013a99012a4.png"
+              alt="Swift Dispatch Pro Logo"
+              className="w-16 h-16 object-contain"
+            />
+            <CardTitle className="text-center text-2xl font-bold">Swift Dispatch Pro</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
@@ -111,5 +121,6 @@ export function AuthPage() {
           </Tabs>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 }
