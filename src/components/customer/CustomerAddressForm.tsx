@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EnhancedAddressInput } from "@/components/ui/enhanced-address-input";
 import { useSuburbManagement } from "@/hooks/useSuburbManagement";
-import { createAddressSelectHandler } from "@/utils/addressUtils";
 
 interface CustomerAddressFormProps {
   formData: {
@@ -25,10 +24,16 @@ export function CustomerAddressForm({
 }: CustomerAddressFormProps) {
   const { handleAutoSuburbSelection } = useSuburbManagement();
 
-  const handleDeliveryAddressSelect = createAddressSelectHandler(
-    (updates) => onFormDataChange({ delivery_address: updates.full_address }),
-    (postcode: string) => handleAutoSuburbSelection(postcode, onSuburbChange)
-  );
+  // Specific handler for delivery address that only updates delivery_address
+  const handleDeliveryAddressSelect = (addressData: any) => {
+    console.log('Delivery address selected:', addressData);
+    onFormDataChange({ delivery_address: addressData.fullAddress });
+    
+    // Auto-select suburb based on postcode if available
+    if (addressData.postcode) {
+      handleAutoSuburbSelection(addressData.postcode, onSuburbChange);
+    }
+  };
 
   return (
     <>
