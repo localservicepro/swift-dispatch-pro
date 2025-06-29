@@ -1,7 +1,11 @@
 
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Suburb {
@@ -21,6 +25,7 @@ interface SuburbSelectorProps {
 export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelectorProps) {
   const [suburbs, setSuburbs] = useState<Suburb[]>([]);
   const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     fetchSuburbs();
@@ -50,12 +55,19 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
     console.log('Suburb selected:', selectedSuburb);
     if (selectedSuburb) {
       onSuburbChange(suburbId);
+      setOpen(false);
     }
   };
 
   const getSuburbLabel = (suburb: Suburb) => {
     const distanceText = suburb.distance_km ? `, ${suburb.distance_km}km` : '';
     return `${suburb.postcode}, ${suburb.name}${distanceText} - ${suburb.delivery_rate} (estimate)`;
+  };
+
+  const getDisplayValue = () => {
+    if (!selectedSuburbId) return "Select a suburb";
+    const selectedSuburb = suburbs.find(s => s.id === selectedSuburbId);
+    return selectedSuburb ? getSuburbLabel(selectedSuburb) : "Select a suburb";
   };
 
   // Debug the selected suburb
@@ -80,18 +92,44 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
   return (
     <div>
       <Label htmlFor="suburb">Suburb (Delivery rates are estimates only)</Label>
-      <Select value={selectedSuburbId || ""} onValueChange={handleSuburbChange}>
-        <SelectTrigger>
-          <SelectValue placeholder="Select a suburb" />
-        </SelectTrigger>
-        <SelectContent>
-          {suburbs.map((suburb) => (
-            <SelectItem key={suburb.id} value={suburb.id}>
-              {getSuburbLabel(suburb)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between text-left font-normal"
+          >
+            <span className="truncate">{getDisplayValue()}</span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-full p-0" align="start">
+          <Command>
+            <CommandInput placeholder="Search suburbs by postcode or name..." />
+            <CommandList>
+              <CommandEmpty>No suburbs found.</CommandEmpty>
+              <CommandGroup>
+                {suburbs.map((suburb) => (
+                  <CommandItem
+                    key={suburb.id}
+                    value={`${suburb.postcode} ${suburb.name} ${suburb.state}`}
+                    onSelect={() => handleSuburbChange(suburb.id)}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedSuburbId === suburb.id ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {getSuburbLabel(suburb)}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
