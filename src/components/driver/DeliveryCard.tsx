@@ -42,15 +42,15 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
           {/* Customer Info */}
           <DeliveryCardCustomerInfo order={order} />
 
+          {/* Prominent Truck Assignment - Moved up for visibility */}
+          <DeliveryCardTruckAssignment order={order} />
+
           {/* Google Maps Integration */}
           <DeliveryMapCard
             address={order.customer_address}
             customerName={order.customer_name}
             orderId={order.id}
           />
-
-          {/* Enhanced Truck Assignment */}
-          <DeliveryCardTruckAssignment order={order} />
 
           {/* Order Details */}
           <OrderDetailsCard order={order} />
