@@ -115,9 +115,9 @@ export function PaymentStatusDropdown({ order, onStatusUpdate }: PaymentStatusDr
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
+        <Button 
+          variant="ghost" 
+          size="sm" 
           className={`p-1 h-auto ${currentStatus?.color || 'bg-yellow-100 text-yellow-800'} hover:opacity-80`}
           disabled={isUpdating}
           onClick={(e) => e.stopPropagation()}
