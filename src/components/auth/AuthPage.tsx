@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthProvider';
 import { Loader2 } from 'lucide-react';
-
 export function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,17 +59,11 @@ export function AuthPage() {
     }
     setLoading(false);
   };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+  return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <div className="flex flex-col items-center space-y-4">
-            <img 
-              src="/lovable-uploads/db33e7b2-9d4c-4826-a2f7-9bdcdeff7d23.png"
-              alt="Swift Dispatch Pro Logo"
-              className="w-16 h-16 object-contain"
-            />
+            <img alt="Swift Dispatch Pro Logo" className="w-16 h-16 object-contain" src="/lovable-uploads/7af06903-3aa4-4e02-883b-f86692391965.png" />
             <CardTitle className="text-center text-2xl font-bold">Swift Dispatch Pro</CardTitle>
           </div>
         </CardHeader>
@@ -122,6 +114,5 @@ export function AuthPage() {
           </Tabs>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
