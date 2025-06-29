@@ -20,11 +20,11 @@ export function DeliveryCardTruckAssignment({ order }: DeliveryCardTruckAssignme
         <span className="text-sm font-medium text-blue-800">Your Assigned Truck</span>
       </div>
       
-      {/* Truck Registration - Most Prominent */}
-      {order.truck_registration && (
+      {/* Truck Type and Registration Combined */}
+      {truckInfo && order.truck_registration && (
         <div className="mb-2">
           <div className="text-lg font-bold text-blue-900">
-            #{order.truck_registration}
+            {truckInfo.label} - {order.truck_registration}
           </div>
         </div>
       )}
@@ -34,7 +34,6 @@ export function DeliveryCardTruckAssignment({ order }: DeliveryCardTruckAssignme
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <truckInfo.icon className={`w-4 h-4 ${truckInfo.colorClass}`} />
-            <span className="font-medium text-blue-800">{truckInfo.label}</span>
             <span className={`text-xs px-2 py-0.5 rounded text-white ${truckInfo.colorClass.replace('text-', 'bg-')}`}>
               {truckInfo.capacity}
             </span>
