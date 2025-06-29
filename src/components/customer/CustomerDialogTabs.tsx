@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CustomerCompanyForm } from './CustomerCompanyForm';
@@ -21,6 +20,7 @@ interface CustomerDialogTabsProps {
     email: string;
     phone: string;
     full_address: string;
+    delivery_address: string;
     suburb_id: string;
     customer_type: "residential" | "trade" | "account";
     entity_type: "individual" | "business";
@@ -35,7 +35,7 @@ interface CustomerDialogTabsProps {
   isEdit: boolean;
   onCompanyChange: (updates: Partial<{ company_name: string; business_name: string; customer_type: "residential" | "trade" | "account"; entity_type: "individual" | "business" }>) => void;
   onContactChange: (updates: Partial<{ first_name: string; last_name: string; email: string; phone: string; contact_role: string }>) => void;
-  onAddressFormChange: (updates: Partial<{ full_address: string; suburb_id: string }>) => void;
+  onAddressFormChange: (updates: Partial<{ full_address: string; delivery_address: string; suburb_id: string }>) => void;
   onPreferencesChange: (updates: Partial<{ customer_type: "residential" | "trade" | "account"; entity_type: "individual" | "business"; is_active: boolean; sms_notifications_enabled: boolean }>) => void;
   onSuburbChange: (suburbId: string) => void;
 }
@@ -102,6 +102,7 @@ export function CustomerDialogTabs({
         <CustomerAddressForm
           formData={{
             full_address: formData.full_address,
+            delivery_address: formData.delivery_address,
             suburb_id: formData.suburb_id
           }}
           deliveryRate={deliveryRate}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -12,6 +11,7 @@ export function useCustomerDialogData(customer: Customer | null) {
     email: '',
     phone: '',
     full_address: '',
+    delivery_address: '',
     suburb_id: '',
     customer_type: 'residential' as 'residential' | 'trade' | 'account',
     entity_type: 'individual' as 'individual' | 'business',
@@ -32,6 +32,7 @@ export function useCustomerDialogData(customer: Customer | null) {
         email: customer.email || '',
         phone: customer.phone || '',
         full_address: customer.full_address || '',
+        delivery_address: customer.delivery_address || '',
         suburb_id: customer.suburb_id || '',
         customer_type: (customer.customer_type as 'residential' | 'trade' | 'account') || 'residential',
         entity_type: (customer.entity_type as 'individual' | 'business') || 'individual',
@@ -54,6 +55,7 @@ export function useCustomerDialogData(customer: Customer | null) {
         email: '',
         phone: '',
         full_address: '',
+        delivery_address: '',
         suburb_id: '',
         customer_type: 'residential',
         entity_type: 'individual',
@@ -111,7 +113,7 @@ export function useCustomerDialogData(customer: Customer | null) {
     setFormData(prev => ({ ...prev, ...updates }));
   };
 
-  const handleAddressFormChange = (updates: Partial<{ full_address: string; suburb_id: string }>) => {
+  const handleAddressFormChange = (updates: Partial<{ full_address: string; delivery_address: string; suburb_id: string }>) => {
     setFormData(prev => ({ ...prev, ...updates }));
     
     if (updates.suburb_id) {
