@@ -32,6 +32,9 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
     setActionDialog({ open: false, action: null });
   };
 
+  // Use delivery_address first, fallback to customer_address for backwards compatibility
+  const deliveryAddress = order.delivery_address || order.customer_address;
+
   return (
     <>
       <Card className="overflow-hidden">
@@ -47,7 +50,7 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
 
           {/* Google Maps Integration */}
           <DeliveryMapCard
-            address={order.customer_address}
+            address={deliveryAddress}
             customerName={order.customer_name}
             orderId={order.id}
           />
