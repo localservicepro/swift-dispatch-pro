@@ -7,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Package, Edit, Trash2, ImageIcon, Star, Clock } from "lucide-react";
 import { useSpecialPricing } from "@/hooks/useSpecialPricing";
-import { useDynamicPricing } from "@/hooks/usePricingTiers";
 import { format } from "date-fns";
 import { ProductEditDialog } from "./ProductEditDialog";
 
@@ -50,7 +49,6 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
   const { toast } = useToast();
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const { specials, loadSpecialsForProducts, hasActiveSpecial, getSpecialForProduct, applySpecialDiscount } = useSpecialPricing();
-  const { calculateTierPrices, isLoading: pricingLoading } = useDynamicPricing();
   const [specialsLoaded, setSpecialsLoaded] = useState(false);
 
   useEffect(() => {
@@ -115,7 +113,6 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map((product) => {
-                const { showTiers, prices } = calculateTierPrices(product.price);
                 const productSpecial = getSpecialForProduct(product.id);
                 
                 return (
@@ -186,10 +183,9 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
                         <h4 className="font-semibold text-slate-800 leading-tight">{product.name}</h4>
                       </div>
                       
-                      {/* Pricing Display */}
+                      {/* Pricing Display - Simplified to show only base price and specials */}
                       <div className="mb-2">
                         <div className="text-sm space-y-1">
-                          {/* Base Price - Always Show */}
                           <div className="flex justify-between">
                             <span className="text-gray-600">Price:</span>
                             <div className="flex items-center gap-2">
@@ -205,30 +201,6 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
                               )}
                             </div>
                           </div>
-                          
-                          {/* Dynamic Tier Pricing - Only Show When Enabled */}
-                          {showTiers && !pricingLoading && Object.entries(prices).map(([tierName, tierPrice]) => {
-                            const hasSpecial = hasActiveSpecial(product.id);
-                            const specialPrice = hasSpecial ? applySpecialDiscount(tierPrice.original, product.id) : tierPrice.original;
-                            
-                            return (
-                              <div key={tierName} className="flex justify-between">
-                                <span className="text-gray-600 capitalize">{tierName}:</span>
-                                <div className="flex items-center gap-2">
-                                  {hasSpecial ? (
-                                    <>
-                                      <span className="line-through text-gray-400">${tierPrice.original.toFixed(2)}</span>
-                                      <span className="font-medium text-red-600">${specialPrice.toFixed(2)}</span>
-                                    </>
-                                  ) : (
-                                    <span className={`font-medium ${tierName === 'trade' ? 'text-blue-600' : 'text-green-600'}`}>
-                                      ${tierPrice.original.toFixed(2)}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
                         </div>
                       </div>
 
