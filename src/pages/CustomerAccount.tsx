@@ -1,11 +1,11 @@
-
 import { useState, useEffect } from 'react';
 import { CustomerAuthProvider, useCustomerAuth } from '@/components/shop/CustomerAuthProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Package, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Package, Clock, CheckCircle, XCircle, LogOut } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -19,9 +19,10 @@ interface Order {
 }
 
 function CustomerAccountContent() {
-  const { profile, loading: authLoading } = useCustomerAuth();
+  const { profile, loading: authLoading, signOut } = useCustomerAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (profile) {
@@ -54,6 +55,32 @@ function CustomerAccountContent() {
       console.error('Error fetching orders:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      const { error } = await signOut();
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to sign out. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "You have been signed out successfully.",
+        });
+        // Redirect to shop page after successful sign out
+        window.location.href = '/shop';
+      }
+    } catch (error) {
+      toast({
+        title: "Error", 
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -120,6 +147,16 @@ function CustomerAccountContent() {
                 <p className="text-sm text-gray-600">Welcome back, {profile.first_name}!</p>
               </div>
             </div>
+            
+            {/* Sign Out Button */}
+            <Button
+              variant="ghost"
+              onClick={handleSignOut}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </Button>
           </div>
         </div>
       </header>
