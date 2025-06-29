@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -93,29 +94,6 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
     setEditingProduct(null);
   };
 
-  // Calculate pricing based on global pricing tiers
-  const calculateCustomerPrices = (basePrice: number, productId: string) => {
-    const tradePrice = basePrice; // Trade tier: 0% adjustment (base price)
-    const accountPrice = basePrice * 0.9; // Account tier: 10% discount
-
-    // Apply special pricing if available
-    const tradeSpecialPrice = hasActiveSpecial(productId) ? applySpecialDiscount(tradePrice, productId) : tradePrice;
-    const accountSpecialPrice = hasActiveSpecial(productId) ? applySpecialDiscount(accountPrice, productId) : accountPrice;
-
-    return {
-      trade: {
-        original: tradePrice,
-        special: tradeSpecialPrice,
-        hasSpecial: hasActiveSpecial(productId) && tradeSpecialPrice !== tradePrice
-      },
-      account: {
-        original: accountPrice,
-        special: accountSpecialPrice,
-        hasSpecial: hasActiveSpecial(productId) && accountSpecialPrice !== accountPrice
-      }
-    };
-  };
-
   return (
     <>
       <Card>
@@ -135,7 +113,6 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map((product) => {
-                const customerPrices = calculateCustomerPrices(product.price, product.id);
                 const productSpecial = getSpecialForProduct(product.id);
                 
                 return (
@@ -206,40 +183,21 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
                         <h4 className="font-semibold text-slate-800 leading-tight">{product.name}</h4>
                       </div>
                       
-                      {/* Base Price and Calculated Pricing Display */}
+                      {/* Pricing Display - Simplified to show only base price and specials */}
                       <div className="mb-2">
                         <div className="text-sm space-y-1">
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Base Price:</span>
-                            <span className="font-medium text-gray-800">${product.price.toFixed(2)}</span>
-                          </div>
-                          
-                          {/* Trade Pricing */}
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Trade:</span>
+                            <span className="text-gray-600">Price:</span>
                             <div className="flex items-center gap-2">
-                              {customerPrices.trade.hasSpecial ? (
+                              {hasActiveSpecial(product.id) ? (
                                 <>
-                                  <span className="line-through text-gray-400">${customerPrices.trade.original.toFixed(2)}</span>
-                                  <span className="font-medium text-red-600">${customerPrices.trade.special.toFixed(2)}</span>
+                                  <span className="line-through text-gray-400">${product.price.toFixed(2)}</span>
+                                  <span className="font-medium text-red-600">
+                                    ${applySpecialDiscount(product.price, product.id).toFixed(2)}
+                                  </span>
                                 </>
                               ) : (
-                                <span className="font-medium text-blue-600">${customerPrices.trade.original.toFixed(2)}</span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Account Pricing */}
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Account:</span>
-                            <div className="flex items-center gap-2">
-                              {customerPrices.account.hasSpecial ? (
-                                <>
-                                  <span className="line-through text-gray-400">${customerPrices.account.original.toFixed(2)}</span>
-                                  <span className="font-medium text-red-600">${customerPrices.account.special.toFixed(2)}</span>
-                                </>
-                              ) : (
-                                <span className="font-medium text-green-600">${customerPrices.account.original.toFixed(2)}</span>
+                                <span className="font-medium text-gray-800">${product.price.toFixed(2)}</span>
                               )}
                             </div>
                           </div>

@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthProvider';
 import { Loader2 } from 'lucide-react';
+
 export function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,6 +20,7 @@ export function AuthPage() {
   const {
     toast
   } = useToast();
+  
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -39,6 +41,7 @@ export function AuthPage() {
     }
     setLoading(false);
   };
+  
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -59,12 +62,16 @@ export function AuthPage() {
     }
     setLoading(false);
   };
+
   return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <div className="flex flex-col items-center space-y-4">
             <img alt="Swift Dispatch Pro Logo" className="w-16 h-16 object-contain" src="/lovable-uploads/7af06903-3aa4-4e02-883b-f86692391965.png" />
-            <CardTitle className="text-center text-2xl font-bold">Swift Dispatch Pro</CardTitle>
+            <div className="text-center space-y-2">
+              <CardTitle className="text-2xl font-bold">Swift Dispatch Pro</CardTitle>
+              <p className="text-sm text-muted-foreground">Order & Delivery Management Solutions</p>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
