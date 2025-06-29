@@ -54,13 +54,24 @@ export function useDynamicPricing() {
   const { data: tiers, isLoading } = usePricingTiers();
 
   const calculateTierPrices = (basePrice: number) => {
+    // Check if we have any active tiers
     if (!tiers || tiers.length === 0) {
+      console.log('No active pricing tiers found');
       return { showTiers: false, prices: {} };
     }
 
+    // Check if there are any tiers that are actually active
+    const activeTiers = tiers.filter(tier => tier.is_active);
+    if (activeTiers.length === 0) {
+      console.log('No active pricing tiers available');
+      return { showTiers: false, prices: {} };
+    }
+
+    console.log('Calculating tier prices for active tiers:', activeTiers.length);
+
     const prices: Record<string, { original: number; special?: number }> = {};
     
-    tiers.forEach(tier => {
+    activeTiers.forEach(tier => {
       const adjustment = tier.percentage_adjustment || 0;
       let calculatedPrice = basePrice;
       

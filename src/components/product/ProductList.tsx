@@ -189,12 +189,24 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
                       {/* Pricing Display */}
                       <div className="mb-2">
                         <div className="text-sm space-y-1">
+                          {/* Base Price - Always Show */}
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Base Price:</span>
-                            <span className="font-medium text-gray-800">${product.price.toFixed(2)}</span>
+                            <span className="text-gray-600">Price:</span>
+                            <div className="flex items-center gap-2">
+                              {hasActiveSpecial(product.id) ? (
+                                <>
+                                  <span className="line-through text-gray-400">${product.price.toFixed(2)}</span>
+                                  <span className="font-medium text-red-600">
+                                    ${applySpecialDiscount(product.price, product.id).toFixed(2)}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="font-medium text-gray-800">${product.price.toFixed(2)}</span>
+                              )}
+                            </div>
                           </div>
                           
-                          {/* Dynamic Tier Pricing */}
+                          {/* Dynamic Tier Pricing - Only Show When Enabled */}
                           {showTiers && !pricingLoading && Object.entries(prices).map(([tierName, tierPrice]) => {
                             const hasSpecial = hasActiveSpecial(product.id);
                             const specialPrice = hasSpecial ? applySpecialDiscount(tierPrice.original, product.id) : tierPrice.original;
