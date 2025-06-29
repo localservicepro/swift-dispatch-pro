@@ -942,6 +942,162 @@ export type Database = {
           },
         ]
       }
+      orders_export: {
+        Row: {
+          adjustments: number | null
+          all_notes: string | null
+          assigned_truck_type: string | null
+          billing_address: string | null
+          business_name: string | null
+          company_name: string | null
+          created_at: string | null
+          created_at_formatted: string | null
+          customer_email: string | null
+          customer_first_name: string | null
+          customer_last_name: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          deleted_at: string | null
+          deleted_by_name: string | null
+          delivery_address: string | null
+          delivery_date: string | null
+          delivery_date_formatted: string | null
+          delivery_fee: number | null
+          delivery_method: string | null
+          delivery_notes: string | null
+          delivery_schedule: string | null
+          delivery_time: string | null
+          delivery_time_formatted: string | null
+          driver_name: string | null
+          id: string
+          is_split_order: boolean | null
+          master_order_id: string | null
+          order_notes: string | null
+          order_number: string | null
+          order_status: string | null
+          payment_method: string | null
+          payment_status: string | null
+          product_count: number | null
+          products_formatted: string | null
+          purchase_order: string | null
+          record_status: string | null
+          special_instructions: string | null
+          split_number: number | null
+          subtotal: number | null
+          suburb_full: string | null
+          suburb_name: string | null
+          suburb_postcode: string | null
+          suburb_state: string | null
+          total_amount: number | null
+          truck_info: string | null
+          truck_registration: string | null
+          truck_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          adjustments?: number | null
+          all_notes?: string | null
+          assigned_truck_type?: string | null
+          billing_address?: string | null
+          business_name?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          created_at_formatted?: string | null
+          customer_email?: string | null
+          customer_first_name?: string | null
+          customer_last_name?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          deleted_at?: string | null
+          deleted_by_name?: string | null
+          delivery_address?: string | null
+          delivery_date?: string | null
+          delivery_date_formatted?: string | null
+          delivery_fee?: number | null
+          delivery_method?: string | null
+          delivery_notes?: string | null
+          delivery_schedule?: string | null
+          delivery_time?: string | null
+          delivery_time_formatted?: string | null
+          driver_name?: string | null
+          id: string
+          is_split_order?: boolean | null
+          master_order_id?: string | null
+          order_notes?: string | null
+          order_number?: string | null
+          order_status?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          product_count?: number | null
+          products_formatted?: string | null
+          purchase_order?: string | null
+          record_status?: string | null
+          special_instructions?: string | null
+          split_number?: number | null
+          subtotal?: number | null
+          suburb_full?: string | null
+          suburb_name?: string | null
+          suburb_postcode?: string | null
+          suburb_state?: string | null
+          total_amount?: number | null
+          truck_info?: string | null
+          truck_registration?: string | null
+          truck_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          adjustments?: number | null
+          all_notes?: string | null
+          assigned_truck_type?: string | null
+          billing_address?: string | null
+          business_name?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          created_at_formatted?: string | null
+          customer_email?: string | null
+          customer_first_name?: string | null
+          customer_last_name?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          deleted_at?: string | null
+          deleted_by_name?: string | null
+          delivery_address?: string | null
+          delivery_date?: string | null
+          delivery_date_formatted?: string | null
+          delivery_fee?: number | null
+          delivery_method?: string | null
+          delivery_notes?: string | null
+          delivery_schedule?: string | null
+          delivery_time?: string | null
+          delivery_time_formatted?: string | null
+          driver_name?: string | null
+          id?: string
+          is_split_order?: boolean | null
+          master_order_id?: string | null
+          order_notes?: string | null
+          order_number?: string | null
+          order_status?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          product_count?: number | null
+          products_formatted?: string | null
+          purchase_order?: string | null
+          record_status?: string | null
+          special_instructions?: string | null
+          split_number?: number | null
+          subtotal?: number | null
+          suburb_full?: string | null
+          suburb_name?: string | null
+          suburb_postcode?: string | null
+          suburb_state?: string | null
+          total_amount?: number | null
+          truck_info?: string | null
+          truck_registration?: string | null
+          truck_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       payment_settings: {
         Row: {
           created_at: string
@@ -2009,6 +2165,10 @@ export type Database = {
           p_description?: string
         }
         Returns: string
+      }
+      refresh_order_export_data: {
+        Args: { order_id_param: string }
+        Returns: undefined
       }
       restore_order: {
         Args: { p_order_id: string }
