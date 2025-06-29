@@ -29,17 +29,41 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchCustomerProfile = async (userId: string) => {
+  const fetchCustomerProfile = async (userId: string, userEmail?: string) => {
     try {
-      const { data: customer, error } = await supabase
+      console.log('Fetching customer profile for user:', userId);
+      
+      // First try to find by auth_user_id
+      let { data: customer, error } = await supabase
         .from('customers')
         .select('*')
         .eq('auth_user_id', userId)
         .single();
       
-      if (error) throw error;
+      // If not found by auth_user_id and we have an email, try to find by email
+      if (error && userEmail) {
+        console.log('Customer not found by auth_user_id, trying email:', userEmail);
+        const { data: customerByEmail, error: emailError } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('email', userEmail)
+          .single();
+        
+        if (!emailError && customerByEmail) {
+          customer = customerByEmail;
+          
+          // Update the customer record to link it with the auth user
+          await supabase
+            .from('customers')
+            .update({ auth_user_id: userId })
+            .eq('id', customerByEmail.id);
+          
+          console.log('Linked existing customer to auth user');
+        }
+      }
       
       if (customer) {
+        console.log('Customer profile found:', customer);
         setProfile({
           id: customer.id,
           email: customer.email,
@@ -47,6 +71,9 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           last_name: customer.last_name,
           role: 'customer'
         });
+      } else {
+        console.log('No customer profile found');
+        setProfile(null);
       }
     } catch (error) {
       console.error('Error fetching customer profile:', error);
@@ -70,8 +97,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (session?.user && event === 'SIGNED_IN') {
-          await fetchCustomerProfile(session.user.id);
+        if (session?.user) {
+          await fetchCustomerProfile(session.user.id, session.user.email);
         }
         
         setLoading(false);
@@ -82,7 +109,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         setSession(session);
         setUser(session.user);
-        fetchCustomerProfile(session.user.id);
+        fetchCustomerProfile(session.user.id, session.user.email);
       } else {
         setLoading(false);
       }
@@ -115,19 +142,19 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           data: {
             first_name: firstName,
             last_name: lastName,
-            role: 'customer' // Set customer role to prevent profile creation
+            role: 'customer'
           }
         }
       });
 
       if (authError) return { error: authError };
 
-      // Create customer profile
+      // Create customer profile and link it to the auth user
       if (data.user) {
         const { error: customerError } = await supabase
           .from('customers')
           .insert({
-            auth_user_id: data.user.id,
+            auth_user_id: data.user.id, // Properly link to auth user
             email,
             first_name: firstName,
             last_name: lastName,
@@ -137,7 +164,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
         if (customerError) {
           console.error('Error creating customer profile:', customerError);
+          return { error: customerError };
         }
+        
+        console.log('Customer profile created and linked to auth user');
       }
 
       return { error: null };

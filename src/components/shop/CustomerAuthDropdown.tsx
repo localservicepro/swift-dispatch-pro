@@ -8,10 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useCustomerAuth } from './CustomerAuthProvider';
 import { useToast } from '@/hooks/use-toast';
-import { User, LogOut, ShoppingBag } from 'lucide-react';
+import { User, LogOut, ShoppingBag, Loader2 } from 'lucide-react';
 
 export function CustomerAuthDropdown() {
-  const { user, profile, signIn, signUp, signOut } = useCustomerAuth();
+  const { user, profile, loading: authLoading, signIn, signUp, signOut } = useCustomerAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
@@ -80,6 +80,17 @@ export function CustomerAuthDropdown() {
     }
   };
 
+  // Show loading spinner while auth is loading
+  if (authLoading) {
+    return (
+      <Button variant="outline" disabled>
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        Loading...
+      </Button>
+    );
+  }
+
+  // Show dropdown with user info when signed in and profile is available
   if (user && profile) {
     return (
       <DropdownMenu>
@@ -103,6 +114,31 @@ export function CustomerAuthDropdown() {
     );
   }
 
+  // Show generic account button when user is signed in but profile is not available
+  if (user && !profile) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="flex items-center gap-2">
+            <User className="w-4 h-4" />
+            Account
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => window.location.href = '/shop/account'}>
+            <ShoppingBag className="w-4 h-4 mr-2" />
+            My Account
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleSignOut}>
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign Out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
+  // Show auth form when not signed in
   return (
     <div className="relative">
       <Button onClick={() => setShowAuth(!showAuth)} variant="outline">

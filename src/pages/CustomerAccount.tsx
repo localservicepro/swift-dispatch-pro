@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Package, Clock, CheckCircle, XCircle, LogOut } from 'lucide-react';
+import { ArrowLeft, Package, Clock, CheckCircle, XCircle, LogOut, User } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -15,11 +15,11 @@ interface Order {
   total_amount: number;
   delivery_date: string;
   delivery_time: string;
-  products: any; // Allow Json type from database
+  products: any;
 }
 
 function CustomerAccountContent() {
-  const { profile, loading: authLoading, signOut } = useCustomerAuth();
+  const { user, profile, loading: authLoading, signOut } = useCustomerAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -27,8 +27,10 @@ function CustomerAccountContent() {
   useEffect(() => {
     if (profile) {
       fetchOrders();
+    } else if (!authLoading) {
+      setLoading(false);
     }
-  }, [profile]);
+  }, [profile, authLoading]);
 
   const fetchOrders = async () => {
     if (!profile) return;
@@ -42,7 +44,6 @@ function CustomerAccountContent() {
 
       if (error) throw error;
       
-      // Transform the data to handle Json products field
       const transformedOrders = (data || []).map(order => ({
         ...order,
         products: Array.isArray(order.products) ? order.products : 
@@ -53,6 +54,11 @@ function CustomerAccountContent() {
       setOrders(transformedOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load orders. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -72,7 +78,6 @@ function CustomerAccountContent() {
           title: "Success",
           description: "You have been signed out successfully.",
         });
-        // Redirect to shop page after successful sign out
         window.location.href = '/shop';
       }
     } catch (error) {
@@ -83,6 +88,62 @@ function CustomerAccountContent() {
       });
     }
   };
+
+  // Show loading state
+  if (authLoading || (user && !profile && loading)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show sign in prompt if not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <User className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <CardTitle>Account Access Required</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-gray-600 mb-4">
+              Please sign in to view your account and order history.
+            </p>
+            <Button onClick={() => window.location.href = '/shop'}>
+              Go to Shop & Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show profile not found message
+  if (user && !profile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <User className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <CardTitle>Profile Not Found</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-gray-600 mb-4">
+              We couldn't find your customer profile. This might be because you need to complete your registration.
+            </p>
+            <Button onClick={() => window.location.href = '/shop'}>
+              Return to Shop
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -116,17 +177,6 @@ function CustomerAccountContent() {
     }
   };
 
-  if (authLoading || !profile) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -148,7 +198,6 @@ function CustomerAccountContent() {
               </div>
             </div>
             
-            {/* Sign Out Button */}
             <Button
               variant="ghost"
               onClick={handleSignOut}
