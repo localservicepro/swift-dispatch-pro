@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Package, Edit, Trash2, ImageIcon, Star, Clock } from "lucide-react";
 import { useSpecialPricing } from "@/hooks/useSpecialPricing";
+import { useDynamicPricing } from "@/hooks/usePricingTiers";
 import { format } from "date-fns";
 import { ProductEditDialog } from "./ProductEditDialog";
 
@@ -48,6 +50,7 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
   const { toast } = useToast();
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const { specials, loadSpecialsForProducts, hasActiveSpecial, getSpecialForProduct, applySpecialDiscount } = useSpecialPricing();
+  const { calculateTierPrices, isLoading: pricingLoading } = useDynamicPricing();
   const [specialsLoaded, setSpecialsLoaded] = useState(false);
 
   useEffect(() => {
@@ -93,29 +96,6 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
     setEditingProduct(null);
   };
 
-  // Calculate pricing based on global pricing tiers
-  const calculateCustomerPrices = (basePrice: number, productId: string) => {
-    const tradePrice = basePrice; // Trade tier: 0% adjustment (base price)
-    const accountPrice = basePrice * 0.9; // Account tier: 10% discount
-
-    // Apply special pricing if available
-    const tradeSpecialPrice = hasActiveSpecial(productId) ? applySpecialDiscount(tradePrice, productId) : tradePrice;
-    const accountSpecialPrice = hasActiveSpecial(productId) ? applySpecialDiscount(accountPrice, productId) : accountPrice;
-
-    return {
-      trade: {
-        original: tradePrice,
-        special: tradeSpecialPrice,
-        hasSpecial: hasActiveSpecial(productId) && tradeSpecialPrice !== tradePrice
-      },
-      account: {
-        original: accountPrice,
-        special: accountSpecialPrice,
-        hasSpecial: hasActiveSpecial(productId) && accountSpecialPrice !== accountPrice
-      }
-    };
-  };
-
   return (
     <>
       <Card>
@@ -135,7 +115,7 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map((product) => {
-                const customerPrices = calculateCustomerPrices(product.price, product.id);
+                const { showTiers, prices } = calculateTierPrices(product.price);
                 const productSpecial = getSpecialForProduct(product.id);
                 
                 return (
@@ -206,7 +186,7 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
                         <h4 className="font-semibold text-slate-800 leading-tight">{product.name}</h4>
                       </div>
                       
-                      {/* Base Price and Calculated Pricing Display */}
+                      {/* Pricing Display */}
                       <div className="mb-2">
                         <div className="text-sm space-y-1">
                           <div className="flex justify-between">
@@ -214,35 +194,29 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
                             <span className="font-medium text-gray-800">${product.price.toFixed(2)}</span>
                           </div>
                           
-                          {/* Trade Pricing */}
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Trade:</span>
-                            <div className="flex items-center gap-2">
-                              {customerPrices.trade.hasSpecial ? (
-                                <>
-                                  <span className="line-through text-gray-400">${customerPrices.trade.original.toFixed(2)}</span>
-                                  <span className="font-medium text-red-600">${customerPrices.trade.special.toFixed(2)}</span>
-                                </>
-                              ) : (
-                                <span className="font-medium text-blue-600">${customerPrices.trade.original.toFixed(2)}</span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Account Pricing */}
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Account:</span>
-                            <div className="flex items-center gap-2">
-                              {customerPrices.account.hasSpecial ? (
-                                <>
-                                  <span className="line-through text-gray-400">${customerPrices.account.original.toFixed(2)}</span>
-                                  <span className="font-medium text-red-600">${customerPrices.account.special.toFixed(2)}</span>
-                                </>
-                              ) : (
-                                <span className="font-medium text-green-600">${customerPrices.account.original.toFixed(2)}</span>
-                              )}
-                            </div>
-                          </div>
+                          {/* Dynamic Tier Pricing */}
+                          {showTiers && !pricingLoading && Object.entries(prices).map(([tierName, tierPrice]) => {
+                            const hasSpecial = hasActiveSpecial(product.id);
+                            const specialPrice = hasSpecial ? applySpecialDiscount(tierPrice.original, product.id) : tierPrice.original;
+                            
+                            return (
+                              <div key={tierName} className="flex justify-between">
+                                <span className="text-gray-600 capitalize">{tierName}:</span>
+                                <div className="flex items-center gap-2">
+                                  {hasSpecial ? (
+                                    <>
+                                      <span className="line-through text-gray-400">${tierPrice.original.toFixed(2)}</span>
+                                      <span className="font-medium text-red-600">${specialPrice.toFixed(2)}</span>
+                                    </>
+                                  ) : (
+                                    <span className={`font-medium ${tierName === 'trade' ? 'text-blue-600' : 'text-green-600'}`}>
+                                      ${tierPrice.original.toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 
