@@ -65,7 +65,7 @@ export function OrderManagement() {
     deleteSplitOrderGroup
   } = useSplitOrderGroups();
 
-  // Fetch orders from database with enhanced suburb retrieval
+  // Fetch orders from database with enhanced suburb retrieval and products_formatted
   const {
     data: orders = [],
     isLoading,
@@ -74,9 +74,9 @@ export function OrderManagement() {
   } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
-      console.log('Fetching orders from database with enhanced suburb lookup...');
+      console.log('Fetching orders from database with enhanced suburb lookup and products_formatted...');
 
-      // First, get all orders with their basic relationships
+      // First, get all orders with their basic relationships including products_formatted
       const {
         data: ordersData,
         error: ordersError
@@ -88,6 +88,7 @@ export function OrderManagement() {
           customer_phone,
           customer_address,
           products,
+          products_formatted,
           total_amount,
           status,
           driver_id,
@@ -355,7 +356,14 @@ export function OrderManagement() {
         return status;
     }
   };
-  const formatProducts = (products: any) => {
+
+  const formatProducts = (products: any, productsFormatted?: string) => {
+    // Use the formatted version if available (from database trigger)
+    if (productsFormatted && productsFormatted.trim() !== '') {
+      return productsFormatted;
+    }
+    
+    // Fallback to original formatting logic
     if (!products) return 'No products';
     if (Array.isArray(products)) {
       return products.map(p => {
@@ -555,7 +563,7 @@ export function OrderManagement() {
                       </div>
                       <div>
                         <p className="text-slate-500">Products</p>
-                        <p className="font-medium">{formatProducts(order.products)}</p>
+                        <p className="font-medium">{formatProducts(order.products, order.products_formatted)}</p>
                       </div>
                       <div>
                         <p className="text-slate-500">Driver</p>

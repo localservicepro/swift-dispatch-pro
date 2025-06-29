@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Customer, CartItem } from "../types";
+import { serializeCartItemsWithFormatting } from "./orderFormattingService";
 
 // Interface for creating single orders
 interface CreateSingleOrderParams {
@@ -36,17 +37,6 @@ interface CreateSplitOrderParams {
   orderTotals: any;
 }
 
-// Helper function to convert CartItem to JSON-serializable format
-const serializeCartItems = (cart: CartItem[]) => {
-  return cart.map(item => ({
-    id: item.product.id,
-    name: item.product.name,
-    price: item.unit_price,
-    quantity: parseFloat(item.quantity.toString()), // Ensure decimal support
-    total_price: item.total_price
-  }));
-};
-
 export async function createSingleOrder(params: CreateSingleOrderParams) {
   try {
     // Fetch current payment settings for calculations
@@ -67,8 +57,8 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
     // Generate unique order number
     const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random()* 1000)}`;
 
-    // Serialize cart items for database storage
-    const serializedProducts = serializeCartItems(params.cart);
+    // Serialize cart items for database storage - the trigger will automatically create products_formatted
+    const serializedProducts = serializeCartItemsWithFormatting(params.cart);
 
     const orderData = {
       order_number: orderNumber,
@@ -97,6 +87,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       status: 'requested' as const,
       is_split_order: false,
       payment_status: 'pending'
+      // Note: products_formatted will be automatically populated by the database trigger
     };
 
     console.log('Creating single order with data:', orderData);
@@ -146,7 +137,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
     const orders = [];
 
     // Serialize cart items for database storage
-    const serializedProducts = serializeCartItems(params.cart);
+    const serializedProducts = serializeCartItemsWithFormatting(params.cart);
 
     // Create master order entry - this is a summary record
     const masterOrderData = {
@@ -250,6 +241,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         master_order_id: masterOrder.id,
         split_number: i + 1,
         payment_status: 'pending'
+        // Note: products_formatted will be automatically populated by the database trigger
       };
 
       console.log(`Creating split order ${i + 1}:`, splitOrderData);
