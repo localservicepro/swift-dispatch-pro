@@ -7,7 +7,7 @@ interface Profile {
   id: string;
   email: string;
   full_name: string;
-  role: 'admin' | 'driver' | 'customer';
+  role: 'admin' | 'driver';
 }
 
 interface AuthContextType {
@@ -39,7 +39,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
       
       if (error) throw error;
-      setProfile(profile);
+      
+      // Only allow admin and driver roles in main application
+      if (profile && (profile.role === 'admin' || profile.role === 'driver')) {
+        setProfile(profile);
+      } else {
+        // If user has customer role or no profile, sign them out
+        console.log('User has customer role or invalid profile, signing out...');
+        await supabase.auth.signOut();
+        setProfile(null);
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
       setProfile(null);
@@ -55,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
         
         // Handle sign out immediately
@@ -71,12 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Fetch profile data for authenticated users
         if (session?.user && event === 'SIGNED_IN') {
-          // Use setTimeout to avoid blocking the auth state change
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-          }, 0);
+          await fetchProfile(session.user.id);
           
-          // Create admin profile for new users if needed
+          // Create admin profile for new users if needed (only for admin/driver)
           setTimeout(async () => {
             try {
               const { data: existingProfile } = await supabase
@@ -86,16 +92,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .single();
 
               if (!existingProfile) {
-                await supabase
-                  .from('profiles')
-                  .insert({
-                    id: session.user.id,
-                    email: session.user.email || '',
-                    full_name: session.user.user_metadata?.full_name || '',
-                    role: 'admin'
-                  });
-                // Fetch the newly created profile
-                fetchProfile(session.user.id);
+                // Only create profile if user doesn't exist in customers table
+                const { data: customerCheck } = await supabase
+                  .from('customers')
+                  .select('id')
+                  .eq('auth_user_id', session.user.id)
+                  .single();
+
+                if (!customerCheck) {
+                  await supabase
+                    .from('profiles')
+                    .insert({
+                      id: session.user.id,
+                      email: session.user.email || '',
+                      full_name: session.user.user_metadata?.full_name || '',
+                      role: 'admin'
+                    });
+                  // Fetch the newly created profile
+                  await fetchProfile(session.user.id);
+                }
               }
             } catch (error) {
               console.error('Error creating profile:', error);
@@ -103,9 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }, 0);
         } else if (session?.user && profile === null) {
           // Fetch profile if we have a user but no profile yet
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-          }, 0);
+          await fetchProfile(session.user.id);
         }
         
         setLoading(false);
@@ -124,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []); // Remove profile dependency to prevent unnecessary re-creation
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -161,14 +174,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    if (signingOut) return { error: null }; // Prevent multiple simultaneous sign out attempts
+    if (signingOut) return { error: null };
     
     setSigningOut(true);
     
     try {
       console.log('Starting sign out process...');
       
-      // Check if we have an active session before attempting to sign out
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       
       if (!currentSession) {
@@ -177,19 +189,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: null };
       }
       
-      // Attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error('Sign out error:', error);
         
-        // If the error is "session not found" or similar, we can still clear local state
         if (error.message?.toLowerCase().includes('session') || 
             error.message?.toLowerCase().includes('not found') ||
             error.status === 403) {
           console.log('Session already invalid, clearing local state');
           clearAuthState();
-          return { error: null }; // Don't show error to user for invalid sessions
+          return { error: null };
         }
         
         return { error };
@@ -201,7 +211,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
     } catch (error) {
       console.error('Sign out exception:', error);
-      // Clear state even on error to ensure user is logged out locally
       clearAuthState();
       return { error };
     } finally {

@@ -114,7 +114,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           emailRedirectTo: redirectUrl,
           data: {
             first_name: firstName,
-            last_name: lastName
+            last_name: lastName,
+            role: 'customer' // Set customer role to prevent profile creation
           }
         }
       });
