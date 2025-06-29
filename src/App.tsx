@@ -30,17 +30,18 @@ function AuthenticatedApp() {
     );
   }
 
-  // If user is authenticated but has no profile, they might be a customer
-  // Redirect them to shop instead of showing auth page
+  // If user is authenticated but has no admin/driver profile, redirect to shop
   if (user && !profile) {
     console.log('User authenticated but no admin/driver profile found, redirecting to shop');
     return <Navigate to="/shop" replace />;
   }
 
-  if (!user || !profile) {
+  // If no user is authenticated, show auth page
+  if (!user) {
     return <AuthPage />;
   }
 
+  // User is authenticated and has admin/driver profile
   return (
     <Routes>
       <Route 

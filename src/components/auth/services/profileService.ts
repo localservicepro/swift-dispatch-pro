@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '../types';
 
@@ -21,9 +20,8 @@ export const fetchProfile = async (userId: string): Promise<Profile | null> => {
         role: profile.role as 'admin' | 'driver' // Type assertion since we've verified the role
       };
     } else {
-      // If user has customer role or no profile, sign them out
-      console.log('User has customer role or invalid profile, signing out...');
-      await supabase.auth.signOut();
+      // If user has customer role or no profile, return null without signing out
+      console.log('User has customer role or invalid profile, returning null');
       return null;
     }
   } catch (error) {

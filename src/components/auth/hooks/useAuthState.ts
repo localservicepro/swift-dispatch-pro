@@ -17,11 +17,6 @@ export const useAuthState = () => {
     setProfile(null);
   };
 
-  const handleProfileFetch = async (userId: string) => {
-    const fetchedProfile = await fetchProfile(userId);
-    setProfile(fetchedProfile);
-  };
-
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -40,37 +35,56 @@ export const useAuthState = () => {
         setUser(session?.user ?? null);
         
         // Fetch profile data for authenticated users
-        if (session?.user && event === 'SIGNED_IN') {
-          await handleProfileFetch(session.user.id);
-          
-          // Create admin profile for new users if needed (only for admin/driver)
+        if (session?.user) {
+          // Use setTimeout to prevent infinite loops
           setTimeout(async () => {
-            const profileCreated = await createAdminProfileIfNeeded(
-              session.user.id,
-              session.user.email || '',
-              session.user.user_metadata
-            );
-            
-            if (profileCreated) {
-              // Fetch the newly created profile
-              await handleProfileFetch(session.user.id);
+            try {
+              const fetchedProfile = await fetchProfile(session.user.id);
+              setProfile(fetchedProfile);
+              
+              // If no profile exists and this is a new sign in, try to create admin profile
+              if (!fetchedProfile && event === 'SIGNED_IN') {
+                const profileCreated = await createAdminProfileIfNeeded(
+                  session.user.id,
+                  session.user.email || '',
+                  session.user.user_metadata
+                );
+                
+                if (profileCreated) {
+                  // Fetch the newly created profile
+                  const newProfile = await fetchProfile(session.user.id);
+                  setProfile(newProfile);
+                }
+              }
+            } catch (error) {
+              console.error('Error handling profile:', error);
+            } finally {
+              setLoading(false);
             }
           }, 0);
-        } else if (session?.user && profile === null) {
-          // Fetch profile if we have a user but no profile yet
-          await handleProfileFetch(session.user.id);
+        } else {
+          setLoading(false);
         }
-        
-        setLoading(false);
       }
     );
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      if (session?.user) {
         setSession(session);
         setUser(session.user);
-        handleProfileFetch(session.user.id);
+        
+        // Fetch profile for existing session
+        setTimeout(async () => {
+          try {
+            const fetchedProfile = await fetchProfile(session.user.id);
+            setProfile(fetchedProfile);
+          } catch (error) {
+            console.error('Error fetching initial profile:', error);
+          } finally {
+            setLoading(false);
+          }
+        }, 0);
       } else {
         setLoading(false);
       }
