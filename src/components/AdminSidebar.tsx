@@ -1,3 +1,4 @@
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -132,7 +133,7 @@ export function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarProps) {
                     className={cn(
                       "w-full justify-start",
                       activeTab === item.id
-                        ? "bg-accent text-accent-foreground"
+                        ? "text-primary bg-primary/10"
                         : "hover:bg-accent hover:text-accent-foreground"
                     )}
                   >
