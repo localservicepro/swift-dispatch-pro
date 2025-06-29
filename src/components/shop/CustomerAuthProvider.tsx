@@ -151,10 +151,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
       // Create customer profile and link it to the auth user
       if (data.user) {
+        console.log('Creating customer profile for auth user:', data.user.id);
         const { error: customerError } = await supabase
           .from('customers')
           .insert({
-            auth_user_id: data.user.id, // Properly link to auth user
+            auth_user_id: data.user.id, // This is critical for the RLS policy
             email,
             first_name: firstName,
             last_name: lastName,
@@ -167,11 +168,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           return { error: customerError };
         }
         
-        console.log('Customer profile created and linked to auth user');
+        console.log('Customer profile created successfully and linked to auth user');
       }
 
       return { error: null };
     } catch (error) {
+      console.error('Signup error:', error);
       return { error };
     }
   };
