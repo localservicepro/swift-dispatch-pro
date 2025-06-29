@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,9 +39,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (error) throw error;
       
-      // Only allow admin and driver roles in main application
+      // Only allow admin and driver roles in main application - type guard
       if (profile && (profile.role === 'admin' || profile.role === 'driver')) {
-        setProfile(profile);
+        setProfile({
+          id: profile.id,
+          email: profile.email,
+          full_name: profile.full_name,
+          role: profile.role as 'admin' | 'driver' // Type assertion since we've verified the role
+        });
       } else {
         // If user has customer role or no profile, sign them out
         console.log('User has customer role or invalid profile, signing out...');
