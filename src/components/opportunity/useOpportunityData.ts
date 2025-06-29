@@ -137,6 +137,28 @@ export function useOpportunityData() {
           
           const { eventType, new: newRecord, old: oldRecord } = payload;
           
+          // ENHANCED: Check for delivery address changes specifically
+          if (eventType === 'UPDATE' && oldRecord && newRecord) {
+            const deliveryAddressChanged = oldRecord.delivery_address !== newRecord.delivery_address;
+            const customerAddressChanged = oldRecord.customer_address !== newRecord.customer_address;
+            
+            if (deliveryAddressChanged || customerAddressChanged) {
+              console.log('Delivery address change detected:', {
+                orderNumber: newRecord.order_number,
+                oldDeliveryAddress: oldRecord.delivery_address,
+                newDeliveryAddress: newRecord.delivery_address,
+                oldCustomerAddress: oldRecord.customer_address,
+                newCustomerAddress: newRecord.customer_address
+              });
+              
+              toast({
+                title: "Address Updated",
+                description: `Delivery address for Order ${newRecord.order_number} has been updated`,
+                duration: 3000,
+              });
+            }
+          }
+          
           // Handle deletion events (when deleted_at changes from null to timestamp)
           if (eventType === 'UPDATE' && oldRecord?.deleted_at === null && newRecord?.deleted_at !== null) {
             console.log('Order deletion detected:', newRecord?.order_number);
@@ -214,7 +236,7 @@ export function useOpportunityData() {
           
           // Invalidate cache for all events except deletion (already handled optimistically)
           if (!(eventType === 'UPDATE' && oldRecord?.deleted_at === null && newRecord?.deleted_at !== null)) {
-            await invalidateOrdersCache(`real-time ${eventType}`);
+            await invalidateOrdersCache(`real-time ${eventType} - delivery address tracking enabled`);
           }
         }
       )

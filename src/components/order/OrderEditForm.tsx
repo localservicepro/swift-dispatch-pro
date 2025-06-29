@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +8,7 @@ import { OrderEditFooter } from "./OrderEditFooter";
 import { OrderEditSections } from "./OrderEditSections";
 import { OrderEditConflictSection } from "./OrderEditConflictSection";
 import { ConflictResult } from "@/utils/conflictDetection";
+import { useQueryClient } from "@tanstack/react-query";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -80,6 +80,7 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
   const [isUpdating, setIsUpdating] = useState(false);
   const [deliveryRate, setDeliveryRate] = useState<string>('');
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const {
     formData,
@@ -104,6 +105,23 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
     formData.truck_id,
     order.id
   );
+
+  // Enhanced cache invalidation function for order updates
+  const invalidateOrderCaches = async (reason?: string) => {
+    console.log(`Invalidating order caches after edit: ${reason || 'order update'}`);
+    
+    // Force invalidate all order-related queries
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] }),
+      queryClient.invalidateQueries({ queryKey: ['orders'] }),
+      queryClient.invalidateQueries({ queryKey: ['deleted-orders'] })
+    ]);
+    
+    // Force immediate refetch for opportunity pipeline
+    await queryClient.refetchQueries({ queryKey: ['opportunity-orders'] });
+    
+    console.log('Order caches invalidated and refetched');
+  };
 
   // Fetch delivery rate when suburb changes
   useEffect(() => {
@@ -138,6 +156,10 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
     setIsUpdating(true);
 
     try {
+      // Check if delivery address has changed for enhanced logging
+      const deliveryAddressChanged = formData.customer_address !== order.customer_address;
+      console.log('Order update - delivery address changed:', deliveryAddressChanged);
+      
       // If truck assignment changed, update the old truck status and new truck status
       if (formData.truck_id !== order.truck_id) {
         // Set old truck back to available if it was assigned
@@ -157,27 +179,32 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
         }
       }
 
-      // Update the order
+      // Update the order with delivery_address explicitly set
+      const updateData = {
+        customer_name: formData.customer_name,
+        purchase_order: formData.purchase_order || null,
+        customer_phone: formData.customer_phone || null,
+        customer_address: formData.customer_address,
+        delivery_address: formData.customer_address, // Ensure delivery_address is updated
+        products: formData.products,
+        total_amount: parseFloat(formData.total_amount),
+        subtotal: formData.subtotal,
+        status: formData.status as OrderStatus,
+        delivery_date: formData.delivery_date || null,
+        delivery_time: formData.delivery_time || null,
+        special_instructions: formData.special_instructions || null,
+        driver_id: formData.driver_id === 'unassigned' ? null : formData.driver_id,
+        delivery_fee: formData.delivery_fee,
+        truck_type: formData.truck_type === 'none' ? null : formData.truck_type as TruckType,
+        truck_id: formData.truck_id === 'none' ? null : formData.truck_id,
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log('Updating order with data:', updateData);
+
       const { error: orderError } = await supabase
         .from('orders')
-        .update({
-          customer_name: formData.customer_name,
-          purchase_order: formData.purchase_order || null,
-          customer_phone: formData.customer_phone || null,
-          customer_address: formData.customer_address,
-          products: formData.products,
-          total_amount: parseFloat(formData.total_amount),
-          subtotal: formData.subtotal,
-          status: formData.status as OrderStatus,
-          delivery_date: formData.delivery_date || null,
-          delivery_time: formData.delivery_time || null,
-          special_instructions: formData.special_instructions || null,
-          driver_id: formData.driver_id === 'unassigned' ? null : formData.driver_id,
-          delivery_fee: formData.delivery_fee,
-          truck_type: formData.truck_type === 'none' ? null : formData.truck_type as TruckType,
-          truck_id: formData.truck_id === 'none' ? null : formData.truck_id,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', order.id);
 
       if (orderError) throw orderError;
@@ -225,6 +252,9 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
           // Don't throw here as the order update was successful
         }
       }
+
+      // ENHANCED: Manual cache invalidation after successful order update
+      await invalidateOrderCaches(deliveryAddressChanged ? 'delivery address changed' : 'order data changed');
 
       toast({
         title: "Success",
