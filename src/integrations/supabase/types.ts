@@ -354,6 +354,13 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "delivery_photos_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_export_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       delivery_routes: {
@@ -412,6 +419,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_routes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_export_view"
             referencedColumns: ["id"]
           },
         ]
@@ -474,6 +488,13 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "delivery_status_updates_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_export_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       driver_locations: {
@@ -526,6 +547,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_locations_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_export_view"
             referencedColumns: ["id"]
           },
         ]
@@ -662,6 +690,13 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders_export_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       order_items: {
@@ -701,6 +736,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_export_view"
             referencedColumns: ["id"]
           },
           {
@@ -885,6 +927,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "orders_master_order_id_fkey"
+            columns: ["master_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_export_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_truck_id_fkey"
             columns: ["truck_id"]
             isOneToOne: false
@@ -892,6 +941,162 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      orders_export: {
+        Row: {
+          adjustments: number | null
+          all_notes: string | null
+          assigned_truck_type: string | null
+          billing_address: string | null
+          business_name: string | null
+          company_name: string | null
+          created_at: string | null
+          created_at_formatted: string | null
+          customer_email: string | null
+          customer_first_name: string | null
+          customer_last_name: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          deleted_at: string | null
+          deleted_by_name: string | null
+          delivery_address: string | null
+          delivery_date: string | null
+          delivery_date_formatted: string | null
+          delivery_fee: number | null
+          delivery_method: string | null
+          delivery_notes: string | null
+          delivery_schedule: string | null
+          delivery_time: string | null
+          delivery_time_formatted: string | null
+          driver_name: string | null
+          id: string
+          is_split_order: boolean | null
+          master_order_id: string | null
+          order_notes: string | null
+          order_number: string | null
+          order_status: string | null
+          payment_method: string | null
+          payment_status: string | null
+          product_count: number | null
+          products_formatted: string | null
+          purchase_order: string | null
+          record_status: string | null
+          special_instructions: string | null
+          split_number: number | null
+          subtotal: number | null
+          suburb_full: string | null
+          suburb_name: string | null
+          suburb_postcode: string | null
+          suburb_state: string | null
+          total_amount: number | null
+          truck_info: string | null
+          truck_registration: string | null
+          truck_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          adjustments?: number | null
+          all_notes?: string | null
+          assigned_truck_type?: string | null
+          billing_address?: string | null
+          business_name?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          created_at_formatted?: string | null
+          customer_email?: string | null
+          customer_first_name?: string | null
+          customer_last_name?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          deleted_at?: string | null
+          deleted_by_name?: string | null
+          delivery_address?: string | null
+          delivery_date?: string | null
+          delivery_date_formatted?: string | null
+          delivery_fee?: number | null
+          delivery_method?: string | null
+          delivery_notes?: string | null
+          delivery_schedule?: string | null
+          delivery_time?: string | null
+          delivery_time_formatted?: string | null
+          driver_name?: string | null
+          id: string
+          is_split_order?: boolean | null
+          master_order_id?: string | null
+          order_notes?: string | null
+          order_number?: string | null
+          order_status?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          product_count?: number | null
+          products_formatted?: string | null
+          purchase_order?: string | null
+          record_status?: string | null
+          special_instructions?: string | null
+          split_number?: number | null
+          subtotal?: number | null
+          suburb_full?: string | null
+          suburb_name?: string | null
+          suburb_postcode?: string | null
+          suburb_state?: string | null
+          total_amount?: number | null
+          truck_info?: string | null
+          truck_registration?: string | null
+          truck_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          adjustments?: number | null
+          all_notes?: string | null
+          assigned_truck_type?: string | null
+          billing_address?: string | null
+          business_name?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          created_at_formatted?: string | null
+          customer_email?: string | null
+          customer_first_name?: string | null
+          customer_last_name?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          deleted_at?: string | null
+          deleted_by_name?: string | null
+          delivery_address?: string | null
+          delivery_date?: string | null
+          delivery_date_formatted?: string | null
+          delivery_fee?: number | null
+          delivery_method?: string | null
+          delivery_notes?: string | null
+          delivery_schedule?: string | null
+          delivery_time?: string | null
+          delivery_time_formatted?: string | null
+          driver_name?: string | null
+          id?: string
+          is_split_order?: boolean | null
+          master_order_id?: string | null
+          order_notes?: string | null
+          order_number?: string | null
+          order_status?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          product_count?: number | null
+          products_formatted?: string | null
+          purchase_order?: string | null
+          record_status?: string | null
+          special_instructions?: string | null
+          split_number?: number | null
+          subtotal?: number | null
+          suburb_full?: string | null
+          suburb_name?: string | null
+          suburb_postcode?: string | null
+          suburb_state?: string | null
+          total_amount?: number | null
+          truck_info?: string | null
+          truck_registration?: string | null
+          truck_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       payment_settings: {
         Row: {
@@ -1806,6 +2011,71 @@ export type Database = {
           },
         ]
       }
+      orders_export_view: {
+        Row: {
+          adjustments: number | null
+          assigned_truck_type: Database["public"]["Enums"]["truck_type"] | null
+          billing_address: string | null
+          business_name: string | null
+          company_name: string | null
+          created_at: string | null
+          created_at_formatted: string | null
+          customer_email: string | null
+          customer_first_name: string | null
+          customer_last_name: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          deleted_at: string | null
+          deleted_by_name: string | null
+          delivery_address: string | null
+          delivery_date: string | null
+          delivery_date_formatted: string | null
+          delivery_fee: number | null
+          delivery_method: Database["public"]["Enums"]["delivery_method"] | null
+          delivery_notes: string | null
+          delivery_time: string | null
+          delivery_time_formatted: string | null
+          driver_name: string | null
+          id: string | null
+          is_split_order: boolean | null
+          master_order_id: string | null
+          order_notes: string | null
+          order_number: string | null
+          order_status: Database["public"]["Enums"]["order_status"] | null
+          payment_method: string | null
+          payment_status: string | null
+          product_count: number | null
+          products_formatted: string | null
+          purchase_order: string | null
+          record_status: string | null
+          special_instructions: string | null
+          split_number: number | null
+          subtotal: number | null
+          suburb_name: string | null
+          suburb_postcode: string | null
+          suburb_state: string | null
+          total_amount: number | null
+          truck_registration: string | null
+          truck_type: Database["public"]["Enums"]["truck_type"] | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_master_order_id_fkey"
+            columns: ["master_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_master_order_id_fkey"
+            columns: ["master_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_export_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_pricing_calculated: {
         Row: {
           account_price: number | null
@@ -1844,6 +2114,34 @@ export type Database = {
           end_date: string
         }[]
       }
+      get_order_export_data: {
+        Args: { order_id_param?: string }
+        Returns: {
+          id: string
+          order_number: string
+          purchase_order: string
+          created_at_formatted: string
+          customer_name: string
+          customer_phone: string
+          customer_email: string
+          billing_address: string
+          delivery_address: string
+          suburb_full: string
+          subtotal: number
+          adjustments: number
+          delivery_fee: number
+          total_amount: number
+          payment_method: string
+          payment_status: string
+          order_status: string
+          driver_name: string
+          truck_info: string
+          delivery_schedule: string
+          products_formatted: string
+          all_notes: string
+          record_status: string
+        }[]
+      }
       get_product_price: {
         Args: {
           product_id_param: string
@@ -1867,6 +2165,10 @@ export type Database = {
           p_description?: string
         }
         Returns: string
+      }
+      refresh_order_export_data: {
+        Args: { order_id_param: string }
+        Returns: undefined
       }
       restore_order: {
         Args: { p_order_id: string }
