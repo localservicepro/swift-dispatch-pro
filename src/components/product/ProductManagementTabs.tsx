@@ -1,15 +1,17 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryManagement } from "../CategoryManagement";
+import { PricingTierManagement } from "../PricingTierManagement";
 import { SpecialManagement } from "../SpecialManagement";
 import { ProductsTabContent } from "./ProductsTabContent";
 
 export function ProductManagementTabs() {
   return (
     <Tabs defaultValue="products" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="products">Products</TabsTrigger>
         <TabsTrigger value="categories">Categories</TabsTrigger>
+        <TabsTrigger value="pricing">Pricing Tiers</TabsTrigger>
         <TabsTrigger value="specials">Specials</TabsTrigger>
       </TabsList>
 
@@ -19,6 +21,10 @@ export function ProductManagementTabs() {
 
       <TabsContent value="categories">
         <CategoryManagement />
+      </TabsContent>
+
+      <TabsContent value="pricing">
+        <PricingTierManagement />
       </TabsContent>
 
       <TabsContent value="specials">
