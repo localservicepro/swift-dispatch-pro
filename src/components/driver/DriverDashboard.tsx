@@ -83,13 +83,25 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          trucks!orders_truck_id_fkey (
+            registration_number
+          )
+        `)
         .eq('driver_id', user.id)
         .in('status', ['preparing', 'loading', 'en_route'])
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setOrders(data || []);
+      
+      // Transform the data to include truck_registration for compatibility
+      const transformedData = data?.map(order => ({
+        ...order,
+        truck_registration: order.trucks?.registration_number || null
+      })) || [];
+      
+      setOrders(transformedData);
     } catch (error: any) {
       toast({
         title: "Error",
