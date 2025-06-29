@@ -623,7 +623,7 @@ export function OrderManagement() {
                         {order.customer_phone && <p className="text-xs text-slate-400">{order.customer_phone}</p>}
                       </div>
                       <div>
-                        <p className="text-slate-500">Products</p>
+                        <p classNameclassName="text-slate-500">Products</p>
                         <p className="font-medium">{formatProducts(order.products)}</p>
                       </div>
                       <div>
