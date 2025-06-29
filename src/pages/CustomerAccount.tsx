@@ -15,7 +15,7 @@ interface Order {
   total_amount: number;
   delivery_date: string;
   delivery_time: string;
-  products: any[];
+  products: any; // Allow Json type from database
 }
 
 function CustomerAccountContent() {
@@ -40,7 +40,16 @@ function CustomerAccountContent() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
+      
+      // Transform the data to handle Json products field
+      const transformedOrders = (data || []).map(order => ({
+        ...order,
+        products: Array.isArray(order.products) ? order.products : 
+                 typeof order.products === 'string' ? JSON.parse(order.products) :
+                 order.products || []
+      }));
+      
+      setOrders(transformedOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
@@ -194,8 +203,8 @@ function CustomerAccountContent() {
                           )}
                           
                           <div className="text-sm text-gray-600">
-                            <strong>Items:</strong> {order.products?.length || 0} item(s)
-                            {order.products && order.products.length > 0 && (
+                            <strong>Items:</strong> {Array.isArray(order.products) ? order.products.length : 0} item(s)
+                            {Array.isArray(order.products) && order.products.length > 0 && (
                               <div className="mt-1">
                                 {order.products.map((item: any, index: number) => (
                                   <span key={index} className="text-xs bg-gray-100 rounded px-2 py-1 mr-1">

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -112,7 +111,7 @@ export function ShoppingCart({ cart, onCartUpdate }: ShoppingCartProps) {
         }
       }
 
-      // Create order
+      // Create order with proper enum type for status
       const orderData = {
         order_number: generateOrderNumber(),
         customer_id: customerId,
@@ -132,7 +131,7 @@ export function ShoppingCart({ cart, onCartUpdate }: ShoppingCartProps) {
         })),
         subtotal: totalAmount,
         total_amount: totalAmount,
-        status: 'preparing',
+        status: 'preparing' as const, // Use 'as const' to ensure correct enum type
         payment_status: 'pending'
       };
 
