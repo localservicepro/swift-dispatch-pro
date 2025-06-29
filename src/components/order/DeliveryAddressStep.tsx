@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CustomerAddressForm } from '@/components/customer/CustomerAddressForm';
+import { OrderAddressForm } from '@/components/order/OrderAddressForm';
 import { User, X, RotateCcw, Calendar as CalendarIcon, Clock, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { generateTimeSlots } from '@/utils/timeSlotUtils';
@@ -127,27 +126,10 @@ export function DeliveryAddressStep({
         <div className="space-y-3">
           <div className="border-b pb-3">
             <h4 className="text-sm font-medium text-gray-700 mb-3">Delivery Address</h4>
-            <CustomerAddressForm
-              formData={{
-                full_address: formData.full_address,
-                delivery_address: formData.full_address, // Use the same address for both in order context
-                suburb_id: formData.suburb_id
-              }}
+            <OrderAddressForm
+              formData={formData}
               deliveryRate="" // No longer used for calculations, just reference
-              onFormDataChange={(updates) => {
-                // Map the updates back to the order form structure
-                const orderUpdates: Partial<DeliveryAddressStepProps['formData']> = {};
-                if (updates.full_address !== undefined) {
-                  orderUpdates.full_address = updates.full_address;
-                }
-                if (updates.delivery_address !== undefined) {
-                  orderUpdates.full_address = updates.delivery_address; // In orders, we use full_address
-                }
-                if (updates.suburb_id !== undefined) {
-                  orderUpdates.suburb_id = updates.suburb_id;
-                }
-                onFormDataChange(orderUpdates);
-              }}
+              onFormDataChange={onFormDataChange}
               onSuburbChange={onSuburbChange}
             />
           </div>
