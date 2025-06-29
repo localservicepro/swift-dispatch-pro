@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -32,7 +33,7 @@ export function useCustomerDialogData(customer: Customer | null) {
         email: customer.email || '',
         phone: customer.phone || '',
         full_address: customer.full_address || '',
-        delivery_address: customer.delivery_address || '',
+        delivery_address: (customer as any).delivery_address || '', // Handle potential missing field
         suburb_id: customer.suburb_id || '',
         customer_type: (customer.customer_type as 'residential' | 'trade' | 'account') || 'residential',
         entity_type: (customer.entity_type as 'individual' | 'business') || 'individual',

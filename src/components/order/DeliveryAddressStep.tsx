@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -127,9 +128,26 @@ export function DeliveryAddressStep({
           <div className="border-b pb-3">
             <h4 className="text-sm font-medium text-gray-700 mb-3">Delivery Address</h4>
             <CustomerAddressForm
-              formData={formData}
+              formData={{
+                full_address: formData.full_address,
+                delivery_address: formData.full_address, // Use the same address for both in order context
+                suburb_id: formData.suburb_id
+              }}
               deliveryRate="" // No longer used for calculations, just reference
-              onFormDataChange={onFormDataChange}
+              onFormDataChange={(updates) => {
+                // Map the updates back to the order form structure
+                const orderUpdates: Partial<DeliveryAddressStepProps['formData']> = {};
+                if (updates.full_address !== undefined) {
+                  orderUpdates.full_address = updates.full_address;
+                }
+                if (updates.delivery_address !== undefined) {
+                  orderUpdates.full_address = updates.delivery_address; // In orders, we use full_address
+                }
+                if (updates.suburb_id !== undefined) {
+                  orderUpdates.suburb_id = updates.suburb_id;
+                }
+                onFormDataChange(orderUpdates);
+              }}
               onSuburbChange={onSuburbChange}
             />
           </div>
