@@ -40,26 +40,27 @@ export function PaymentStatusDropdown({ order, onStatusUpdate }: PaymentStatusDr
 
     setIsUpdating(true);
     try {
-      // Use RPC function instead of direct table update
-      const { error } = await supabase.rpc('update_payment_status', {
-        p_order_id: order.id,
-        p_new_status: newStatus,
-        p_payment_date: newStatus === 'paid' ? new Date().toISOString() : null
-      });
+      let updateData: any = {
+        payment_status: newStatus,
+        updated_at: new Date().toISOString()
+      };
 
-      if (error) throw error;
-
-      // If marking as paid and order is in requested status, move it to preparing
-      if (newStatus === 'paid' && order.status === 'requested') {
-        const { error: statusError } = await supabase.rpc('update_order_status', {
-          order_id: order.id,
-          new_status: 'preparing'
-        });
-
-        if (statusError) {
-          console.warn('Failed to update order status:', statusError);
+      // When marking as paid, also set payment_date
+      if (newStatus === 'paid') {
+        updateData.payment_date = new Date().toISOString();
+        
+        // If order is currently in requested status, move it to preparing
+        if (order.status === 'requested') {
+          updateData.status = 'preparing';
         }
       }
+
+      const { error } = await supabase
+        .from('orders')
+        .update(updateData)
+        .eq('id', order.id);
+
+      if (error) throw error;
 
       // Log the activity
       if (profile?.full_name) {
@@ -72,13 +73,13 @@ export function PaymentStatusDropdown({ order, onStatusUpdate }: PaymentStatusDr
         );
 
         // If we also updated the order status, log that too
-        if (newStatus === 'paid' && order.status === 'requested') {
+        if (updateData.status && updateData.status !== order.status) {
           await activityLogger.orderStatusUpdate(
             order.id,
             order.order_number,
             order.customer_name,
             order.status,
-            'preparing',
+            updateData.status,
             profile.full_name
           );
         }
@@ -92,7 +93,6 @@ export function PaymentStatusDropdown({ order, onStatusUpdate }: PaymentStatusDr
 
       onStatusUpdate();
     } catch (error: any) {
-      console.error('Failed to update payment status:', error);
       toast({
         title: "Error",
         description: "Failed to update payment status",
