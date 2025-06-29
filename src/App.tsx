@@ -8,8 +8,6 @@ import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import { AuthPage } from "@/components/auth/AuthPage";
 import Index from "./pages/Index";
 import DriverPortal from "./pages/DriverPortal";
-import ShopPage from "./pages/ShopPage";
-import CustomerAccount from "./pages/CustomerAccount";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
@@ -18,8 +16,6 @@ const queryClient = new QueryClient();
 
 function AuthenticatedApp() {
   const { user, profile, loading } = useAuth();
-
-  console.log('AuthenticatedApp - User:', user?.id, 'Profile:', profile?.role, 'Loading:', loading);
 
   if (loading) {
     return (
@@ -32,30 +28,19 @@ function AuthenticatedApp() {
     );
   }
 
-  // If no user is authenticated, show auth page
   if (!user) {
-    console.log('No user authenticated, showing auth page');
     return <AuthPage />;
   }
 
-  // If user is authenticated but has no admin/driver profile, redirect to shop (root)
-  // Only do this after loading is complete to ensure we have accurate profile data
-  if (user && !loading && !profile) {
-    console.log('User authenticated but no admin/driver profile found, redirecting to shop');
-    return <Navigate to="/" replace />;
-  }
-
-  // User is authenticated and has admin/driver profile
-  console.log('User authenticated with profile:', profile?.role);
   return (
     <Routes>
       <Route 
-        path="/admin" 
+        path="/" 
         element={
-          profile?.role === 'admin' ? (
-            <Index />
+          profile?.role === 'driver' ? (
+            <Navigate to="/driver" replace />
           ) : (
-            <Navigate to="/" replace />
+            <Index />
           )
         } 
       />
@@ -78,20 +63,12 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public shop routes - now at root */}
-        <Route path="/" element={<ShopPage />} />
-        <Route path="/account" element={<CustomerAccount />} />
-        
         {/* Public payment routes - no authentication required */}
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
         
-        {/* Admin and driver routes require authentication */}
-        <Route path="/admin/*" element={<AuthenticatedApp />} />
-        <Route path="/driver" element={<AuthenticatedApp />} />
-        
-        {/* Catch all other routes */}
-        <Route path="*" element={<NotFound />} />
+        {/* All other routes require authentication */}
+        <Route path="/*" element={<AuthenticatedApp />} />
       </Routes>
     </BrowserRouter>
   );
