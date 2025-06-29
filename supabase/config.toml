@@ -1,5 +1,1 @@
-
 project_id = "wntcxbxitsanbyrtfhwv"
-
-[functions.order-export-webhook]
-verify_jwt = false

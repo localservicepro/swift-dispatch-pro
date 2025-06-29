@@ -1,10 +1,10 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Plus, X, Layers, DollarSign } from "lucide-react";
 
 interface Attribute {
@@ -17,7 +17,8 @@ interface Variation {
   attributes: Record<string, string>;
   sku: string;
   stockQuantity: number;
-  price: number;
+  tradePrice: number;
+  accountPrice: number;
   useGlobalPricing: boolean;
 }
 
@@ -102,7 +103,8 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
         attributes,
         sku: existingVariation?.sku || `SKU-${Object.values(attributes).join('-')}`,
         stockQuantity: existingVariation?.stockQuantity || 0,
-        price: existingVariation?.price || 0,
+        tradePrice: existingVariation?.tradePrice || 0,
+        accountPrice: existingVariation?.accountPrice || 0,
         useGlobalPricing: existingVariation?.useGlobalPricing ?? true,
       };
     });
@@ -122,6 +124,26 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
         ? { ...variation, [field]: value }
         : variation
     ));
+  };
+
+  // Calculate global pricing based on pricing tiers
+  const calculateGlobalPrices = (tradePrice: number) => {
+    return {
+      trade: tradePrice,
+      account: tradePrice * 0.9 // 10% discount for account tier
+    };
+  };
+
+  const calculateDiscountPercentage = (tradePrice: number, accountPrice: number) => {
+    if (tradePrice === 0) return 0;
+    return ((tradePrice - accountPrice) / tradePrice * 100);
+  };
+
+  const applyGlobalPricingToVariation = (variation: Variation) => {
+    if (variation.tradePrice > 0) {
+      const globalPrices = calculateGlobalPrices(variation.tradePrice);
+      updateVariation(variation.id, 'accountPrice', globalPrices.account);
+    }
   };
 
   return (
@@ -190,60 +212,130 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
           <div className="space-y-4">
             <h4 className="font-medium">Generated Variations ({variations.length})</h4>
             <div className="space-y-4">
-              {variations.map(variation => (
-                <div key={variation.id} className="border rounded-lg p-4 space-y-4">
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {Object.entries(variation.attributes).map(([key, value]) => (
-                      <Badge key={`${key}-${value}`} variant="outline">
-                        {key}: {value}
-                      </Badge>
-                    ))}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label>SKU</Label>
-                      <Input
-                        value={variation.sku}
-                        onChange={(e) => updateVariation(variation.id, 'sku', e.target.value)}
-                        placeholder="SKU"
-                      />
+              {variations.map(variation => {
+                const globalPrices = calculateGlobalPrices(variation.tradePrice);
+                const discountPercentage = calculateDiscountPercentage(variation.tradePrice, variation.accountPrice);
+                
+                return (
+                  <div key={variation.id} className="border rounded-lg p-4 space-y-4">
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {Object.entries(variation.attributes).map(([key, value]) => (
+                        <Badge key={`${key}-${value}`} variant="outline">
+                          {key}: {value}
+                        </Badge>
+                      ))}
                     </div>
-                    <div>
-                      <Label>Stock Quantity</Label>
-                      <Input
-                        type="number"
-                        value={variation.stockQuantity}
-                        onChange={(e) => updateVariation(variation.id, 'stockQuantity', parseInt(e.target.value) || 0)}
-                        placeholder="0 (optional)"
-                      />
-                    </div>
-                    <div>
-                      <Label className="flex items-center gap-1">
-                        <DollarSign className="w-4 h-4" />
-                        Price
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={variation.price}
-                        onChange={(e) => updateVariation(variation.id, 'price', parseFloat(e.target.value) || 0)}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Price Summary */}
-                  {variation.price > 0 && (
-                    <div className="bg-blue-50 p-3 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <h5 className="font-medium text-blue-800">Price</h5>
-                        <p className="font-semibold text-blue-600">${variation.price.toFixed(2)}</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>SKU</Label>
+                        <Input
+                          value={variation.sku}
+                          onChange={(e) => updateVariation(variation.id, 'sku', e.target.value)}
+                          placeholder="SKU"
+                        />
+                      </div>
+                      <div>
+                        <Label>Stock Quantity</Label>
+                        <Input
+                          type="number"
+                          value={variation.stockQuantity}
+                          onChange={(e) => updateVariation(variation.id, 'stockQuantity', parseInt(e.target.value) || 0)}
+                          placeholder="0 (optional)"
+                        />
                       </div>
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {/* Pricing Mode Toggle */}
+                    <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                      <Switch
+                        id={`global-pricing-${variation.id}`}
+                        checked={variation.useGlobalPricing}
+                        onCheckedChange={(checked) => {
+                          updateVariation(variation.id, 'useGlobalPricing', checked);
+                          if (checked) {
+                            applyGlobalPricingToVariation(variation);
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`global-pricing-${variation.id}`} className="text-sm">
+                        Use Global Pricing Rules (Account = Trade - 10%)
+                      </Label>
+                    </div>
+
+                    {/* Individual Pricing Inputs */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1 text-blue-600">
+                          <DollarSign className="w-4 h-4" />
+                          Trade Price (Regular Customers)
+                        </Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={variation.tradePrice}
+                          onChange={(e) => {
+                            const newTradePrice = parseFloat(e.target.value) || 0;
+                            updateVariation(variation.id, 'tradePrice', newTradePrice);
+                            if (variation.useGlobalPricing && newTradePrice > 0) {
+                              updateVariation(variation.id, 'accountPrice', newTradePrice * 0.9);
+                            }
+                          }}
+                          placeholder="0.00"
+                          className="border-blue-200"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1 text-green-600">
+                          <DollarSign className="w-4 h-4" />
+                          Account Price (VIP Customers)
+                        </Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={variation.accountPrice}
+                          onChange={(e) => updateVariation(variation.id, 'accountPrice', parseFloat(e.target.value) || 0)}
+                          placeholder="0.00"
+                          disabled={variation.useGlobalPricing}
+                          className={variation.useGlobalPricing ? "bg-gray-100" : "border-green-200"}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Pricing Summary */}
+                    {variation.tradePrice > 0 && variation.accountPrice > 0 && (
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        <div className="flex justify-between items-center mb-2">
+                          <h5 className="font-medium text-blue-800">Pricing Summary</h5>
+                          {variation.useGlobalPricing && (
+                            <Badge variant="secondary" className="text-xs">Global Rules Applied</Badge>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div className="text-center">
+                            <p className="text-gray-600">Trade Price</p>
+                            <p className="font-semibold text-blue-600">${variation.tradePrice.toFixed(2)}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-gray-600">Account Price</p>
+                            <p className="font-semibold text-green-600">${variation.accountPrice.toFixed(2)}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-gray-600">Discount</p>
+                            <p className="font-semibold text-orange-600">{discountPercentage.toFixed(1)}%</p>
+                          </div>
+                        </div>
+                        {!variation.useGlobalPricing && variation.accountPrice > variation.tradePrice && (
+                          <div className="mt-2 text-xs text-red-600">
+                            ⚠️ Account price is higher than Trade price
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

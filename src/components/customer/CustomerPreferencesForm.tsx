@@ -81,6 +81,20 @@ export function CustomerPreferencesForm({ formData, onFormDataChange }: Customer
           </p>
         </div>
       </div>
+
+      {/* Suggested Pricing Tier Display */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+        <h4 className="font-medium text-gray-800 mb-2">Suggested Pricing Tier</h4>
+        <p className="text-sm text-gray-600">
+          Based on customer type: <strong>
+            {formData.customer_type === 'residential' ? 'Individual' : 
+             formData.customer_type === 'trade' ? 'Trade' : 'Account'}
+          </strong>
+        </p>
+        <p className="text-xs text-gray-500 mt-1">
+          Pricing tiers can be customized in the Pricing Management section
+        </p>
+      </div>
     </>
   );
 }
