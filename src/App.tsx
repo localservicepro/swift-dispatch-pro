@@ -8,6 +8,8 @@ import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import { AuthPage } from "@/components/auth/AuthPage";
 import Index from "./pages/Index";
 import DriverPortal from "./pages/DriverPortal";
+import ShopPage from "./pages/ShopPage";
+import CustomerAccount from "./pages/CustomerAccount";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
@@ -63,11 +65,15 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public shop routes - no authentication required */}
+        <Route path="/shop" element={<ShopPage />} />
+        <Route path="/shop/account" element={<CustomerAccount />} />
+        
         {/* Public payment routes - no authentication required */}
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
         
-        {/* All other routes require authentication */}
+        {/* All other routes require admin/driver authentication */}
         <Route path="/*" element={<AuthenticatedApp />} />
       </Routes>
     </BrowserRouter>
