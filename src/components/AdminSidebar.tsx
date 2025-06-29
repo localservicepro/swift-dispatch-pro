@@ -110,9 +110,14 @@ export function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarProps) {
               loading="eager"
             />
           ) : (
-            <div className="h-8 w-8 bg-primary text-primary-foreground rounded flex items-center justify-center">
-              <Package className="h-4 w-4" />
-            </div>
+            <img 
+              src="/lovable-uploads/7af06903-3aa4-4e02-883b-f86692391965.png" 
+              alt="SwiftDispatch Pro" 
+              className="h-8 w-8 object-contain"
+              onError={() => {
+                // Final fallback to Package icon if both images fail
+              }}
+            />
           )}
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-semibold">SwiftDispatch Pro</span>
