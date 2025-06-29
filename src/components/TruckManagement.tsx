@@ -7,21 +7,29 @@ import { Truck, Plus, Search, Filter, Grid3X3, List } from "lucide-react";
 import { useTruckData } from "@/hooks/useTruckData";
 import { TruckStatsOverview } from "@/components/truck/TruckStatsOverview";
 import { TruckStatusCard } from "@/components/truck/TruckStatusCard";
+import { AddTruckDialog } from "@/components/truck/AddTruckDialog";
 import { Database } from "@/integrations/supabase/types";
+
 type Truck = Database["public"]["Tables"]["trucks"]["Row"];
 type TruckStatus = "available" | "assigned" | "maintenance" | "out_of_service";
+
 export function TruckManagement() {
   const {
     trucks,
     isLoading,
     getTruckStats,
     updateTruckStatus,
-    isUpdatingStatus
+    addTruck,
+    isUpdatingStatus,
+    isAddingTruck
   } = useTruckData();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [truckTypeFilter, setTruckTypeFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  
   const stats = getTruckStats();
 
   // Filter trucks based on search and filters
@@ -31,25 +39,37 @@ export function TruckManagement() {
     const matchesType = truckTypeFilter === "all" || truck.truck_type === truckTypeFilter;
     return matchesSearch && matchesStatus && matchesType;
   });
+
   const handleStatusChange = (truckId: string, status: TruckStatus) => {
     updateTruckStatus({
       truckId,
       status
     });
   };
+
   const handleEditTruck = (truck: Truck) => {
     // TODO: Implement truck editing dialog
     console.log("Edit truck:", truck);
   };
+
+  const handleAddTruck = (truckData: any) => {
+    addTruck(truckData);
+    setShowAddDialog(false);
+  };
+
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">
+    return (
+      <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Truck className="w-8 h-8 animate-pulse mx-auto mb-2" />
           <p>Loading fleet data...</p>
         </div>
-      </div>;
+      </div>
+    );
   }
-  return <div className="space-y-6">
+
+  return (
+    <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -58,7 +78,7 @@ export function TruckManagement() {
             Monitor and manage your vehicle fleet
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setShowAddDialog(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add Truck
         </Button>
@@ -127,16 +147,41 @@ export function TruckManagement() {
       </Card>
 
       {/* Trucks Grid/List */}
-      {filteredTrucks.length === 0 ? <Card>
+      {filteredTrucks.length === 0 ? (
+        <Card>
           <CardContent className="py-8 text-center">
             <Truck className="w-12 h-12 mx-auto mb-4 text-gray-400" />
             <h3 className="text-lg font-semibold mb-2">No trucks found</h3>
             <p className="text-muted-foreground">
-              {searchTerm || statusFilter !== "all" || truckTypeFilter !== "all" ? "Try adjusting your filters" : "Add your first truck to get started"}
+              {searchTerm || statusFilter !== "all" || truckTypeFilter !== "all" 
+                ? "Try adjusting your filters" 
+                : "Add your first truck to get started"}
             </p>
           </CardContent>
-        </Card> : <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
-          {filteredTrucks.map(truck => <TruckStatusCard key={truck.id} truck={truck} onStatusChange={handleStatusChange} onEdit={handleEditTruck} isUpdating={isUpdatingStatus} />)}
-        </div>}
-    </div>;
+        </Card>
+      ) : (
+        <div className={viewMode === "grid" 
+          ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+          : "space-y-4"}>
+          {filteredTrucks.map(truck => (
+            <TruckStatusCard 
+              key={truck.id} 
+              truck={truck} 
+              onStatusChange={handleStatusChange} 
+              onEdit={handleEditTruck} 
+              isUpdating={isUpdatingStatus} 
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Add Truck Dialog */}
+      <AddTruckDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        onAddTruck={handleAddTruck}
+        isLoading={isAddingTruck}
+      />
+    </div>
+  );
 }
