@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,19 +11,55 @@ export const useAuthState = () => {
   const [loading, setLoading] = useState(true);
 
   const clearAuthState = () => {
+    console.log('Clearing auth state completely');
     setUser(null);
     setSession(null);
     setProfile(null);
   };
 
+  const handleProfileFetch = async (userId: string, event?: string) => {
+    console.log('Starting profile fetch for user:', userId, 'event:', event);
+    try {
+      const fetchedProfile = await fetchProfile(userId);
+      console.log('Profile fetch result:', fetchedProfile);
+      setProfile(fetchedProfile);
+      
+      // If no profile exists and this is a new sign in, try to create admin profile
+      if (!fetchedProfile && event === 'SIGNED_IN') {
+        console.log('No profile found, attempting to create admin profile');
+        const profileCreated = await createAdminProfileIfNeeded(
+          userId,
+          session?.user?.email || '',
+          session?.user?.user_metadata || {}
+        );
+        
+        if (profileCreated) {
+          console.log('Admin profile created, fetching new profile');
+          const newProfile = await fetchProfile(userId);
+          console.log('New profile fetched:', newProfile);
+          setProfile(newProfile);
+        }
+      }
+    } catch (error) {
+      console.error('Error handling profile:', error);
+    } finally {
+      // Only set loading to false after profile fetch is complete
+      console.log('Profile fetch complete, setting loading to false');
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
+    console.log('Setting up auth state listener');
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id);
+        console.log('Auth state changed:', event, 'User ID:', session?.user?.id);
         
         // Handle sign out immediately
         if (event === 'SIGNED_OUT' || !session) {
+          console.log('User signed out, clearing state');
           clearAuthState();
           setLoading(false);
           return;
@@ -36,32 +71,9 @@ export const useAuthState = () => {
         
         // Fetch profile data for authenticated users
         if (session?.user) {
-          // Use setTimeout to prevent infinite loops
-          setTimeout(async () => {
-            try {
-              const fetchedProfile = await fetchProfile(session.user.id);
-              setProfile(fetchedProfile);
-              
-              // If no profile exists and this is a new sign in, try to create admin profile
-              if (!fetchedProfile && event === 'SIGNED_IN') {
-                const profileCreated = await createAdminProfileIfNeeded(
-                  session.user.id,
-                  session.user.email || '',
-                  session.user.user_metadata
-                );
-                
-                if (profileCreated) {
-                  // Fetch the newly created profile
-                  const newProfile = await fetchProfile(session.user.id);
-                  setProfile(newProfile);
-                }
-              }
-            } catch (error) {
-              console.error('Error handling profile:', error);
-            } finally {
-              setLoading(false);
-            }
-          }, 0);
+          // Keep loading true while we fetch profile
+          setLoading(true);
+          await handleProfileFetch(session.user.id, event);
         } else {
           setLoading(false);
         }
@@ -70,27 +82,23 @@ export const useAuthState = () => {
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.id);
       if (session?.user) {
         setSession(session);
         setUser(session.user);
         
         // Fetch profile for existing session
-        setTimeout(async () => {
-          try {
-            const fetchedProfile = await fetchProfile(session.user.id);
-            setProfile(fetchedProfile);
-          } catch (error) {
-            console.error('Error fetching initial profile:', error);
-          } finally {
-            setLoading(false);
-          }
-        }, 0);
+        handleProfileFetch(session.user.id);
       } else {
+        console.log('No initial session found');
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log('Cleaning up auth state listener');
+      subscription.unsubscribe();
+    };
   }, []);
 
   return {

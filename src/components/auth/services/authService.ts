@@ -41,11 +41,13 @@ export const signOut = async (signingOut: boolean, clearAuthState: () => void) =
   try {
     console.log('Starting sign out process...');
     
+    // Clear local state first to prevent race conditions
+    clearAuthState();
+    
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     
     if (!currentSession) {
-      console.log('No active session found, clearing local state');
-      clearAuthState();
+      console.log('No active session found during sign out');
       return { error: null };
     }
     
@@ -57,21 +59,18 @@ export const signOut = async (signingOut: boolean, clearAuthState: () => void) =
       if (error.message?.toLowerCase().includes('session') || 
           error.message?.toLowerCase().includes('not found') ||
           error.status === 403) {
-        console.log('Session already invalid, clearing local state');
-        clearAuthState();
+        console.log('Session already invalid, sign out considered successful');
         return { error: null };
       }
       
       return { error };
     } else {
       console.log('Sign out successful');
-      clearAuthState();
       return { error: null };
     }
     
   } catch (error) {
     console.error('Sign out exception:', error);
-    clearAuthState();
     return { error };
   }
 };
