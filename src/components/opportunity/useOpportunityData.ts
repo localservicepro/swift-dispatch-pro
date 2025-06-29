@@ -36,6 +36,7 @@ export function useOpportunityData() {
           customer_name,
           customer_phone,
           customer_address,
+          delivery_address,
           products,
           total_amount,
           status,

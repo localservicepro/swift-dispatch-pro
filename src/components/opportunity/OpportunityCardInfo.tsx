@@ -20,6 +20,9 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
   const truckInfo = getTruckInfo(order.truck_type_from_truck || order.truck_type);
   const hasDeliverySchedule = order.delivery_date && order.delivery_time;
 
+  // Get the delivery address to display
+  const deliveryAddress = order.delivery_address || order.customer_address;
+
   return (
     <>
       {/* Customer Info */}
@@ -68,10 +71,11 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
           <span>{formatCreatedTime(order.created_at)}</span>
         </div>
         
-        {order.suburb_name && (
-          <div className="flex items-center gap-2">
-            <MapPin className="w-3 h-3" />
-            <span>{order.suburb_name}</span>
+        {/* Delivery Address - Show full address instead of just suburb */}
+        {deliveryAddress && (
+          <div className="flex items-start gap-2">
+            <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+            <span className="line-clamp-2 break-words">{deliveryAddress}</span>
           </div>
         )}
 
