@@ -45,8 +45,7 @@ interface Variation {
   attributes: Record<string, string>;
   sku: string;
   stockQuantity: number;
-  tradePrice: number;
-  accountPrice: number;
+  price: number;
   useGlobalPricing: boolean;
 }
 
@@ -75,16 +74,6 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
   });
 
   const [variations, setVariations] = useState<Variation[]>([]);
-
-  // Calculate preview prices based on pricing tiers
-  const calculatePreviewPrices = (basePrice: number) => {
-    return {
-      trade: basePrice, // Trade tier: 0% adjustment (base price)
-      account: basePrice * 0.9 // Account tier: 10% discount
-    };
-  };
-
-  const previewPrices = calculatePreviewPrices(formData.price);
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
@@ -169,14 +158,14 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
           .delete()
           .eq('product_id', productId);
 
-        // Insert new variants with individual trade and account pricing
+        // Insert new variants with individual pricing
         const variantData = variations.map(variation => ({
           product_id: productId,
           variant_name: Object.values(variation.attributes).join(' - '),
           sku: variation.sku,
           stock_quantity: variation.stockQuantity,
-          // Store the trade price as the price adjustment (since base product price is 0 for variable products)
-          price_adjustment: variation.tradePrice,
+          // Store the price as the price adjustment (since base product price is 0 for variable products)
+          price_adjustment: variation.price,
         }));
 
         const { error: variantError } = await supabase
@@ -287,26 +276,6 @@ export function ProductForm({ isCreating, editingProduct, categories, onClose, o
                   placeholder="0.00"
                 />
               </div>
-
-              {/* Price Preview for Single Products */}
-              {formData.price > 0 && (
-                <div className="bg-gray-50 p-4 rounded-lg border">
-                  <h4 className="font-medium text-gray-700 mb-3">Calculated Customer Prices</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600">Trade (Regular)</p>
-                      <p className="text-lg font-semibold text-blue-600">${previewPrices.trade.toFixed(2)}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600">Account (VIP -10%)</p>
-                      <p className="text-lg font-semibold text-green-600">${previewPrices.account.toFixed(2)}</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Prices calculated automatically based on pricing tier settings
-                  </p>
-                </div>
-              )}
             </div>
           )}
 
