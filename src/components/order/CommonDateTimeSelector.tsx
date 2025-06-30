@@ -24,8 +24,6 @@ export function CommonDateTimeSelector({
 }: CommonDateTimeSelectorProps) {
   const timeSlots = generateTimeSlots();
   const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
   const selectedCommonDate = commonDeliveryDate ? new Date(commonDeliveryDate) : undefined;
 
   return (
@@ -51,7 +49,7 @@ export function CommonDateTimeSelector({
                 mode="single"
                 selected={selectedCommonDate}
                 onSelect={onDateSelect}
-                disabled={(date) => date < tomorrow}
+                disabled={(date) => date < today}
                 initialFocus
                 className="rounded-md border"
               />

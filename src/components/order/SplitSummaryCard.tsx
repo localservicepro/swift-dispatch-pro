@@ -64,10 +64,8 @@ export function SplitSummaryCard({
   
   const timeSlots = generateTimeSlots();
   
-  // Get today's date for minimum date selection
+  // Get today's date for minimum date selection - allow same-day delivery
   const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
 
   // Convert string date to Date object for calendar
   const selectedDate = split.deliveryDate ? new Date(split.deliveryDate) : undefined;
@@ -278,7 +276,7 @@ export function SplitSummaryCard({
                             mode="single"
                             selected={selectedDate}
                             onSelect={handleDateSelect}
-                            disabled={(date) => date < tomorrow}
+                            disabled={(date) => date < today}
                             initialFocus
                             className="rounded-md border pointer-events-auto"
                           />

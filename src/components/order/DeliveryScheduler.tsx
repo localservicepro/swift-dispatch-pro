@@ -12,10 +12,9 @@ interface DeliverySchedulerProps {
   onDeliveryTimeChange: (time: string) => void;
 }
 
-const getTomorrowDate = () => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split('T')[0];
+const getTodayDate = () => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
 };
 
 export function DeliveryScheduler({ 
@@ -39,7 +38,7 @@ export function DeliveryScheduler({
           type="date"
           value={deliveryDate}
           onChange={(e) => onDeliveryDateChange(e.target.value)}
-          min={getTomorrowDate()}
+          min={getTodayDate()}
         />
       </div>
 

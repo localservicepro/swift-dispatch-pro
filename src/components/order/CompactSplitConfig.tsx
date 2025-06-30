@@ -31,8 +31,6 @@ export function CompactSplitConfig({
 }: CompactSplitConfigProps) {
   const timeSlots = generateTimeSlots();
   const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
 
   const getSplitTotal = (split: SplitConfig) => {
     return split.products.reduce((sum, splitProduct) => {
@@ -127,7 +125,7 @@ export function CompactSplitConfig({
                             mode="single"
                             selected={split.deliveryDate ? new Date(split.deliveryDate) : undefined}
                             onSelect={(date) => handleDateSelect(index, date)}
-                            disabled={(date) => date < tomorrow}
+                            disabled={(date) => date < today}
                             initialFocus
                             className="rounded-md border"
                           />

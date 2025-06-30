@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -60,10 +61,10 @@ export function DeliveryAddressStep({
 
   const isValid = formData.full_address && formData.suburb_id && deliveryDate && deliveryTime;
 
-  // Get today's date for minimum date selection
+  // Get today's date for minimum date selection - allow same-day delivery
   const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
 
   // Convert string date to Date object for calendar
   const selectedDate = deliveryDate ? new Date(deliveryDate) : undefined;
@@ -162,7 +163,7 @@ export function DeliveryAddressStep({
                       mode="single"
                       selected={selectedDate}
                       onSelect={handleDateSelect}
-                      disabled={(date) => date < tomorrow}
+                      disabled={(date) => date < today}
                       initialFocus
                       className="rounded-md border pointer-events-auto"
                     />
