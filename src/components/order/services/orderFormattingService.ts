@@ -48,3 +48,13 @@ export const formatCustomerForOrder = (customer: Customer) => {
     customer_id: customer.id
   };
 };
+
+export const serializeCartItemsWithFormatting = (cart: any[]) => {
+  return cart.map(item => ({
+    id: item.product.id,
+    name: item.product.name,
+    price: item.unit_price,
+    quantity: item.quantity,
+    total_price: item.unit_price * item.quantity
+  }));
+};
