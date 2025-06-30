@@ -52,6 +52,7 @@ export function useOrderFormState() {
     if (selectedCustomer && selectedCustomer.full_address) {
       setDeliveryAddress(selectedCustomer.full_address);
       setIsUsingCustomerAddress(true);
+      setSameAsBilling(true); // Reset to same as billing when customer changes
       
       // Also set suburb if customer has one
       if (selectedCustomer.suburb_id) {
@@ -88,12 +89,14 @@ export function useOrderFormState() {
     setDeliveryAddress("");
     setSelectedSuburbId("");
     setIsUsingCustomerAddress(false);
+    setSameAsBilling(false); // Address is now different from billing
   };
 
   const resetToCustomerAddress = () => {
     if (selectedCustomer && selectedCustomer.full_address) {
       setDeliveryAddress(selectedCustomer.full_address);
       setIsUsingCustomerAddress(true);
+      setSameAsBilling(true); // Address is now same as billing
       
       if (selectedCustomer.suburb_id) {
         setSelectedSuburbId(selectedCustomer.suburb_id);
@@ -104,8 +107,15 @@ export function useOrderFormState() {
   // Handle delivery address change - detect if user is manually editing
   const handleDeliveryAddressChange = (address: string) => {
     setDeliveryAddress(address);
-    // If user manually changes address, mark as not using customer address
-    if (isUsingCustomerAddress && address !== selectedCustomer?.full_address) {
+    
+    // Compare with customer's billing address to determine sameAsBilling
+    if (selectedCustomer) {
+      const isSameAsBilling = address === selectedCustomer.full_address;
+      setSameAsBilling(isSameAsBilling);
+      setIsUsingCustomerAddress(isSameAsBilling);
+    } else {
+      // If no customer selected, it's definitely not same as billing
+      setSameAsBilling(false);
       setIsUsingCustomerAddress(false);
     }
   };
