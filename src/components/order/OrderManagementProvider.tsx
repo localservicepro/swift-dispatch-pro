@@ -63,7 +63,7 @@ interface OrderManagementContextType {
   
   // Actions
   updateOrderStatus: (orderId: string, newStatus: OrderStatus, currentOrder: Order) => void;
-  handleDeleteOrder: (orderId: string, deleteType: 'single' | 'group', deletingOrder: Order) => Promise<void>;
+  handleDeleteOrder: (orderId: string, deleteType: 'single' | 'group') => Promise<void>;
   refetch: () => void;
   
   // Computed
@@ -111,12 +111,12 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
   const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all";
 
   // Enhanced delete handler that supports both single and group deletion
-  const handleDeleteOrder = async (orderId: string, deleteType: 'single' | 'group', deletingOrderParam: Order) => {
-    if (!deletingOrderParam || isDeleting) return;
+  const handleDeleteOrder = async (orderId: string, deleteType: 'single' | 'group') => {
+    if (!deletingOrder || isDeleting) return;
 
     setIsDeleting(true);
     try {
-      await handleDeleteOrderAction(orderId, deleteType, deletingOrderParam);
+      await handleDeleteOrderAction(orderId, deleteType, deletingOrder);
       setDeletingOrder(null);
     } finally {
       setIsDeleting(false);
