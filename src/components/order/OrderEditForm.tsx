@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -107,6 +106,13 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
     formData.truck_id,
     order.id
   );
+
+  // Prepare business information from order data
+  const businessInfo = {
+    company_name: order.company_name,
+    business_name: order.business_name,
+    customer_type: order.customer_type
+  };
 
   // Enhanced cache invalidation function for order updates
   const invalidateOrderCaches = async (reason?: string) => {
@@ -299,6 +305,7 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
         formData={formData}
         deliveryRate={deliveryRate}
         orderId={order.id}
+        businessInfo={businessInfo}
         onInputChange={handleInputChange}
         onDriverChange={handleDriverChange}
         onSuburbChange={handleSuburbChange}

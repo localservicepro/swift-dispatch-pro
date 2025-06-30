@@ -17,6 +17,11 @@ interface OrderEditSectionsProps {
   formData: OrderFormData;
   deliveryRate: string;
   orderId: string;
+  businessInfo?: {
+    company_name?: string;
+    business_name?: string;
+    customer_type?: string;
+  };
   onInputChange: (field: string, value: string) => void;
   onDriverChange: (driverId: string) => void;
   onSuburbChange: (suburbId: string) => void;
@@ -29,6 +34,7 @@ export function OrderEditSections({
   formData,
   deliveryRate,
   orderId,
+  businessInfo,
   onInputChange,
   onDriverChange,
   onSuburbChange,
@@ -67,6 +73,7 @@ export function OrderEditSections({
 
       <OrderBasicInfoForm 
         formData={formData}
+        businessInfo={businessInfo}
         onInputChange={onInputChange}
       />
 
