@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Package, User, MapPin, Clock, CreditCard, Store, Home, FileText, Truck, Receipt } from "lucide-react";
+import { CheckCircle, Package, User, MapPin, Clock, CreditCard, Store, Home, FileText, Truck, Receipt, Building } from "lucide-react";
 import { Customer, CartItem } from "./types";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals, formatCurrency } from "./utils/paymentCalculations";
@@ -95,6 +95,36 @@ export function OrderReviewStep({
   // Determine which address to show for delivery
   const actualDeliveryAddress = sameAsBilling ? customer.full_address : deliveryAddress;
 
+  // Determine display name and company info
+  const getDisplayInfo = () => {
+    // Check for company name (account customers)
+    if (customer.company_name) {
+      return {
+        displayName: customer.company_name,
+        contactInfo: `${customer.first_name} ${customer.last_name}`,
+        isCompany: true
+      };
+    }
+    
+    // Check for business name (business customers)
+    if (customer.business_name) {
+      return {
+        displayName: customer.business_name,
+        contactInfo: `${customer.first_name} ${customer.last_name}`,
+        isCompany: true
+      };
+    }
+    
+    // Default to customer name
+    return {
+      displayName: `${customer.first_name} ${customer.last_name}`,
+      contactInfo: null,
+      isCompany: false
+    };
+  };
+
+  const { displayName, contactInfo, isCompany } = getDisplayInfo();
+
   const handleDeliveryFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value) || 0;
     onDeliveryFeeChange?.(value);
@@ -124,12 +154,19 @@ export function OrderReviewStep({
         {/* Customer Information */}
         <div className="space-y-3">
           <h3 className="flex items-center gap-2 font-semibold">
-            <User className="w-4 h-4" />
+            {isCompany ? (
+              <Building className="w-4 h-4" />
+            ) : (
+              <User className="w-4 h-4" />
+            )}
             Customer Information
           </h3>
           <div className="bg-gray-50 p-4 rounded-lg space-y-3">
             <div>
-              <p className="font-medium">{customer.first_name} {customer.last_name}</p>
+              <p className="font-bold text-lg">{displayName}</p>
+              {contactInfo && (
+                <p className="text-sm text-muted-foreground">Contact: {contactInfo}</p>
+              )}
               <p className="text-sm text-muted-foreground">{customer.email}</p>
               {customer.phone && (
                 <p className="text-sm text-muted-foreground">{customer.phone}</p>

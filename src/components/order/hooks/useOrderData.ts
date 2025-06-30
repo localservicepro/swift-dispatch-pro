@@ -34,6 +34,9 @@ interface Order {
   suburb_name?: string;
   suburb_state?: string;
   suburb_postcode?: string;
+  company_name?: string;
+  business_name?: string;
+  customer_type?: string;
 }
 
 export function useOrderData() {
@@ -73,6 +76,9 @@ export function useOrderData() {
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
+            company_name,
+            business_name,
+            customer_type,
             suburbs(id, name, state, postcode)
           )
         `)
@@ -95,6 +101,9 @@ export function useOrderData() {
           suburb_name: suburbData?.name || null,
           suburb_state: suburbData?.state || null,
           suburb_postcode: suburbData?.postcode || null,
+          company_name: order.customers?.company_name || null,
+          business_name: order.customers?.business_name || null,
+          customer_type: order.customers?.customer_type || null,
           driver_name: order.driver_name || 'Not Assigned',
           truck_registration: order.truck_registration || null,
           truck_type_display: order.truck_type_display || null

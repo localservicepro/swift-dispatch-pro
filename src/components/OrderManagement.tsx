@@ -42,6 +42,9 @@ interface Order {
   driver_name?: string;
   truck_registration?: string;
   truck_type_display?: string;
+  company_name?: string;
+  business_name?: string;
+  customer_type?: string;
 }
 
 export function OrderManagement() {

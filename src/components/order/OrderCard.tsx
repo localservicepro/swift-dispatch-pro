@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { PurchaseOrderDisplay } from "./PurchaseOrderDisplay";
 import { NotesIndicator } from "../notes/NotesIndicator";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
-import { MapPin, Truck, Edit3, Trash2 } from "lucide-react";
+import { MapPin, Truck, Edit3, Trash2, Building, User } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -37,6 +37,9 @@ interface Order {
   suburb_name?: string;
   suburb_state?: string;
   suburb_postcode?: string;
+  company_name?: string;
+  business_name?: string;
+  customer_type?: string;
 }
 
 interface OrderCardProps {
@@ -81,6 +84,36 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
         return status;
     }
   };
+
+  // Determine display name and company info
+  const getDisplayInfo = () => {
+    // Check for company name (account customers)
+    if (order.company_name) {
+      return {
+        displayName: order.company_name,
+        contactInfo: order.customer_name,
+        isCompany: true
+      };
+    }
+    
+    // Check for business name (business customers)
+    if (order.business_name) {
+      return {
+        displayName: order.business_name,
+        contactInfo: order.customer_name,
+        isCompany: true
+      };
+    }
+    
+    // Default to customer name
+    return {
+      displayName: order.customer_name,
+      contactInfo: null,
+      isCompany: false
+    };
+  };
+
+  const { displayName, contactInfo, isCompany } = getDisplayInfo();
 
   const formatProducts = (products: any, productsFormatted?: string) => {
     if (productsFormatted && productsFormatted.trim() !== '') {
@@ -143,8 +176,12 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
       {/* Order Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-3">
         <div>
-          <p className="text-slate-500">Customer</p>
-          <p className="font-medium">{order.customer_name}</p>
+          <p className="text-slate-500 flex items-center gap-1">
+            {isCompany ? <Building className="w-3 h-3" /> : <User className="w-3 h-3" />}
+            Customer
+          </p>
+          <p className="font-bold">{displayName}</p>
+          {contactInfo && <p className="text-xs text-slate-400">Contact: {contactInfo}</p>}
           {order.customer_phone && <p className="text-xs text-slate-400">{order.customer_phone}</p>}
         </div>
         <div>
