@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CustomerDialog } from "@/components/customer/CustomerDialog";
 import { CustomerOrders } from "@/components/customer/CustomerOrders";
 import { CustomerStats } from "@/components/customer/CustomerStats";
+import { getCustomerDisplayName } from "@/components/order/services/orderFormattingService";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Search, Eye, Edit, Trash2, MapPin, Bell, BellOff, Building2, User, Home, Wrench, Filter, X } from "lucide-react";
 
@@ -133,16 +134,6 @@ export function CustomerManagement() {
       />
     );
   }
-
-  const getCustomerDisplayName = (customer: any) => {
-    if (customer.entity_type === 'business' && customer.company_name) {
-      return customer.company_name;
-    }
-    if (customer.first_name && customer.last_name) {
-      return `${customer.first_name} ${customer.last_name}`;
-    }
-    return customer.company_name || customer.business_name || 'Unknown Customer';
-  };
 
   const getCustomerSubtitle = (customer: any) => {
     if (customer.entity_type === 'business' && customer.company_name) {
