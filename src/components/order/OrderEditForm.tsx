@@ -34,6 +34,9 @@ interface Order {
   subtotal?: number;
   truck_type?: TruckType;
   truck_id?: string;
+  company_name?: string;
+  business_name?: string;
+  customer_type?: string;
 }
 
 interface OrderEditFormProps {
