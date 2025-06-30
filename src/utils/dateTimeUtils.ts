@@ -1,6 +1,4 @@
 
-import { convertTimeToFormFormat } from './timeFormatUtils';
-
 export const formatDeliveryDate = (dateString: string | null | undefined): string => {
   if (!dateString) return '';
   
@@ -40,9 +38,6 @@ export const formatDeliveryTime = (timeString: string | null | undefined): strin
     return '';
   }
 };
-
-// Use the centralized utility function
-export const convertTimeToFormFormat = convertTimeToFormFormat;
 
 export const formatCreatedDate = (dateString: string): string => {
   try {
