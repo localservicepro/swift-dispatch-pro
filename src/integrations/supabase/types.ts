@@ -107,13 +107,6 @@ export type Database = {
             foreignKeyName: "customer_contacts_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "customer_classification"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "customer_contacts_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -167,13 +160,6 @@ export type Database = {
             foreignKeyName: "customer_payment_methods_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "customer_classification"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "customer_payment_methods_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -209,13 +195,6 @@ export type Database = {
             foreignKeyName: "customer_pricing_tiers_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "customer_classification"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "customer_pricing_tiers_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -242,11 +221,9 @@ export type Database = {
           entity_type: Database["public"]["Enums"]["entity_type"] | null
           first_name: string | null
           full_address: string
-          ghl_contact_id: string | null
           id: string
           is_active: boolean
           last_name: string | null
-          last_synced_to_ghl: string | null
           phone: string | null
           sms_notifications_enabled: boolean
           sms_opt_out_date: string | null
@@ -267,11 +244,9 @@ export type Database = {
           entity_type?: Database["public"]["Enums"]["entity_type"] | null
           first_name?: string | null
           full_address: string
-          ghl_contact_id?: string | null
           id?: string
           is_active?: boolean
           last_name?: string | null
-          last_synced_to_ghl?: string | null
           phone?: string | null
           sms_notifications_enabled?: boolean
           sms_opt_out_date?: string | null
@@ -292,11 +267,9 @@ export type Database = {
           entity_type?: Database["public"]["Enums"]["entity_type"] | null
           first_name?: string | null
           full_address?: string
-          ghl_contact_id?: string | null
           id?: string
           is_active?: boolean
           last_name?: string | null
-          last_synced_to_ghl?: string | null
           phone?: string | null
           sms_notifications_enabled?: boolean
           sms_opt_out_date?: string | null
@@ -859,13 +832,6 @@ export type Database = {
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customer_classification"
             referencedColumns: ["id"]
           },
           {
@@ -1651,101 +1617,6 @@ export type Database = {
       }
     }
     Views: {
-      customer_classification: {
-        Row: {
-          auth_user_id: string | null
-          billing_preferences: Json | null
-          business_details: Json | null
-          business_name: string | null
-          company_name: string | null
-          contact_role: string | null
-          created_at: string | null
-          customer_type: Database["public"]["Enums"]["customer_type"] | null
-          customer_type_display: string | null
-          email: string | null
-          entity_type: Database["public"]["Enums"]["entity_type"] | null
-          entity_type_display: string | null
-          first_name: string | null
-          full_address: string | null
-          ghl_contact_id: string | null
-          id: string | null
-          is_active: boolean | null
-          last_name: string | null
-          last_synced_to_ghl: string | null
-          phone: string | null
-          sms_notifications_enabled: boolean | null
-          sms_opt_out_date: string | null
-          stripe_customer_id: string | null
-          suburb_id: string | null
-          suggested_pricing_tier: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          auth_user_id?: string | null
-          billing_preferences?: Json | null
-          business_details?: Json | null
-          business_name?: string | null
-          company_name?: string | null
-          contact_role?: string | null
-          created_at?: string | null
-          customer_type?: Database["public"]["Enums"]["customer_type"] | null
-          customer_type_display?: never
-          email?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type"] | null
-          entity_type_display?: never
-          first_name?: string | null
-          full_address?: string | null
-          ghl_contact_id?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          last_name?: string | null
-          last_synced_to_ghl?: string | null
-          phone?: string | null
-          sms_notifications_enabled?: boolean | null
-          sms_opt_out_date?: string | null
-          stripe_customer_id?: string | null
-          suburb_id?: string | null
-          suggested_pricing_tier?: never
-          updated_at?: string | null
-        }
-        Update: {
-          auth_user_id?: string | null
-          billing_preferences?: Json | null
-          business_details?: Json | null
-          business_name?: string | null
-          company_name?: string | null
-          contact_role?: string | null
-          created_at?: string | null
-          customer_type?: Database["public"]["Enums"]["customer_type"] | null
-          customer_type_display?: never
-          email?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type"] | null
-          entity_type_display?: never
-          first_name?: string | null
-          full_address?: string | null
-          ghl_contact_id?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          last_name?: string | null
-          last_synced_to_ghl?: string | null
-          phone?: string | null
-          sms_notifications_enabled?: boolean | null
-          sms_opt_out_date?: string | null
-          stripe_customer_id?: string | null
-          suburb_id?: string | null
-          suggested_pricing_tier?: never
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "customers_suburb_id_fkey"
-            columns: ["suburb_id"]
-            isOneToOne: false
-            referencedRelation: "suburbs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       product_pricing_calculated: {
         Row: {
           account_price: number | null
