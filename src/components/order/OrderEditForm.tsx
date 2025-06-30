@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -90,6 +91,7 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
     handleSuburbChange,
     handleProductsChange,
     handleSubtotalChange,
+    getFormDataForSubmission,
   } = useOrderFormData(order);
 
   // Use conflict detection hook
@@ -156,12 +158,15 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
     setIsUpdating(true);
 
     try {
+      // Get form data with proper time format for database submission
+      const submissionData = getFormDataForSubmission();
+      
       // Check if delivery address has changed for enhanced logging
-      const deliveryAddressChanged = formData.customer_address !== order.customer_address;
+      const deliveryAddressChanged = submissionData.customer_address !== order.customer_address;
       console.log('Order update - delivery address changed:', deliveryAddressChanged);
       
       // If truck assignment changed, update the old truck status and new truck status
-      if (formData.truck_id !== order.truck_id) {
+      if (submissionData.truck_id !== order.truck_id) {
         // Set old truck back to available if it was assigned
         if (order.truck_id) {
           await supabase
@@ -171,32 +176,32 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
         }
 
         // Set new truck to assigned if one is selected
-        if (formData.truck_id && formData.truck_id !== 'none') {
+        if (submissionData.truck_id && submissionData.truck_id !== 'none') {
           await supabase
             .from('trucks')
             .update({ status: 'assigned' })
-            .eq('id', formData.truck_id);
+            .eq('id', submissionData.truck_id);
         }
       }
 
       // Update the order with delivery_address explicitly set
       const updateData = {
-        customer_name: formData.customer_name,
-        purchase_order: formData.purchase_order || null,
-        customer_phone: formData.customer_phone || null,
-        customer_address: formData.customer_address,
-        delivery_address: formData.customer_address, // Ensure delivery_address is updated
-        products: formData.products,
-        total_amount: parseFloat(formData.total_amount),
-        subtotal: formData.subtotal,
-        status: formData.status as OrderStatus,
-        delivery_date: formData.delivery_date || null,
-        delivery_time: formData.delivery_time || null,
-        special_instructions: formData.special_instructions || null,
-        driver_id: formData.driver_id === 'unassigned' ? null : formData.driver_id,
-        delivery_fee: formData.delivery_fee,
-        truck_type: formData.truck_type === 'none' ? null : formData.truck_type as TruckType,
-        truck_id: formData.truck_id === 'none' ? null : formData.truck_id,
+        customer_name: submissionData.customer_name,
+        purchase_order: submissionData.purchase_order || null,
+        customer_phone: submissionData.customer_phone || null,
+        customer_address: submissionData.customer_address,
+        delivery_address: submissionData.customer_address, // Ensure delivery_address is updated
+        products: submissionData.products,
+        total_amount: parseFloat(submissionData.total_amount),
+        subtotal: submissionData.subtotal,
+        status: submissionData.status as OrderStatus,
+        delivery_date: submissionData.delivery_date || null,
+        delivery_time: submissionData.delivery_time || null,
+        special_instructions: submissionData.special_instructions || null,
+        driver_id: submissionData.driver_id === 'unassigned' ? null : submissionData.driver_id,
+        delivery_fee: submissionData.delivery_fee,
+        truck_type: submissionData.truck_type === 'none' ? null : submissionData.truck_type as TruckType,
+        truck_id: submissionData.truck_id === 'none' ? null : submissionData.truck_id,
         updated_at: new Date().toISOString(),
       };
 
@@ -210,7 +215,7 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
       if (orderError) throw orderError;
 
       // Update order_items table to reflect product changes
-      if (formData.products.length > 0) {
+      if (submissionData.products.length > 0) {
         // Delete existing order items
         await supabase
           .from('order_items')
@@ -218,7 +223,7 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
           .eq('order_id', order.id);
 
         // Insert updated order items
-        const orderItems = formData.products.map((item) => ({
+        const orderItems = submissionData.products.map((item) => ({
           order_id: order.id,
           product_id: item.id,
           quantity: item.quantity,
@@ -238,11 +243,11 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
       }
 
       // Update the customer's suburb if customer_id exists and suburb changed
-      if (order.customer_id && formData.suburb_id && formData.suburb_id !== order.suburb_id) {
+      if (order.customer_id && submissionData.suburb_id && submissionData.suburb_id !== order.suburb_id) {
         const { error: customerError } = await supabase
           .from('customers')
           .update({
-            suburb_id: formData.suburb_id,
+            suburb_id: submissionData.suburb_id,
             updated_at: new Date().toISOString(),
           })
           .eq('id', order.customer_id);

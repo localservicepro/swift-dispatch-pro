@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { convertTimeToFormFormat, convertTimeToDbFormat } from '@/utils/timeFormatUtils';
 
 export interface OrderFormData {
   customer_name: string;
@@ -32,7 +33,7 @@ export function useOrderFormData(initialOrder: any) {
     delivery_fee: initialOrder?.delivery_fee || 0,
     status: initialOrder?.status || 'preparing',
     delivery_date: initialOrder?.delivery_date || '',
-    delivery_time: initialOrder?.delivery_time || '',
+    delivery_time: convertTimeToFormFormat(initialOrder?.delivery_time) || '',
     special_instructions: initialOrder?.special_instructions || '',
     driver_id: initialOrder?.driver_id || 'unassigned',
     truck_type: initialOrder?.truck_type || 'none',
@@ -60,6 +61,14 @@ export function useOrderFormData(initialOrder: any) {
     setFormData(prev => ({ ...prev, subtotal }));
   };
 
+  // Helper function to get form data with proper time format for database
+  const getFormDataForSubmission = () => {
+    return {
+      ...formData,
+      delivery_time: convertTimeToDbFormat(formData.delivery_time)
+    };
+  };
+
   // Update form data when initial order changes
   useEffect(() => {
     if (initialOrder) {
@@ -74,7 +83,7 @@ export function useOrderFormData(initialOrder: any) {
         delivery_fee: initialOrder.delivery_fee || 0,
         status: initialOrder.status || 'preparing',
         delivery_date: initialOrder.delivery_date || '',
-        delivery_time: initialOrder.delivery_time || '',
+        delivery_time: convertTimeToFormFormat(initialOrder.delivery_time) || '',
         special_instructions: initialOrder.special_instructions || '',
         driver_id: initialOrder.driver_id || 'unassigned',
         truck_type: initialOrder.truck_type || 'none',
@@ -92,5 +101,6 @@ export function useOrderFormData(initialOrder: any) {
     handleSuburbChange,
     handleProductsChange,
     handleSubtotalChange,
+    getFormDataForSubmission,
   };
 }

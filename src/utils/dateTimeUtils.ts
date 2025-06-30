@@ -1,4 +1,6 @@
 
+import { convertTimeToFormFormat } from './timeFormatUtils';
+
 export const formatDeliveryDate = (dateString: string | null | undefined): string => {
   if (!dateString) return '';
   
@@ -39,17 +41,8 @@ export const formatDeliveryTime = (timeString: string | null | undefined): strin
   }
 };
 
-export const convertTimeToFormFormat = (timeString: string | null | undefined): string => {
-  if (!timeString) return '';
-  
-  // Convert HH:mm:ss to HH:mm format for form inputs
-  const timeParts = timeString.split(':');
-  if (timeParts.length >= 2) {
-    return `${timeParts[0]}:${timeParts[1]}`;
-  }
-  
-  return timeString;
-};
+// Use the centralized utility function
+export const convertTimeToFormFormat = convertTimeToFormFormat;
 
 export const formatCreatedDate = (dateString: string): string => {
   try {
