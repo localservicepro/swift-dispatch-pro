@@ -57,6 +57,9 @@ export function useOpportunityData() {
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
+            company_name,
+            business_name,
+            customer_type,
             suburbs(id, name, state, postcode)
           ),
           profiles!orders_driver_id_fkey(full_name),
@@ -77,6 +80,9 @@ export function useOpportunityData() {
         suburb_name: order.customers?.suburbs?.name || null,
         suburb_state: order.customers?.suburbs?.state || null,
         suburb_postcode: order.customers?.suburbs?.postcode || null,
+        company_name: order.customers?.company_name || null,
+        business_name: order.customers?.business_name || null,
+        customer_type: order.customers?.customer_type || null,
         driver_name: order.profiles?.full_name || 'Not Assigned',
         truck_registration: order.trucks?.registration_number || null,
         truck_type_from_truck: order.trucks?.truck_type || order.truck_type

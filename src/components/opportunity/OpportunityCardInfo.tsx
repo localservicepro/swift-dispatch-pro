@@ -7,7 +7,8 @@ import {
   MapPin, 
   Truck,
   Clock,
-  CalendarDays
+  CalendarDays,
+  Building
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { formatDeliveryDate, formatDeliveryTime, formatCreatedDate, formatCreatedTime } from "@/utils/dateTimeUtils";
@@ -23,14 +24,54 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
   // Get the delivery address to display
   const deliveryAddress = order.delivery_address || order.customer_address;
 
+  // Determine display name and company info
+  const getDisplayInfo = () => {
+    // Check for company name (account customers)
+    if (order.company_name) {
+      return {
+        displayName: order.company_name,
+        contactInfo: `Contact: ${order.customer_name}`,
+        isCompany: true
+      };
+    }
+    
+    // Check for business name (business customers)
+    if (order.business_name) {
+      return {
+        displayName: order.business_name,
+        contactInfo: `Contact: ${order.customer_name}`,
+        isCompany: true
+      };
+    }
+    
+    // Default to customer name
+    return {
+      displayName: order.customer_name,
+      contactInfo: null,
+      isCompany: false
+    };
+  };
+
+  const { displayName, contactInfo, isCompany } = getDisplayInfo();
+
   return (
     <>
-      {/* Customer Info */}
+      {/* Customer/Company Info */}
       <div className="space-y-2 mb-3">
         <div className="flex items-center gap-2 text-xs text-slate-600">
-          <User className="w-3 h-3" />
-          <span className="font-medium">{order.customer_name}</span>
+          {isCompany ? (
+            <Building className="w-3 h-3" />
+          ) : (
+            <User className="w-3 h-3" />
+          )}
+          <span className="font-medium">{displayName}</span>
         </div>
+        {contactInfo && (
+          <div className="flex items-center gap-2 text-xs text-slate-500 ml-5">
+            <User className="w-3 h-3" />
+            <span>{contactInfo}</span>
+          </div>
+        )}
         {order.customer_phone && (
           <div className="flex items-center gap-2 text-xs text-slate-600">
             <Phone className="w-3 h-3" />
