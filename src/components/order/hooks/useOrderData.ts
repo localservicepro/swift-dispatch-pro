@@ -1,0 +1,136 @@
+
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
+
+type OrderStatus = Database["public"]["Enums"]["order_status"];
+
+interface Order {
+  id: string;
+  order_number: string;
+  purchase_order?: string;
+  customer_name: string;
+  customer_phone?: string;
+  customer_address: string;
+  products: any;
+  products_formatted?: string;
+  total_amount: number;
+  status: OrderStatus;
+  driver_id?: string;
+  created_at: string;
+  delivery_date?: string;
+  delivery_time?: string;
+  special_instructions?: string;
+  customer_id?: string;
+  suburb_id?: string;
+  delivery_fee?: number;
+  subtotal?: number;
+  order_notes?: string;
+  delivery_notes?: string;
+  driver_name?: string;
+  truck_registration?: string;
+  truck_type_display?: string;
+  suburb_name?: string;
+  suburb_state?: string;
+  suburb_postcode?: string;
+}
+
+export function useOrderData() {
+  const { data: orders = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['orders'],
+    queryFn: async () => {
+      console.log('Fetching orders from database with denormalized fields...');
+
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          order_number,
+          purchase_order,
+          customer_name,
+          customer_phone,
+          customer_address,
+          products,
+          products_formatted,
+          total_amount,
+          status,
+          driver_id,
+          created_at,
+          delivery_date,
+          delivery_time,
+          special_instructions,
+          customer_id,
+          delivery_fee,
+          subtotal,
+          truck_type,
+          truck_id,
+          order_notes,
+          delivery_notes,
+          driver_name,
+          truck_registration,
+          truck_type_display,
+          customers!orders_customer_id_fkey(
+            id,
+            suburb_id,
+            suburbs(id, name, state, postcode)
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (ordersError) {
+        console.error('Error fetching orders:', ordersError);
+        throw ordersError;
+      }
+
+      console.log('Raw orders data:', ordersData);
+
+      const mappedOrders = ordersData?.map(order => {
+        const suburbData = order.customers?.suburbs;
+        const suburbId = order.customers?.suburb_id;
+
+        return {
+          ...order,
+          suburb_id: suburbId || null,
+          suburb_name: suburbData?.name || null,
+          suburb_state: suburbData?.state || null,
+          suburb_postcode: suburbData?.postcode || null,
+          driver_name: order.driver_name || 'Not Assigned',
+          truck_registration: order.truck_registration || null,
+          truck_type_display: order.truck_type_display || null
+        };
+      }) || [];
+
+      console.log('Final mapped orders with denormalized fields:', mappedOrders);
+      return mappedOrders;
+    }
+  });
+
+  return { orders, isLoading, error, refetch };
+}
+
+export function useFilteredOrders(orders: Order[], searchQuery: string, statusFilter: string) {
+  const filteredOrders = useMemo(() => {
+    let filtered = orders;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(order => 
+        order.order_number.toLowerCase().includes(query) ||
+        order.customer_name.toLowerCase().includes(query) ||
+        (order.customer_phone && order.customer_phone.toLowerCase().includes(query)) ||
+        (order.purchase_order && order.purchase_order.toLowerCase().includes(query))
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(order => order.status === statusFilter);
+    }
+
+    return filtered;
+  }, [orders, searchQuery, statusFilter]);
+
+  return filteredOrders;
+}
