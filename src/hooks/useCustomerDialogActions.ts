@@ -31,30 +31,45 @@ export function useCustomerDialogActions(
   const { toast } = useToast();
 
   const handleSave = async () => {
-    // Validation
-    if (!formData.first_name || !formData.last_name || !formData.email) {
-      toast({
-        title: "Error",
-        description: "First name, last name, and email are required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (formData.entity_type === 'business' && !formData.company_name) {
-      toast({
-        title: "Error",
-        description: "Company name is required for business entities",
-        variant: "destructive",
-      });
-      return;
+    // Check if this is an Account Business entity
+    const isAccountBusiness = formData.customer_type === 'account' && formData.entity_type === 'business';
+    
+    // Validation for Account Business entities
+    if (isAccountBusiness) {
+      if (!formData.company_name || !formData.full_address || !formData.suburb_id) {
+        toast({
+          title: "Error",
+          description: "Company name, address, and suburb are required for business accounts",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      // Standard validation for all other customer types
+      if (!formData.first_name || !formData.last_name || !formData.email) {
+        toast({
+          title: "Error",
+          description: "First name, last name, and email are required",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (formData.entity_type === 'business' && !formData.company_name) {
+        toast({
+          title: "Error",
+          description: "Company name is required for business entities",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     try {
       const customerData = {
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        email: formData.email,
+        first_name: formData.first_name || null,
+        last_name: formData.last_name || null,
+        email: formData.email || null,
         phone: formData.phone || null,
         full_address: formData.full_address,
         suburb_id: formData.suburb_id || null,
@@ -91,15 +106,15 @@ export function useCustomerDialogActions(
 
         if (error) throw error;
 
-        // For business customers, create primary contact record
-        if (formData.entity_type === 'business' && newCustomer) {
+        // For business customers with contact details, create primary contact record
+        if (formData.entity_type === 'business' && newCustomer && formData.first_name && formData.last_name) {
           const { error: contactError } = await supabase
             .from('customer_contacts')
             .insert([{
               customer_id: newCustomer.id,
               first_name: formData.first_name,
               last_name: formData.last_name,
-              email: formData.email,
+              email: formData.email || null,
               phone: formData.phone || null,
               contact_role: formData.contact_role,
               is_primary_contact: true,

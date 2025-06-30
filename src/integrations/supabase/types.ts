@@ -238,14 +238,14 @@ export type Database = {
           contact_role: string | null
           created_at: string
           customer_type: Database["public"]["Enums"]["customer_type"]
-          email: string
+          email: string | null
           entity_type: Database["public"]["Enums"]["entity_type"] | null
-          first_name: string
+          first_name: string | null
           full_address: string
           ghl_contact_id: string | null
           id: string
           is_active: boolean
-          last_name: string
+          last_name: string | null
           last_synced_to_ghl: string | null
           phone: string | null
           sms_notifications_enabled: boolean
@@ -263,14 +263,14 @@ export type Database = {
           contact_role?: string | null
           created_at?: string
           customer_type: Database["public"]["Enums"]["customer_type"]
-          email: string
+          email?: string | null
           entity_type?: Database["public"]["Enums"]["entity_type"] | null
-          first_name: string
+          first_name?: string | null
           full_address: string
           ghl_contact_id?: string | null
           id?: string
           is_active?: boolean
-          last_name: string
+          last_name?: string | null
           last_synced_to_ghl?: string | null
           phone?: string | null
           sms_notifications_enabled?: boolean
@@ -288,14 +288,14 @@ export type Database = {
           contact_role?: string | null
           created_at?: string
           customer_type?: Database["public"]["Enums"]["customer_type"]
-          email?: string
+          email?: string | null
           entity_type?: Database["public"]["Enums"]["entity_type"] | null
-          first_name?: string
+          first_name?: string | null
           full_address?: string
           ghl_contact_id?: string | null
           id?: string
           is_active?: boolean
-          last_name?: string
+          last_name?: string | null
           last_synced_to_ghl?: string | null
           phone?: string | null
           sms_notifications_enabled?: boolean

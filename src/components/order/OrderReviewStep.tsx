@@ -101,7 +101,7 @@ export function OrderReviewStep({
     if (customer.company_name) {
       return {
         displayName: customer.company_name,
-        contactInfo: `${customer.first_name} ${customer.last_name}`,
+        contactInfo: customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : null,
         isCompany: true
       };
     }
@@ -110,14 +110,23 @@ export function OrderReviewStep({
     if (customer.business_name) {
       return {
         displayName: customer.business_name,
-        contactInfo: `${customer.first_name} ${customer.last_name}`,
+        contactInfo: customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : null,
         isCompany: true
       };
     }
     
-    // Default to customer name
+    // Default to customer name if available
+    if (customer.first_name && customer.last_name) {
+      return {
+        displayName: `${customer.first_name} ${customer.last_name}`,
+        contactInfo: null,
+        isCompany: false
+      };
+    }
+    
+    // Final fallback
     return {
-      displayName: `${customer.first_name} ${customer.last_name}`,
+      displayName: 'Customer',
       contactInfo: null,
       isCompany: false
     };
@@ -167,7 +176,9 @@ export function OrderReviewStep({
               {contactInfo && (
                 <p className="text-sm text-muted-foreground">Contact: {contactInfo}</p>
               )}
-              <p className="text-sm text-muted-foreground">{customer.email}</p>
+              {customer.email && (
+                <p className="text-sm text-muted-foreground">{customer.email}</p>
+              )}
               {customer.phone && (
                 <p className="text-sm text-muted-foreground">{customer.phone}</p>
               )}

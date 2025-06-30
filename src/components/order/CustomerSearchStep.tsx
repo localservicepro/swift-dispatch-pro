@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,9 +13,9 @@ import { GoogleAddressAutocomplete } from "@/components/ui/google-address-autoco
 
 interface Customer {
   id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
   phone: string | null;
   full_address: string;
   customer_type: string;
@@ -109,28 +110,44 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
   };
 
   const createCustomer = async () => {
-    if (!newCustomer.first_name || !newCustomer.last_name || !newCustomer.email || !newCustomer.suburb_id) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (newCustomer.entity_type === 'business' && !newCustomer.company_name) {
-      toast({
-        title: "Error",
-        description: "Company name is required for business entities",
-        variant: "destructive",
-      });
-      return;
+    // Check if this is an Account Business entity
+    const isAccountBusiness = newCustomer.customer_type === 'account' && newCustomer.entity_type === 'business';
+    
+    // Validation for Account Business entities
+    if (isAccountBusiness) {
+      if (!newCustomer.company_name || !newCustomer.full_address || !newCustomer.suburb_id) {
+        toast({
+          title: "Error",
+          description: "Company name, address, and suburb are required for business accounts",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      // Standard validation for all other customer types
+      if (!newCustomer.first_name || !newCustomer.last_name || !newCustomer.email || !newCustomer.suburb_id) {
+        toast({
+          title: "Error",
+          description: "Please fill in all required fields",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (newCustomer.entity_type === 'business' && !newCustomer.company_name) {
+        toast({
+          title: "Error",
+          description: "Company name is required for business entities",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     const customerData = {
-      first_name: newCustomer.first_name,
-      last_name: newCustomer.last_name,
-      email: newCustomer.email,
+      first_name: newCustomer.first_name || null,
+      last_name: newCustomer.last_name || null,
+      email: newCustomer.email || null,
       phone: newCustomer.phone || null,
       full_address: newCustomer.full_address,
       suburb_id: newCustomer.suburb_id || null,
@@ -198,15 +215,24 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
     if (customer.customer_type === 'account' && customer.company_name) {
       return customer.company_name;
     }
-    return `${customer.first_name} ${customer.last_name}`;
+    if (customer.first_name && customer.last_name) {
+      return `${customer.first_name} ${customer.last_name}`;
+    }
+    return customer.company_name || customer.business_name || 'Unknown Customer';
   };
 
   const getCustomerSubtitle = (customer: Customer) => {
     if (customer.customer_type === 'account' && customer.company_name) {
-      return `Contact: ${customer.first_name} ${customer.last_name}`;
+      if (customer.first_name && customer.last_name) {
+        return `Contact: ${customer.first_name} ${customer.last_name}`;
+      }
+      return customer.email || 'No contact details';
     }
-    return customer.email;
+    return customer.email || 'No email provided';
   };
+
+  // Check if this is an Account Business entity for form rendering
+  const isAccountBusiness = newCustomer.customer_type === 'account' && newCustomer.entity_type === 'business';
 
   return (
     <Card>
@@ -387,35 +413,51 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
 
                   <div className="border-t pt-4">
                     <h4 className="font-medium mb-3">
-                      {newCustomer.entity_type === 'business' ? 'Primary Contact' : 'Contact Information'}
+                      {newCustomer.entity_type === 'business' 
+                        ? (isAccountBusiness ? 'Primary Contact (Optional)' : 'Primary Contact') 
+                        : 'Contact Information'}
                     </h4>
+                    {isAccountBusiness && (
+                      <p className="text-xs text-blue-600 mb-3">
+                        For business accounts, contact details are optional and can be added later
+                      </p>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="first_name">First Name *</Label>
+                        <Label htmlFor="first_name">
+                          First Name {!isAccountBusiness && '*'}
+                        </Label>
                         <Input
                           id="first_name"
                           value={newCustomer.first_name}
                           onChange={(e) => setNewCustomer({...newCustomer, first_name: e.target.value})}
+                          required={!isAccountBusiness}
                         />
                       </div>
                       <div>
-                        <Label htmlFor="last_name">Last Name *</Label>
+                        <Label htmlFor="last_name">
+                          Last Name {!isAccountBusiness && '*'}
+                        </Label>
                         <Input
                           id="last_name"
                           value={newCustomer.last_name}
                           onChange={(e) => setNewCustomer({...newCustomer, last_name: e.target.value})}
+                          required={!isAccountBusiness}
                         />
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="email">Email *</Label>
+                    <Label htmlFor="email">
+                      Email {!isAccountBusiness && '*'}
+                    </Label>
                     <Input
                       id="email"
                       type="email"
                       value={newCustomer.email}
                       onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
+                      required={!isAccountBusiness}
                     />
                   </div>
 
