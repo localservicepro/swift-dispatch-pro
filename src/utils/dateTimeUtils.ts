@@ -107,3 +107,23 @@ export const extractFirstName = (fullName?: string, email?: string): string => {
   // Final fallback
   return 'User';
 };
+
+// Perth timezone utilities
+export const getPerthDate = (): Date => {
+  const now = new Date();
+  // Convert to Perth time (UTC+8)
+  const perthTime = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Perth"}));
+  return perthTime;
+};
+
+export const getPerthDateOnly = (): Date => {
+  const perthDate = getPerthDate();
+  // Create a new date with only the date components (no time)
+  return new Date(perthDate.getFullYear(), perthDate.getMonth(), perthDate.getDate());
+};
+
+export const isDateBeforeToday = (date: Date): boolean => {
+  const today = getPerthDateOnly();
+  const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return compareDate < today;
+};
