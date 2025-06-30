@@ -1,0 +1,118 @@
+
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrderFormData } from "./hooks/useOrderFormData";
+import { useConflictDetection } from "./hooks/useConflictDetection";
+import { ConflictResult } from "@/utils/conflictDetection";
+import { Order, ConflictInfo } from "./OrderEditFormTypes";
+
+// Helper function to convert ConflictResult to ConflictInfo
+export const convertToConflictInfo = (conflictResult?: ConflictResult): ConflictInfo => {
+  if (!conflictResult || !conflictResult.hasConflict) {
+    return { hasConflict: false };
+  }
+
+  // Map conflict types from ConflictResult to ConflictInfo format
+  let conflictType: 'exact' | 'overlap' | 'adjacent';
+  switch (conflictResult.conflictType) {
+    case 'exact':
+      conflictType = 'exact';
+      break;
+    case 'overlap':
+      conflictType = 'overlap';
+      break;
+    case 'same-day':
+      conflictType = 'adjacent'; // Map same-day to adjacent
+      break;
+    default:
+      conflictType = 'adjacent'; // Default fallback
+      break;
+  }
+
+  return {
+    hasConflict: conflictResult.hasConflict,
+    conflictType
+  };
+};
+
+export function useOrderEditFormLogic(order: Order) {
+  const [deliveryRate, setDeliveryRate] = useState<string>('');
+  
+  const {
+    formData,
+    setFormData,
+    handleInputChange,
+    handleDriverChange,
+    handleSuburbChange,
+    handleProductsChange,
+    handleSubtotalChange,
+    getFormDataForSubmission,
+  } = useOrderFormData(order);
+
+  // Use conflict detection hook
+  const {
+    driverConflict,
+    truckConflict,
+    isChecking,
+    hasAnyConflict
+  } = useConflictDetection(
+    formData.delivery_date,
+    formData.delivery_time,
+    formData.driver_id,
+    formData.truck_id,
+    order.id
+  );
+
+  // Fetch delivery rate when suburb changes
+  useEffect(() => {
+    const fetchDeliveryRate = async () => {
+      if (formData.suburb_id) {
+        const { data, error } = await supabase
+          .from('suburbs')
+          .select('delivery_rate')
+          .eq('id', formData.suburb_id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching suburb:", error);
+        } else if (data) {
+          setDeliveryRate(data.delivery_rate);
+        }
+      }
+    };
+
+    fetchDeliveryRate();
+  }, [formData.suburb_id]);
+
+  // Reset truck selection when truck type changes
+  useEffect(() => {
+    if (formData.truck_type !== order.truck_type) {
+      setFormData(prev => ({ ...prev, truck_id: 'none' }));
+    }
+  }, [formData.truck_type, order.truck_type, setFormData]);
+
+  const handleFormDataChange = (updates: any) => {
+    if (updates.full_address !== undefined) {
+      handleInputChange('customer_address', updates.full_address);
+    }
+    if (updates.suburb_id !== undefined) {
+      handleSuburbChange(updates.suburb_id);
+    }
+  };
+
+  return {
+    formData,
+    deliveryRate,
+    driverConflict,
+    truckConflict,
+    isChecking,
+    hasAnyConflict,
+    handleInputChange,
+    handleDriverChange,
+    handleSuburbChange,
+    handleProductsChange,
+    handleSubtotalChange,
+    handleFormDataChange,
+    getFormDataForSubmission
+  };
+}
