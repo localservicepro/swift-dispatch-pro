@@ -1625,6 +1625,203 @@ export type Database = {
         }
         Relationships: []
       }
+      woocommerce_category_mapping: {
+        Row: {
+          created_at: string
+          id: string
+          local_category_id: string
+          woocommerce_category_id: number
+          woocommerce_slug: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          local_category_id: string
+          woocommerce_category_id: number
+          woocommerce_slug?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          local_category_id?: string
+          woocommerce_category_id?: number
+          woocommerce_slug?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "woocommerce_category_mapping_local_category_id_fkey"
+            columns: ["local_category_id"]
+            isOneToOne: true
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      woocommerce_product_mapping: {
+        Row: {
+          created_at: string
+          id: string
+          last_local_modified: string | null
+          last_synced_at: string | null
+          last_wc_modified: string | null
+          local_product_id: string
+          sync_errors: Json | null
+          sync_status: string
+          updated_at: string
+          woocommerce_product_id: number
+          woocommerce_sku: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_local_modified?: string | null
+          last_synced_at?: string | null
+          last_wc_modified?: string | null
+          local_product_id: string
+          sync_errors?: Json | null
+          sync_status?: string
+          updated_at?: string
+          woocommerce_product_id: number
+          woocommerce_sku?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_local_modified?: string | null
+          last_synced_at?: string | null
+          last_wc_modified?: string | null
+          local_product_id?: string
+          sync_errors?: Json | null
+          sync_status?: string
+          updated_at?: string
+          woocommerce_product_id?: number
+          woocommerce_sku?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "woocommerce_product_mapping_local_product_id_fkey"
+            columns: ["local_product_id"]
+            isOneToOne: true
+            referencedRelation: "product_pricing_calculated"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "woocommerce_product_mapping_local_product_id_fkey"
+            columns: ["local_product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      woocommerce_sync_logs: {
+        Row: {
+          categories_processed: number | null
+          completed_at: string | null
+          direction: string
+          duration_seconds: number | null
+          error_details: Json | null
+          id: string
+          products_created: number | null
+          products_failed: number | null
+          products_processed: number | null
+          products_updated: number | null
+          started_at: string
+          status: string
+          sync_type: string
+          triggered_by: string | null
+        }
+        Insert: {
+          categories_processed?: number | null
+          completed_at?: string | null
+          direction: string
+          duration_seconds?: number | null
+          error_details?: Json | null
+          id?: string
+          products_created?: number | null
+          products_failed?: number | null
+          products_processed?: number | null
+          products_updated?: number | null
+          started_at?: string
+          status: string
+          sync_type: string
+          triggered_by?: string | null
+        }
+        Update: {
+          categories_processed?: number | null
+          completed_at?: string | null
+          direction?: string
+          duration_seconds?: number | null
+          error_details?: Json | null
+          id?: string
+          products_created?: number | null
+          products_failed?: number | null
+          products_processed?: number | null
+          products_updated?: number | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
+      woocommerce_sync_settings: {
+        Row: {
+          auto_sync_enabled: boolean
+          consumer_key: string
+          consumer_secret: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          last_sync_at: string | null
+          store_url: string
+          sync_categories: boolean
+          sync_direction: string
+          sync_frequency: string
+          sync_images: boolean
+          sync_inventory: boolean
+          sync_pricing: boolean
+          updated_at: string
+        }
+        Insert: {
+          auto_sync_enabled?: boolean
+          consumer_key: string
+          consumer_secret: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          store_url: string
+          sync_categories?: boolean
+          sync_direction?: string
+          sync_frequency?: string
+          sync_images?: boolean
+          sync_inventory?: boolean
+          sync_pricing?: boolean
+          updated_at?: string
+        }
+        Update: {
+          auto_sync_enabled?: boolean
+          consumer_key?: string
+          consumer_secret?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          store_url?: string
+          sync_categories?: boolean
+          sync_direction?: string
+          sync_frequency?: string
+          sync_images?: boolean
+          sync_inventory?: boolean
+          sync_pricing?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       product_pricing_calculated: {
