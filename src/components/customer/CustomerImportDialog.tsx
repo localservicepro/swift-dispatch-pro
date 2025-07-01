@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, Download, AlertCircle, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Database } from '@/integrations/supabase/types';
 
 interface ImportData {
   business_name: string;
@@ -165,12 +166,12 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
     try {
       for (const row of importData) {
         try {
-          const customerData = {
+          const customerData: Database['public']['Tables']['customers']['Insert'] = {
             company_name: row.business_name,
             business_name: row.business_name,
             full_address: row.delivery_address,
-            customer_type: 'account',
-            entity_type: 'business',
+            customer_type: 'account' as const,
+            entity_type: 'business' as const,
             suburb_id: row.suburb_id || null,
             is_active: true
           };
