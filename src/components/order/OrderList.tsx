@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { OrderCard } from "./OrderCard";
 import { Database } from "@/integrations/supabase/types";
@@ -12,6 +11,7 @@ interface Order {
   customer_name: string;
   customer_phone?: string;
   customer_address: string;
+  delivery_address?: string;
   products: any;
   products_formatted?: string;
   total_amount: number;
@@ -23,6 +23,7 @@ interface Order {
   special_instructions?: string;
   customer_id?: string;
   suburb_id?: string;
+  delivery_suburb_id?: string;
   delivery_fee?: number;
   subtotal?: number;
   order_notes?: string;
@@ -33,6 +34,9 @@ interface Order {
   suburb_name?: string;
   suburb_state?: string;
   suburb_postcode?: string;
+  delivery_suburb_name?: string;
+  delivery_suburb_state?: string;
+  delivery_suburb_postcode?: string;
 }
 
 interface OrderListProps {

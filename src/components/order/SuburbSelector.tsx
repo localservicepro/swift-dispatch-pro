@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -20,9 +19,10 @@ interface Suburb {
 interface SuburbSelectorProps {
   selectedSuburbId?: string;
   onSuburbChange: (suburbId: string) => void;
+  label?: string;
 }
 
-export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelectorProps) {
+export function SuburbSelector({ selectedSuburbId, onSuburbChange, label = "Suburb" }: SuburbSelectorProps) {
   const [suburbs, setSuburbs] = useState<Suburb[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -81,7 +81,7 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
   if (loading) {
     return (
       <div>
-        <Label>Suburb</Label>
+        <Label>{label}</Label>
         <div className="h-10 w-full flex items-center px-3 py-2 border border-input rounded-md bg-background text-sm text-muted-foreground">
           Loading suburbs...
         </div>
@@ -91,7 +91,7 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange }: SuburbSelec
 
   return (
     <div>
-      <Label htmlFor="suburb">Suburb (Delivery rates are estimates only)</Label>
+      <Label htmlFor="suburb">{label} (Delivery rates are estimates only)</Label>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button

@@ -11,6 +11,7 @@ export interface Order {
   customer_name: string;
   customer_phone?: string;
   customer_address: string;
+  delivery_address?: string;
   products: any;
   total_amount: number;
   status: OrderStatus;
@@ -21,6 +22,7 @@ export interface Order {
   special_instructions?: string;
   customer_id?: string;
   suburb_id?: string;
+  delivery_suburb_id?: string;
   delivery_fee?: number;
   subtotal?: number;
   truck_type?: TruckType;
