@@ -4,7 +4,7 @@ project_id = "wntcxbxitsanbyrtfhwv"
 [functions.order-export-webhook]
 verify_jwt = false
 
-[functions.woocommerce-sync]
+[functions.wc-sync]
 verify_jwt = false
 
 [functions.test-function]
