@@ -51,12 +51,13 @@ const logStep = (step: string, details?: any) => {
 };
 
 const handler = async (req: Request): Promise<Response> => {
+  // Force redeployment - Updated at 2025-07-01
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    logStep('Function called', { method: req.method });
+    logStep('WooCommerce sync function called', { method: req.method });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')

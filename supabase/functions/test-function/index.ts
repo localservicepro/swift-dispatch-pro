@@ -7,19 +7,21 @@ const corsHeaders = {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  // Force redeployment - Updated at 2025-07-01
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    console.log('[TEST-FUNCTION] Function called successfully');
+    console.log('[TEST-FUNCTION] Function called successfully - Updated version');
     
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Test function is working!',
         timestamp: new Date().toISOString(),
-        method: req.method
+        method: req.method,
+        version: '2025-07-01'
       }),
       {
         status: 200,
