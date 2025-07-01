@@ -17,6 +17,7 @@ import { activityLogger } from "@/utils/activityLogger";
 import { OrderEditDialog } from "./order/OrderEditDialog";
 import { TruckDriverAssignmentDialog } from "./order/TruckDriverAssignmentDialog";
 import { Database } from "@/integrations/supabase/types";
+import { OpportunityCardColorLegend } from "./opportunity/OpportunityCardColorLegend";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
 
@@ -523,6 +524,11 @@ export function OpportunityPipeline() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Color Legend */}
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <OpportunityCardColorLegend />
               </div>
             </CardHeader>
             <CardContent>
