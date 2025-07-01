@@ -8,25 +8,15 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, Download, AlertCircle, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Database } from '@/integrations/supabase/types';
-
-interface ImportData {
-  business_name: string;
-  delivery_address: string;
-  suburb_id?: string;
-  suburb_name?: string;
-  postcode?: string;
-}
-
-interface ImportDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-}
+import { ImportData, ParsedCustomerData, ImportDialogProps } from './types/ImportTypes';
+import { ImportDataParser } from './utils/ImportDataParser';
+import { ImportDataValidator } from './utils/ImportDataValidator';
+import { ImportTemplateGenerator } from './utils/ImportTemplateGenerator';
 
 export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialogProps) {
   const [file, setFile] = useState<File | null>(null);
   const [importData, setImportData] = useState<ImportData[]>([]);
+  const [validatedData, setValidatedData] = useState<ParsedCustomerData[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [suburbs, setSuburbs] = useState<any[]>([]);
@@ -53,106 +43,38 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = event.target.files?.[0];
     if (uploadedFile) {
       setFile(uploadedFile);
-      parseCSV(uploadedFile);
+      try {
+        const parsedData = await ImportDataParser.parseCSV(uploadedFile);
+        const { validData, errors: validationErrors } = ImportDataValidator.validateAndTransform(parsedData, suburbs);
+        
+        setImportData(parsedData);
+        setValidatedData(validData);
+        setErrors(validationErrors);
+        
+        toast({
+          title: "CSV Parsed",
+          description: `Found ${parsedData.length} records to import${validationErrors.length > 0 ? ` with ${validationErrors.length} errors` : ''}`,
+        });
+      } catch (error) {
+        console.error('Parse error:', error);
+        toast({
+          title: "Parse Error",
+          description: error instanceof Error ? error.message : "Failed to parse CSV file",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const parseCSV = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const lines = text.split('\n').filter(line => line.trim());
-      
-      if (lines.length === 0) {
-        toast({
-          title: "Error",
-          description: "CSV file is empty",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Parse header
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-      console.log('CSV Headers:', headers);
-      
-      // Parse data rows
-      const data: ImportData[] = [];
-      const parseErrors: string[] = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
-        
-        if (values.length === 0 || values.every(v => !v)) continue;
-
-        const row: ImportData = {
-          business_name: '',
-          delivery_address: ''
-        };
-
-        // Map columns based on header names
-        headers.forEach((header, index) => {
-          const value = values[index] || '';
-          
-          if (header.includes('business') || header.includes('company') || header.includes('name')) {
-            row.business_name = value;
-          } else if (header.includes('address') || header.includes('delivery')) {
-            row.delivery_address = value;
-          } else if (header.includes('suburb') && !header.includes('id')) {
-            row.suburb_name = value;
-          } else if (header.includes('postcode') || header.includes('post')) {
-            row.postcode = value;
-          } else if (header.includes('suburb_id')) {
-            row.suburb_id = value;
-          }
-        });
-
-        // Validate required fields
-        if (!row.business_name) {
-          parseErrors.push(`Row ${i + 1}: Business name is required`);
-          continue;
-        }
-        if (!row.delivery_address) {
-          parseErrors.push(`Row ${i + 1}: Delivery address is required`);
-          continue;
-        }
-
-        // Try to match suburb by name or postcode if suburb_id not provided
-        if (!row.suburb_id && (row.suburb_name || row.postcode)) {
-          const matchedSuburb = suburbs.find(s => 
-            (row.suburb_name && s.name.toLowerCase() === row.suburb_name.toLowerCase()) ||
-            (row.postcode && s.postcode === row.postcode)
-          );
-          
-          if (matchedSuburb) {
-            row.suburb_id = matchedSuburb.id;
-          }
-        }
-
-        data.push(row);
-      }
-
-      setImportData(data);
-      setErrors(parseErrors);
-      
-      toast({
-        title: "CSV Parsed",
-        description: `Found ${data.length} records to import${parseErrors.length > 0 ? ` with ${parseErrors.length} errors` : ''}`,
-      });
-    };
-
-    reader.readAsText(file);
-  };
-
   const handleImport = async () => {
-    if (importData.length === 0) {
+    if (validatedData.length === 0) {
       toast({
-        title: "No Data",
-        description: "Please upload a CSV file first",
+        title: "No Valid Data",
+        description: "Please upload a valid CSV file first",
         variant: "destructive",
       });
       return;
@@ -164,21 +86,11 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
     const importErrors: string[] = [];
 
     try {
-      for (const row of importData) {
+      for (const item of validatedData) {
         try {
-          const customerData: Database['public']['Tables']['customers']['Insert'] = {
-            company_name: row.business_name,
-            business_name: row.business_name,
-            full_address: row.delivery_address,
-            customer_type: 'account' as const,
-            entity_type: 'business' as const,
-            suburb_id: row.suburb_id || null,
-            is_active: true
-          };
-
           const { error } = await supabase
             .from('customers')
-            .insert([customerData]);
+            .insert([item.customerData]);
 
           if (error) {
             throw error;
@@ -187,8 +99,11 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
           successCount++;
         } catch (error: any) {
           errorCount++;
-          importErrors.push(`${row.business_name}: ${error.message}`);
-          console.error('Import error for row:', row, error);
+          const customerName = item.customerData.company_name || 
+                              `${item.customerData.first_name || ''} ${item.customerData.last_name || ''}`.trim() ||
+                              'Unknown Customer';
+          importErrors.push(`${customerName}: ${error.message}`);
+          console.error('Import error for customer:', item.customerData, error);
         }
       }
 
@@ -206,7 +121,7 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
       }
 
       if (importErrors.length > 0) {
-        setErrors(importErrors);
+        setErrors(prev => [...prev, ...importErrors]);
       }
 
     } catch (error) {
@@ -221,25 +136,23 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
     }
   };
 
-  const downloadTemplate = () => {
-    const csvContent = `business_name,delivery_address,suburb_name,postcode
-ABC Company Pty Ltd,123 Main Street Brisbane QLD 4000,Brisbane,4000
-XYZ Trading Ltd,456 Smith Road Sydney NSW 2000,Sydney,2000`;
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'customer_import_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const getCustomerTypeStats = () => {
+    const stats = { trade: 0, account: 0, residential: 0 };
+    importData.forEach(item => {
+      if (item.customer_type && stats.hasOwnProperty(item.customer_type)) {
+        stats[item.customer_type]++;
+      }
+    });
+    return stats;
   };
+
+  const stats = getCustomerTypeStats();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Import Account Business Customers</DialogTitle>
+          <DialogTitle>Import Customers</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
@@ -247,15 +160,35 @@ XYZ Trading Ltd,456 Smith Road Sydney NSW 2000,Sydney,2000`;
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label>Upload CSV File</Label>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={downloadTemplate}
-                className="flex items-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Download Template
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => ImportTemplateGenerator.downloadTemplate('mixed')}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Mixed Template
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => ImportTemplateGenerator.downloadTemplate('business')}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Business Template
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => ImportTemplateGenerator.downloadTemplate('individual')}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Individual Template
+                </Button>
+              </div>
             </div>
             
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -272,7 +205,7 @@ XYZ Trading Ltd,456 Smith Road Sydney NSW 2000,Sydney,2000`;
                   Click to upload CSV file or drag and drop
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  CSV files only. Required columns: business_name, delivery_address
+                  CSV files only. Supports all customer types (Trade, Account, Residential)
                 </p>
               </label>
             </div>
@@ -280,15 +213,47 @@ XYZ Trading Ltd,456 Smith Road Sydney NSW 2000,Sydney,2000`;
 
           {/* CSV Format Instructions */}
           <div className="bg-blue-50 p-4 rounded-lg">
-            <h4 className="font-medium mb-2">CSV Format Requirements:</h4>
-            <ul className="text-sm space-y-1 text-gray-600">
-              <li>• <strong>business_name</strong> - Required: Company or business name</li>
-              <li>• <strong>delivery_address</strong> - Required: Full delivery address</li>
-              <li>• <strong>suburb_name</strong> - Optional: Suburb name for automatic matching</li>
-              <li>• <strong>postcode</strong> - Optional: Postcode for automatic suburb matching</li>
-              <li>• <strong>suburb_id</strong> - Optional: Direct suburb ID if known</li>
-            </ul>
+            <h4 className="font-medium mb-2">Supported CSV Formats:</h4>
+            <div className="text-sm space-y-2 text-gray-600">
+              <div>
+                <strong>Required Fields:</strong>
+                <ul className="ml-4 mt-1">
+                  <li>• <strong>full_address</strong> - Complete address for delivery</li>
+                </ul>
+              </div>
+              <div>
+                <strong>Individual Customers:</strong>
+                <ul className="ml-4 mt-1">
+                  <li>• <strong>first_name, last_name</strong> - Personal names</li>
+                  <li>• <strong>customer_type</strong> - trade, account, or residential</li>
+                </ul>
+              </div>
+              <div>
+                <strong>Business Customers:</strong>
+                <ul className="ml-4 mt-1">
+                  <li>• <strong>company_name</strong> - Business name</li>
+                  <li>• <strong>contact_first_name, contact_last_name</strong> - Contact person</li>
+                  <li>• <strong>contact_role</strong> - Job title/position</li>
+                </ul>
+              </div>
+              <div>
+                <strong>Optional Fields:</strong> email, phone, suburb_name, postcode, suburb_id
+              </div>
+            </div>
           </div>
+
+          {/* Import Statistics */}
+          {importData.length > 0 && (
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium mb-2">Import Summary</h4>
+              <div className="grid grid-cols-4 gap-4 text-sm">
+                <div>Total Records: <strong>{importData.length}</strong></div>
+                <div>Trade: <strong>{stats.trade}</strong></div>
+                <div>Account: <strong>{stats.account}</strong></div>
+                <div>Residential: <strong>{stats.residential}</strong></div>
+              </div>
+            </div>
+          )}
 
           {/* Import Preview */}
           {importData.length > 0 && (
@@ -298,31 +263,45 @@ XYZ Trading Ltd,456 Smith Road Sydney NSW 2000,Sydney,2000`;
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="p-2 text-left">Business Name</th>
-                      <th className="p-2 text-left">Delivery Address</th>
-                      <th className="p-2 text-left">Suburb Status</th>
+                      <th className="p-2 text-left">Name/Company</th>
+                      <th className="p-2 text-left">Type</th>
+                      <th className="p-2 text-left">Contact</th>
+                      <th className="p-2 text-left">Address</th>
+                      <th className="p-2 text-left">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {importData.slice(0, 10).map((row, index) => (
-                      <tr key={index} className="border-t">
-                        <td className="p-2">{row.business_name}</td>
-                        <td className="p-2">{row.delivery_address}</td>
-                        <td className="p-2">
-                          {row.suburb_id ? (
-                            <span className="flex items-center gap-1 text-green-600">
-                              <CheckCircle className="w-3 h-3" />
-                              Matched
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1 text-orange-600">
-                              <AlertCircle className="w-3 h-3" />
-                              No match
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {importData.slice(0, 10).map((row, index) => {
+                      const displayName = row.company_name || `${row.first_name || ''} ${row.last_name || ''}`.trim() || 'Unknown';
+                      const hasMatchingValidation = validatedData.some((_, validIndex) => validIndex === index);
+                      
+                      return (
+                        <tr key={index} className="border-t">
+                          <td className="p-2">{displayName}</td>
+                          <td className="p-2">
+                            <span className="capitalize">{row.customer_type}</span>
+                            {row.entity_type && (
+                              <span className="text-gray-500 text-xs ml-1">({row.entity_type})</span>
+                            )}
+                          </td>
+                          <td className="p-2">{row.email || row.phone || '-'}</td>
+                          <td className="p-2 truncate max-w-xs">{row.full_address}</td>
+                          <td className="p-2">
+                            {hasMatchingValidation ? (
+                              <span className="flex items-center gap-1 text-green-600">
+                                <CheckCircle className="w-3 h-3" />
+                                Valid
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-red-600">
+                                <AlertCircle className="w-3 h-3" />
+                                Invalid
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
                 {importData.length > 10 && (
@@ -340,13 +319,13 @@ XYZ Trading Ltd,456 Smith Road Sydney NSW 2000,Sydney,2000`;
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 <div className="space-y-1">
-                  <p className="font-medium">Import Errors:</p>
-                  <ul className="text-sm space-y-1">
-                    {errors.slice(0, 5).map((error, index) => (
+                  <p className="font-medium">Import Errors ({errors.length}):</p>
+                  <ul className="text-sm space-y-1 max-h-32 overflow-y-auto">
+                    {errors.slice(0, 10).map((error, index) => (
                       <li key={index}>• {error}</li>
                     ))}
-                    {errors.length > 5 && (
-                      <li>... and {errors.length - 5} more errors</li>
+                    {errors.length > 10 && (
+                      <li>... and {errors.length - 10} more errors</li>
                     )}
                   </ul>
                 </div>
@@ -361,9 +340,9 @@ XYZ Trading Ltd,456 Smith Road Sydney NSW 2000,Sydney,2000`;
             </Button>
             <Button
               onClick={handleImport}
-              disabled={importData.length === 0 || isProcessing}
+              disabled={validatedData.length === 0 || isProcessing}
             >
-              {isProcessing ? 'Importing...' : `Import ${importData.length} Customers`}
+              {isProcessing ? 'Importing...' : `Import ${validatedData.length} Valid Customers`}
             </Button>
           </div>
         </div>
