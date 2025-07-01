@@ -30,6 +30,8 @@ export interface Order {
   company_name?: string;
   business_name?: string;
   customer_type?: string;
+  payment_method?: string;
+  adjustments?: number;
 }
 
 export interface OrderEditFormProps {
