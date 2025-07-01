@@ -17,6 +17,8 @@ interface PaymentOrder {
   products: any;
   delivery_fee?: number;
   subtotal?: number;
+  company_name?: string;
+  business_name?: string;
 }
 
 interface Filters {
@@ -47,7 +49,9 @@ export function usePaymentFilters(payments: PaymentOrder[]) {
         payment.customer_email?.toLowerCase().includes(searchLower) ||
         payment.customer_phone?.includes(searchTerm) ||
         payment.payment_method?.toLowerCase().includes(searchLower) ||
-        payment.purchase_order?.toLowerCase().includes(searchLower)
+        payment.purchase_order?.toLowerCase().includes(searchLower) ||
+        (payment.company_name && payment.company_name.toLowerCase().includes(searchLower)) ||
+        (payment.business_name && payment.business_name.toLowerCase().includes(searchLower))
       );
     }
 

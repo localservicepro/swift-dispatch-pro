@@ -99,7 +99,9 @@ export function OpportunityPipeline() {
       filtered = filtered.filter(order => 
         order.order_number.toLowerCase().includes(query) || 
         order.customer_name.toLowerCase().includes(query) ||
-        (order.purchase_order && order.purchase_order.toLowerCase().includes(query))
+        (order.purchase_order && order.purchase_order.toLowerCase().includes(query)) ||
+        (order.company_name && order.company_name.toLowerCase().includes(query)) ||
+        (order.business_name && order.business_name.toLowerCase().includes(query))
       );
     }
 
@@ -501,7 +503,7 @@ export function OpportunityPipeline() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
-                    placeholder="Search by order number, customer name, or PO number..."
+                    placeholder="Search by order number, customer name, business name, or PO number..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
