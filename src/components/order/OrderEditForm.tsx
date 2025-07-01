@@ -24,7 +24,9 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
     handleProductsChange,
     handleSubtotalChange,
     handleFormDataChange,
-    getFormDataForSubmission
+    getFormDataForSubmission,
+    calculationBreakdown,
+    paymentSettings
   } = useOrderEditFormLogic(order);
 
   // Prepare business information from order data
@@ -67,6 +69,8 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
         onProductsChange={handleProductsChange}
         onSubtotalChange={handleSubtotalChange}
         onFormDataChange={handleFormDataChange}
+        calculationBreakdown={calculationBreakdown}
+        paymentSettings={paymentSettings}
       />
 
       <OrderEditConflictSection
