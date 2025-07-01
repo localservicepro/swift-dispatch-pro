@@ -54,6 +54,7 @@ export function useOpportunityData() {
           deleted_at,
           master_order_id,
           is_split_order,
+          delivery_suburb_id,
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
@@ -61,6 +62,9 @@ export function useOpportunityData() {
             business_name,
             customer_type,
             suburbs(id, name, state, postcode)
+          ),
+          delivery_suburbs:suburbs!orders_delivery_suburb_id_fkey(
+            id, name, state, postcode
           ),
           profiles!orders_driver_id_fkey(full_name),
           trucks!orders_truck_id_fkey(registration_number, truck_type)
@@ -80,6 +84,10 @@ export function useOpportunityData() {
         suburb_name: order.customers?.suburbs?.name || null,
         suburb_state: order.customers?.suburbs?.state || null,
         suburb_postcode: order.customers?.suburbs?.postcode || null,
+        delivery_suburb_id: order.delivery_suburb_id || null,
+        delivery_suburb_name: order.delivery_suburbs?.name || null,
+        delivery_suburb_state: order.delivery_suburbs?.state || null,
+        delivery_suburb_postcode: order.delivery_suburbs?.postcode || null,
         company_name: order.customers?.company_name || null,
         business_name: order.customers?.business_name || null,
         customer_type: order.customers?.customer_type || null,
@@ -147,19 +155,22 @@ export function useOpportunityData() {
           if (eventType === 'UPDATE' && oldRecord && newRecord) {
             const deliveryAddressChanged = oldRecord.delivery_address !== newRecord.delivery_address;
             const customerAddressChanged = oldRecord.customer_address !== newRecord.customer_address;
+            const deliverySuburbChanged = oldRecord.delivery_suburb_id !== newRecord.delivery_suburb_id;
             
-            if (deliveryAddressChanged || customerAddressChanged) {
-              console.log('Delivery address change detected:', {
+            if (deliveryAddressChanged || customerAddressChanged || deliverySuburbChanged) {
+              console.log('Delivery information change detected:', {
                 orderNumber: newRecord.order_number,
                 oldDeliveryAddress: oldRecord.delivery_address,
                 newDeliveryAddress: newRecord.delivery_address,
                 oldCustomerAddress: oldRecord.customer_address,
-                newCustomerAddress: newRecord.customer_address
+                newCustomerAddress: newRecord.customer_address,
+                oldDeliverySuburbId: oldRecord.delivery_suburb_id,
+                newDeliverySuburbId: newRecord.delivery_suburb_id
               });
               
               toast({
-                title: "Address Updated",
-                description: `Delivery address for Order ${newRecord.order_number} has been updated`,
+                title: "Delivery Information Updated",
+                description: `Delivery details for Order ${newRecord.order_number} have been updated`,
                 duration: 3000,
               });
             }

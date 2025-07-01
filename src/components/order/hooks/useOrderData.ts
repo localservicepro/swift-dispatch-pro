@@ -13,6 +13,7 @@ interface Order {
   customer_name: string;
   customer_phone?: string;
   customer_address: string;
+  delivery_address: string;
   products: any;
   products_formatted?: string;
   total_amount: number;
@@ -24,6 +25,7 @@ interface Order {
   special_instructions?: string;
   customer_id?: string;
   suburb_id?: string;
+  delivery_suburb_id?: string;
   delivery_fee?: number;
   subtotal?: number;
   order_notes?: string;
@@ -34,6 +36,9 @@ interface Order {
   suburb_name?: string;
   suburb_state?: string;
   suburb_postcode?: string;
+  delivery_suburb_name?: string;
+  delivery_suburb_state?: string;
+  delivery_suburb_postcode?: string;
   company_name?: string;
   business_name?: string;
   customer_type?: string;
@@ -43,7 +48,7 @@ export function useOrderData() {
   const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
-      console.log('Fetching orders from database with denormalized fields...');
+      console.log('Fetching orders from database with delivery suburb information...');
 
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
@@ -54,6 +59,7 @@ export function useOrderData() {
           customer_name,
           customer_phone,
           customer_address,
+          delivery_address,
           products,
           products_formatted,
           total_amount,
@@ -73,6 +79,7 @@ export function useOrderData() {
           driver_name,
           truck_registration,
           truck_type_display,
+          delivery_suburb_id,
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
@@ -80,6 +87,9 @@ export function useOrderData() {
             business_name,
             customer_type,
             suburbs(id, name, state, postcode)
+          ),
+          delivery_suburbs:suburbs!orders_delivery_suburb_id_fkey(
+            id, name, state, postcode
           )
         `)
         .order('created_at', { ascending: false });
@@ -92,15 +102,20 @@ export function useOrderData() {
       console.log('Raw orders data:', ordersData);
 
       const mappedOrders = ordersData?.map(order => {
-        const suburbData = order.customers?.suburbs;
-        const suburbId = order.customers?.suburb_id;
+        const customerSuburbData = order.customers?.suburbs;
+        const customerSuburbId = order.customers?.suburb_id;
+        const deliverySuburbData = order.delivery_suburbs;
 
         return {
           ...order,
-          suburb_id: suburbId || null,
-          suburb_name: suburbData?.name || null,
-          suburb_state: suburbData?.state || null,
-          suburb_postcode: suburbData?.postcode || null,
+          suburb_id: customerSuburbId || null,
+          suburb_name: customerSuburbData?.name || null,
+          suburb_state: customerSuburbData?.state || null,
+          suburb_postcode: customerSuburbData?.postcode || null,
+          delivery_suburb_id: order.delivery_suburb_id || null,
+          delivery_suburb_name: deliverySuburbData?.name || null,
+          delivery_suburb_state: deliverySuburbData?.state || null,
+          delivery_suburb_postcode: deliverySuburbData?.postcode || null,
           company_name: order.customers?.company_name || null,
           business_name: order.customers?.business_name || null,
           customer_type: order.customers?.customer_type || null,
@@ -110,7 +125,7 @@ export function useOrderData() {
         };
       }) || [];
 
-      console.log('Final mapped orders with denormalized fields:', mappedOrders);
+      console.log('Final mapped orders with delivery suburb information:', mappedOrders);
       return mappedOrders;
     }
   });

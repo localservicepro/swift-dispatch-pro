@@ -16,6 +16,7 @@ interface Order {
   customer_name: string;
   customer_phone?: string;
   customer_address: string;
+  delivery_address: string;
   products: any;
   products_formatted?: string;
   total_amount: number;
@@ -27,6 +28,7 @@ interface Order {
   special_instructions?: string;
   customer_id?: string;
   suburb_id?: string;
+  delivery_suburb_id?: string;
   delivery_fee?: number;
   subtotal?: number;
   order_notes?: string;
@@ -37,6 +39,9 @@ interface Order {
   suburb_name?: string;
   suburb_state?: string;
   suburb_postcode?: string;
+  delivery_suburb_name?: string;
+  delivery_suburb_state?: string;
+  delivery_suburb_postcode?: string;
   company_name?: string;
   business_name?: string;
   customer_type?: string;
@@ -141,6 +146,18 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
     truckDisplayInfo = order.truck_registration;
   }
 
+  // Get delivery suburb info - prioritize delivery suburb over customer suburb
+  const getDeliverySuburbInfo = () => {
+    if (order.delivery_suburb_name) {
+      return `${order.delivery_suburb_name}, ${order.delivery_suburb_state}${order.delivery_suburb_postcode ? ` (${order.delivery_suburb_postcode})` : ''}`;
+    }
+    // Fallback to customer suburb if delivery suburb not available
+    if (order.suburb_name) {
+      return `${order.suburb_name}, ${order.suburb_state}${order.suburb_postcode ? ` (${order.suburb_postcode})` : ''}`;
+    }
+    return 'Not specified';
+  };
+
   return (
     <div className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
       <div className="flex items-center justify-between mb-3">
@@ -195,13 +212,10 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
         <div>
           <p className="text-slate-500 flex items-center gap-1">
             <MapPin className="w-3 h-3" />
-            Suburb
+            Delivery Suburb
           </p>
           <p className="font-medium">
-            {order.suburb_name ? 
-              `${order.suburb_name}, ${order.suburb_state}${order.suburb_postcode ? ` (${order.suburb_postcode})` : ''}` : 
-              'Not specified'
-            }
+            {getDeliverySuburbInfo()}
           </p>
         </div>
       </div>
@@ -234,7 +248,7 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
 
       {/* Order Meta Information */}
       <div className="mt-3 text-xs text-slate-400">
-        <p>Address: {order.customer_address}</p>
+        <p>Delivery Address: {order.delivery_address || order.customer_address}</p>
         <p>Created: {new Date(order.created_at).toLocaleDateString()}</p>
         {order.delivery_date && (
           <p>Delivery: {order.delivery_date} {order.delivery_time && `at ${order.delivery_time}`}</p>

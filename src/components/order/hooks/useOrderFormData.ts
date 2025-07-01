@@ -1,12 +1,12 @@
 
-import { useState, useEffect } from 'react';
-import { convertTimeToFormFormat, convertTimeToDbFormat } from '@/utils/timeFormatUtils';
+import { useState, useEffect } from "react";
+import { Order } from "../OrderEditFormTypes";
 
 export interface OrderFormData {
   customer_name: string;
-  purchase_order: string;
   customer_phone: string;
   customer_address: string;
+  purchase_order: string;
   products: any[];
   total_amount: string;
   subtotal: number;
@@ -16,29 +16,31 @@ export interface OrderFormData {
   delivery_time: string;
   special_instructions: string;
   driver_id: string;
+  suburb_id: string;
+  delivery_suburb_id: string;
   truck_type: string;
   truck_id: string;
-  suburb_id: string;
 }
 
-export function useOrderFormData(initialOrder: any) {
+export function useOrderFormData(order: Order) {
   const [formData, setFormData] = useState<OrderFormData>({
-    customer_name: initialOrder?.customer_name || '',
-    purchase_order: initialOrder?.purchase_order || '',
-    customer_phone: initialOrder?.customer_phone || '',
-    customer_address: initialOrder?.customer_address || '',
-    products: initialOrder?.products || [],
-    total_amount: initialOrder?.total_amount?.toString() || '0',
-    subtotal: initialOrder?.subtotal || 0,
-    delivery_fee: initialOrder?.delivery_fee || 0,
-    status: initialOrder?.status || 'preparing',
-    delivery_date: initialOrder?.delivery_date || '',
-    delivery_time: convertTimeToFormFormat(initialOrder?.delivery_time) || '',
-    special_instructions: initialOrder?.special_instructions || '',
-    driver_id: initialOrder?.driver_id || 'unassigned',
-    truck_type: initialOrder?.truck_type || 'none',
-    truck_id: initialOrder?.truck_id || 'none',
-    suburb_id: initialOrder?.suburb_id || '',
+    customer_name: order.customer_name || '',
+    customer_phone: order.customer_phone || '',
+    customer_address: order.delivery_address || order.customer_address || '',
+    purchase_order: order.purchase_order || '',
+    products: Array.isArray(order.products) ? order.products : [],
+    total_amount: order.total_amount?.toString() || '0',
+    subtotal: order.subtotal || 0,
+    delivery_fee: order.delivery_fee || 0,
+    status: order.status || 'preparing',
+    delivery_date: order.delivery_date || '',
+    delivery_time: order.delivery_time || '',
+    special_instructions: order.special_instructions || '',
+    driver_id: order.driver_id || 'unassigned',
+    suburb_id: order.suburb_id || '',
+    delivery_suburb_id: order.delivery_suburb_id || '',
+    truck_type: order.truck_type || 'none',
+    truck_id: order.truck_id || 'none'
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -58,40 +60,40 @@ export function useOrderFormData(initialOrder: any) {
   };
 
   const handleSubtotalChange = (subtotal: number) => {
-    setFormData(prev => ({ ...prev, subtotal }));
+    const deliveryFee = formData.delivery_fee || 0;
+    const totalAmount = subtotal + deliveryFee;
+    
+    setFormData(prev => ({
+      ...prev,
+      subtotal,
+      total_amount: totalAmount.toString()
+    }));
   };
 
-  // Helper function to get form data with proper time format for database
   const getFormDataForSubmission = () => {
+    // Format time for database submission (ensure HH:MM:SS format)
+    const formatTimeForDB = (timeString: string) => {
+      if (!timeString) return null;
+      
+      // If already in HH:MM:SS format, return as is
+      if (timeString.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        return timeString;
+      }
+      
+      // If in HH:MM format, add seconds
+      if (timeString.match(/^\d{2}:\d{2}$/)) {
+        return `${timeString}:00`;
+      }
+      
+      return timeString;
+    };
+
     return {
       ...formData,
-      delivery_time: convertTimeToDbFormat(formData.delivery_time)
+      delivery_time: formatTimeForDB(formData.delivery_time),
+      total_amount: parseFloat(formData.total_amount) || 0
     };
   };
-
-  // Update form data when initial order changes
-  useEffect(() => {
-    if (initialOrder) {
-      setFormData({
-        customer_name: initialOrder.customer_name || '',
-        purchase_order: initialOrder.purchase_order || '',
-        customer_phone: initialOrder.customer_phone || '',
-        customer_address: initialOrder.customer_address || '',
-        products: initialOrder.products || [],
-        total_amount: initialOrder.total_amount?.toString() || '0',
-        subtotal: initialOrder.subtotal || 0,
-        delivery_fee: initialOrder.delivery_fee || 0,
-        status: initialOrder.status || 'preparing',
-        delivery_date: initialOrder.delivery_date || '',
-        delivery_time: convertTimeToFormFormat(initialOrder.delivery_time) || '',
-        special_instructions: initialOrder.special_instructions || '',
-        driver_id: initialOrder.driver_id || 'unassigned',
-        truck_type: initialOrder.truck_type || 'none',
-        truck_id: initialOrder.truck_id || 'none',
-        suburb_id: initialOrder.suburb_id || '',
-      });
-    }
-  }, [initialOrder]);
 
   return {
     formData,

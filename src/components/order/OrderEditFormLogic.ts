@@ -63,14 +63,16 @@ export function useOrderEditFormLogic(order: Order) {
     order.id
   );
 
-  // Fetch delivery rate when suburb changes
+  // Fetch delivery rate when delivery suburb changes
   useEffect(() => {
     const fetchDeliveryRate = async () => {
-      if (formData.suburb_id) {
+      // Use delivery_suburb_id if available, otherwise fall back to suburb_id
+      const suburbId = formData.delivery_suburb_id || formData.suburb_id;
+      if (suburbId) {
         const { data, error } = await supabase
           .from('suburbs')
           .select('delivery_rate')
-          .eq('id', formData.suburb_id)
+          .eq('id', suburbId)
           .single();
 
         if (error) {
@@ -82,7 +84,7 @@ export function useOrderEditFormLogic(order: Order) {
     };
 
     fetchDeliveryRate();
-  }, [formData.suburb_id]);
+  }, [formData.delivery_suburb_id, formData.suburb_id]);
 
   // Reset truck selection when truck type changes
   useEffect(() => {
@@ -97,6 +99,10 @@ export function useOrderEditFormLogic(order: Order) {
     }
     if (updates.suburb_id !== undefined) {
       handleSuburbChange(updates.suburb_id);
+    }
+    // Handle delivery suburb changes
+    if (updates.delivery_suburb_id !== undefined) {
+      setFormData(prev => ({ ...prev, delivery_suburb_id: updates.delivery_suburb_id }));
     }
   };
 

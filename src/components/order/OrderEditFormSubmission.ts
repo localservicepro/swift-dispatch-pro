@@ -33,7 +33,7 @@ export function useOrderFormSubmission() {
   ) => {
     try {
       // Check if delivery address has changed for enhanced logging
-      const deliveryAddressChanged = submissionData.customer_address !== order.customer_address;
+      const deliveryAddressChanged = submissionData.customer_address !== (order.delivery_address || order.customer_address);
       console.log('Order update - delivery address changed:', deliveryAddressChanged);
       
       // If truck assignment changed, update the old truck status and new truck status
@@ -55,7 +55,7 @@ export function useOrderFormSubmission() {
         }
       }
 
-      // Update the order with delivery_address explicitly set
+      // Update the order with delivery_address and delivery_suburb_id
       const updateData = {
         customer_name: submissionData.customer_name,
         purchase_order: submissionData.purchase_order || null,
@@ -73,6 +73,7 @@ export function useOrderFormSubmission() {
         delivery_fee: submissionData.delivery_fee,
         truck_type: submissionData.truck_type === 'none' ? null : submissionData.truck_type as TruckType,
         truck_id: submissionData.truck_id === 'none' ? null : submissionData.truck_id,
+        delivery_suburb_id: submissionData.delivery_suburb_id || null,
         updated_at: new Date().toISOString(),
       };
 

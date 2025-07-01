@@ -708,6 +708,7 @@ export type Database = {
           delivery_fee: number | null
           delivery_method: Database["public"]["Enums"]["delivery_method"] | null
           delivery_notes: string | null
+          delivery_suburb_id: string | null
           delivery_time: string | null
           driver_id: string | null
           driver_name: string | null
@@ -753,6 +754,7 @@ export type Database = {
             | Database["public"]["Enums"]["delivery_method"]
             | null
           delivery_notes?: string | null
+          delivery_suburb_id?: string | null
           delivery_time?: string | null
           driver_id?: string | null
           driver_name?: string | null
@@ -798,6 +800,7 @@ export type Database = {
             | Database["public"]["Enums"]["delivery_method"]
             | null
           delivery_notes?: string | null
+          delivery_suburb_id?: string | null
           delivery_time?: string | null
           driver_id?: string | null
           driver_name?: string | null
@@ -846,6 +849,13 @@ export type Database = {
             columns: ["deleted_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_delivery_suburb_id_fkey"
+            columns: ["delivery_suburb_id"]
+            isOneToOne: false
+            referencedRelation: "suburbs"
             referencedColumns: ["id"]
           },
           {

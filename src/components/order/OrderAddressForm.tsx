@@ -12,19 +12,21 @@ interface OrderAddressFormProps {
   deliveryRate: string;
   onFormDataChange: (updates: Partial<OrderAddressFormProps['formData']>) => void;
   onSuburbChange: (suburbId: string) => void;
+  isDeliveryAddress?: boolean;
 }
 
 export function OrderAddressForm({ 
   formData, 
   deliveryRate, 
   onFormDataChange, 
-  onSuburbChange 
+  onSuburbChange,
+  isDeliveryAddress = false
 }: OrderAddressFormProps) {
   const { handleAutoSuburbSelection } = useSuburbManagement();
 
-  // Handler specifically for delivery address in orders
-  const handleDeliveryAddressSelect = (addressData: any) => {
-    console.log('Order delivery address selected:', addressData);
+  // Handler for address selection
+  const handleAddressSelect = (addressData: any) => {
+    console.log(`${isDeliveryAddress ? 'Delivery' : 'Order'} address selected:`, addressData);
     onFormDataChange({ full_address: addressData.fullAddress });
     
     // Auto-select suburb based on postcode if available
@@ -33,27 +35,33 @@ export function OrderAddressForm({
     }
   };
 
+  const addressLabel = isDeliveryAddress ? "Delivery Address" : "Address";
+  const addressNote = isDeliveryAddress 
+    ? "This is the specific delivery address for this order."
+    : "This is the address for this order.";
+
   return (
     <>
       <div>
         <EnhancedAddressInput
-          label="Delivery Address"
+          label={addressLabel}
           value={formData.full_address}
           onChange={(value) => onFormDataChange({ full_address: value })}
-          onAddressSelect={handleDeliveryAddressSelect}
-          placeholder="Start typing delivery address..."
+          onAddressSelect={handleAddressSelect}
+          placeholder={`Start typing ${addressLabel.toLowerCase()}...`}
           required
           showMapButton={true}
           showValidation={true}
         />
         <p className="text-xs text-gray-500 mt-1">
-          This is the delivery address for this order.
+          {addressNote}
         </p>
       </div>
 
       <SuburbSelector
         selectedSuburbId={formData.suburb_id}
         onSuburbChange={onSuburbChange}
+        label={isDeliveryAddress ? "Delivery Suburb" : "Suburb"}
       />
 
       <div className="text-sm text-gray-500 mt-2">
