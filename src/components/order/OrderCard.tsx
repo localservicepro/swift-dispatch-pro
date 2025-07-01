@@ -16,7 +16,7 @@ interface Order {
   customer_name: string;
   customer_phone?: string;
   customer_address: string;
-  delivery_address: string;
+  delivery_address?: string;
   products: any;
   products_formatted?: string;
   total_amount: number;
