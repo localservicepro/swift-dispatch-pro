@@ -238,7 +238,7 @@ export function SpecificTruckSelector({
                   
                   <div className="text-sm text-gray-600 space-y-1">
                     {truck.capacity_tons && (
-                      <div>Capacity: {truck.capacity_tons} tons</div>
+                      <div>Capacity: {truck.capacity_tons} tonnes</div>
                     )}
                     {truck.fuel_type && (
                       <div>Fuel: {truck.fuel_type}</div>
