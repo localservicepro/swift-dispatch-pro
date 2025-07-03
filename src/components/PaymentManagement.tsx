@@ -95,7 +95,7 @@ export function PaymentManagement() {
       }
       return data.map(order => ({
         ...order,
-        customer_email: order.customers?.email || `${order.customer_name.toLowerCase().replace(' ', '.')}@example.com`,
+        customer_email: order.customers?.email || '',
         payment_status: order.payment_status || 'pending',
         company_name: order.customers?.company_name || null,
         business_name: order.customers?.business_name || null
@@ -114,6 +114,22 @@ export function PaymentManagement() {
     clearAllFilters,
     activeFilterCount
   } = usePaymentFilters(payments);
+
+  // Helper function to get the display name for customer
+  const getCustomerDisplayName = (payment: PaymentOrder): string => {
+    // Prioritize company name for account customers
+    if (payment.company_name) {
+      return payment.company_name;
+    }
+    
+    // Fall back to business name for business customers
+    if (payment.business_name) {
+      return payment.business_name;
+    }
+    
+    // Use customer name as final fallback
+    return payment.customer_name || 'Unknown Customer';
+  };
 
   const generateAndSendInvoice = async (orderId: string) => {
     if (generatingInvoices.includes(orderId)) return;
@@ -147,7 +163,7 @@ export function PaymentManagement() {
       } = await supabase.from('invoices').insert({
         invoice_number: invoiceNumber,
         order_id: orderId,
-        customer_email: order.customer_email,
+        customer_email: order.customer_email || `${getCustomerDisplayName(order).toLowerCase().replace(' ', '.')}@example.com`,
         amount: order.total_amount,
         currency: 'USD',
         status: 'pending',
@@ -211,8 +227,8 @@ export function PaymentManagement() {
         body: {
           type: 'invoice',
           data: {
-            customerName: order.customer_name,
-            customerEmail: order.customer_email,
+            customerName: getCustomerDisplayName(order),
+            customerEmail: order.customer_email || `${getCustomerDisplayName(order).toLowerCase().replace(' ', '.')}@example.com`,
             orderNumber: order.order_number,
             invoiceNumber: invoiceNumber,
             orderItems: orderItems,
@@ -237,7 +253,7 @@ export function PaymentManagement() {
         await updatePaymentStatus(orderId, 'invoiced');
         toast({
           title: "Invoice Generated & Sent",
-          description: `Invoice ${invoiceNumber} sent to ${order.customer_name} with payment link`,
+          description: `Invoice ${invoiceNumber} sent to ${getCustomerDisplayName(order)} with payment link`,
           action: <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="w-4 h-4 mr-1" />
               Refresh
@@ -295,8 +311,8 @@ export function PaymentManagement() {
         body: {
           type: 'invoice',
           data: {
-            customerName: order.customer_name,
-            customerEmail: order.customer_email,
+            customerName: getCustomerDisplayName(order),
+            customerEmail: order.customer_email || `${getCustomerDisplayName(order).toLowerCase().replace(' ', '.')}@example.com`,
             orderNumber: order.order_number,
             invoiceNumber: `INV-${order.order_number}`,
             orderItems: orderItems,
@@ -314,7 +330,7 @@ export function PaymentManagement() {
       await updatePaymentStatus(orderId, 'invoiced');
       toast({
         title: "Invoice Sent",
-        description: `Invoice for ${order.order_number} has been sent to ${order.customer_name}`
+        description: `Invoice for ${order.order_number} has been sent to ${getCustomerDisplayName(order)}`
       });
     } catch (error: any) {
       console.error('Error sending invoice:', error);
@@ -550,12 +566,12 @@ export function PaymentManagement() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <p className="text-slate-500">Customer</p>
-                      <p className="font-medium">{payment.customer_name}</p>
+                      <p className="font-medium">{getCustomerDisplayName(payment)}</p>
                       {payment.customer_phone && <p className="text-xs text-slate-400">{payment.customer_phone}</p>}
                     </div>
                     <div>
                       <p className="text-slate-500">Email</p>
-                      <p className="font-medium text-xs">{payment.customer_email}</p>
+                      <p className="font-medium text-xs">{payment.customer_email || ''}</p>
                     </div>
                     <div>
                       <p className="text-slate-500">Payment Method</p>
