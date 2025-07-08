@@ -50,6 +50,42 @@ const logStep = (step: string, details?: any) => {
   console.log(`[${timestamp}] [WC-SYNC] ${step}${detailsStr}`);
 };
 
+const testWooCommerceConnection = async (storeUrl: string, consumerKey: string, consumerSecret: string) => {
+  try {
+    const wcAuth = btoa(`${consumerKey}:${consumerSecret}`);
+    const response = await fetch(`${storeUrl}/wp-json/wc/v3/system_status`, {
+      headers: {
+        'Authorization': `Basic ${wcAuth}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`WooCommerce API connection failed: ${response.status} - ${response.statusText}`);
+    }
+    
+    return { success: true, message: 'Connection successful' };
+  } catch (error: any) {
+    logStep('WooCommerce connection test failed', error);
+    return { success: false, message: error.message };
+  }
+};
+
+const validateSyncSettings = (settings: any) => {
+  const errors: string[] = [];
+  
+  if (!settings.store_url) errors.push('Store URL is required');
+  if (!settings.consumer_key) errors.push('Consumer Key is required');
+  if (!settings.consumer_secret) errors.push('Consumer Secret is required');
+  
+  // Validate store URL format
+  if (settings.store_url && !settings.store_url.match(/^https?:\/\/.+/)) {
+    errors.push('Store URL must be a valid HTTP/HTTPS URL');
+  }
+  
+  return errors;
+};
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -85,6 +121,42 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Missing required parameters: action and settingsId');
     }
 
+    // Add connection test action
+    if (action === 'test-connection') {
+      const { data: settings, error: settingsError } = await supabase
+        .from('woocommerce_sync_settings')
+        .select('store_url, consumer_key, consumer_secret')
+        .eq('id', settingsId)
+        .single();
+
+      if (settingsError || !settings) {
+        logStep('Settings not found for connection test', settingsError);
+        throw new Error('WooCommerce settings not found');
+      }
+
+      const validationErrors = validateSyncSettings(settings);
+      if (validationErrors.length > 0) {
+        return new Response(
+          JSON.stringify({ success: false, error: validationErrors.join(', ') }),
+          { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        );
+      }
+
+      const connectionResult = await testWooCommerceConnection(
+        settings.store_url, 
+        settings.consumer_key, 
+        settings.consumer_secret
+      );
+
+      return new Response(
+        JSON.stringify(connectionResult),
+        { 
+          status: connectionResult.success ? 200 : 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        }
+      );
+    }
+
     logStep('WooCommerce sync started', { action, settingsId });
 
     // Get sync settings
@@ -105,6 +177,13 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('WooCommerce sync settings not found or inactive')
     }
 
+    // Validate settings before proceeding
+    const validationErrors = validateSyncSettings(settings);
+    if (validationErrors.length > 0) {
+      logStep('Settings validation failed', validationErrors);
+      throw new Error(`Settings validation failed: ${validationErrors.join(', ')}`);
+    }
+
     logStep('Settings retrieved', { storeUrl: settings.store_url });
 
     // Initialize WooCommerce API credentials
@@ -121,8 +200,10 @@ const handler = async (req: Request): Promise<Response> => {
       .insert({
         settings_id: settingsId,
         sync_type: action === 'full-sync' ? 'full' : 'incremental',
+        direction: settings.sync_direction,
         status: 'in_progress',
-        started_at: syncStartTime
+        started_at: syncStartTime,
+        triggered_by: null // Could be enhanced to track who triggered the sync
       })
       .select()
       .single();
@@ -316,13 +397,27 @@ async function syncProducts(supabase: any, settings: any, wcHeaders: any, isFull
   let updated = 0;
   let failed = 0;
   let page = 1;
-  const perPage = 50;
+  const perPage = 20; // Reduced batch size for better reliability
+  const maxRetries = 3;
+
+  const retryWithBackoff = async (fn: () => Promise<any>, retries = maxRetries) => {
+    try {
+      return await fn();
+    } catch (error) {
+      if (retries > 0) {
+        logStep(`Retrying operation, ${retries} attempts left`, error);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (maxRetries - retries + 1)));
+        return retryWithBackoff(fn, retries - 1);
+      }
+      throw error;
+    }
+  };
 
   try {
     while (true) {
-      logStep(`Fetching products page ${page}`);
+      logStep(`Fetching products page ${page}`, { perPage, isFullSync });
       
-      let url = `${settings.store_url}/wp-json/wc/v3/products?per_page=${perPage}&page=${page}`;
+      let url = `${settings.store_url}/wp-json/wc/v3/products?per_page=${perPage}&page=${page}&status=any`;
       
       // For incremental sync, only get modified products
       if (!isFullSync) {
@@ -332,11 +427,23 @@ async function syncProducts(supabase: any, settings: any, wcHeaders: any, isFull
         }
       }
 
-      const productsResponse = await fetch(url, { headers: wcHeaders });
-
-      if (!productsResponse.ok) {
-        throw new Error(`Failed to fetch products: ${productsResponse.status}`);
-      }
+      const productsResponse = await retryWithBackoff(async () => {
+        const response = await fetch(url, { 
+          headers: wcHeaders,
+          timeout: 30000 // 30 second timeout
+        });
+        
+        if (!response.ok) {
+          if (response.status === 429) {
+            // Rate limited - wait longer
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            throw new Error(`Rate limited: ${response.status}`);
+          }
+          throw new Error(`Failed to fetch products: ${response.status} - ${await response.text()}`);
+        }
+        
+        return response;
+      });
 
       const wcProducts: WooCommerceProduct[] = await productsResponse.json();
       
@@ -379,19 +486,26 @@ async function syncProducts(supabase: any, settings: any, wcHeaders: any, isFull
             categoryId = categoryMapping?.local_category_id;
           }
 
-          // Prepare product data
+          // Validate and prepare product data
           const productData = {
-            name: wcProduct.name,
-            description: wcProduct.description,
-            sku: wcProduct.sku || null,
-            price: parseFloat(wcProduct.price) || 0,
-            stock_quantity: wcProduct.stock_quantity || 0,
-            weight: wcProduct.weight ? parseFloat(wcProduct.weight) : null,
+            name: wcProduct.name?.trim() || `Product ${wcProduct.id}`,
+            description: wcProduct.description || '',
+            sku: wcProduct.sku?.trim() || null,
+            price: Math.max(0, parseFloat(wcProduct.regular_price || wcProduct.price) || 0),
+            stock_quantity: Math.max(0, wcProduct.stock_quantity || 0),
+            weight: wcProduct.weight ? Math.max(0, parseFloat(wcProduct.weight)) : null,
             category_id: categoryId,
-            is_active: wcProduct.stock_status === 'instock',
-            images: settings.sync_images ? wcProduct.images.map(img => img.src) : [],
+            is_active: wcProduct.status === 'publish' && wcProduct.stock_status === 'instock',
+            images: settings.sync_images ? wcProduct.images.map(img => img.src).filter(Boolean) : [],
             product_type: 'single'
           };
+
+          // Validate required fields
+          if (!productData.name) {
+            logStep(`Skipping product ${wcProduct.id} - missing name`);
+            failed++;
+            continue;
+          }
 
           if (existingMapping) {
             // Update existing product
@@ -437,18 +551,34 @@ async function syncProducts(supabase: any, settings: any, wcHeaders: any, isFull
             }
           }
 
-        } catch (productError) {
+        } catch (productError: any) {
           logStep(`Failed to sync product ${wcProduct.name}`, productError);
           failed++;
           
-          // Update mapping with error status if it exists
-          await supabase
+          // Update mapping with error status if it exists, or create new mapping with error
+          const existingMapping = await supabase
             .from('woocommerce_product_mapping')
-            .update({
-              sync_status: 'failed',
-              sync_errors: [{ message: productError.message, timestamp: new Date().toISOString() }]
-            })
-            .eq('woocommerce_product_id', wcProduct.id);
+            .select('id')
+            .eq('woocommerce_product_id', wcProduct.id)
+            .single();
+
+          const errorDetails = {
+            message: productError.message,
+            timestamp: new Date().toISOString(),
+            product_id: wcProduct.id,
+            product_name: wcProduct.name
+          };
+
+          if (existingMapping.data) {
+            await supabase
+              .from('woocommerce_product_mapping')
+              .update({
+                sync_status: 'failed',
+                sync_errors: [errorDetails],
+                updated_at: new Date().toISOString()
+              })
+              .eq('woocommerce_product_id', wcProduct.id);
+          }
         }
       }
 

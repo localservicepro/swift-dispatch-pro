@@ -93,19 +93,31 @@ export function WooCommerceSyncStatus() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(error.message || 'Unknown error occurred');
+      }
+
+      if (data?.success === false) {
+        throw new Error(data.error || 'Sync failed');
+      }
+
+      const stats = data?.stats || {};
+      const statsMessage = `Products: ${stats.productsCreated || 0} created, ${stats.productsUpdated || 0} updated${
+        stats.productsFailed > 0 ? `, ${stats.productsFailed} failed` : ''
+      }`;
 
       toast({
-        title: "Success",
-        description: data.message || "Sync completed successfully",
+        title: "Sync Completed",
+        description: `${data?.message || "Sync completed successfully"}. ${statsMessage}`,
       });
 
       // Reload data to show updated logs
       loadData();
     } catch (error: any) {
+      console.error('Sync error:', error);
       toast({
         title: "Sync Failed",
-        description: error.message || "Failed to sync with WooCommerce",
+        description: error.message || "Failed to sync with WooCommerce. Please check your settings and try again.",
         variant: "destructive",
       });
     } finally {
@@ -184,7 +196,9 @@ export function WooCommerceSyncStatus() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Store URL</p>
-                    <p className="font-medium">{settings.store_url}</p>
+                    <p className="font-medium truncate" title={settings.store_url}>
+                      {settings.store_url}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Last Sync</p>
@@ -193,6 +207,21 @@ export function WooCommerceSyncStatus() {
                         ? new Date(settings.last_sync_at).toLocaleString()
                         : 'Never'
                       }
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Sync Direction</p>
+                    <p className="font-medium capitalize">
+                      {settings.sync_direction?.replace('_', ' → ') || 'WooCommerce → Local'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Auto Sync</p>
+                    <p className="font-medium">
+                      {settings.auto_sync_enabled ? `${settings.sync_frequency || 'Manual'}` : 'Disabled'}
                     </p>
                   </div>
                 </div>

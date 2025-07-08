@@ -25,6 +25,8 @@ export function WooCommerceSyncDialog({
 }: WooCommerceSyncDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     store_url: settings?.store_url || "",
     consumer_key: settings?.consumer_key || "",
@@ -37,6 +39,68 @@ export function WooCommerceSyncDialog({
     sync_inventory: settings?.sync_inventory ?? true,
     sync_pricing: settings?.sync_pricing ?? true,
   });
+
+  const handleTestConnection = async () => {
+    if (!formData.store_url || !formData.consumer_key || !formData.consumer_secret) {
+      toast({
+        title: "Error",
+        description: "Please fill in Store URL, Consumer Key, and Consumer Secret first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTesting(true);
+    setConnectionStatus(null);
+
+    try {
+      // First save the settings if they don't exist
+      let settingsId = settings?.id;
+      if (!settingsId) {
+        const { data: newSettings, error } = await supabase
+          .from('woocommerce_sync_settings')
+          .insert(formData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        settingsId = newSettings.id;
+      }
+
+      const { data, error } = await supabase.functions.invoke('wc-sync', {
+        body: {
+          action: 'test-connection',
+          settingsId: settingsId
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setConnectionStatus('success');
+        toast({
+          title: "Success",
+          description: "WooCommerce connection test successful!",
+        });
+      } else {
+        setConnectionStatus('error');
+        toast({
+          title: "Connection Failed",
+          description: data.message || "Failed to connect to WooCommerce",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      setConnectionStatus('error');
+      toast({
+        title: "Connection Test Failed",
+        description: error.message || "Failed to test connection",
+        variant: "destructive",
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,15 +283,40 @@ export function WooCommerceSyncDialog({
             )}
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+          <div className="flex justify-between">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleTestConnection}
+              disabled={testing || loading}
+            >
+              {testing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Test Connection
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {settings ? "Update Settings" : "Save Settings"}
-            </Button>
+            
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {settings ? "Update Settings" : "Save Settings"}
+              </Button>
+            </div>
           </div>
+
+          {connectionStatus && (
+            <div className={`mt-4 p-3 rounded-md text-sm ${
+              connectionStatus === 'success' 
+                ? 'bg-green-50 text-green-800 border border-green-200' 
+                : 'bg-red-50 text-red-800 border border-red-200'
+            }`}>
+              {connectionStatus === 'success' 
+                ? '✓ Connection successful! Your WooCommerce store is accessible.'
+                : '✗ Connection failed. Please check your credentials and store URL.'
+              }
+            </div>
+          )}
         </form>
       </DialogContent>
     </Dialog>

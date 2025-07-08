@@ -1731,6 +1731,7 @@ export type Database = {
           products_failed: number | null
           products_processed: number | null
           products_updated: number | null
+          settings_id: string | null
           started_at: string
           status: string
           sync_type: string
@@ -1747,6 +1748,7 @@ export type Database = {
           products_failed?: number | null
           products_processed?: number | null
           products_updated?: number | null
+          settings_id?: string | null
           started_at?: string
           status: string
           sync_type: string
@@ -1763,12 +1765,21 @@ export type Database = {
           products_failed?: number | null
           products_processed?: number | null
           products_updated?: number | null
+          settings_id?: string | null
           started_at?: string
           status?: string
           sync_type?: string
           triggered_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "woocommerce_sync_logs_settings_id_fkey"
+            columns: ["settings_id"]
+            isOneToOne: false
+            referencedRelation: "woocommerce_sync_settings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       woocommerce_sync_settings: {
         Row: {
