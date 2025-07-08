@@ -1662,6 +1662,106 @@ export type Database = {
           },
         ]
       }
+      woocommerce_customer_mapping: {
+        Row: {
+          created_at: string
+          id: string
+          last_local_modified: string | null
+          last_synced_at: string | null
+          last_wc_modified: string | null
+          local_customer_id: string
+          sync_errors: Json | null
+          sync_status: string
+          updated_at: string
+          woocommerce_customer_id: number
+          woocommerce_email: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_local_modified?: string | null
+          last_synced_at?: string | null
+          last_wc_modified?: string | null
+          local_customer_id: string
+          sync_errors?: Json | null
+          sync_status?: string
+          updated_at?: string
+          woocommerce_customer_id: number
+          woocommerce_email?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_local_modified?: string | null
+          last_synced_at?: string | null
+          last_wc_modified?: string | null
+          local_customer_id?: string
+          sync_errors?: Json | null
+          sync_status?: string
+          updated_at?: string
+          woocommerce_customer_id?: number
+          woocommerce_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "woocommerce_customer_mapping_local_customer_id_fkey"
+            columns: ["local_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      woocommerce_order_mapping: {
+        Row: {
+          created_at: string
+          id: string
+          last_local_modified: string | null
+          last_synced_at: string | null
+          last_wc_modified: string | null
+          local_order_id: string
+          sync_errors: Json | null
+          sync_status: string
+          updated_at: string
+          woocommerce_order_id: number
+          woocommerce_order_number: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_local_modified?: string | null
+          last_synced_at?: string | null
+          last_wc_modified?: string | null
+          local_order_id: string
+          sync_errors?: Json | null
+          sync_status?: string
+          updated_at?: string
+          woocommerce_order_id: number
+          woocommerce_order_number?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_local_modified?: string | null
+          last_synced_at?: string | null
+          last_wc_modified?: string | null
+          local_order_id?: string
+          sync_errors?: Json | null
+          sync_status?: string
+          updated_at?: string
+          woocommerce_order_id?: number
+          woocommerce_order_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "woocommerce_order_mapping_local_order_id_fkey"
+            columns: ["local_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       woocommerce_product_mapping: {
         Row: {
           created_at: string
@@ -1723,10 +1823,18 @@ export type Database = {
         Row: {
           categories_processed: number | null
           completed_at: string | null
+          customers_created: number | null
+          customers_failed: number | null
+          customers_processed: number | null
+          customers_updated: number | null
           direction: string
           duration_seconds: number | null
           error_details: Json | null
           id: string
+          orders_created: number | null
+          orders_failed: number | null
+          orders_processed: number | null
+          orders_updated: number | null
           products_created: number | null
           products_failed: number | null
           products_processed: number | null
@@ -1740,10 +1848,18 @@ export type Database = {
         Insert: {
           categories_processed?: number | null
           completed_at?: string | null
+          customers_created?: number | null
+          customers_failed?: number | null
+          customers_processed?: number | null
+          customers_updated?: number | null
           direction: string
           duration_seconds?: number | null
           error_details?: Json | null
           id?: string
+          orders_created?: number | null
+          orders_failed?: number | null
+          orders_processed?: number | null
+          orders_updated?: number | null
           products_created?: number | null
           products_failed?: number | null
           products_processed?: number | null
@@ -1757,10 +1873,18 @@ export type Database = {
         Update: {
           categories_processed?: number | null
           completed_at?: string | null
+          customers_created?: number | null
+          customers_failed?: number | null
+          customers_processed?: number | null
+          customers_updated?: number | null
           direction?: string
           duration_seconds?: number | null
           error_details?: Json | null
           id?: string
+          orders_created?: number | null
+          orders_failed?: number | null
+          orders_processed?: number | null
+          orders_updated?: number | null
           products_created?: number | null
           products_failed?: number | null
           products_processed?: number | null
@@ -1788,15 +1912,23 @@ export type Database = {
           consumer_secret: string
           created_at: string
           created_by: string | null
+          customer_sync_mode: string | null
           id: string
           is_active: boolean
           last_sync_at: string | null
+          order_date_filter: string | null
+          order_date_from: string | null
+          order_date_to: string | null
+          order_status_mapping: Json | null
+          order_sync_direction: string | null
           store_url: string
           sync_categories: boolean
+          sync_customers: boolean | null
           sync_direction: string
           sync_frequency: string
           sync_images: boolean
           sync_inventory: boolean
+          sync_orders: boolean | null
           sync_pricing: boolean
           updated_at: string
         }
@@ -1806,15 +1938,23 @@ export type Database = {
           consumer_secret: string
           created_at?: string
           created_by?: string | null
+          customer_sync_mode?: string | null
           id?: string
           is_active?: boolean
           last_sync_at?: string | null
+          order_date_filter?: string | null
+          order_date_from?: string | null
+          order_date_to?: string | null
+          order_status_mapping?: Json | null
+          order_sync_direction?: string | null
           store_url: string
           sync_categories?: boolean
+          sync_customers?: boolean | null
           sync_direction?: string
           sync_frequency?: string
           sync_images?: boolean
           sync_inventory?: boolean
+          sync_orders?: boolean | null
           sync_pricing?: boolean
           updated_at?: string
         }
@@ -1824,15 +1964,23 @@ export type Database = {
           consumer_secret?: string
           created_at?: string
           created_by?: string | null
+          customer_sync_mode?: string | null
           id?: string
           is_active?: boolean
           last_sync_at?: string | null
+          order_date_filter?: string | null
+          order_date_from?: string | null
+          order_date_to?: string | null
+          order_status_mapping?: Json | null
+          order_sync_direction?: string | null
           store_url?: string
           sync_categories?: boolean
+          sync_customers?: boolean | null
           sync_direction?: string
           sync_frequency?: string
           sync_images?: boolean
           sync_inventory?: boolean
+          sync_orders?: boolean | null
           sync_pricing?: boolean
           updated_at?: string
         }

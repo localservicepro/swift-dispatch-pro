@@ -40,6 +40,12 @@ export function WooCommerceSyncDialog({
     sync_images: settings?.sync_images ?? true,
     sync_inventory: settings?.sync_inventory ?? true,
     sync_pricing: settings?.sync_pricing ?? true,
+    sync_orders: settings?.sync_orders ?? false,
+    sync_customers: settings?.sync_customers ?? true,
+    order_sync_direction: settings?.order_sync_direction || "wc_to_local",
+    order_date_filter: settings?.order_date_filter || "all",
+    order_date_from: settings?.order_date_from || "",
+    order_date_to: settings?.order_date_to || "",
   });
 
   const handleTestConnection = async () => {
@@ -351,6 +357,91 @@ export function WooCommerceSyncDialog({
                 />
               </div>
             </div>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-medium">Order & Customer Sync</h4>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="sync_orders">Sync Orders</Label>
+                <Switch
+                  id="sync_orders"
+                  checked={formData.sync_orders}
+                  onCheckedChange={(checked) => setFormData({ ...formData, sync_orders: checked })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Label htmlFor="sync_customers">Sync Customers</Label>
+                <Switch
+                  id="sync_customers"
+                  checked={formData.sync_customers}
+                  onCheckedChange={(checked) => setFormData({ ...formData, sync_customers: checked })}
+                />
+              </div>
+            </div>
+
+            {formData.sync_orders && (
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                <div className="space-y-2">
+                  <Label htmlFor="order_sync_direction">Order Sync Direction</Label>
+                  <Select
+                    value={formData.order_sync_direction}
+                    onValueChange={(value) => setFormData({ ...formData, order_sync_direction: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="wc_to_local">WooCommerce → Local</SelectItem>
+                      <SelectItem value="local_to_wc">Local → WooCommerce</SelectItem>
+                      <SelectItem value="bidirectional">Bidirectional</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="order_date_filter">Date Filter</Label>
+                  <Select
+                    value={formData.order_date_filter}
+                    onValueChange={(value) => setFormData({ ...formData, order_date_filter: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Orders</SelectItem>
+                      <SelectItem value="recent">Recent Orders (Last 30 days)</SelectItem>
+                      <SelectItem value="custom">Custom Date Range</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.order_date_filter === 'custom' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="order_date_from">From Date</Label>
+                      <Input
+                        id="order_date_from"
+                        type="date"
+                        value={formData.order_date_from}
+                        onChange={(e) => setFormData({ ...formData, order_date_from: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="order_date_to">To Date</Label>
+                      <Input
+                        id="order_date_to"
+                        type="date"
+                        value={formData.order_date_to}
+                        onChange={(e) => setFormData({ ...formData, order_date_to: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">

@@ -44,6 +44,107 @@ interface WooCommerceCategory {
   parent: number
 }
 
+interface WooCommerceCustomer {
+  id: number
+  email: string
+  first_name: string
+  last_name: string
+  billing: {
+    first_name: string
+    last_name: string
+    company: string
+    address_1: string
+    address_2: string
+    city: string
+    state: string
+    postcode: string
+    country: string
+    email: string
+    phone: string
+  }
+  shipping: {
+    first_name: string
+    last_name: string
+    company: string
+    address_1: string
+    address_2: string
+    city: string
+    state: string
+    postcode: string
+    country: string
+  }
+  date_created: string
+  date_modified: string
+}
+
+interface WooCommerceOrder {
+  id: number
+  parent_id: number
+  number: string
+  order_key: string
+  created_via: string
+  version: string
+  status: string
+  currency: string
+  date_created: string
+  date_modified: string
+  discount_total: string
+  discount_tax: string
+  shipping_total: string
+  shipping_tax: string
+  cart_tax: string
+  total: string
+  total_tax: string
+  customer_id: number
+  customer_ip_address: string
+  customer_user_agent: string
+  customer_note: string
+  billing: {
+    first_name: string
+    last_name: string
+    company: string
+    address_1: string
+    address_2: string
+    city: string
+    state: string
+    postcode: string
+    country: string
+    email: string
+    phone: string
+  }
+  shipping: {
+    first_name: string
+    last_name: string
+    company: string
+    address_1: string
+    address_2: string
+    city: string
+    state: string
+    postcode: string
+    country: string
+  }
+  payment_method: string
+  payment_method_title: string
+  transaction_id: string
+  date_paid: string | null
+  date_completed: string | null
+  line_items: Array<{
+    id: number
+    name: string
+    product_id: number
+    variation_id: number
+    quantity: number
+    tax_class: string
+    subtotal: string
+    subtotal_tax: string
+    total: string
+    total_tax: string
+    price: number
+    sku: string
+    meta_data: any[]
+  }>
+}
+
 const logStep = (step: string, details?: any) => {
   const timestamp = new Date().toISOString();
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -217,6 +318,14 @@ const handler = async (req: Request): Promise<Response> => {
     let productsUpdated = 0;
     let productsFailed = 0;
     let categoriesProcessed = 0;
+    let ordersProcessed = 0;
+    let ordersCreated = 0;
+    let ordersUpdated = 0;
+    let ordersFailed = 0;
+    let customersProcessed = 0;
+    let customersCreated = 0;
+    let customersUpdated = 0;
+    let customersFailed = 0;
 
     try {
       // Sync categories first if enabled
@@ -224,6 +333,16 @@ const handler = async (req: Request): Promise<Response> => {
         logStep('Starting category sync');
         await syncCategories(supabase, settings, wcHeaders);
         categoriesProcessed = await getCategoryCount(supabase);
+      }
+
+      // Sync customers first if orders are enabled
+      if (settings.sync_orders && settings.sync_customers) {
+        logStep('Starting customer sync');
+        const customerStats = await syncCustomers(supabase, settings, wcHeaders, action === 'full-sync');
+        customersProcessed = customerStats.processed;
+        customersCreated = customerStats.created;
+        customersUpdated = customerStats.updated;
+        customersFailed = customerStats.failed;
       }
 
       // Sync products
@@ -235,18 +354,37 @@ const handler = async (req: Request): Promise<Response> => {
       productsUpdated = syncStats.updated;
       productsFailed = syncStats.failed;
 
+      // Sync orders if enabled
+      if (settings.sync_orders) {
+        logStep('Starting order sync');
+        const orderStats = await syncOrders(supabase, settings, wcHeaders, action === 'full-sync');
+        ordersProcessed = orderStats.processed;
+        ordersCreated = orderStats.created;
+        ordersUpdated = orderStats.updated;
+        ordersFailed = orderStats.failed;
+      }
+
       // Update sync log with success
       if (syncLog) {
+        const hasFailures = productsFailed > 0 || ordersFailed > 0 || customersFailed > 0;
         await supabase
           .from('woocommerce_sync_logs')
           .update({
-            status: productsFailed > 0 ? 'partial' : 'completed',
+            status: hasFailures ? 'partial' : 'completed',
             completed_at: new Date().toISOString(),
             products_processed: productsProcessed,
             products_created: productsCreated,
             products_updated: productsUpdated,
             products_failed: productsFailed,
             categories_processed: categoriesProcessed,
+            orders_processed: ordersProcessed,
+            orders_created: ordersCreated,
+            orders_updated: ordersUpdated,
+            orders_failed: ordersFailed,
+            customers_processed: customersProcessed,
+            customers_created: customersCreated,
+            customers_updated: customersUpdated,
+            customers_failed: customersFailed,
             duration_seconds: Math.floor((Date.now() - new Date(syncStartTime).getTime()) / 1000)
           })
           .eq('id', syncLog.id);
@@ -263,7 +401,15 @@ const handler = async (req: Request): Promise<Response> => {
         productsCreated,
         productsUpdated,
         productsFailed,
-        categoriesProcessed
+        categoriesProcessed,
+        ordersProcessed,
+        ordersCreated,
+        ordersUpdated,
+        ordersFailed,
+        customersProcessed,
+        customersCreated,
+        customersUpdated,
+        customersFailed
       });
 
       return new Response(
@@ -275,7 +421,15 @@ const handler = async (req: Request): Promise<Response> => {
             productsCreated,
             productsUpdated,
             productsFailed,
-            categoriesProcessed
+            categoriesProcessed,
+            ordersProcessed,
+            ordersCreated,
+            ordersUpdated,
+            ordersFailed,
+            customersProcessed,
+            customersCreated,
+            customersUpdated,
+            customersFailed
           }
         }),
         {
@@ -300,6 +454,14 @@ const handler = async (req: Request): Promise<Response> => {
             products_updated: productsUpdated,
             products_failed: productsFailed,
             categories_processed: categoriesProcessed,
+            orders_processed: ordersProcessed,
+            orders_created: ordersCreated,
+            orders_updated: ordersUpdated,
+            orders_failed: ordersFailed,
+            customers_processed: customersProcessed,
+            customers_created: customersCreated,
+            customers_updated: customersUpdated,
+            customers_failed: customersFailed,
             duration_seconds: Math.floor((Date.now() - new Date(syncStartTime).getTime()) / 1000)
           })
           .eq('id', syncLog.id);
@@ -589,6 +751,323 @@ async function syncProducts(supabase: any, settings: any, wcHeaders: any, isFull
 
   } catch (error) {
     logStep('Product sync failed', error);
+    throw error;
+  }
+}
+
+async function syncCustomers(supabase: any, settings: any, wcHeaders: any, isFullSync: boolean) {
+  let processed = 0;
+  let created = 0;
+  let updated = 0;
+  let failed = 0;
+  let page = 1;
+  const perPage = 20;
+
+  try {
+    while (true) {
+      logStep(`Fetching customers page ${page}`, { perPage, isFullSync });
+      
+      let url = `${settings.store_url}/wp-json/wc/v3/customers?per_page=${perPage}&page=${page}`;
+      
+      // For incremental sync, only get modified customers
+      if (!isFullSync) {
+        const lastSync = settings.last_sync_at;
+        if (lastSync) {
+          url += `&modified_after=${encodeURIComponent(lastSync)}`;
+        }
+      }
+
+      const customersResponse = await fetch(url, { headers: wcHeaders });
+      
+      if (!customersResponse.ok) {
+        throw new Error(`Failed to fetch customers: ${customersResponse.status}`);
+      }
+
+      const wcCustomers: WooCommerceCustomer[] = await customersResponse.json();
+      
+      if (wcCustomers.length === 0) {
+        logStep('No more customers to sync');
+        break;
+      }
+
+      logStep(`Processing ${wcCustomers.length} customers from page ${page}`);
+
+      for (const wcCustomer of wcCustomers) {
+        try {
+          processed++;
+          
+          // Check if customer mapping exists
+          const { data: existingMapping } = await supabase
+            .from('woocommerce_customer_mapping')
+            .select('local_customer_id, last_wc_modified')
+            .eq('woocommerce_customer_id', wcCustomer.id)
+            .single();
+
+          // Skip if not modified (for incremental sync)
+          if (existingMapping && !isFullSync) {
+            const lastModified = new Date(existingMapping.last_wc_modified);
+            const wcModified = new Date(wcCustomer.date_modified);
+            if (wcModified <= lastModified) {
+              continue;
+            }
+          }
+
+          // Prepare customer data
+          const billingAddress = `${wcCustomer.billing.address_1}${wcCustomer.billing.address_2 ? ', ' + wcCustomer.billing.address_2 : ''}, ${wcCustomer.billing.city}, ${wcCustomer.billing.state} ${wcCustomer.billing.postcode}, ${wcCustomer.billing.country}`;
+          
+          const customerData = {
+            first_name: wcCustomer.first_name || wcCustomer.billing.first_name,
+            last_name: wcCustomer.last_name || wcCustomer.billing.last_name,
+            email: wcCustomer.email || wcCustomer.billing.email,
+            phone: wcCustomer.billing.phone,
+            company_name: wcCustomer.billing.company,
+            full_address: billingAddress,
+            customer_type: 'trade',
+            is_active: true,
+            business_details: {
+              woocommerce_id: wcCustomer.id,
+              billing: wcCustomer.billing,
+              shipping: wcCustomer.shipping
+            }
+          };
+
+          if (existingMapping) {
+            // Update existing customer
+            await supabase
+              .from('customers')
+              .update(customerData)
+              .eq('id', existingMapping.local_customer_id);
+
+            // Update mapping
+            await supabase
+              .from('woocommerce_customer_mapping')
+              .update({
+                last_wc_modified: wcCustomer.date_modified,
+                last_synced_at: new Date().toISOString(),
+                sync_status: 'synced',
+                woocommerce_email: wcCustomer.email
+              })
+              .eq('woocommerce_customer_id', wcCustomer.id);
+
+            updated++;
+          } else {
+            // Create new customer
+            const { data: newCustomer } = await supabase
+              .from('customers')
+              .insert(customerData)
+              .select()
+              .single();
+
+            if (newCustomer) {
+              // Create mapping
+              await supabase
+                .from('woocommerce_customer_mapping')
+                .insert({
+                  woocommerce_customer_id: wcCustomer.id,
+                  local_customer_id: newCustomer.id,
+                  last_wc_modified: wcCustomer.date_modified,
+                  last_synced_at: new Date().toISOString(),
+                  sync_status: 'synced',
+                  woocommerce_email: wcCustomer.email
+                });
+
+              created++;
+            }
+          }
+
+        } catch (customerError: any) {
+          logStep(`Failed to sync customer ${wcCustomer.email}`, customerError);
+          failed++;
+        }
+      }
+
+      page++;
+    }
+
+    return { processed, created, updated, failed };
+
+  } catch (error) {
+    logStep('Customer sync failed', error);
+    throw error;
+  }
+}
+
+async function syncOrders(supabase: any, settings: any, wcHeaders: any, isFullSync: boolean) {
+  let processed = 0;
+  let created = 0;
+  let updated = 0;
+  let failed = 0;
+  let page = 1;
+  const perPage = 10; // Smaller batch for orders due to complexity
+
+  try {
+    while (true) {
+      logStep(`Fetching orders page ${page}`, { perPage, isFullSync });
+      
+      let url = `${settings.store_url}/wp-json/wc/v3/orders?per_page=${perPage}&page=${page}`;
+      
+      // Apply date filters if set
+      if (settings.order_date_from) {
+        url += `&after=${encodeURIComponent(settings.order_date_from)}T00:00:00`;
+      }
+      if (settings.order_date_to) {
+        url += `&before=${encodeURIComponent(settings.order_date_to)}T23:59:59`;
+      }
+      
+      // For incremental sync, only get modified orders
+      if (!isFullSync) {
+        const lastSync = settings.last_sync_at;
+        if (lastSync) {
+          url += `&modified_after=${encodeURIComponent(lastSync)}`;
+        }
+      }
+
+      const ordersResponse = await fetch(url, { headers: wcHeaders });
+      
+      if (!ordersResponse.ok) {
+        throw new Error(`Failed to fetch orders: ${ordersResponse.status}`);
+      }
+
+      const wcOrders: WooCommerceOrder[] = await ordersResponse.json();
+      
+      if (wcOrders.length === 0) {
+        logStep('No more orders to sync');
+        break;
+      }
+
+      logStep(`Processing ${wcOrders.length} orders from page ${page}`);
+
+      for (const wcOrder of wcOrders) {
+        try {
+          processed++;
+          
+          // Check if order mapping exists
+          const { data: existingMapping } = await supabase
+            .from('woocommerce_order_mapping')
+            .select('local_order_id, last_wc_modified')
+            .eq('woocommerce_order_id', wcOrder.id)
+            .single();
+
+          // Skip if not modified (for incremental sync)
+          if (existingMapping && !isFullSync) {
+            const lastModified = new Date(existingMapping.last_wc_modified);
+            const wcModified = new Date(wcOrder.date_modified);
+            if (wcModified <= lastModified) {
+              continue;
+            }
+          }
+
+          // Find local customer
+          let localCustomerId = null;
+          if (wcOrder.customer_id > 0) {
+            const { data: customerMapping } = await supabase
+              .from('woocommerce_customer_mapping')
+              .select('local_customer_id')
+              .eq('woocommerce_customer_id', wcOrder.customer_id)
+              .single();
+            
+            localCustomerId = customerMapping?.local_customer_id;
+          }
+
+          // Map WooCommerce status to local status
+          const statusMapping = settings.order_status_mapping || {};
+          const localStatus = statusMapping[wcOrder.status] || 'preparing';
+
+          // Prepare address
+          const billingAddress = `${wcOrder.billing.address_1}${wcOrder.billing.address_2 ? ', ' + wcOrder.billing.address_2 : ''}, ${wcOrder.billing.city}, ${wcOrder.billing.state} ${wcOrder.billing.postcode}, ${wcOrder.billing.country}`;
+          const shippingAddress = wcOrder.shipping.address_1 ? 
+            `${wcOrder.shipping.address_1}${wcOrder.shipping.address_2 ? ', ' + wcOrder.shipping.address_2 : ''}, ${wcOrder.shipping.city}, ${wcOrder.shipping.state} ${wcOrder.shipping.postcode}, ${wcOrder.shipping.country}` :
+            billingAddress;
+
+          // Prepare products array
+          const products = wcOrder.line_items.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: parseFloat(item.price.toString()),
+            total: parseFloat(item.total),
+            sku: item.sku,
+            product_id: item.product_id,
+            variation_id: item.variation_id || null
+          }));
+
+          const orderData = {
+            order_number: wcOrder.number,
+            customer_name: `${wcOrder.billing.first_name} ${wcOrder.billing.last_name}`.trim(),
+            customer_phone: wcOrder.billing.phone,
+            customer_address: billingAddress,
+            delivery_address: shippingAddress,
+            customer_id: localCustomerId,
+            products: JSON.stringify(products),
+            total_amount: parseFloat(wcOrder.total),
+            subtotal: parseFloat(wcOrder.total) - parseFloat(wcOrder.shipping_total || '0'),
+            delivery_fee: parseFloat(wcOrder.shipping_total || '0'),
+            status: localStatus,
+            payment_status: wcOrder.date_paid ? 'paid' : 'pending',
+            payment_method: wcOrder.payment_method_title,
+            payment_date: wcOrder.date_paid ? new Date(wcOrder.date_paid).toISOString() : null,
+            delivery_date: wcOrder.date_completed ? new Date(wcOrder.date_completed).toISOString().split('T')[0] : null,
+            special_instructions: wcOrder.customer_note,
+            order_notes: `Imported from WooCommerce Order #${wcOrder.id}`,
+            admin_id: null // Will be set by the RLS policy
+          };
+
+          if (existingMapping) {
+            // Update existing order
+            await supabase
+              .from('orders')
+              .update(orderData)
+              .eq('id', existingMapping.local_order_id);
+
+            // Update mapping
+            await supabase
+              .from('woocommerce_order_mapping')
+              .update({
+                last_wc_modified: wcOrder.date_modified,
+                last_synced_at: new Date().toISOString(),
+                sync_status: 'synced',
+                woocommerce_order_number: wcOrder.number
+              })
+              .eq('woocommerce_order_id', wcOrder.id);
+
+            updated++;
+          } else {
+            // Create new order
+            const { data: newOrder } = await supabase
+              .from('orders')
+              .insert(orderData)
+              .select()
+              .single();
+
+            if (newOrder) {
+              // Create mapping
+              await supabase
+                .from('woocommerce_order_mapping')
+                .insert({
+                  woocommerce_order_id: wcOrder.id,
+                  local_order_id: newOrder.id,
+                  last_wc_modified: wcOrder.date_modified,
+                  last_synced_at: new Date().toISOString(),
+                  sync_status: 'synced',
+                  woocommerce_order_number: wcOrder.number
+                });
+
+              created++;
+            }
+          }
+
+        } catch (orderError: any) {
+          logStep(`Failed to sync order ${wcOrder.number}`, orderError);
+          failed++;
+        }
+      }
+
+      page++;
+    }
+
+    return { processed, created, updated, failed };
+
+  } catch (error) {
+    logStep('Order sync failed', error);
     throw error;
   }
 }

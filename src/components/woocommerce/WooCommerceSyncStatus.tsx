@@ -18,6 +18,14 @@ interface SyncLog {
   products_updated: number;
   products_failed: number;
   categories_processed: number;
+  orders_processed: number;
+  orders_created: number;
+  orders_updated: number;
+  orders_failed: number;
+  customers_processed: number;
+  customers_created: number;
+  customers_updated: number;
+  customers_failed: number;
   started_at: string;
   completed_at: string;
   duration_seconds: number;
@@ -104,9 +112,27 @@ export function WooCommerceSyncStatus() {
       }
 
       const stats = data?.stats || {};
-      const statsMessage = `Products: ${stats.productsCreated || 0} created, ${stats.productsUpdated || 0} updated${
-        stats.productsFailed > 0 ? `, ${stats.productsFailed} failed` : ''
-      }`;
+      const messages = [];
+      
+      if (stats.productsCreated || stats.productsUpdated || stats.productsFailed) {
+        messages.push(`Products: ${stats.productsCreated || 0} created, ${stats.productsUpdated || 0} updated${
+          stats.productsFailed > 0 ? `, ${stats.productsFailed} failed` : ''
+        }`);
+      }
+      
+      if (stats.ordersCreated || stats.ordersUpdated || stats.ordersFailed) {
+        messages.push(`Orders: ${stats.ordersCreated || 0} created, ${stats.ordersUpdated || 0} updated${
+          stats.ordersFailed > 0 ? `, ${stats.ordersFailed} failed` : ''
+        }`);
+      }
+      
+      if (stats.customersCreated || stats.customersUpdated || stats.customersFailed) {
+        messages.push(`Customers: ${stats.customersCreated || 0} created, ${stats.customersUpdated || 0} updated${
+          stats.customersFailed > 0 ? `, ${stats.customersFailed} failed` : ''
+        }`);
+      }
+
+      const statsMessage = messages.length > 0 ? messages.join('. ') : 'No items processed';
 
       toast({
         title: "Sync Completed",
@@ -320,12 +346,24 @@ export function WooCommerceSyncStatus() {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right text-sm">
-                      <p>
-                        {log.products_created} created, {log.products_updated} updated
-                      </p>
-                      {log.products_failed > 0 && (
-                        <p className="text-red-600">{log.products_failed} failed</p>
+                    <div className="text-right text-sm space-y-1">
+                      {(log.products_created || log.products_updated || log.products_failed) && (
+                        <p>
+                          Products: {log.products_created || 0} created, {log.products_updated || 0} updated
+                          {log.products_failed > 0 && <span className="text-red-600">, {log.products_failed} failed</span>}
+                        </p>
+                      )}
+                      {(log.orders_created || log.orders_updated || log.orders_failed) && (
+                        <p>
+                          Orders: {log.orders_created || 0} created, {log.orders_updated || 0} updated
+                          {log.orders_failed > 0 && <span className="text-red-600">, {log.orders_failed} failed</span>}
+                        </p>
+                      )}
+                      {(log.customers_created || log.customers_updated || log.customers_failed) && (
+                        <p>
+                          Customers: {log.customers_created || 0} created, {log.customers_updated || 0} updated
+                          {log.customers_failed > 0 && <span className="text-red-600">, {log.customers_failed} failed</span>}
+                        </p>
                       )}
                       {log.duration_seconds && (
                         <p className="text-gray-500">{log.duration_seconds}s</p>
