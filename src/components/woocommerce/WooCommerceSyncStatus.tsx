@@ -86,7 +86,7 @@ export function WooCommerceSyncStatus() {
 
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('woocommerce-sync', {
+      const { data, error } = await supabase.functions.invoke('wc-sync', {
         body: {
           action: syncType === 'full' ? 'full-sync' : 'incremental-sync',
           settingsId: settings.id
