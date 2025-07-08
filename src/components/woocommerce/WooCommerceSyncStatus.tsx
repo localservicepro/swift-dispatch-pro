@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Loader2, RefreshCw, Settings, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { WooCommerceSyncDialog } from "./WooCommerceSyncDialog";
 
@@ -34,6 +35,7 @@ interface SyncSettings {
 
 export function WooCommerceSyncStatus() {
   const { toast } = useToast();
+  const { user, profile, loading: authLoading } = useAuth();
   const [settings, setSettings] = useState<SyncSettings | null>(null);
   const [recentLogs, setRecentLogs] = useState<SyncLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,11 +153,58 @@ export function WooCommerceSyncStatus() {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center p-8">
           <Loader2 className="w-6 h-6 animate-spin" />
+          <span className="ml-2">Loading...</span>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show authentication required message
+  if (!user || !profile) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            WooCommerce Sync
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-yellow-600" />
+            <div>
+              <p className="font-medium text-yellow-800">Authentication Required</p>
+              <p className="text-sm text-yellow-600">Please log in as an administrator to access WooCommerce sync.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show access denied for non-admin users
+  if (profile.role !== 'admin') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            WooCommerce Sync
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <div>
+              <p className="font-medium text-red-800">Access Denied</p>
+              <p className="text-sm text-red-600">Only administrators can access WooCommerce sync settings.</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );

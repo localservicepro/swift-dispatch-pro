@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { Loader2, AlertCircle } from "lucide-react";
 
 interface WooCommerceSyncDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ export function WooCommerceSyncDialog({
   onSuccess 
 }: WooCommerceSyncDialogProps) {
   const { toast } = useToast();
+  const { user, profile, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
@@ -104,6 +106,27 @@ export function WooCommerceSyncDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check authentication
+    if (!user || !profile) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to save WooCommerce settings",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check admin role
+    if (profile.role !== 'admin') {
+      toast({
+        title: "Access Denied",
+        description: "Only administrators can manage WooCommerce settings",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -135,15 +158,94 @@ export function WooCommerceSyncDialog({
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save settings",
-        variant: "destructive",
-      });
+      console.error('Save settings error:', error);
+      
+      // Check for specific authentication errors
+      if (error.message?.includes('row-level security') || error.message?.includes('RLS')) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in as an administrator to save WooCommerce settings",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to save settings",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="w-6 h-6 animate-spin mr-2" />
+            <span>Loading...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Show authentication required message
+  if (!user || !profile) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Authentication Required</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-yellow-600" />
+              <div>
+                <p className="font-medium text-yellow-800">Please log in to continue</p>
+                <p className="text-sm text-yellow-600">You need to be logged in as an administrator to configure WooCommerce sync settings.</p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Show access denied for non-admin users
+  if (profile.role !== 'admin') {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Access Denied</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <div>
+                <p className="font-medium text-red-800">Administrator access required</p>
+                <p className="text-sm text-red-600">Only administrators can manage WooCommerce sync settings.</p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
