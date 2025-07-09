@@ -284,11 +284,14 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
                   <li>• <strong>contact_role</strong> - Job title/position</li>
                 </ul>
               </div>
-              <div>
-                <strong>Optional Fields:</strong> email, phone, suburb_name, postcode, suburb_id
-              </div>
-            </div>
-          </div>
+               <div>
+                 <strong>Optional Fields:</strong> email, phone, suburb_name, postcode, suburb_id
+               </div>
+               <div className="text-amber-600 text-xs mt-2">
+                 <strong>Note:</strong> Fields marked with * are not found in the delivery suburbs database but will be imported as-is.
+               </div>
+             </div>
+           </div>
 
           {/* Import Statistics */}
           {importData.length > 0 && (
@@ -337,6 +340,10 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
                           const suburb = company.customerData.suburb_id ? 
                             suburbs.find(s => s.id === company.customerData.suburb_id) : null;
                           
+                          // Use raw suburb data if database lookup failed
+                          const suburbDisplay = suburb?.name || company.rawSuburbData?.suburb_name || '-';
+                          const postcodeDisplay = suburb?.postcode || company.rawSuburbData?.postcode || '-';
+                          
                           return (
                             <TableRow key={index}>
                               <TableCell className="font-medium">{company.customerData.company_name}</TableCell>
@@ -351,8 +358,18 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
                               </TableCell>
                               <TableCell>{company.customerData.email || '-'}</TableCell>
                               <TableCell>{company.customerData.phone || '-'}</TableCell>
-                              <TableCell>{suburb?.name || '-'}</TableCell>
-                              <TableCell>{suburb?.postcode || '-'}</TableCell>
+                              <TableCell>
+                                {suburbDisplay}
+                                {company.rawSuburbData?.suburb_name && !company.rawSuburbData.suburbFound && (
+                                  <span className="text-amber-600 text-xs ml-1">*</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {postcodeDisplay}
+                                {company.rawSuburbData?.postcode && !company.rawSuburbData.suburbFound && (
+                                  <span className="text-amber-600 text-xs ml-1">*</span>
+                                )}
+                              </TableCell>
                               <TableCell>
                                 {company.additionalContacts.length > 0 ? (
                                   <span className="text-green-600">{company.additionalContacts.length} contacts</span>
@@ -394,6 +411,10 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
                           const suburb = customer.customerData.suburb_id ? 
                             suburbs.find(s => s.id === customer.customerData.suburb_id) : null;
                           
+                          // Use raw suburb data if database lookup failed
+                          const suburbDisplay = suburb?.name || customer.rawSuburbData?.suburb_name || '-';
+                          const postcodeDisplay = suburb?.postcode || customer.rawSuburbData?.postcode || '-';
+                          
                           return (
                             <TableRow key={index}>
                               <TableCell>
@@ -404,8 +425,18 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
                               </TableCell>
                               <TableCell>{customer.customerData.email || '-'}</TableCell>
                               <TableCell>{customer.customerData.phone || '-'}</TableCell>
-                              <TableCell>{suburb?.name || '-'}</TableCell>
-                              <TableCell>{suburb?.postcode || '-'}</TableCell>
+                              <TableCell>
+                                {suburbDisplay}
+                                {customer.rawSuburbData?.suburb_name && !customer.rawSuburbData.suburbFound && (
+                                  <span className="text-amber-600 text-xs ml-1">*</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {postcodeDisplay}
+                                {customer.rawSuburbData?.postcode && !customer.rawSuburbData.suburbFound && (
+                                  <span className="text-amber-600 text-xs ml-1">*</span>
+                                )}
+                              </TableCell>
                               <TableCell>{customer.customerData.full_address}</TableCell>
                             </TableRow>
                           );

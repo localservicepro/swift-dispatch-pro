@@ -140,7 +140,8 @@ export class ImportDataValidator {
       customerData: primaryValidation.customerData,
       additionalContacts,
       validationWarnings: [...primaryValidation.validationWarnings, ...warnings],
-      sourceRows: indices
+      sourceRows: indices,
+      rawSuburbData: primaryValidation.rawSuburbData
     };
   }
 
@@ -170,6 +171,7 @@ export class ImportDataValidator {
 
     // Try to match suburb by name or postcode if suburb_id not provided
     let suburbId = row.suburb_id;
+    let suburbFound = false;
     if (!suburbId && (row.suburb_name || row.postcode)) {
       const matchedSuburb = suburbs.find(s => 
         (row.suburb_name && s.name.toLowerCase() === row.suburb_name.toLowerCase()) ||
@@ -178,6 +180,10 @@ export class ImportDataValidator {
       
       if (matchedSuburb) {
         suburbId = matchedSuburb.id;
+        suburbFound = true;
+        console.log(`Suburb found in database: ${matchedSuburb.name} (${matchedSuburb.postcode})`);
+      } else {
+        console.log(`Suburb not found in database: ${row.suburb_name || ''} ${row.postcode || ''}`);
       }
     }
 
@@ -210,7 +216,12 @@ export class ImportDataValidator {
 
     return {
       customerData,
-      validationWarnings: warnings
+      validationWarnings: warnings,
+      rawSuburbData: {
+        suburb_name: row.suburb_name,
+        postcode: row.postcode,
+        suburbFound
+      }
     };
   }
 }

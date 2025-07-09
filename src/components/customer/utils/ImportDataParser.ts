@@ -53,6 +53,7 @@ export class ImportDataParser {
     // Map columns based on header names
     headers.forEach((header, index) => {
       const value = values[index] || '';
+      console.log(`Processing column "${header}" with value "${value}"`);
       
       // Personal Info
       if (this.matchesHeader(header, ['first_name', 'firstname', 'first name', 'fname', 'contact_first_name'])) {
@@ -69,8 +70,14 @@ export class ImportDataParser {
       else if (this.matchesHeader(header, ['company_name', 'company', 'business_name', 'business', 'organisation', 'organization'])) {
         row.company_name = value;
         row.business_name = value;
-      } else if (this.matchesHeader(header, ['contact_role', 'role', 'position', 'title', 'job_title'])) {
+      } else if (this.matchesHeader(header, ['contact_role', 'position', 'title', 'job_title'])) {
         row.contact_role = value;
+        console.log(`Contact role mapped: "${header}" = "${value}"`);
+      }
+      
+      // State info (separate from role to avoid conflicts)
+      else if (this.matchesHeader(header, ['state', 'state_name', 'province'])) {
+        row.state = value;
       }
       
       // Address Info
@@ -79,11 +86,13 @@ export class ImportDataParser {
         row.delivery_address = value;
       }
       
-      // Suburb Info
+      // Suburb Info (preserve raw values even if not in database)
       else if (this.matchesHeader(header, ['suburb', 'suburb_name', 'city', 'locality'])) {
         row.suburb_name = value;
+        console.log(`Suburb mapped: "${header}" = "${value}"`);
       } else if (this.matchesHeader(header, ['postcode', 'post_code', 'zip', 'postal_code'])) {
         row.postcode = value;
+        console.log(`Postcode mapped: "${header}" = "${value}"`);
       } else if (this.matchesHeader(header, ['suburb_id'])) {
         row.suburb_id = value;
       }

@@ -21,6 +21,7 @@ export interface ImportData {
   suburb_id?: string;
   suburb_name?: string;
   postcode?: string;
+  state?: string;
   
   // Customer Classification
   customer_type?: 'trade' | 'account' | 'residential';
@@ -30,6 +31,11 @@ export interface ImportData {
 export interface ParsedCustomerData {
   customerData: Database['public']['Tables']['customers']['Insert'];
   validationWarnings: string[];
+  rawSuburbData?: {
+    suburb_name?: string;
+    postcode?: string;
+    suburbFound: boolean;
+  };
 }
 
 export interface ConsolidatedCompany {
@@ -37,6 +43,11 @@ export interface ConsolidatedCompany {
   additionalContacts: Database['public']['Tables']['customer_contacts']['Insert'][];
   validationWarnings: string[];
   sourceRows: number[];
+  rawSuburbData?: {
+    suburb_name?: string;
+    postcode?: string;
+    suburbFound: boolean;
+  };
 }
 
 export interface ImportPreviewData {
