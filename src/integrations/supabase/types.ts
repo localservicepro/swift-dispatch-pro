@@ -701,6 +701,10 @@ export type Database = {
         Row: {
           adjustments: number | null
           admin_id: string | null
+          contact_email: string | null
+          contact_id: string | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string | null
           customer_address: string
           customer_id: string | null
@@ -745,6 +749,10 @@ export type Database = {
         Insert: {
           adjustments?: number | null
           admin_id?: string | null
+          contact_email?: string | null
+          contact_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           customer_address: string
           customer_id?: string | null
@@ -791,6 +799,10 @@ export type Database = {
         Update: {
           adjustments?: number | null
           admin_id?: string | null
+          contact_email?: string | null
+          contact_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           customer_address?: string
           customer_id?: string | null
@@ -840,6 +852,13 @@ export type Database = {
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "customer_contacts"
             referencedColumns: ["id"]
           },
           {
