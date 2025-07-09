@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, Download, AlertCircle, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ImportData, ParsedCustomerData, ImportDialogProps } from './types/ImportTypes';
+import { ImportData, ParsedCustomerData, ImportDialogProps, ImportPreviewData } from './types/ImportTypes';
 import { ImportDataParser } from './utils/ImportDataParser';
 import { ImportDataValidator } from './utils/ImportDataValidator';
 import { ImportTemplateGenerator } from './utils/ImportTemplateGenerator';
@@ -16,7 +16,7 @@ import { ImportTemplateGenerator } from './utils/ImportTemplateGenerator';
 export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialogProps) {
   const [file, setFile] = useState<File | null>(null);
   const [importData, setImportData] = useState<ImportData[]>([]);
-  const [validatedData, setValidatedData] = useState<ParsedCustomerData[]>([]);
+  const [previewData, setPreviewData] = useState<ImportPreviewData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [suburbs, setSuburbs] = useState<any[]>([]);
@@ -49,15 +49,19 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
       setFile(uploadedFile);
       try {
         const parsedData = await ImportDataParser.parseCSV(uploadedFile);
-        const { validData, errors: validationErrors } = ImportDataValidator.validateAndTransform(parsedData, suburbs);
+        const { previewData: consolidatedData, errors: validationErrors } = ImportDataValidator.validateAndConsolidate(parsedData, suburbs);
         
         setImportData(parsedData);
-        setValidatedData(validData);
+        setPreviewData(consolidatedData);
         setErrors(validationErrors);
         
+        const totalValidItems = consolidatedData.consolidatedCompanies.length + consolidatedData.individualCustomers.length;
+        const companyCount = consolidatedData.consolidatedCompanies.length;
+        const individualCount = consolidatedData.individualCustomers.length;
+        
         toast({
-          title: "CSV Parsed",
-          description: `Found ${parsedData.length} records to import${validationErrors.length > 0 ? ` with ${validationErrors.length} errors` : ''}`,
+          title: "CSV Parsed & Consolidated",
+          description: `Found ${parsedData.length} records, consolidated into ${totalValidItems} customers (${companyCount} companies, ${individualCount} individuals)${validationErrors.length > 0 ? ` with ${validationErrors.length} errors` : ''}`,
         });
       } catch (error) {
         console.error('Parse error:', error);
@@ -71,7 +75,7 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
   };
 
   const handleImport = async () => {
-    if (validatedData.length === 0) {
+    if (!previewData || (previewData.consolidatedCompanies.length === 0 && previewData.individualCustomers.length === 0)) {
       toast({
         title: "No Valid Data",
         description: "Please upload a valid CSV file first",
@@ -86,11 +90,53 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
     const importErrors: string[] = [];
 
     try {
-      for (const item of validatedData) {
+      // Import consolidated companies
+      for (const company of previewData.consolidatedCompanies) {
+        try {
+          // Insert main customer record
+          const { data: customerData, error: customerError } = await supabase
+            .from('customers')
+            .insert([company.customerData])
+            .select()
+            .single();
+
+          if (customerError) {
+            throw customerError;
+          }
+
+          // Insert additional contacts if any
+          if (company.additionalContacts.length > 0) {
+            const contactsWithCustomerId = company.additionalContacts.map(contact => ({
+              ...contact,
+              customer_id: customerData.id
+            }));
+
+            const { error: contactsError } = await supabase
+              .from('customer_contacts')
+              .insert(contactsWithCustomerId);
+
+            if (contactsError) {
+              console.warn('Failed to insert some contacts:', contactsError);
+            }
+          }
+
+          successCount++;
+        } catch (error: any) {
+          errorCount++;
+          const customerName = company.customerData.company_name || 
+                              `${company.customerData.first_name || ''} ${company.customerData.last_name || ''}`.trim() ||
+                              'Unknown Customer';
+          importErrors.push(`${customerName}: ${error.message}`);
+          console.error('Import error for company:', company.customerData, error);
+        }
+      }
+
+      // Import individual customers
+      for (const individual of previewData.individualCustomers) {
         try {
           const { error } = await supabase
             .from('customers')
-            .insert([item.customerData]);
+            .insert([individual.customerData]);
 
           if (error) {
             throw error;
@@ -99,11 +145,11 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
           successCount++;
         } catch (error: any) {
           errorCount++;
-          const customerName = item.customerData.company_name || 
-                              `${item.customerData.first_name || ''} ${item.customerData.last_name || ''}`.trim() ||
+          const customerName = individual.customerData.company_name || 
+                              `${individual.customerData.first_name || ''} ${individual.customerData.last_name || ''}`.trim() ||
                               'Unknown Customer';
           importErrors.push(`${customerName}: ${error.message}`);
-          console.error('Import error for customer:', item.customerData, error);
+          console.error('Import error for customer:', individual.customerData, error);
         }
       }
 
@@ -255,61 +301,91 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
             </div>
           )}
 
-          {/* Import Preview */}
-          {importData.length > 0 && (
+          {/* Consolidation Preview */}
+          {previewData && (
             <div className="space-y-4">
-              <h4 className="font-medium">Import Preview ({importData.length} records)</h4>
-              <div className="max-h-60 overflow-y-auto border rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="p-2 text-left">Name/Company</th>
-                      <th className="p-2 text-left">Type</th>
-                      <th className="p-2 text-left">Contact</th>
-                      <th className="p-2 text-left">Address</th>
-                      <th className="p-2 text-left">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {importData.slice(0, 10).map((row, index) => {
-                      const displayName = row.company_name || `${row.first_name || ''} ${row.last_name || ''}`.trim() || 'Unknown';
-                      const hasMatchingValidation = validatedData.some((_, validIndex) => validIndex === index);
-                      
-                      return (
-                        <tr key={index} className="border-t">
-                          <td className="p-2">{displayName}</td>
-                          <td className="p-2">
-                            <span className="capitalize">{row.customer_type}</span>
-                            {row.entity_type && (
-                              <span className="text-gray-500 text-xs ml-1">({row.entity_type})</span>
-                            )}
-                          </td>
-                          <td className="p-2">{row.email || row.phone || '-'}</td>
-                          <td className="p-2 truncate max-w-xs">{row.full_address}</td>
-                          <td className="p-2">
-                            {hasMatchingValidation ? (
-                              <span className="flex items-center gap-1 text-green-600">
-                                <CheckCircle className="w-3 h-3" />
-                                Valid
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 text-red-600">
-                                <AlertCircle className="w-3 h-3" />
-                                Invalid
-                              </span>
-                            )}
-                          </td>
+              <h4 className="font-medium">
+                Consolidated Import Preview 
+                ({previewData.consolidatedCompanies.length + previewData.individualCustomers.length} customers from {previewData.totalOriginalRows} records)
+              </h4>
+              
+              {/* Company Consolidations */}
+              {previewData.consolidatedCompanies.length > 0 && (
+                <div className="space-y-2">
+                  <h5 className="text-sm font-medium text-blue-600">Companies ({previewData.consolidatedCompanies.length})</h5>
+                  <div className="max-h-40 overflow-y-auto border rounded-lg">
+                    <table className="w-full text-sm">
+                      <thead className="bg-blue-50">
+                        <tr>
+                          <th className="p-2 text-left">Company</th>
+                          <th className="p-2 text-left">Primary Contact</th>
+                          <th className="p-2 text-left">Additional Contacts</th>
+                          <th className="p-2 text-left">Address</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {importData.length > 10 && (
-                  <p className="p-2 text-xs text-gray-500 bg-gray-50">
-                    ... and {importData.length - 10} more records
-                  </p>
-                )}
-              </div>
+                      </thead>
+                      <tbody>
+                        {previewData.consolidatedCompanies.map((company, index) => (
+                          <tr key={index} className="border-t">
+                            <td className="p-2 font-medium">{company.customerData.company_name}</td>
+                            <td className="p-2">
+                              {`${company.customerData.first_name || ''} ${company.customerData.last_name || ''}`.trim() || 'N/A'}
+                              {company.customerData.contact_role && (
+                                <span className="text-gray-500 text-xs block">{company.customerData.contact_role}</span>
+                              )}
+                            </td>
+                            <td className="p-2">
+                              {company.additionalContacts.length > 0 ? (
+                                <span className="text-green-600">{company.additionalContacts.length} contacts</span>
+                              ) : (
+                                <span className="text-gray-400">None</span>
+                              )}
+                            </td>
+                            <td className="p-2 truncate max-w-xs">{company.customerData.full_address}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Individual Customers */}
+              {previewData.individualCustomers.length > 0 && (
+                <div className="space-y-2">
+                  <h5 className="text-sm font-medium text-green-600">Individual Customers ({previewData.individualCustomers.length})</h5>
+                  <div className="max-h-40 overflow-y-auto border rounded-lg">
+                    <table className="w-full text-sm">
+                      <thead className="bg-green-50">
+                        <tr>
+                          <th className="p-2 text-left">Name</th>
+                          <th className="p-2 text-left">Type</th>
+                          <th className="p-2 text-left">Contact</th>
+                          <th className="p-2 text-left">Address</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewData.individualCustomers.slice(0, 5).map((customer, index) => (
+                          <tr key={index} className="border-t">
+                            <td className="p-2">
+                              {`${customer.customerData.first_name || ''} ${customer.customerData.last_name || ''}`.trim() || 'Unknown'}
+                            </td>
+                            <td className="p-2">
+                              <span className="capitalize">{customer.customerData.customer_type}</span>
+                            </td>
+                            <td className="p-2">{customer.customerData.email || customer.customerData.phone || '-'}</td>
+                            <td className="p-2 truncate max-w-xs">{customer.customerData.full_address}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {previewData.individualCustomers.length > 5 && (
+                      <p className="p-2 text-xs text-gray-500 bg-gray-50">
+                        ... and {previewData.individualCustomers.length - 5} more individual customers
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -340,9 +416,11 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
             </Button>
             <Button
               onClick={handleImport}
-              disabled={validatedData.length === 0 || isProcessing}
+              disabled={!previewData || (previewData.consolidatedCompanies.length === 0 && previewData.individualCustomers.length === 0) || isProcessing}
             >
-              {isProcessing ? 'Importing...' : `Import ${validatedData.length} Valid Customers`}
+              {isProcessing ? 'Importing...' : 
+                previewData ? `Import ${previewData.consolidatedCompanies.length + previewData.individualCustomers.length} Customers` : 'Import Customers'
+              }
             </Button>
           </div>
         </div>

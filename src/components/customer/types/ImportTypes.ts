@@ -32,6 +32,19 @@ export interface ParsedCustomerData {
   validationWarnings: string[];
 }
 
+export interface ConsolidatedCompany {
+  customerData: Database['public']['Tables']['customers']['Insert'];
+  additionalContacts: Database['public']['Tables']['customer_contacts']['Insert'][];
+  validationWarnings: string[];
+  sourceRows: number[];
+}
+
+export interface ImportPreviewData {
+  consolidatedCompanies: ConsolidatedCompany[];
+  individualCustomers: ParsedCustomerData[];
+  totalOriginalRows: number;
+}
+
 export interface ImportResult {
   successCount: number;
   errorCount: number;

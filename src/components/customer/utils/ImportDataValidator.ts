@@ -1,5 +1,5 @@
 
-import { ImportData, ParsedCustomerData } from '../types/ImportTypes';
+import { ImportData, ParsedCustomerData, ConsolidatedCompany, ImportPreviewData } from '../types/ImportTypes';
 import { Database } from '@/integrations/supabase/types';
 
 export class ImportDataValidator {
@@ -22,6 +22,126 @@ export class ImportDataValidator {
     });
 
     return { validData, errors };
+  }
+
+  static validateAndConsolidate(
+    data: ImportData[], 
+    suburbs: any[]
+  ): { previewData: ImportPreviewData; errors: string[] } {
+    const errors: string[] = [];
+    const companyGroups = new Map<string, { rows: ImportData[]; indices: number[] }>();
+    const individualRows: { row: ImportData; index: number }[] = [];
+
+    // Group rows by company name (case-insensitive)
+    data.forEach((row, index) => {
+      const companyKey = (row.company_name || row.business_name || '').toLowerCase().trim();
+      
+      if (companyKey && row.entity_type === 'business') {
+        if (!companyGroups.has(companyKey)) {
+          companyGroups.set(companyKey, { rows: [], indices: [] });
+        }
+        companyGroups.get(companyKey)!.rows.push(row);
+        companyGroups.get(companyKey)!.indices.push(index);
+      } else {
+        individualRows.push({ row, index });
+      }
+    });
+
+    // Process consolidated companies
+    const consolidatedCompanies: ConsolidatedCompany[] = [];
+    
+    companyGroups.forEach((group, companyKey) => {
+      const result = this.consolidateCompanyGroup(group.rows, group.indices, suburbs);
+      if (result.customerData) {
+        consolidatedCompanies.push(result);
+      } else {
+        group.indices.forEach((originalIndex) => {
+          errors.push(`Row ${originalIndex + 2}: ${result.validationWarnings.join(', ')}`);
+        });
+      }
+    });
+
+    // Process individual customers
+    const individualCustomers: ParsedCustomerData[] = [];
+    
+    individualRows.forEach(({ row, index }) => {
+      const rowNumber = index + 2;
+      const validationResult = this.validateRow(row, suburbs, rowNumber);
+      
+      if (validationResult.customerData) {
+        individualCustomers.push(validationResult);
+      } else {
+        errors.push(`Row ${rowNumber}: ${validationResult.validationWarnings.join(', ')}`);
+      }
+    });
+
+    const previewData: ImportPreviewData = {
+      consolidatedCompanies,
+      individualCustomers,
+      totalOriginalRows: data.length
+    };
+
+    return { previewData, errors };
+  }
+
+  private static consolidateCompanyGroup(
+    rows: ImportData[], 
+    indices: number[], 
+    suburbs: any[]
+  ): ConsolidatedCompany {
+    const warnings: string[] = [];
+    
+    // Use the first row as the primary company data
+    const primaryRow = rows[0];
+    const primaryIndex = indices[0];
+    
+    // Validate primary company data
+    const primaryValidation = this.validateRow(primaryRow, suburbs, primaryIndex + 2);
+    
+    if (!primaryValidation.customerData) {
+      return {
+        customerData: null as any,
+        additionalContacts: [],
+        validationWarnings: primaryValidation.validationWarnings,
+        sourceRows: indices
+      };
+    }
+
+    // Create additional contacts from remaining rows
+    const additionalContacts: Database['public']['Tables']['customer_contacts']['Insert'][] = [];
+    
+    rows.slice(1).forEach((row, i) => {
+      const contactIndex = indices[i + 1];
+      
+      // Validate that contact has required info
+      if (!row.first_name && !row.last_name && !row.email && !row.phone) {
+        warnings.push(`Row ${contactIndex + 2}: Contact missing required information`);
+        return;
+      }
+
+      // Check for address consistency
+      if (row.full_address && row.full_address !== primaryRow.full_address) {
+        warnings.push(`Row ${contactIndex + 2}: Different address for same company (will use company address)`);
+      }
+
+      additionalContacts.push({
+        customer_id: '', // Will be set after company creation
+        first_name: row.first_name || '',
+        last_name: row.last_name || '',
+        email: row.email || null,
+        phone: row.phone || null,
+        contact_role: row.contact_role || 'Contact',
+        is_primary_contact: false,
+        is_active: true
+      });
+    });
+
+    return {
+      customerData: primaryValidation.customerData,
+      additionalContacts,
+      validationWarnings: [...primaryValidation.validationWarnings, ...warnings],
+      sourceRows: indices
+    };
   }
 
   private static validateRow(
