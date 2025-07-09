@@ -28,6 +28,16 @@ export function CustomerManagement() {
             state,
             postcode,
             delivery_rate
+          ),
+          customer_contacts (
+            id,
+            first_name,
+            last_name,
+            email,
+            phone,
+            contact_role,
+            is_primary_contact,
+            is_active
           )
         `)
         .order("created_at", { ascending: false });
