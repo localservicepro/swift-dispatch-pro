@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerDialog } from "@/components/customer/CustomerDialog";
+import { CustomerImportDialog } from "@/components/customer/CustomerImportDialog";
 import { CustomerOrders } from "@/components/customer/CustomerOrders";
 import { CustomerStats } from "@/components/customer/CustomerStats";
 import { CustomerManagementHeader } from "@/components/customer/CustomerManagementHeader";
@@ -9,9 +10,12 @@ import { CustomerFilters } from "@/components/customer/CustomerFilters";
 import { CustomerList } from "@/components/customer/CustomerList";
 import { useCustomerFilters } from "@/hooks/useCustomerFilters";
 import { useCustomerActions } from "@/hooks/useCustomerActions";
+import { useState } from "react";
 
 export function CustomerManagement() {
-  const { data: customers, isLoading, error } = useQuery({
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+
+  const { data: customers, isLoading, error, refetch } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -24,6 +28,16 @@ export function CustomerManagement() {
             state,
             postcode,
             delivery_rate
+          ),
+          customer_contacts (
+            id,
+            first_name,
+            last_name,
+            email,
+            phone,
+            contact_role,
+            is_primary_contact,
+            is_active
           )
         `)
         .order("created_at", { ascending: false });
@@ -61,6 +75,11 @@ export function CustomerManagement() {
     handleDialogSuccess
   } = useCustomerActions();
 
+  const handleImportSuccess = () => {
+    refetch();
+    setIsImportDialogOpen(false);
+  };
+
   if (showOrders && selectedCustomer) {
     return (
       <CustomerOrders 
@@ -72,7 +91,10 @@ export function CustomerManagement() {
 
   return (
     <div className="space-y-6">
-      <CustomerManagementHeader onAddCustomer={handleAddCustomer} />
+      <CustomerManagementHeader 
+        onAddCustomer={handleAddCustomer}
+        onImportCustomers={() => setIsImportDialogOpen(true)}
+      />
 
       <CustomerStats customers={customers || []} />
 
@@ -108,6 +130,12 @@ export function CustomerManagement() {
         customer={selectedCustomer}
         isEdit={isEditMode}
         onSuccess={handleDialogSuccess}
+      />
+
+      <CustomerImportDialog
+        isOpen={isImportDialogOpen}
+        onClose={() => setIsImportDialogOpen(false)}
+        onSuccess={handleImportSuccess}
       />
     </div>
   );

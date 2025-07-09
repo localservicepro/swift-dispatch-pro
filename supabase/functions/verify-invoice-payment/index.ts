@@ -109,7 +109,7 @@ const handler = async (req: Request): Promise<Response> => {
         
         logStep('Order payment status updated successfully', { orderId, requestId });
 
-        // Send payment confirmation email
+        // Send payment confirmation email and admin notification
         try {
           const { data: orderData, error: orderFetchError } = await supabase
             .from('orders')
@@ -136,7 +136,7 @@ const handler = async (req: Request): Promise<Response> => {
 
             const receiptDownloadUrl = receiptData?.downloadUrl || undefined;
 
-            // Send payment confirmation email
+            // Send payment confirmation email to customer
             const { error: emailError } = await supabase.functions.invoke('send-emails', {
               body: {
                 type: 'payment-confirmation',
@@ -164,9 +164,33 @@ const handler = async (req: Request): Promise<Response> => {
             } else {
               logStep('Payment confirmation email sent successfully', { requestId });
             }
+
+            // Send admin notification about successful payment
+            const { error: adminNotificationError } = await supabase.functions.invoke('send-emails', {
+              body: {
+                type: 'admin-payment-notification',
+                data: {
+                  orderNumber: orderData.order_number,
+                  customerName: orderData.customer_name,
+                  paymentAmount: invoiceDetailData.amount,
+                  currency: invoiceDetailData.currency || 'USD',
+                  transactionId: sessionId,
+                  invoiceNumber: invoiceDetailData.invoice_number
+                }
+              }
+            });
+
+            if (adminNotificationError) {
+              logStep('Warning: Failed to send admin payment notification', { 
+                error: adminNotificationError, 
+                requestId 
+              });
+            } else {
+              logStep('Admin payment notification sent successfully', { requestId });
+            }
           }
         } catch (emailError: any) {
-          logStep('Warning: Failed to send payment confirmation email', { 
+          logStep('Warning: Failed to send emails', { 
             error: emailError.message, 
             requestId 
           });

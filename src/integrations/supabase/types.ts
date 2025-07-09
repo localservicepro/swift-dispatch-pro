@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instanciate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
       activity_logs: {
@@ -1625,6 +1630,362 @@ export type Database = {
         }
         Relationships: []
       }
+      woocommerce_category_mapping: {
+        Row: {
+          created_at: string
+          id: string
+          local_category_id: string
+          woocommerce_category_id: number
+          woocommerce_slug: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          local_category_id: string
+          woocommerce_category_id: number
+          woocommerce_slug?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          local_category_id?: string
+          woocommerce_category_id?: number
+          woocommerce_slug?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "woocommerce_category_mapping_local_category_id_fkey"
+            columns: ["local_category_id"]
+            isOneToOne: true
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      woocommerce_customer_mapping: {
+        Row: {
+          created_at: string
+          id: string
+          last_local_modified: string | null
+          last_synced_at: string | null
+          last_wc_modified: string | null
+          local_customer_id: string
+          sync_errors: Json | null
+          sync_status: string
+          updated_at: string
+          woocommerce_customer_id: number
+          woocommerce_email: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_local_modified?: string | null
+          last_synced_at?: string | null
+          last_wc_modified?: string | null
+          local_customer_id: string
+          sync_errors?: Json | null
+          sync_status?: string
+          updated_at?: string
+          woocommerce_customer_id: number
+          woocommerce_email?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_local_modified?: string | null
+          last_synced_at?: string | null
+          last_wc_modified?: string | null
+          local_customer_id?: string
+          sync_errors?: Json | null
+          sync_status?: string
+          updated_at?: string
+          woocommerce_customer_id?: number
+          woocommerce_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "woocommerce_customer_mapping_local_customer_id_fkey"
+            columns: ["local_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      woocommerce_order_mapping: {
+        Row: {
+          created_at: string
+          id: string
+          last_local_modified: string | null
+          last_synced_at: string | null
+          last_wc_modified: string | null
+          local_order_id: string
+          sync_errors: Json | null
+          sync_status: string
+          updated_at: string
+          woocommerce_order_id: number
+          woocommerce_order_number: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_local_modified?: string | null
+          last_synced_at?: string | null
+          last_wc_modified?: string | null
+          local_order_id: string
+          sync_errors?: Json | null
+          sync_status?: string
+          updated_at?: string
+          woocommerce_order_id: number
+          woocommerce_order_number?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_local_modified?: string | null
+          last_synced_at?: string | null
+          last_wc_modified?: string | null
+          local_order_id?: string
+          sync_errors?: Json | null
+          sync_status?: string
+          updated_at?: string
+          woocommerce_order_id?: number
+          woocommerce_order_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "woocommerce_order_mapping_local_order_id_fkey"
+            columns: ["local_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      woocommerce_product_mapping: {
+        Row: {
+          created_at: string
+          id: string
+          last_local_modified: string | null
+          last_synced_at: string | null
+          last_wc_modified: string | null
+          local_product_id: string
+          sync_errors: Json | null
+          sync_status: string
+          updated_at: string
+          woocommerce_product_id: number
+          woocommerce_sku: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_local_modified?: string | null
+          last_synced_at?: string | null
+          last_wc_modified?: string | null
+          local_product_id: string
+          sync_errors?: Json | null
+          sync_status?: string
+          updated_at?: string
+          woocommerce_product_id: number
+          woocommerce_sku?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_local_modified?: string | null
+          last_synced_at?: string | null
+          last_wc_modified?: string | null
+          local_product_id?: string
+          sync_errors?: Json | null
+          sync_status?: string
+          updated_at?: string
+          woocommerce_product_id?: number
+          woocommerce_sku?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "woocommerce_product_mapping_local_product_id_fkey"
+            columns: ["local_product_id"]
+            isOneToOne: true
+            referencedRelation: "product_pricing_calculated"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "woocommerce_product_mapping_local_product_id_fkey"
+            columns: ["local_product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      woocommerce_sync_logs: {
+        Row: {
+          categories_processed: number | null
+          completed_at: string | null
+          customers_created: number | null
+          customers_failed: number | null
+          customers_processed: number | null
+          customers_updated: number | null
+          direction: string
+          duration_seconds: number | null
+          error_details: Json | null
+          id: string
+          orders_created: number | null
+          orders_failed: number | null
+          orders_processed: number | null
+          orders_updated: number | null
+          products_created: number | null
+          products_failed: number | null
+          products_processed: number | null
+          products_updated: number | null
+          settings_id: string | null
+          started_at: string
+          status: string
+          sync_type: string
+          triggered_by: string | null
+        }
+        Insert: {
+          categories_processed?: number | null
+          completed_at?: string | null
+          customers_created?: number | null
+          customers_failed?: number | null
+          customers_processed?: number | null
+          customers_updated?: number | null
+          direction: string
+          duration_seconds?: number | null
+          error_details?: Json | null
+          id?: string
+          orders_created?: number | null
+          orders_failed?: number | null
+          orders_processed?: number | null
+          orders_updated?: number | null
+          products_created?: number | null
+          products_failed?: number | null
+          products_processed?: number | null
+          products_updated?: number | null
+          settings_id?: string | null
+          started_at?: string
+          status: string
+          sync_type: string
+          triggered_by?: string | null
+        }
+        Update: {
+          categories_processed?: number | null
+          completed_at?: string | null
+          customers_created?: number | null
+          customers_failed?: number | null
+          customers_processed?: number | null
+          customers_updated?: number | null
+          direction?: string
+          duration_seconds?: number | null
+          error_details?: Json | null
+          id?: string
+          orders_created?: number | null
+          orders_failed?: number | null
+          orders_processed?: number | null
+          orders_updated?: number | null
+          products_created?: number | null
+          products_failed?: number | null
+          products_processed?: number | null
+          products_updated?: number | null
+          settings_id?: string | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "woocommerce_sync_logs_settings_id_fkey"
+            columns: ["settings_id"]
+            isOneToOne: false
+            referencedRelation: "woocommerce_sync_settings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      woocommerce_sync_settings: {
+        Row: {
+          auto_sync_enabled: boolean
+          consumer_key: string
+          consumer_secret: string
+          created_at: string
+          created_by: string | null
+          customer_sync_mode: string | null
+          id: string
+          is_active: boolean
+          last_sync_at: string | null
+          order_date_filter: string | null
+          order_date_from: string | null
+          order_date_to: string | null
+          order_status_mapping: Json | null
+          order_sync_direction: string | null
+          store_url: string
+          sync_categories: boolean
+          sync_customers: boolean | null
+          sync_direction: string
+          sync_frequency: string
+          sync_images: boolean
+          sync_inventory: boolean
+          sync_orders: boolean | null
+          sync_pricing: boolean
+          updated_at: string
+        }
+        Insert: {
+          auto_sync_enabled?: boolean
+          consumer_key: string
+          consumer_secret: string
+          created_at?: string
+          created_by?: string | null
+          customer_sync_mode?: string | null
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          order_date_filter?: string | null
+          order_date_from?: string | null
+          order_date_to?: string | null
+          order_status_mapping?: Json | null
+          order_sync_direction?: string | null
+          store_url: string
+          sync_categories?: boolean
+          sync_customers?: boolean | null
+          sync_direction?: string
+          sync_frequency?: string
+          sync_images?: boolean
+          sync_inventory?: boolean
+          sync_orders?: boolean | null
+          sync_pricing?: boolean
+          updated_at?: string
+        }
+        Update: {
+          auto_sync_enabled?: boolean
+          consumer_key?: string
+          consumer_secret?: string
+          created_at?: string
+          created_by?: string | null
+          customer_sync_mode?: string | null
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          order_date_filter?: string | null
+          order_date_from?: string | null
+          order_date_to?: string | null
+          order_status_mapping?: Json | null
+          order_sync_direction?: string | null
+          store_url?: string
+          sync_categories?: boolean
+          sync_customers?: boolean | null
+          sync_direction?: string
+          sync_frequency?: string
+          sync_images?: boolean
+          sync_inventory?: boolean
+          sync_orders?: boolean | null
+          sync_pricing?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       product_pricing_calculated: {
@@ -1759,21 +2120,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -1791,14 +2156,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -1814,14 +2181,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -1837,14 +2206,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -1852,14 +2223,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never

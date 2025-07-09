@@ -12,6 +12,7 @@ import { PaymentSearchFilters } from "@/components/payment/PaymentSearchFilters"
 import { PaymentSettings } from "@/components/payment/PaymentSettings";
 import { usePaymentFilters } from "@/hooks/usePaymentFilters";
 import { PurchaseOrderDisplay } from "@/components/order/PurchaseOrderDisplay";
+
 interface PaymentOrder {
   id: string;
   order_number: string;
@@ -28,7 +29,10 @@ interface PaymentOrder {
   products: any;
   delivery_fee?: number;
   subtotal?: number;
+  company_name?: string;
+  business_name?: string;
 }
+
 export function PaymentManagement() {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [sendingInvoices, setSendingInvoices] = useState<string[]>([]);
@@ -77,7 +81,11 @@ export function PaymentManagement() {
           products,
           delivery_fee,
           subtotal,
-          customers!orders_customer_id_fkey(email)
+          customers!orders_customer_id_fkey(
+            email,
+            company_name,
+            business_name
+          )
         `).order('created_at', {
         ascending: false
       });
@@ -87,8 +95,10 @@ export function PaymentManagement() {
       }
       return data.map(order => ({
         ...order,
-        customer_email: order.customers?.email || `${order.customer_name.toLowerCase().replace(' ', '.')}@example.com`,
-        payment_status: order.payment_status || 'pending'
+        customer_email: order.customers?.email || '',
+        payment_status: order.payment_status || 'pending',
+        company_name: order.customers?.company_name || null,
+        business_name: order.customers?.business_name || null
       }));
     },
     refetchInterval: 30000
@@ -104,6 +114,23 @@ export function PaymentManagement() {
     clearAllFilters,
     activeFilterCount
   } = usePaymentFilters(payments);
+
+  // Helper function to get the display name for customer
+  const getCustomerDisplayName = (payment: PaymentOrder): string => {
+    // Prioritize company name for account customers
+    if (payment.company_name) {
+      return payment.company_name;
+    }
+    
+    // Fall back to business name for business customers
+    if (payment.business_name) {
+      return payment.business_name;
+    }
+    
+    // Use customer name as final fallback
+    return payment.customer_name || 'Unknown Customer';
+  };
+
   const generateAndSendInvoice = async (orderId: string) => {
     if (generatingInvoices.includes(orderId)) return;
     setGeneratingInvoices(prev => [...prev, orderId]);
@@ -136,7 +163,7 @@ export function PaymentManagement() {
       } = await supabase.from('invoices').insert({
         invoice_number: invoiceNumber,
         order_id: orderId,
-        customer_email: order.customer_email,
+        customer_email: order.customer_email || `${getCustomerDisplayName(order).toLowerCase().replace(' ', '.')}@example.com`,
         amount: order.total_amount,
         currency: 'USD',
         status: 'pending',
@@ -200,8 +227,8 @@ export function PaymentManagement() {
         body: {
           type: 'invoice',
           data: {
-            customerName: order.customer_name,
-            customerEmail: order.customer_email,
+            customerName: getCustomerDisplayName(order),
+            customerEmail: order.customer_email || `${getCustomerDisplayName(order).toLowerCase().replace(' ', '.')}@example.com`,
             orderNumber: order.order_number,
             invoiceNumber: invoiceNumber,
             orderItems: orderItems,
@@ -226,7 +253,7 @@ export function PaymentManagement() {
         await updatePaymentStatus(orderId, 'invoiced');
         toast({
           title: "Invoice Generated & Sent",
-          description: `Invoice ${invoiceNumber} sent to ${order.customer_name} with payment link`,
+          description: `Invoice ${invoiceNumber} sent to ${getCustomerDisplayName(order)} with payment link`,
           action: <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="w-4 h-4 mr-1" />
               Refresh
@@ -249,6 +276,7 @@ export function PaymentManagement() {
       setGeneratingInvoices(prev => prev.filter(id => id !== orderId));
     }
   };
+
   const sendInvoice = async (orderId: string) => {
     if (sendingInvoices.includes(orderId)) return;
     setSendingInvoices(prev => [...prev, orderId]);
@@ -283,8 +311,8 @@ export function PaymentManagement() {
         body: {
           type: 'invoice',
           data: {
-            customerName: order.customer_name,
-            customerEmail: order.customer_email,
+            customerName: getCustomerDisplayName(order),
+            customerEmail: order.customer_email || `${getCustomerDisplayName(order).toLowerCase().replace(' ', '.')}@example.com`,
             orderNumber: order.order_number,
             invoiceNumber: `INV-${order.order_number}`,
             orderItems: orderItems,
@@ -302,7 +330,7 @@ export function PaymentManagement() {
       await updatePaymentStatus(orderId, 'invoiced');
       toast({
         title: "Invoice Sent",
-        description: `Invoice for ${order.order_number} has been sent to ${order.customer_name}`
+        description: `Invoice for ${order.order_number} has been sent to ${getCustomerDisplayName(order)}`
       });
     } catch (error: any) {
       console.error('Error sending invoice:', error);
@@ -315,6 +343,7 @@ export function PaymentManagement() {
       setSendingInvoices(prev => prev.filter(id => id !== orderId));
     }
   };
+
   const sendBatchInvoices = async () => {
     if (selectedPayments.length === 0) {
       toast({
@@ -344,6 +373,7 @@ export function PaymentManagement() {
       setSendingInvoices(prev => prev.filter(id => !selectedPayments.includes(id)));
     }
   };
+
   const updatePaymentStatus = async (orderId: string, newStatus: string) => {
     try {
       const {
@@ -367,6 +397,7 @@ export function PaymentManagement() {
       });
     }
   };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "paid":
@@ -383,6 +414,7 @@ export function PaymentManagement() {
         return "bg-gray-100 text-gray-800";
     }
   };
+
   const togglePaymentSelection = (paymentId: string) => {
     setSelectedPayments(prev => prev.includes(paymentId) ? prev.filter(id => id !== paymentId) : [...prev, paymentId]);
   };
@@ -392,6 +424,7 @@ export function PaymentManagement() {
   const pendingPayments = filteredPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total_amount, 0);
   const invoicedPayments = filteredPayments.filter(p => p.payment_status === 'invoiced').reduce((sum, p) => sum + p.total_amount, 0);
   const overduePayments = filteredPayments.filter(p => p.payment_status === 'overdue').reduce((sum, p) => sum + p.total_amount, 0);
+
   if (error) {
     return <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -411,6 +444,7 @@ export function PaymentManagement() {
         </Card>
       </div>;
   }
+
   return <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -516,6 +550,11 @@ export function PaymentManagement() {
                       <div className="flex flex-col gap-1">
                         <h3 className="font-semibold text-slate-800">{payment.order_number}</h3>
                         <PurchaseOrderDisplay purchaseOrder={payment.purchase_order} variant="outline" className="text-xs" />
+                        {(payment.company_name || payment.business_name) && (
+                          <p className="text-xs text-slate-600 font-medium">
+                            {payment.company_name || payment.business_name}
+                          </p>
+                        )}
                       </div>
                       <Badge className={getStatusColor(payment.payment_status)}>
                         {payment.payment_status}
@@ -527,12 +566,12 @@ export function PaymentManagement() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <p className="text-slate-500">Customer</p>
-                      <p className="font-medium">{payment.customer_name}</p>
+                      <p className="font-medium">{getCustomerDisplayName(payment)}</p>
                       {payment.customer_phone && <p className="text-xs text-slate-400">{payment.customer_phone}</p>}
                     </div>
                     <div>
                       <p className="text-slate-500">Email</p>
-                      <p className="font-medium text-xs">{payment.customer_email}</p>
+                      <p className="font-medium text-xs">{payment.customer_email || ''}</p>
                     </div>
                     <div>
                       <p className="text-slate-500">Payment Method</p>

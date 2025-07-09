@@ -17,6 +17,7 @@ import { activityLogger } from "@/utils/activityLogger";
 import { OrderEditDialog } from "./order/OrderEditDialog";
 import { TruckDriverAssignmentDialog } from "./order/TruckDriverAssignmentDialog";
 import { Database } from "@/integrations/supabase/types";
+import { OpportunityCardColorLegend } from "./opportunity/OpportunityCardColorLegend";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
 
@@ -99,7 +100,9 @@ export function OpportunityPipeline() {
       filtered = filtered.filter(order => 
         order.order_number.toLowerCase().includes(query) || 
         order.customer_name.toLowerCase().includes(query) ||
-        (order.purchase_order && order.purchase_order.toLowerCase().includes(query))
+        (order.purchase_order && order.purchase_order.toLowerCase().includes(query)) ||
+        (order.company_name && order.company_name.toLowerCase().includes(query)) ||
+        (order.business_name && order.business_name.toLowerCase().includes(query))
       );
     }
 
@@ -501,7 +504,7 @@ export function OpportunityPipeline() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
-                    placeholder="Search by order number, customer name, or PO number..."
+                    placeholder="Search by order number, customer name, business name, or PO number..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
@@ -521,6 +524,11 @@ export function OpportunityPipeline() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Color Legend */}
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <OpportunityCardColorLegend />
               </div>
             </CardHeader>
             <CardContent>

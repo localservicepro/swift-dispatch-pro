@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -112,7 +111,7 @@ export function TruckStatusCard({
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <p className="text-muted-foreground">Capacity</p>
-            <p className="font-medium">{truck.capacity_tons || "N/A"} tons</p>
+            <p className="font-medium">{truck.capacity_tons || "N/A"} tonnes</p>
           </div>
           <div>
             <p className="text-muted-foreground">Fuel</p>

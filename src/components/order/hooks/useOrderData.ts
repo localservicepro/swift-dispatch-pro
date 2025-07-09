@@ -1,4 +1,3 @@
-
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -144,7 +143,9 @@ export function useFilteredOrders(orders: Order[], searchQuery: string, statusFi
         order.order_number.toLowerCase().includes(query) ||
         order.customer_name.toLowerCase().includes(query) ||
         (order.customer_phone && order.customer_phone.toLowerCase().includes(query)) ||
-        (order.purchase_order && order.purchase_order.toLowerCase().includes(query))
+        (order.purchase_order && order.purchase_order.toLowerCase().includes(query)) ||
+        (order.company_name && order.company_name.toLowerCase().includes(query)) ||
+        (order.business_name && order.business_name.toLowerCase().includes(query))
       );
     }
 

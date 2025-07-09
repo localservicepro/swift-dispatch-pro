@@ -28,6 +28,8 @@ interface OrderEditSectionsProps {
   onProductsChange: (products: any[]) => void;
   onSubtotalChange: (subtotal: number) => void;
   onFormDataChange: (updates: any) => void;
+  calculationBreakdown?: any;
+  paymentSettings?: any;
 }
 
 export function OrderEditSections({
@@ -40,7 +42,9 @@ export function OrderEditSections({
   onSuburbChange,
   onProductsChange,
   onSubtotalChange,
-  onFormDataChange
+  onFormDataChange,
+  calculationBreakdown,
+  paymentSettings
 }: OrderEditSectionsProps) {
   return (
     <div className="space-y-6">
@@ -104,6 +108,8 @@ export function OrderEditSections({
       <OrderPricingForm 
         formData={formData}
         onInputChange={onInputChange}
+        calculationBreakdown={calculationBreakdown}
+        paymentSettings={paymentSettings}
       />
 
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
