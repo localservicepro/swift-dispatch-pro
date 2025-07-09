@@ -9,8 +9,6 @@ import { OpportunityCardHeader } from "./OpportunityCardHeader";
 import { OpportunityCardInfo } from "./OpportunityCardInfo";
 import { OpportunityCardActionButton } from "./OpportunityCardActionButton";
 import { OpportunityCardCompleted } from "./OpportunityCardCompleted";
-import { getCustomerTypeColors } from "@/utils/customerTypeColors";
-import { cn } from "@/lib/utils";
 
 interface OpportunityCardProps {
   order: any;
@@ -28,9 +26,6 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
     currentStage === 'delivered' ? order.id : null
   );
   const hasDeliveryPhotos = deliveryPhotos && deliveryPhotos.length > 0;
-
-  // Get customer type colors
-  const colors = getCustomerTypeColors(order.customer_type);
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't trigger card click if clicking on action buttons, payment dropdown, or notes edit
@@ -55,13 +50,7 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
   return (
     <>
       <Card 
-        className={cn(
-          "hover:shadow-md transition-all cursor-pointer group",
-          colors.card,
-          colors.border,
-          colors.hoverBorder,
-          colors.leftBorder
-        )}
+        className="hover:shadow-md transition-all cursor-pointer border border-slate-200 hover:border-slate-300 group"
         onClick={handleCardClick}
       >
         <CardContent className="p-4">

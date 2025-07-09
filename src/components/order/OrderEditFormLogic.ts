@@ -47,8 +47,6 @@ export function useOrderEditFormLogic(order: Order) {
     handleProductsChange,
     handleSubtotalChange,
     getFormDataForSubmission,
-    getCalculationBreakdown,
-    paymentSettings
   } = useOrderFormData(order);
 
   // Use conflict detection hook
@@ -108,9 +106,6 @@ export function useOrderEditFormLogic(order: Order) {
     }
   };
 
-  // Get calculation breakdown for UI display
-  const calculationBreakdown = getCalculationBreakdown();
-
   return {
     formData,
     deliveryRate,
@@ -124,8 +119,6 @@ export function useOrderEditFormLogic(order: Order) {
     handleProductsChange,
     handleSubtotalChange,
     handleFormDataChange,
-    getFormDataForSubmission,
-    calculationBreakdown,
-    paymentSettings
+    getFormDataForSubmission
   };
 }

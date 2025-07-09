@@ -2,34 +2,15 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { DollarSign, FileText, Calculator } from "lucide-react";
+import { DollarSign, FileText } from "lucide-react";
 import { OrderFormData } from "./hooks/useOrderFormData";
 
 interface OrderPricingFormProps {
   formData: OrderFormData;
   onInputChange: (field: string, value: string) => void;
-  calculationBreakdown?: any;
-  paymentSettings?: any;
 }
 
-export function OrderPricingForm({ 
-  formData, 
-  onInputChange, 
-  calculationBreakdown,
-  paymentSettings 
-}: OrderPricingFormProps) {
-  const breakdown = calculationBreakdown || {
-    subtotal: formData.subtotal,
-    adjustments: formData.adjustments || 0,
-    deliveryFee: formData.delivery_fee,
-    surchargeAmount: 0,
-    gstAmount: 0,
-    totalAmount: parseFloat(formData.total_amount),
-    hasSurcharge: false
-  };
-
+export function OrderPricingForm({ formData, onInputChange }: OrderPricingFormProps) {
   return (
     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-4">
       <div className="flex items-center gap-2 mb-3">
@@ -65,107 +46,17 @@ export function OrderPricingForm({
       </div>
 
       <div>
-        <Label htmlFor="adjustments" className="text-gray-700 font-medium">Adjustments (AU$)</Label>
-        <Input
-          id="adjustments"
-          type="number"
-          step="0.01"
-          value={formData.adjustments?.toString() || '0'}
-          onChange={(e) => onInputChange('adjustments', e.target.value)}
-          className="border-amber-200 focus:border-amber-400 focus:ring-amber-200"
-          placeholder="0.00"
-        />
-        <p className="text-xs text-amber-600 mt-1">Use negative values for discounts</p>
-      </div>
-
-      {/* Payment Method Selection for Surcharge Calculation */}
-      <div>
-        <Label htmlFor="payment_method" className="text-gray-700 font-medium">Payment Method</Label>
-        <select
-          id="payment_method"
-          value={formData.payment_method}
-          onChange={(e) => onInputChange('payment_method', e.target.value)}
-          className="w-full px-3 py-2 border border-amber-200 rounded-md focus:border-amber-400 focus:ring-amber-200"
-        >
-          <option value="cash">Cash</option>
-          <option value="card_on_file">Card on File</option>
-          <option value="invoice">Invoice</option>
-          <option value="7_day_invoice">7 Day Invoice</option>
-          <option value="in_yard_cash">In Yard - Cash</option>
-          <option value="in_yard_card">In Yard - Card</option>
-          <option value="account_cash">Account - Cash</option>
-          <option value="account_card">Account - Card</option>
-        </select>
-      </div>
-
-      {/* Calculation Breakdown */}
-      <div className="bg-white border border-amber-200 rounded-lg p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <Calculator className="w-4 h-4 text-amber-600" />
-          <h4 className="font-medium text-amber-900">Calculation Breakdown</h4>
-        </div>
-        
-        <div className="space-y-1 text-sm">
-          <div className="flex justify-between">
-            <span>Subtotal:</span>
-            <span>AU${breakdown.subtotal.toFixed(2)}</span>
-          </div>
-          
-          {breakdown.adjustments !== 0 && (
-            <div className="flex justify-between">
-              <span>Adjustments:</span>
-              <span className={breakdown.adjustments > 0 ? "text-green-600" : "text-red-600"}>
-                {breakdown.adjustments > 0 ? '+' : ''}AU${breakdown.adjustments.toFixed(2)}
-              </span>
-            </div>
-          )}
-          
-          <div className="flex justify-between">
-            <span>Delivery Fee:</span>
-            <span>AU${breakdown.deliveryFee.toFixed(2)}</span>
-          </div>
-          
-          {breakdown.hasSurcharge && breakdown.surchargeAmount > 0 && (
-            <div className="flex justify-between text-orange-600">
-              <span>Surcharge ({paymentSettings?.service_charge_rate || 0}%):</span>
-              <span>AU${breakdown.surchargeAmount.toFixed(2)}</span>
-            </div>
-          )}
-          
-          <div className="flex justify-between text-blue-600">
-            <span>{paymentSettings?.gst_label || 'GST'} ({paymentSettings?.gst_rate || 10}%):</span>
-            <span>AU${breakdown.gstAmount.toFixed(2)}</span>
-          </div>
-          
-          <Separator className="my-2" />
-          
-          <div className="flex justify-between font-semibold text-lg">
-            <span>Total:</span>
-            <span>AU${breakdown.totalAmount.toFixed(2)}</span>
-          </div>
-        </div>
-
-        {breakdown.hasSurcharge && (
-          <div className="mt-2">
-            <Badge variant="secondary" className="text-orange-600 bg-orange-50">
-              Surcharge applies to this payment method
-            </Badge>
-          </div>
-        )}
-      </div>
-
-      {/* Read-only Total Amount Field */}
-      <div>
         <Label htmlFor="total_amount" className="text-gray-700 font-medium">Total Amount (AU$)</Label>
         <Input
           id="total_amount"
-          type="text"
-          value={`AU$${breakdown.totalAmount.toFixed(2)}`}
-          readOnly
-          className="border-amber-200 bg-gray-50 font-semibold text-lg cursor-not-allowed"
-          placeholder="Calculated automatically"
+          type="number"
+          step="0.01"
+          value={formData.total_amount}
+          onChange={(e) => onInputChange('total_amount', e.target.value)}
+          required
+          className="border-amber-200 focus:border-amber-400 focus:ring-amber-200 font-semibold"
+          placeholder="0.00"
         />
-        <p className="text-xs text-amber-600 mt-1">This amount is calculated automatically based on the above values</p>
       </div>
 
       <div>

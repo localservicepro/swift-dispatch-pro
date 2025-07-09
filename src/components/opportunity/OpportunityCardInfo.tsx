@@ -28,32 +28,18 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
   const getDisplayInfo = () => {
     // Check for company name (account customers)
     if (order.company_name) {
-      // Only set contactInfo if customer_name exists and is not null/empty
-      const hasValidContact = order.customer_name && 
-        order.customer_name !== 'null null' && 
-        order.customer_name.trim() !== '' &&
-        order.customer_name !== 'null' &&
-        order.customer_name !== 'undefined';
-      
       return {
         displayName: order.company_name,
-        contactInfo: hasValidContact ? order.customer_name : null,
+        contactInfo: `Contact: ${order.customer_name}`,
         isCompany: true
       };
     }
     
     // Check for business name (business customers)
     if (order.business_name) {
-      // Only set contactInfo if customer_name exists and is not null/empty
-      const hasValidContact = order.customer_name && 
-        order.customer_name !== 'null null' && 
-        order.customer_name.trim() !== '' &&
-        order.customer_name !== 'null' &&
-        order.customer_name !== 'undefined';
-      
       return {
         displayName: order.business_name,
-        contactInfo: hasValidContact ? order.customer_name : null,
+        contactInfo: `Contact: ${order.customer_name}`,
         isCompany: true
       };
     }
@@ -83,7 +69,7 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
         {contactInfo && (
           <div className="flex items-center gap-2 text-xs text-slate-500 ml-5">
             <User className="w-3 h-3" />
-            <span>Contact: {contactInfo}</span>
+            <span>{contactInfo}</span>
           </div>
         )}
         {order.customer_phone && (

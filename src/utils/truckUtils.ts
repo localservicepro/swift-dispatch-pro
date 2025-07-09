@@ -19,7 +19,7 @@ export const truckTypeInfo: Record<TruckType, TruckTypeInfo> = {
     value: 'small',
     label: 'Small Truck',
     description: 'Local deliveries',
-    capacity: 'Up to 3 tonnes',
+    capacity: 'Up to 3 tons',
     icon: Package,
     colorClass: 'text-blue-700',
     bgClass: 'bg-blue-100'
@@ -28,7 +28,7 @@ export const truckTypeInfo: Record<TruckType, TruckTypeInfo> = {
     value: 'medium',
     label: 'Medium Truck', 
     description: 'Regional deliveries',
-    capacity: 'Up to 8 tonnes',
+    capacity: 'Up to 8 tons',
     icon: Truck,
     colorClass: 'text-green-700',
     bgClass: 'bg-green-100'
@@ -37,7 +37,7 @@ export const truckTypeInfo: Record<TruckType, TruckTypeInfo> = {
     value: 'large',
     label: 'Large Truck',
     description: 'Long distance',
-    capacity: 'Up to 15 tonnes',
+    capacity: 'Up to 15 tons',
     icon: TruckIcon,
     colorClass: 'text-orange-700',
     bgClass: 'bg-orange-100'

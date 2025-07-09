@@ -1,8 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { Order } from "../OrderEditFormTypes";
-import { usePaymentSettings } from "@/hooks/usePaymentSettings";
-import { calculateOrderTotals } from "../utils/paymentCalculations";
 
 export interface OrderFormData {
   customer_name: string;
@@ -22,13 +20,9 @@ export interface OrderFormData {
   delivery_suburb_id: string;
   truck_type: string;
   truck_id: string;
-  payment_method: string;
-  adjustments: number;
 }
 
 export function useOrderFormData(order: Order) {
-  const { data: paymentSettings } = usePaymentSettings();
-  
   const [formData, setFormData] = useState<OrderFormData>({
     customer_name: order.customer_name || '',
     customer_phone: order.customer_phone || '',
@@ -46,59 +40,11 @@ export function useOrderFormData(order: Order) {
     suburb_id: order.suburb_id || '',
     delivery_suburb_id: order.delivery_suburb_id || '',
     truck_type: order.truck_type || 'none',
-    truck_id: order.truck_id || 'none',
-    payment_method: order.payment_method || 'cash',
-    adjustments: order.adjustments || 0
+    truck_id: order.truck_id || 'none'
   });
 
-  // Calculate totals whenever pricing components change
-  const calculateTotals = (updatedData: Partial<OrderFormData>) => {
-    const currentData = { ...formData, ...updatedData };
-    
-    if (!paymentSettings) {
-      // Fallback calculation without payment settings
-      const total = currentData.subtotal + currentData.delivery_fee + currentData.adjustments;
-      return total.toFixed(2);
-    }
-
-    const orderTotals = calculateOrderTotals(
-      currentData.subtotal,
-      currentData.adjustments,
-      currentData.delivery_fee,
-      currentData.payment_method,
-      paymentSettings
-    );
-
-    console.log('Order totals calculated:', orderTotals);
-    return orderTotals.totalAmount.toFixed(2);
-  };
-
   const handleInputChange = (field: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
-    
-    // Handle pricing fields that need recalculation
-    if (field === 'delivery_fee' || field === 'adjustments') {
-      const updatedData = { [field]: numValue };
-      const newTotal = calculateTotals(updatedData);
-      
-      setFormData(prev => ({
-        ...prev,
-        [field]: numValue,
-        total_amount: newTotal
-      }));
-    } else if (field === 'payment_method') {
-      // Recalculate when payment method changes (affects surcharges)
-      const updatedData = { payment_method: value };
-      const newTotal = calculateTotals(updatedData);
-      
-      setFormData(prev => ({
-        ...prev,
-        payment_method: value,
-        total_amount: newTotal
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
-    }
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleDriverChange = (driverId: string) => {
@@ -114,26 +60,15 @@ export function useOrderFormData(order: Order) {
   };
 
   const handleSubtotalChange = (subtotal: number) => {
-    const updatedData = { subtotal };
-    const newTotal = calculateTotals(updatedData);
+    const deliveryFee = formData.delivery_fee || 0;
+    const totalAmount = subtotal + deliveryFee;
     
     setFormData(prev => ({
       ...prev,
       subtotal,
-      total_amount: newTotal
+      total_amount: totalAmount.toString()
     }));
   };
-
-  // Recalculate totals when payment settings are loaded
-  useEffect(() => {
-    if (paymentSettings) {
-      const newTotal = calculateTotals({});
-      setFormData(prev => ({
-        ...prev,
-        total_amount: newTotal
-      }));
-    }
-  }, [paymentSettings]);
 
   const getFormDataForSubmission = () => {
     // Format time for database submission (ensure HH:MM:SS format)
@@ -160,29 +95,6 @@ export function useOrderFormData(order: Order) {
     };
   };
 
-  // Get calculation breakdown for display
-  const getCalculationBreakdown = () => {
-    if (!paymentSettings) {
-      return {
-        subtotal: formData.subtotal,
-        adjustments: formData.adjustments,
-        deliveryFee: formData.delivery_fee,
-        surchargeAmount: 0,
-        gstAmount: (formData.subtotal + formData.adjustments + formData.delivery_fee) * 0.1,
-        totalAmount: parseFloat(formData.total_amount),
-        hasSurcharge: false
-      };
-    }
-
-    return calculateOrderTotals(
-      formData.subtotal,
-      formData.adjustments,
-      formData.delivery_fee,
-      formData.payment_method,
-      paymentSettings
-    );
-  };
-
   return {
     formData,
     setFormData,
@@ -192,7 +104,5 @@ export function useOrderFormData(order: Order) {
     handleProductsChange,
     handleSubtotalChange,
     getFormDataForSubmission,
-    getCalculationBreakdown,
-    paymentSettings
   };
 }

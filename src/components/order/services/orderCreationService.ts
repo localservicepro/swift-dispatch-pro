@@ -20,7 +20,6 @@ interface CreateSingleOrderParams {
   sameAsBilling: boolean;
   suburbId: string;
   orderTotals: any;
-  selectedContact?: any;
 }
 
 // Interface for creating split orders (simplified)
@@ -36,7 +35,6 @@ interface CreateSplitOrderParams {
   deliveryNotes: string;
   purchaseOrder: string;
   orderTotals: any;
-  selectedContact?: any;
 }
 
 export async function createSingleOrder(params: CreateSingleOrderParams) {
@@ -62,23 +60,11 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
     // Serialize cart items for database storage - the trigger will automatically create products_formatted
     const serializedProducts = serializeCartItemsWithFormatting(params.cart);
 
-    // Use contact information if provided, otherwise use customer information
-    const contactName = params.selectedContact 
-      ? `${params.selectedContact.first_name} ${params.selectedContact.last_name}`
-      : `${params.customer.first_name} ${params.customer.last_name}`;
-    
-    const contactPhone = params.selectedContact?.phone || params.customer.phone;
-    const contactEmail = params.selectedContact?.email || params.customer.email;
-
     const orderData = {
       order_number: orderNumber,
       customer_id: params.customer.id,
-      contact_id: params.selectedContact?.id || null,
-      contact_name: contactName,
-      contact_email: contactEmail,
-      contact_phone: contactPhone,
-      customer_name: contactName,
-      customer_phone: contactPhone,
+      customer_name: `${params.customer.first_name} ${params.customer.last_name}`,
+      customer_phone: params.customer.phone,
       customer_address: params.sameAsBilling ? params.customer.full_address : params.deliveryAddress,
       delivery_address: params.sameAsBilling ? params.customer.full_address : params.deliveryAddress,
       same_as_billing: params.sameAsBilling,
@@ -153,24 +139,12 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
     // Serialize cart items for database storage
     const serializedProducts = serializeCartItemsWithFormatting(params.cart);
 
-    // Use contact information if provided for master order
-    const contactName = params.selectedContact 
-      ? `${params.selectedContact.first_name} ${params.selectedContact.last_name}`
-      : `${params.customer.first_name} ${params.customer.last_name}`;
-    
-    const contactPhone = params.selectedContact?.phone || params.customer.phone;
-    const contactEmail = params.selectedContact?.email || params.customer.email;
-
     // Create master order entry - this is a summary record
     const masterOrderData = {
       order_number: masterOrderNumber,
       customer_id: params.customer.id,
-      contact_id: params.selectedContact?.id || null,
-      contact_name: contactName,
-      contact_email: contactEmail,
-      contact_phone: contactPhone,
-      customer_name: contactName,
-      customer_phone: contactPhone,
+      customer_name: `${params.customer.first_name} ${params.customer.last_name}`,
+      customer_phone: params.customer.phone,
       customer_address: params.customer.full_address,
       delivery_address: params.customer.full_address,
       same_as_billing: true,
@@ -241,12 +215,8 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       const splitOrderData = {
         order_number: splitOrderNumber,
         customer_id: params.customer.id,
-        contact_id: params.selectedContact?.id || null,
-        contact_name: contactName,
-        contact_email: contactEmail,
-        contact_phone: contactPhone,
-        customer_name: contactName,
-        customer_phone: contactPhone,
+        customer_name: `${params.customer.first_name} ${params.customer.last_name}`,
+        customer_phone: params.customer.phone,
         customer_address: split.deliveryAddress,
         delivery_address: split.deliveryAddress,
         same_as_billing: false,

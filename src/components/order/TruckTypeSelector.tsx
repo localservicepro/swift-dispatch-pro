@@ -18,9 +18,9 @@ interface TruckTypeSelectorProps {
 }
 
 const truckTypes: TruckTypeOption[] = [
-  { value: 'small', label: 'Small Truck', description: 'Up to 3 tonnes - Local deliveries' },
-  { value: 'medium', label: 'Medium Truck', description: 'Up to 8 tonnes - Regional deliveries' },
-  { value: 'large', label: 'Large Truck', description: 'Up to 15 tonnes - Long distance' },
+  { value: 'small', label: 'Small Truck', description: 'Up to 3 tons - Local deliveries' },
+  { value: 'medium', label: 'Medium Truck', description: 'Up to 8 tons - Regional deliveries' },
+  { value: 'large', label: 'Large Truck', description: 'Up to 15 tons - Long distance' },
   { value: 'crane', label: 'Crane Truck', description: 'Heavy lifting and specialized cargo' }
 ];
 

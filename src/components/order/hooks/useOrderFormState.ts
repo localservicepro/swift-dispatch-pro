@@ -7,7 +7,6 @@ import { calculateOrderTotals } from "../utils/paymentCalculations";
 export function useOrderFormState() {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [selectedContact, setSelectedContact] = useState<any | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [adjustments, setAdjustments] = useState(0);
   
@@ -62,18 +61,12 @@ export function useOrderFormState() {
     }
   }, [selectedCustomer]);
 
-  // Check if customer has multiple contacts
-  const needsContactSelection = selectedCustomer && (
-    (selectedCustomer.first_name && selectedCustomer.last_name) || 
-    selectedCustomer.company_name || 
-    selectedCustomer.business_name
-  );
-
-  // Dynamic step calculation based on delivery method and contact needs
+  // Dynamic step calculation based on delivery method
   const getTotalSteps = () => {
-    const baseSteps = deliveryMethod === "pickup" ? 5 : 7;
-    // Add contact selection step for companies with multiple potential contacts
-    return needsContactSelection ? baseSteps + 1 : baseSteps;
+    if (deliveryMethod === "pickup") {
+      return 5; // Customer → Products → Method → Payment → Review
+    }
+    return 7; // Customer → Products → Method → Order Type → Address → Payment → Review
   };
 
   // Enhanced delivery method setter to auto-set order type
@@ -163,7 +156,6 @@ export function useOrderFormState() {
     // State
     currentStep,
     selectedCustomer,
-    selectedContact,
     cart,
     adjustments,
     deliveryMethod,
@@ -192,7 +184,6 @@ export function useOrderFormState() {
     
     // Setters
     setSelectedCustomer,
-    setSelectedContact,
     setCart,
     setAdjustments,
     setDeliveryMethod: handleDeliveryMethodChange,

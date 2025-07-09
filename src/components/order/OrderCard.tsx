@@ -1,3 +1,4 @@
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PurchaseOrderDisplay } from "./PurchaseOrderDisplay";
@@ -93,32 +94,18 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
   const getDisplayInfo = () => {
     // Check for company name (account customers)
     if (order.company_name) {
-      // Only set contactInfo if customer_name exists and is not null/empty
-      const hasValidContact = order.customer_name && 
-        order.customer_name !== 'null null' && 
-        order.customer_name.trim() !== '' &&
-        order.customer_name !== 'null' &&
-        order.customer_name !== 'undefined';
-      
       return {
         displayName: order.company_name,
-        contactInfo: hasValidContact ? order.customer_name : null,
+        contactInfo: order.customer_name,
         isCompany: true
       };
     }
     
     // Check for business name (business customers)
     if (order.business_name) {
-      // Only set contactInfo if customer_name exists and is not null/empty
-      const hasValidContact = order.customer_name && 
-        order.customer_name !== 'null null' && 
-        order.customer_name.trim() !== '' &&
-        order.customer_name !== 'null' &&
-        order.customer_name !== 'undefined';
-      
       return {
         displayName: order.business_name,
-        contactInfo: hasValidContact ? order.customer_name : null,
+        contactInfo: order.customer_name,
         isCompany: true
       };
     }

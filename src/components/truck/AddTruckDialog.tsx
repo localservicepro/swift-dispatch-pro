@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -125,9 +126,9 @@ export function AddTruckDialog({ open, onOpenChange, onAddTruck, isLoading }: Ad
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="small">Small Truck (Up to 3 tonnes)</SelectItem>
-                      <SelectItem value="medium">Medium Truck (Up to 8 tonnes)</SelectItem>
-                      <SelectItem value="large">Large Truck (Up to 15 tonnes)</SelectItem>
+                      <SelectItem value="small">Small Truck (Up to 3 tons)</SelectItem>
+                      <SelectItem value="medium">Medium Truck (Up to 8 tons)</SelectItem>
+                      <SelectItem value="large">Large Truck (Up to 15 tons)</SelectItem>
                       <SelectItem value="crane">Crane Truck (Specialized)</SelectItem>
                     </SelectContent>
                   </Select>
@@ -141,7 +142,7 @@ export function AddTruckDialog({ open, onOpenChange, onAddTruck, isLoading }: Ad
               name="capacity_tons"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Capacity (tonnes)</FormLabel>
+                  <FormLabel>Capacity (tons)</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 

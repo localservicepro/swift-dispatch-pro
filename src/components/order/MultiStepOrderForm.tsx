@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
-import { ContactSelectionStep } from "./ContactSelectionStep";
 import { ProductSelectionStep } from "./ProductSelectionStep";
 import { DeliveryMethodSelectionStep } from "./DeliveryMethodSelectionStep";
 import { OrderTypeSelectionStep } from "./OrderTypeSelectionStep";
@@ -27,7 +26,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
   const {
     currentStep,
     selectedCustomer,
-    selectedContact,
     cart,
     adjustments,
     deliveryMethod,
@@ -54,7 +52,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     orderTotals,
     paymentSettings,
     setSelectedCustomer,
-    setSelectedContact,
     setCart,
     setAdjustments,
     setDeliveryMethod,
@@ -121,8 +118,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           deliveryAddress,
           sameAsBilling,
           suburbId: selectedSuburbId,
-          orderTotals,
-          selectedContact
+          orderTotals
         });
       } else {
         result = await createSplitOrder({
@@ -136,8 +132,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           orderNotes,
           deliveryNotes,
           purchaseOrder,
-          orderTotals,
-          selectedContact
+          orderTotals
         });
       }
 
@@ -154,7 +149,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       // Reset form after successful creation
       setCurrentStep(1);
       setSelectedCustomer(null);
-      setSelectedContact(null);
       setCart([]);
       setAdjustments(0);
       setDeliveryMethod("delivery");
@@ -197,290 +191,52 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         );
 
       case 2:
-        // Check if we need contact selection for companies with multiple contacts
-        if (selectedCustomer && (selectedCustomer.company_name || selectedCustomer.business_name)) {
-          return (
-            <ContactSelectionStep
-              customer={selectedCustomer}
-              selectedContact={selectedContact}
-              onContactSelect={setSelectedContact}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else {
-          return (
-            <ProductSelectionStep
-              cart={cart}
-              subtotal={subtotal}
-              adjustments={adjustments}
-              onCartUpdate={setCart}
-              onAdjustmentsChange={setAdjustments}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        }
+        return (
+          <ProductSelectionStep
+            cart={cart}
+            subtotal={subtotal}
+            adjustments={adjustments}
+            onCartUpdate={setCart}
+            onAdjustmentsChange={setAdjustments}
+            onBack={prevStep}
+            onNext={nextStep}
+          />
+        );
 
       case 3:
-        // This is now ProductSelectionStep if contact selection was shown
-        if (selectedCustomer && (selectedCustomer.company_name || selectedCustomer.business_name)) {
-          return (
-            <ProductSelectionStep
-              cart={cart}
-              subtotal={subtotal}
-              adjustments={adjustments}
-              onCartUpdate={setCart}
-              onAdjustmentsChange={setAdjustments}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else {
-          // If no contact selection, this is delivery method step
-          return (
-            <DeliveryMethodSelectionStep
-              deliveryMethod={deliveryMethod}
-              onDeliveryMethodChange={setDeliveryMethod}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        }
+        return (
+          <DeliveryMethodSelectionStep
+            deliveryMethod={deliveryMethod}
+            onDeliveryMethodChange={setDeliveryMethod}
+            onBack={prevStep}
+            onNext={nextStep}
+          />
+        );
 
       case 4:
-        // This is DeliveryMethodSelectionStep if contact selection was shown
-        if (selectedCustomer && (selectedCustomer.company_name || selectedCustomer.business_name)) {
+        if (deliveryMethod === "pickup") {
           return (
-            <DeliveryMethodSelectionStep
-              deliveryMethod={deliveryMethod}
-              onDeliveryMethodChange={setDeliveryMethod}
+            <PaymentMethodStep
+              customer={selectedCustomer!}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
               onBack={prevStep}
               onNext={nextStep}
             />
           );
         } else {
-          // If no contact selection, this logic shifts down
-          if (deliveryMethod === "pickup") {
-            return (
-              <PaymentMethodStep
-                customer={selectedCustomer!}
-                paymentMethod={paymentMethod}
-                onPaymentMethodChange={setPaymentMethod}
-                onBack={prevStep}
-                onNext={nextStep}
-              />
-            );
-          } else {
-            return (
-              <OrderTypeSelectionStep
-                orderType={orderType}
-                onOrderTypeChange={setOrderType}
-                onBack={prevStep}
-                onNext={nextStep}
-              />
-            );
-          }
+          return (
+            <OrderTypeSelectionStep
+              orderType={orderType}
+              onOrderTypeChange={setOrderType}
+              onBack={prevStep}
+              onNext={nextStep}
+            />
+          );
         }
 
       case 5:
-        // Handle different flows based on contact selection
-        const hasContactSelection = selectedCustomer && (selectedCustomer.company_name || selectedCustomer.business_name);
-        
-        if (hasContactSelection) {
-          // With contact selection: Customer → Contact → Products → Method → ...
-          if (deliveryMethod === "pickup") {
-            return (
-              <PaymentMethodStep
-                customer={selectedCustomer!}
-                paymentMethod={paymentMethod}
-                onPaymentMethodChange={setPaymentMethod}
-                onBack={prevStep}
-                onNext={nextStep}
-              />
-            );
-          } else {
-            return (
-              <OrderTypeSelectionStep
-                orderType={orderType}
-                onOrderTypeChange={setOrderType}
-                onBack={prevStep}
-                onNext={nextStep}
-              />
-            );
-          }
-        } else {
-          // Without contact selection: Customer → Products → Method → Type/Payment → ...
-          if (deliveryMethod === "pickup") {
-            return (
-              <OrderReviewStep
-                customer={selectedCustomer!}
-                cart={cart}
-                subtotal={subtotal}
-                adjustments={adjustments}
-                deliveryFee={deliveryFee}
-                deliveryMethod="pickup"
-                deliveryDate={deliveryDate}
-                deliveryTime={deliveryTime}
-                specialInstructions={specialInstructions}
-                paymentMethod={paymentMethod}
-                orderNotes={orderNotes}
-                deliveryNotes={deliveryNotes}
-                purchaseOrder={purchaseOrder}
-                deliveryAddress={deliveryAddress}
-                sameAsBilling={sameAsBilling}
-                onBack={prevStep}
-                onConfirm={handleOrderCreation}
-                isCreating={isCreatingOrder}
-                onDeliveryFeeChange={setManualDeliveryFee}
-                onOrderNotesChange={setOrderNotes}
-                onDeliveryNotesChange={setDeliveryNotes}
-                onPurchaseOrderChange={setPurchaseOrder}
-              />
-            );
-          } else if (orderType === "split") {
-            return (
-              <SplitOrderConfigurationStep
-                cart={cart}
-                splits={splits}
-                onSplitsChange={setSplits}
-                onCartChange={setCart}
-                onBack={prevStep}
-                onNext={nextStep}
-              />
-            );
-          } else {
-            return (
-              <DeliveryAddressStep
-                formData={{
-                  full_address: deliveryAddress,
-                  suburb_id: selectedSuburbId
-                }}
-                deliveryDate={deliveryDate}
-                deliveryTime={deliveryTime}
-                onFormDataChange={(updates) => {
-                  if (updates.full_address !== undefined) {
-                    setDeliveryAddress(updates.full_address);
-                  }
-                  if (updates.suburb_id !== undefined) {
-                    setSelectedSuburbId(updates.suburb_id);
-                  }
-                }}
-                onSuburbChange={handleSuburbChange}
-                onDeliveryDateChange={setDeliveryDate}
-                onDeliveryTimeChange={setDeliveryTime}
-                onBack={prevStep}
-                onNext={nextStep}
-                selectedCustomer={selectedCustomer}
-                isUsingCustomerAddress={isUsingCustomerAddress}
-                onClearAddress={clearDeliveryAddress}
-                onResetToCustomerAddress={resetToCustomerAddress}
-              />
-            );
-          }
-        }
-
-      case 6:
-        const hasContactSelectionCase6 = selectedCustomer && (selectedCustomer.company_name || selectedCustomer.business_name);
-        
-        if (hasContactSelectionCase6) {
-          // With contact selection flow
-          if (deliveryMethod === "pickup") {
-            return (
-              <OrderReviewStep
-                customer={selectedCustomer!}
-                cart={cart}
-                subtotal={subtotal}
-                adjustments={adjustments}
-                deliveryFee={deliveryFee}
-                deliveryMethod="pickup"
-                deliveryDate={deliveryDate}
-                deliveryTime={deliveryTime}
-                specialInstructions={specialInstructions}
-                paymentMethod={paymentMethod}
-                orderNotes={orderNotes}
-                deliveryNotes={deliveryNotes}
-                purchaseOrder={purchaseOrder}
-                deliveryAddress={deliveryAddress}
-                sameAsBilling={sameAsBilling}
-                onBack={prevStep}
-                onConfirm={handleOrderCreation}
-                isCreating={isCreatingOrder}
-                onDeliveryFeeChange={setManualDeliveryFee}
-                onOrderNotesChange={setOrderNotes}
-                onDeliveryNotesChange={setDeliveryNotes}
-                onPurchaseOrderChange={setPurchaseOrder}
-              />
-            );
-          } else if (orderType === "split") {
-            return (
-              <SplitOrderConfigurationStep
-                cart={cart}
-                splits={splits}
-                onSplitsChange={setSplits}
-                onCartChange={setCart}
-                onBack={prevStep}
-                onNext={nextStep}
-              />
-            );
-          } else {
-            return (
-              <DeliveryAddressStep
-                formData={{
-                  full_address: deliveryAddress,
-                  suburb_id: selectedSuburbId
-                }}
-                deliveryDate={deliveryDate}
-                deliveryTime={deliveryTime}
-                onFormDataChange={(updates) => {
-                  if (updates.full_address !== undefined) {
-                    setDeliveryAddress(updates.full_address);
-                  }
-                  if (updates.suburb_id !== undefined) {
-                    setSelectedSuburbId(updates.suburb_id);
-                  }
-                }}
-                onSuburbChange={handleSuburbChange}
-                onDeliveryDateChange={setDeliveryDate}
-                onDeliveryTimeChange={setDeliveryTime}
-                onBack={prevStep}
-                onNext={nextStep}
-                selectedCustomer={selectedCustomer}
-                isUsingCustomerAddress={isUsingCustomerAddress}
-                onClearAddress={clearDeliveryAddress}
-                onResetToCustomerAddress={resetToCustomerAddress}
-              />
-            );
-          }
-        } else {
-          // Without contact selection, this is payment method step
-          return (
-            <PaymentMethodStep
-              customer={selectedCustomer!}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        }
-
-      case 7:
-        const hasContactSelectionCase7 = selectedCustomer && (selectedCustomer.company_name || selectedCustomer.business_name);
-        
-        if (hasContactSelectionCase7) {
-          // With contact selection, this is payment method step
-          return (
-            <PaymentMethodStep
-              customer={selectedCustomer!}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else {
-          // Without contact selection, this is final review step
+        if (deliveryMethod === "pickup") {
           return (
             <OrderReviewStep
               customer={selectedCustomer!}
@@ -488,7 +244,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               subtotal={subtotal}
               adjustments={adjustments}
               deliveryFee={deliveryFee}
-              deliveryMethod={deliveryMethod as "delivery" | "pickup"}
+              deliveryMethod="pickup"
               deliveryDate={deliveryDate}
               deliveryTime={deliveryTime}
               specialInstructions={specialInstructions}
@@ -507,10 +263,59 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               onPurchaseOrderChange={setPurchaseOrder}
             />
           );
+        } else if (orderType === "split") {
+          return (
+            <SplitOrderConfigurationStep
+              cart={cart}
+              splits={splits}
+              onSplitsChange={setSplits}
+              onCartChange={setCart}
+              onBack={prevStep}
+              onNext={nextStep}
+            />
+          );
+        } else {
+          return (
+            <DeliveryAddressStep
+              formData={{
+                full_address: deliveryAddress,
+                suburb_id: selectedSuburbId
+              }}
+              deliveryDate={deliveryDate}
+              deliveryTime={deliveryTime}
+              onFormDataChange={(updates) => {
+                if (updates.full_address !== undefined) {
+                  setDeliveryAddress(updates.full_address);
+                }
+                if (updates.suburb_id !== undefined) {
+                  setSelectedSuburbId(updates.suburb_id);
+                }
+              }}
+              onSuburbChange={handleSuburbChange}
+              onDeliveryDateChange={setDeliveryDate}
+              onDeliveryTimeChange={setDeliveryTime}
+              onBack={prevStep}
+              onNext={nextStep}
+              selectedCustomer={selectedCustomer}
+              isUsingCustomerAddress={isUsingCustomerAddress}
+              onClearAddress={clearDeliveryAddress}
+              onResetToCustomerAddress={resetToCustomerAddress}
+            />
+          );
         }
 
-      case 8:
-        // Final review step when contact selection was shown
+      case 6:
+        return (
+          <PaymentMethodStep
+            customer={selectedCustomer!}
+            paymentMethod={paymentMethod}
+            onPaymentMethodChange={setPaymentMethod}
+            onBack={prevStep}
+            onNext={nextStep}
+          />
+        );
+
+      case 7:
         return (
           <OrderReviewStep
             customer={selectedCustomer!}

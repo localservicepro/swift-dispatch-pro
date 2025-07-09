@@ -1,33 +1,22 @@
 
 import { Button } from "@/components/ui/button";
-import { Plus, Upload } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
 interface CustomerManagementHeaderProps {
   onAddCustomer: () => void;
-  onImportCustomers?: () => void;
 }
 
-export function CustomerManagementHeader({ onAddCustomer, onImportCustomers }: CustomerManagementHeaderProps) {
+export function CustomerManagementHeader({ onAddCustomer }: CustomerManagementHeaderProps) {
   return (
-    <div className="flex justify-between items-center">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Customer Management</h1>
-        <p className="text-muted-foreground">
-          Manage your customer database and relationships
-        </p>
+        <h1 className="font-bold text-slate-800 text-lg">Customer Management</h1>
+        <p className="text-slate-600">Manage Residential, Trade, and Account customers</p>
       </div>
-      <div className="flex gap-2">
-        {onImportCustomers && (
-          <Button onClick={onImportCustomers} variant="outline" className="flex items-center gap-2">
-            <Upload className="w-4 h-4" />
-            Import CSV
-          </Button>
-        )}
-        <Button onClick={onAddCustomer} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Customer
-        </Button>
-      </div>
+      <Button onClick={onAddCustomer} className="flex items-center gap-2">
+        <UserPlus className="w-4 h-4" />
+        Add Customer
+      </Button>
     </div>
   );
 }

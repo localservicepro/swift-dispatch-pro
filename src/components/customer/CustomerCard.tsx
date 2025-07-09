@@ -1,10 +1,8 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getCustomerDisplayName } from "@/components/order/services/orderFormattingService";
-import { MapPin, Bell, BellOff, Building2, User, Home, Wrench, Eye, Edit, Trash2, ChevronDown, ChevronRight, Users } from "lucide-react";
-import { useState } from "react";
+import { MapPin, Bell, BellOff, Building2, User, Home, Wrench, Eye, Edit, Trash2 } from "lucide-react";
 
 interface CustomerCardProps {
   customer: any;
@@ -14,19 +12,15 @@ interface CustomerCardProps {
 }
 
 export function CustomerCard({ customer, onViewOrders, onEditCustomer, onDeleteCustomer }: CustomerCardProps) {
-  const [isContactsExpanded, setIsContactsExpanded] = useState(false);
   const getCustomerSubtitle = (customer: any) => {
     if (customer.entity_type === 'business' && customer.company_name) {
       if (customer.first_name && customer.last_name) {
-        return `Primary Contact: ${customer.first_name} ${customer.last_name}`;
+        return `Contact: ${customer.first_name} ${customer.last_name}`;
       }
       return customer.email || 'No contact details';
     }
     return customer.email || 'No email provided';
   };
-
-  const activeContacts = customer.customer_contacts?.filter((contact: any) => contact.is_active) || [];
-  const hasAdditionalContacts = activeContacts.length > 0;
 
   const getCustomerTypeIcon = (customerType: string) => {
     switch (customerType) {
@@ -94,12 +88,6 @@ export function CustomerCard({ customer, onViewOrders, onEditCustomer, onDeleteC
                 <span>Notifications Off</span>
               </Badge>
             )}
-            {hasAdditionalContacts && (
-              <Badge variant="outline" className="flex items-center gap-1 text-blue-600 border-blue-200 bg-blue-50">
-                <Users className="w-3 h-3" />
-                <span>{activeContacts.length} Contact{activeContacts.length !== 1 ? 's' : ''}</span>
-              </Badge>
-            )}
           </div>
           <div className="text-sm text-slate-600 space-y-1">
             <p>{getCustomerSubtitle(customer)}</p>
@@ -121,39 +109,6 @@ export function CustomerCard({ customer, onViewOrders, onEditCustomer, onDeleteC
                   )}
                 </span>
               </div>
-            )}
-            
-            {hasAdditionalContacts && (
-              <Collapsible open={isContactsExpanded} onOpenChange={setIsContactsExpanded}>
-                <CollapsibleTrigger className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm mt-2">
-                  {isContactsExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                  View {activeContacts.length} associated contact{activeContacts.length !== 1 ? 's' : ''}
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-2">
-                  <div className="bg-gray-50 rounded-md p-3 space-y-2">
-                    <h4 className="font-medium text-sm text-gray-700">Associated Contacts:</h4>
-                    {activeContacts.map((contact: any) => (
-                      <div key={contact.id} className="border-l-2 border-blue-200 pl-3 text-sm">
-                        <div className="font-medium">
-                          {contact.first_name} {contact.last_name}
-                          {contact.is_primary_contact && (
-                            <Badge variant="outline" className="ml-2 text-xs">Primary</Badge>
-                          )}
-                        </div>
-                        {contact.contact_role && (
-                          <div className="text-gray-600">{contact.contact_role}</div>
-                        )}
-                        {contact.email && (
-                          <div className="text-gray-600">{contact.email}</div>
-                        )}
-                        {contact.phone && (
-                          <div className="text-gray-600">{contact.phone}</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
             )}
           </div>
         </div>
