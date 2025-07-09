@@ -321,38 +321,49 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
                         <TableRow className="bg-blue-50">
                           <TableHead className="min-w-[200px]">Company</TableHead>
                           <TableHead className="min-w-[180px]">Primary Contact</TableHead>
+                          <TableHead className="min-w-[100px]">Role</TableHead>
                           <TableHead className="min-w-[120px]">Type</TableHead>
                           <TableHead className="min-w-[150px]">Email</TableHead>
                           <TableHead className="min-w-[120px]">Phone</TableHead>
+                          <TableHead className="min-w-[120px]">Suburb</TableHead>
+                          <TableHead className="min-w-[100px]">Postcode</TableHead>
                           <TableHead className="min-w-[120px]">Additional Contacts</TableHead>
                           <TableHead className="min-w-[300px]">Address</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {previewData.consolidatedCompanies.map((company, index) => (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium">{company.customerData.company_name}</TableCell>
-                            <TableCell>
-                              {`${company.customerData.first_name || ''} ${company.customerData.last_name || ''}`.trim() || 'N/A'}
-                              {company.customerData.contact_role && (
-                                <div className="text-gray-500 text-xs">{company.customerData.contact_role}</div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <span className="capitalize">{company.customerData.customer_type}</span>
-                            </TableCell>
-                            <TableCell>{company.customerData.email || '-'}</TableCell>
-                            <TableCell>{company.customerData.phone || '-'}</TableCell>
-                            <TableCell>
-                              {company.additionalContacts.length > 0 ? (
-                                <span className="text-green-600">{company.additionalContacts.length} contacts</span>
-                              ) : (
-                                <span className="text-gray-400">None</span>
-                              )}
-                            </TableCell>
-                            <TableCell>{company.customerData.full_address}</TableCell>
-                          </TableRow>
-                        ))}
+                        {previewData.consolidatedCompanies.map((company, index) => {
+                          // Find suburb info for display
+                          const suburb = company.customerData.suburb_id ? 
+                            suburbs.find(s => s.id === company.customerData.suburb_id) : null;
+                          
+                          return (
+                            <TableRow key={index}>
+                              <TableCell className="font-medium">{company.customerData.company_name}</TableCell>
+                              <TableCell>
+                                {`${company.customerData.first_name || ''} ${company.customerData.last_name || ''}`.trim() || 'N/A'}
+                              </TableCell>
+                              <TableCell>
+                                {company.customerData.contact_role || '-'}
+                              </TableCell>
+                              <TableCell>
+                                <span className="capitalize">{company.customerData.customer_type}</span>
+                              </TableCell>
+                              <TableCell>{company.customerData.email || '-'}</TableCell>
+                              <TableCell>{company.customerData.phone || '-'}</TableCell>
+                              <TableCell>{suburb?.name || '-'}</TableCell>
+                              <TableCell>{suburb?.postcode || '-'}</TableCell>
+                              <TableCell>
+                                {company.additionalContacts.length > 0 ? (
+                                  <span className="text-green-600">{company.additionalContacts.length} contacts</span>
+                                ) : (
+                                  <span className="text-gray-400">None</span>
+                                )}
+                              </TableCell>
+                              <TableCell>{company.customerData.full_address}</TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                     <ScrollBar orientation="horizontal" />
@@ -372,23 +383,33 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
                           <TableHead className="min-w-[120px]">Type</TableHead>
                           <TableHead className="min-w-[150px]">Email</TableHead>
                           <TableHead className="min-w-[120px]">Phone</TableHead>
+                          <TableHead className="min-w-[120px]">Suburb</TableHead>
+                          <TableHead className="min-w-[100px]">Postcode</TableHead>
                           <TableHead className="min-w-[300px]">Address</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {previewData.individualCustomers.map((customer, index) => (
-                          <TableRow key={index}>
-                            <TableCell>
-                              {`${customer.customerData.first_name || ''} ${customer.customerData.last_name || ''}`.trim() || 'Unknown'}
-                            </TableCell>
-                            <TableCell>
-                              <span className="capitalize">{customer.customerData.customer_type}</span>
-                            </TableCell>
-                            <TableCell>{customer.customerData.email || '-'}</TableCell>
-                            <TableCell>{customer.customerData.phone || '-'}</TableCell>
-                            <TableCell>{customer.customerData.full_address}</TableCell>
-                          </TableRow>
-                        ))}
+                        {previewData.individualCustomers.map((customer, index) => {
+                          // Find suburb info for display
+                          const suburb = customer.customerData.suburb_id ? 
+                            suburbs.find(s => s.id === customer.customerData.suburb_id) : null;
+                          
+                          return (
+                            <TableRow key={index}>
+                              <TableCell>
+                                {`${customer.customerData.first_name || ''} ${customer.customerData.last_name || ''}`.trim() || 'Unknown'}
+                              </TableCell>
+                              <TableCell>
+                                <span className="capitalize">{customer.customerData.customer_type}</span>
+                              </TableCell>
+                              <TableCell>{customer.customerData.email || '-'}</TableCell>
+                              <TableCell>{customer.customerData.phone || '-'}</TableCell>
+                              <TableCell>{suburb?.name || '-'}</TableCell>
+                              <TableCell>{suburb?.postcode || '-'}</TableCell>
+                              <TableCell>{customer.customerData.full_address}</TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                     <ScrollBar orientation="horizontal" />

@@ -90,13 +90,13 @@ export class ImportDataParser {
       
       // Customer Classification
       else if (this.matchesHeader(header, ['customer_type', 'type', 'customer type'])) {
-        const normalizedType = value.toLowerCase();
-        if (['trade', 'account', 'residential'].includes(normalizedType)) {
+        const normalizedType = value.toLowerCase().trim();
+        if (normalizedType && ['trade', 'account', 'residential'].includes(normalizedType)) {
           row.customer_type = normalizedType as 'trade' | 'account' | 'residential';
         }
       } else if (this.matchesHeader(header, ['entity_type', 'entity type', 'customer_entity'])) {
-        const normalizedEntity = value.toLowerCase();
-        if (['individual', 'business'].includes(normalizedEntity)) {
+        const normalizedEntity = value.toLowerCase().trim();
+        if (normalizedEntity && ['individual', 'business'].includes(normalizedEntity)) {
           row.entity_type = normalizedEntity as 'individual' | 'business';
         }
       }
@@ -111,9 +111,12 @@ export class ImportDataParser {
       }
     }
 
-    // Default customer type if not specified
+    // Default customer type if not specified (log for debugging)
     if (!row.customer_type) {
+      console.log('Defaulting customer_type to trade for row:', row);
       row.customer_type = 'trade';
+    } else {
+      console.log('Customer type set to:', row.customer_type, 'for row:', row);
     }
 
     // Use delivery_address as full_address if full_address is empty
