@@ -128,6 +128,33 @@ export class ImportDataParser {
   }
 
   private static matchesHeader(header: string, patterns: string[]): boolean {
-    return patterns.some(pattern => header.includes(pattern.toLowerCase()));
+    const normalizedHeader = header.toLowerCase().trim();
+    
+    // First check for exact matches (highest priority)
+    for (const pattern of patterns) {
+      if (normalizedHeader === pattern.toLowerCase()) {
+        console.log(`Exact match found: "${header}" matches pattern "${pattern}"`);
+        return true;
+      }
+    }
+    
+    // Then check for word boundary matches (medium priority)
+    for (const pattern of patterns) {
+      const regex = new RegExp(`\\b${pattern.toLowerCase()}\\b`);
+      if (regex.test(normalizedHeader)) {
+        console.log(`Word boundary match found: "${header}" matches pattern "${pattern}"`);
+        return true;
+      }
+    }
+    
+    // Finally check for starts-with matches (lowest priority, for compound headers)
+    for (const pattern of patterns) {
+      if (normalizedHeader.startsWith(pattern.toLowerCase())) {
+        console.log(`Starts-with match found: "${header}" matches pattern "${pattern}"`);
+        return true;
+      }
+    }
+    
+    return false;
   }
 }
