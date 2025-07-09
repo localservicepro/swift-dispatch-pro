@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, Download, AlertCircle, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ImportData, ParsedCustomerData, ImportDialogProps, ImportPreviewData } from './types/ImportTypes';
 import { ImportDataParser } from './utils/ImportDataParser';
 import { ImportDataValidator } from './utils/ImportDataValidator';
@@ -313,39 +315,48 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
               {previewData.consolidatedCompanies.length > 0 && (
                 <div className="space-y-2">
                   <h5 className="text-sm font-medium text-blue-600">Companies ({previewData.consolidatedCompanies.length})</h5>
-                  <div className="max-h-40 overflow-y-auto border rounded-lg">
-                    <table className="w-full text-sm">
-                      <thead className="bg-blue-50">
-                        <tr>
-                          <th className="p-2 text-left">Company</th>
-                          <th className="p-2 text-left">Primary Contact</th>
-                          <th className="p-2 text-left">Additional Contacts</th>
-                          <th className="p-2 text-left">Address</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                  <ScrollArea className="h-40 rounded-lg border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-blue-50">
+                          <TableHead className="min-w-[200px]">Company</TableHead>
+                          <TableHead className="min-w-[180px]">Primary Contact</TableHead>
+                          <TableHead className="min-w-[120px]">Type</TableHead>
+                          <TableHead className="min-w-[150px]">Email</TableHead>
+                          <TableHead className="min-w-[120px]">Phone</TableHead>
+                          <TableHead className="min-w-[120px]">Additional Contacts</TableHead>
+                          <TableHead className="min-w-[300px]">Address</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {previewData.consolidatedCompanies.map((company, index) => (
-                          <tr key={index} className="border-t">
-                            <td className="p-2 font-medium">{company.customerData.company_name}</td>
-                            <td className="p-2">
+                          <TableRow key={index}>
+                            <TableCell className="font-medium">{company.customerData.company_name}</TableCell>
+                            <TableCell>
                               {`${company.customerData.first_name || ''} ${company.customerData.last_name || ''}`.trim() || 'N/A'}
                               {company.customerData.contact_role && (
-                                <span className="text-gray-500 text-xs block">{company.customerData.contact_role}</span>
+                                <div className="text-gray-500 text-xs">{company.customerData.contact_role}</div>
                               )}
-                            </td>
-                            <td className="p-2">
+                            </TableCell>
+                            <TableCell>
+                              <span className="capitalize">{company.customerData.customer_type}</span>
+                            </TableCell>
+                            <TableCell>{company.customerData.email || '-'}</TableCell>
+                            <TableCell>{company.customerData.phone || '-'}</TableCell>
+                            <TableCell>
                               {company.additionalContacts.length > 0 ? (
                                 <span className="text-green-600">{company.additionalContacts.length} contacts</span>
                               ) : (
                                 <span className="text-gray-400">None</span>
                               )}
-                            </td>
-                            <td className="p-2 truncate max-w-xs">{company.customerData.full_address}</td>
-                          </tr>
+                            </TableCell>
+                            <TableCell>{company.customerData.full_address}</TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </TableBody>
+                    </Table>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
                 </div>
               )}
 
@@ -353,37 +364,35 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
               {previewData.individualCustomers.length > 0 && (
                 <div className="space-y-2">
                   <h5 className="text-sm font-medium text-green-600">Individual Customers ({previewData.individualCustomers.length})</h5>
-                  <div className="max-h-40 overflow-y-auto border rounded-lg">
-                    <table className="w-full text-sm">
-                      <thead className="bg-green-50">
-                        <tr>
-                          <th className="p-2 text-left">Name</th>
-                          <th className="p-2 text-left">Type</th>
-                          <th className="p-2 text-left">Contact</th>
-                          <th className="p-2 text-left">Address</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {previewData.individualCustomers.slice(0, 5).map((customer, index) => (
-                          <tr key={index} className="border-t">
-                            <td className="p-2">
+                  <ScrollArea className="h-40 rounded-lg border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-green-50">
+                          <TableHead className="min-w-[200px]">Name</TableHead>
+                          <TableHead className="min-w-[120px]">Type</TableHead>
+                          <TableHead className="min-w-[150px]">Email</TableHead>
+                          <TableHead className="min-w-[120px]">Phone</TableHead>
+                          <TableHead className="min-w-[300px]">Address</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {previewData.individualCustomers.map((customer, index) => (
+                          <TableRow key={index}>
+                            <TableCell>
                               {`${customer.customerData.first_name || ''} ${customer.customerData.last_name || ''}`.trim() || 'Unknown'}
-                            </td>
-                            <td className="p-2">
+                            </TableCell>
+                            <TableCell>
                               <span className="capitalize">{customer.customerData.customer_type}</span>
-                            </td>
-                            <td className="p-2">{customer.customerData.email || customer.customerData.phone || '-'}</td>
-                            <td className="p-2 truncate max-w-xs">{customer.customerData.full_address}</td>
-                          </tr>
+                            </TableCell>
+                            <TableCell>{customer.customerData.email || '-'}</TableCell>
+                            <TableCell>{customer.customerData.phone || '-'}</TableCell>
+                            <TableCell>{customer.customerData.full_address}</TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
-                    {previewData.individualCustomers.length > 5 && (
-                      <p className="p-2 text-xs text-gray-500 bg-gray-50">
-                        ... and {previewData.individualCustomers.length - 5} more individual customers
-                      </p>
-                    )}
-                  </div>
+                      </TableBody>
+                    </Table>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
                 </div>
               )}
             </div>
