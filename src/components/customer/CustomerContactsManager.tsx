@@ -36,6 +36,13 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
     phone: '',
     contact_role: 'Contact'
   });
+  const [editContact, setEditContact] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    contact_role: ''
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -98,6 +105,75 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
       setIsAddingContact(false);
       loadContacts();
     }
+  };
+
+  const handleEditContact = (contact: Contact) => {
+    setEditContact({
+      first_name: contact.first_name,
+      last_name: contact.last_name,
+      email: contact.email || '',
+      phone: contact.phone || '',
+      contact_role: contact.contact_role || ''
+    });
+    setEditingContact(contact);
+  };
+
+  const handleUpdateContact = async () => {
+    if (!editContact.first_name || !editContact.last_name) {
+      toast({
+        title: "Error",
+        description: "First name and last name are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editingContact) return;
+
+    const { error } = await supabase
+      .from('customer_contacts')
+      .update({
+        first_name: editContact.first_name,
+        last_name: editContact.last_name,
+        email: editContact.email || null,
+        phone: editContact.phone || null,
+        contact_role: editContact.contact_role || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', editingContact.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update contact",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Contact updated successfully",
+      });
+      setEditingContact(null);
+      setEditContact({
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        contact_role: ''
+      });
+      loadContacts();
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingContact(null);
+    setEditContact({
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      contact_role: ''
+    });
   };
 
   const handleDeleteContact = async (contactId: string) => {
@@ -177,7 +253,7 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setEditingContact(contact)}
+                        onClick={() => handleEditContact(contact)}
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -251,6 +327,66 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
             <div className="flex gap-2">
               <Button onClick={handleAddContact}>Add Contact</Button>
               <Button variant="outline" onClick={() => setIsAddingContact(false)}>
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {editingContact && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit Contact</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit_first_name">First Name *</Label>
+                <Input
+                  id="edit_first_name"
+                  value={editContact.first_name}
+                  onChange={(e) => setEditContact({...editContact, first_name: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit_last_name">Last Name *</Label>
+                <Input
+                  id="edit_last_name"
+                  value={editContact.last_name}
+                  onChange={(e) => setEditContact({...editContact, last_name: e.target.value})}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="edit_email">Email</Label>
+              <Input
+                id="edit_email"
+                type="email"
+                value={editContact.email}
+                onChange={(e) => setEditContact({...editContact, email: e.target.value})}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_phone">Phone</Label>
+              <Input
+                id="edit_phone"
+                value={editContact.phone}
+                onChange={(e) => setEditContact({...editContact, phone: e.target.value})}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_role">Role</Label>
+              <Input
+                id="edit_role"
+                value={editContact.contact_role}
+                onChange={(e) => setEditContact({...editContact, contact_role: e.target.value})}
+                placeholder="e.g. Manager, Coordinator, Assistant"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleUpdateContact}>Update Contact</Button>
+              <Button variant="outline" onClick={handleCancelEdit}>
                 Cancel
               </Button>
             </div>
