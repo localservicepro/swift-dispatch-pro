@@ -34,7 +34,7 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
     last_name: '',
     email: '',
     phone: '',
-    contact_role: 'Contact'
+    contact_role: 'Associated Contact'
   });
   const [editContact, setEditContact] = useState({
     first_name: '',
@@ -68,10 +68,10 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
   };
 
   const handleAddContact = async () => {
-    if (!newContact.first_name || !newContact.last_name) {
+    if (!newContact.first_name && !newContact.last_name) {
       toast({
         title: "Error",
-        description: "First name and last name are required",
+        description: "At least one name (first or last) is required",
         variant: "destructive",
       });
       return;
@@ -100,7 +100,7 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
         last_name: '',
         email: '',
         phone: '',
-        contact_role: 'Contact'
+        contact_role: 'Associated Contact'
       });
       setIsAddingContact(false);
       loadContacts();
@@ -119,10 +119,10 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
   };
 
   const handleUpdateContact = async () => {
-    if (!editContact.first_name || !editContact.last_name) {
+    if (!editContact.first_name && !editContact.last_name) {
       toast({
         title: "Error",
-        description: "First name and last name are required",
+        description: "At least one name (first or last) is required",
         variant: "destructive",
       });
       return;
@@ -282,7 +282,7 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="new_first_name">First Name *</Label>
+                <Label htmlFor="new_first_name">First Name</Label>
                 <Input
                   id="new_first_name"
                   value={newContact.first_name}
@@ -290,7 +290,7 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
                 />
               </div>
               <div>
-                <Label htmlFor="new_last_name">Last Name *</Label>
+                <Label htmlFor="new_last_name">Last Name</Label>
                 <Input
                   id="new_last_name"
                   value={newContact.last_name}
@@ -342,7 +342,7 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="edit_first_name">First Name *</Label>
+                <Label htmlFor="edit_first_name">First Name</Label>
                 <Input
                   id="edit_first_name"
                   value={editContact.first_name}
@@ -350,7 +350,7 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
                 />
               </div>
               <div>
-                <Label htmlFor="edit_last_name">Last Name *</Label>
+                <Label htmlFor="edit_last_name">Last Name</Label>
                 <Input
                   id="edit_last_name"
                   value={editContact.last_name}
