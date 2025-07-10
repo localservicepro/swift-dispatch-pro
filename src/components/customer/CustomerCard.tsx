@@ -131,7 +131,7 @@ export function CustomerCard({ customer, onViewOrders, onEditCustomer, onDeleteC
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2">
                   <div className="bg-gray-50 rounded-md p-3 space-y-2">
-                    <h4 className="font-medium text-sm text-gray-700">Associated Contacts:</h4>
+                    <h4 className="font-medium text-sm text-gray-700">More Contacts:</h4>
                     {activeContacts.map((contact: any) => (
                       <div key={contact.id} className="border-l-2 border-blue-200 pl-3 text-sm">
                         <div className="font-medium">
