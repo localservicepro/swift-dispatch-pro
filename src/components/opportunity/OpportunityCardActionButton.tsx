@@ -26,6 +26,10 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
 
   const getNextStageAction = (current: string) => {
     if (current === 'requested' && order.payment_status === 'pending') {
+      const customerType = order.customers?.customer_type || order.customer_type;
+      if (customerType === 'account') {
+        return 'Confirm Order';
+      }
       return 'Awaiting Payment';
     }
     
@@ -40,6 +44,11 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
 
   const canMoveToNextStage = (current: string) => {
     if (current === 'requested' && order.payment_status === 'pending') {
+      // Account customers can proceed without upfront payment (they're billed monthly)
+      const customerType = order.customers?.customer_type || order.customer_type;
+      if (customerType === 'account') {
+        return true;
+      }
       return false;
     }
     return true;
@@ -64,8 +73,9 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
       
       switch (nextStage) {
         case 'preparing':
+          const customerType = order.customers?.customer_type || order.customer_type;
           updateData = { 
-            payment_status: 'paid',
+            payment_status: customerType === 'account' ? 'invoiced' : 'paid',
             status: 'preparing'
           };
           break;
