@@ -1,11 +1,12 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Customer, CartItem } from "../types";
+import { Customer, CartItem, SelectedContact } from "../types";
 import { serializeCartItemsWithFormatting } from "./orderFormattingService";
 
 // Interface for creating single orders
 interface CreateSingleOrderParams {
   customer: Customer;
+  selectedContact?: SelectedContact | null;
   cart: CartItem[];
   adjustments: number;
   deliveryMethod: "delivery" | "pickup";
@@ -25,6 +26,7 @@ interface CreateSingleOrderParams {
 // Interface for creating split orders (simplified)
 interface CreateSplitOrderParams {
   customer: Customer;
+  selectedContact?: SelectedContact | null;
   cart: CartItem[];
   adjustments: number;
   deliveryMethod: "delivery" | "pickup";
@@ -68,6 +70,10 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       customer_address: params.sameAsBilling ? params.customer.full_address : params.deliveryAddress,
       delivery_address: params.sameAsBilling ? params.customer.full_address : params.deliveryAddress,
       same_as_billing: params.sameAsBilling,
+      contact_id: params.selectedContact?.id || null,
+      contact_name: params.selectedContact?.name || null,
+      contact_email: params.selectedContact?.email || null,
+      contact_phone: params.selectedContact?.phone || null,
       products: serializedProducts,
       subtotal: params.orderTotals.subtotal,
       adjustments: params.orderTotals.adjustments,
@@ -148,6 +154,10 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       customer_address: params.customer.full_address,
       delivery_address: params.customer.full_address,
       same_as_billing: true,
+      contact_id: params.selectedContact?.id || null,
+      contact_name: params.selectedContact?.name || null,
+      contact_email: params.selectedContact?.email || null,
+      contact_phone: params.selectedContact?.phone || null,
       products: serializedProducts,
       subtotal: params.orderTotals.subtotal,
       adjustments: params.orderTotals.adjustments,
@@ -220,6 +230,10 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         customer_address: split.deliveryAddress,
         delivery_address: split.deliveryAddress,
         same_as_billing: false,
+        contact_id: params.selectedContact?.id || null,
+        contact_name: params.selectedContact?.name || null,
+        contact_email: params.selectedContact?.email || null,
+        contact_phone: params.selectedContact?.phone || null,
         products: splitProducts,
         subtotal: splitSubtotal,
         adjustments: 0,

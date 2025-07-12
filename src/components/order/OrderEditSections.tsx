@@ -11,6 +11,7 @@ import { OrderTruckSelectionForm } from "./OrderTruckSelectionForm";
 import { OrderDeliveryForm } from "./OrderDeliveryForm";
 import { DeliveryScheduler } from "./DeliveryScheduler";
 import { ProductEditSection } from "./ProductEditSection";
+import { ContactSelectionSection } from "./ContactSelectionSection";
 import { OrderFormData } from "./hooks/useOrderFormData";
 
 interface OrderEditSectionsProps {
@@ -81,7 +82,7 @@ export function OrderEditSections({
         onInputChange={onInputChange}
       />
 
-      <OrderDeliveryForm 
+      <OrderDeliveryForm
         formData={{
           full_address: formData.customer_address,
           suburb_id: formData.suburb_id || '',

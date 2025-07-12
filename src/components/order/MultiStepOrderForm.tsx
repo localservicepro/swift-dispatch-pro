@@ -26,6 +26,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
   const {
     currentStep,
     selectedCustomer,
+    selectedContact,
     cart,
     adjustments,
     deliveryMethod,
@@ -52,6 +53,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     orderTotals,
     paymentSettings,
     setSelectedCustomer,
+    setSelectedContact,
     setCart,
     setAdjustments,
     setDeliveryMethod,
@@ -105,6 +107,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       if (orderType === "single") {
         result = await createSingleOrder({
           customer: selectedCustomer,
+          selectedContact,
           cart,
           adjustments,
           deliveryMethod: deliveryMethod as "delivery" | "pickup",
@@ -123,6 +126,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       } else {
         result = await createSplitOrder({
           customer: selectedCustomer,
+          selectedContact,
           cart,
           adjustments,
           deliveryMethod: deliveryMethod as "delivery" | "pickup",
@@ -149,6 +153,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       // Reset form after successful creation
       setCurrentStep(1);
       setSelectedCustomer(null);
+      setSelectedContact(null);
       setCart([]);
       setAdjustments(0);
       setDeliveryMethod("delivery");
@@ -185,7 +190,9 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         return (
           <CustomerSearchStep
             selectedCustomer={selectedCustomer}
+            selectedContact={selectedContact}
             onCustomerSelect={setSelectedCustomer}
+            onContactSelect={setSelectedContact}
             onNext={nextStep}
           />
         );
@@ -240,6 +247,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           return (
             <OrderReviewStep
               customer={selectedCustomer!}
+              selectedContact={selectedContact}
               cart={cart}
               subtotal={subtotal}
               adjustments={adjustments}
@@ -319,6 +327,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         return (
           <OrderReviewStep
             customer={selectedCustomer!}
+            selectedContact={selectedContact}
             cart={cart}
             subtotal={subtotal}
             adjustments={adjustments}

@@ -16,11 +16,20 @@ export interface Customer {
   company_name: string | null;
   business_name: string | null;
   contact_role: string | null;
+  entity_type: string | null;
   suburb?: {
     name: string;
     state: string;
     delivery_rate: string; // Changed from number to string
   };
+}
+
+export interface SelectedContact {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  role: string | null;
 }
 
 export interface Product {

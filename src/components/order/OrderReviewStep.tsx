@@ -7,12 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Package, User, MapPin, Clock, CreditCard, Store, Home, FileText, Truck, Receipt, Building } from "lucide-react";
-import { Customer, CartItem } from "./types";
+import { Customer, CartItem, SelectedContact } from "./types";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals, formatCurrency } from "./utils/paymentCalculations";
 
 interface OrderReviewStepProps {
   customer: Customer;
+  selectedContact?: SelectedContact | null;
   cart: CartItem[];
   subtotal: number;
   adjustments: number;
@@ -38,6 +39,7 @@ interface OrderReviewStepProps {
 
 export function OrderReviewStep({
   customer,
+  selectedContact,
   cart,
   subtotal,
   adjustments,
@@ -190,6 +192,28 @@ export function OrderReviewStep({
                 <p className="text-sm text-muted-foreground">{customer.full_address}</p>
               </div>
             </div>
+
+            {/* Contact Information for Business Customers */}
+            {selectedContact && (
+              <div className="space-y-2 pt-2 border-t border-gray-200">
+                <p className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                  <User className="w-3 h-3" />
+                  Order Contact:
+                </p>
+                <div className="bg-green-50 p-2 rounded border border-green-200">
+                  <p className="text-sm font-medium text-green-800">{selectedContact.name}</p>
+                  {selectedContact.role && (
+                    <p className="text-xs text-green-700">Role: {selectedContact.role}</p>
+                  )}
+                  {selectedContact.email && (
+                    <p className="text-xs text-green-700">Email: {selectedContact.email}</p>
+                  )}
+                  {selectedContact.phone && (
+                    <p className="text-xs text-green-700">Phone: {selectedContact.phone}</p>
+                  )}
+                </div>
+              </div>
+            )}
             
             {/* Purchase Order Field */}
             <div className="space-y-2">

@@ -1,12 +1,13 @@
 
 import { useState, useEffect } from "react";
-import { Customer, CartItem, SplitConfig, TruckType, Truck } from "../types";
+import { Customer, CartItem, SplitConfig, TruckType, Truck, SelectedContact } from "../types";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals } from "../utils/paymentCalculations";
 
 export function useOrderFormState() {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedContact, setSelectedContact] = useState<SelectedContact | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [adjustments, setAdjustments] = useState(0);
   
@@ -58,6 +59,11 @@ export function useOrderFormState() {
       if (selectedCustomer.suburb_id) {
         setSelectedSuburbId(selectedCustomer.suburb_id);
       }
+    }
+    
+    // Clear contact when customer changes
+    if (!selectedCustomer) {
+      setSelectedContact(null);
     }
   }, [selectedCustomer]);
 
@@ -156,6 +162,7 @@ export function useOrderFormState() {
     // State
     currentStep,
     selectedCustomer,
+    selectedContact,
     cart,
     adjustments,
     deliveryMethod,
@@ -184,6 +191,7 @@ export function useOrderFormState() {
     
     // Setters
     setSelectedCustomer,
+    setSelectedContact,
     setCart,
     setAdjustments,
     setDeliveryMethod: handleDeliveryMethodChange,

@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, User, Phone, Mail, MapPin, Building2 } from "lucide-react";
 import { GoogleAddressAutocomplete } from "@/components/ui/google-address-autocomplete";
+import { ContactSelector } from "@/components/customer/ContactSelector";
 
 interface Customer {
   id: string;
@@ -23,11 +24,20 @@ interface Customer {
   company_name: string | null;
   business_name: string | null;
   contact_role: string | null;
+  entity_type: string | null;
   suburb?: {
     name: string;
     state: string;
     delivery_rate: string;
   };
+}
+
+interface SelectedContact {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  role: string | null;
 }
 
 interface Suburb {
@@ -41,11 +51,13 @@ interface Suburb {
 
 interface CustomerSearchStepProps {
   selectedCustomer: Customer | null;
+  selectedContact: SelectedContact | null;
   onCustomerSelect: (customer: Customer) => void;
+  onContactSelect: (contact: SelectedContact | null) => void;
   onNext: () => void;
 }
 
-export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext }: CustomerSearchStepProps) {
+export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustomerSelect, onContactSelect, onNext }: CustomerSearchStepProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [suburbs, setSuburbs] = useState<Suburb[]>([]);
@@ -290,6 +302,16 @@ export function CustomerSearchStep({ selectedCustomer, onCustomerSelect, onNext 
                 </div>
               </div>
             </div>
+
+            {/* Contact Selection for Business Customers */}
+            {selectedCustomer.entity_type === 'business' && (
+              <ContactSelector
+                customerId={selectedCustomer.id}
+                selectedContact={selectedContact}
+                onContactSelect={onContactSelect}
+              />
+            )}
+
             <div className="flex gap-2">
               <Button onClick={() => onCustomerSelect(null)} variant="outline">
                 Change Customer
