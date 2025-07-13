@@ -137,12 +137,11 @@ export function OpportunityPipeline() {
 
     filteredOrders.forEach(order => {
       let stage = 'requested';
+      const customerType = order.customers?.customer_type || order.customer_type;
 
-      // Payment status takes priority - orders with pending payment stay in requested
-      if (order.payment_status === 'pending') {
-        stage = 'requested';
-      } else if (order.payment_status === 'paid') {
-        // Only paid orders can progress beyond requested stage
+      // Account customers can progress through stages even with pending payment
+      if (customerType === 'account') {
+        // Account customers are grouped by their actual order status
         if (order.status === 'requested') {
           stage = 'requested';
         } else if (order.status === 'preparing') {
@@ -153,6 +152,24 @@ export function OpportunityPipeline() {
           stage = 'en_route';
         } else if (order.status === 'delivered') {
           stage = 'delivered';
+        }
+      } else {
+        // Trade/residential customers need payment before progressing
+        if (order.payment_status === 'pending') {
+          stage = 'requested';
+        } else if (order.payment_status === 'paid') {
+          // Only paid orders can progress beyond requested stage
+          if (order.status === 'requested') {
+            stage = 'requested';
+          } else if (order.status === 'preparing') {
+            stage = 'preparing';
+          } else if (order.status === 'loading') {
+            stage = 'loading';
+          } else if (order.status === 'en_route') {
+            stage = 'en_route';
+          } else if (order.status === 'delivered') {
+            stage = 'delivered';
+          }
         }
       }
 
@@ -206,8 +223,9 @@ export function OpportunityPipeline() {
       return;
     }
 
-    // Payment validation: prevent moving from requested if payment is pending
-    if (currentStage === 'requested' && order.payment_status === 'pending') {
+    // Payment validation: prevent moving from requested if payment is pending (except for account customers)
+    const customerType = order.customers?.customer_type || order.customer_type;
+    if (currentStage === 'requested' && order.payment_status === 'pending' && customerType !== 'account') {
       toast({
         title: "Payment Required",
         description: `Order ${order.order_number} requires payment confirmation before it can be moved`,
@@ -264,12 +282,13 @@ export function OpportunityPipeline() {
     try {
       console.log('Completing assignment for order:', orderForAssignment.order_number, assignments);
 
+      const customerType = orderForAssignment.customers?.customer_type || orderForAssignment.customer_type;
       const updateData: any = {
         truck_type: assignments.truckType,
         truck_id: assignments.truckId,
         driver_id: assignments.driverId === 'unassigned' ? null : assignments.driverId,
         status: 'preparing',
-        payment_status: 'paid',
+        payment_status: customerType === 'account' ? 'pending' : 'paid',
         updated_at: new Date().toISOString()
       };
 
@@ -324,8 +343,9 @@ export function OpportunityPipeline() {
 
       switch (newStage) {
         case 'preparing':
+          const customerType = order.customers?.customer_type || order.customer_type;
           updateData = {
-            payment_status: 'paid',
+            payment_status: customerType === 'account' ? 'pending' : 'paid',
             status: 'preparing'
           };
           break;
