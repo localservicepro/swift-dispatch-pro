@@ -75,7 +75,7 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
         case 'preparing':
           const customerType = order.customers?.customer_type || order.customer_type;
           updateData = { 
-            payment_status: customerType === 'account' ? 'invoiced' : 'paid',
+            payment_status: customerType === 'account' ? 'pending' : 'paid',
             status: 'preparing'
           };
           break;
