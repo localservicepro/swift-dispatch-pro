@@ -13,9 +13,8 @@ import { activityLogger } from "@/utils/activityLogger";
 
 const YARD_SALE_STAGES = [
   { id: 'requested', title: 'Requested', color: 'bg-slate-100 border-slate-300', textColor: 'text-slate-700' },
-  { id: 'preparing', title: 'Preparing', color: 'bg-blue-100 border-blue-300', textColor: 'text-blue-700' },
-  { id: 'ready_for_pickup', title: 'Ready for Pickup', color: 'bg-green-100 border-green-300', textColor: 'text-green-700' },
-  { id: 'completed', title: 'Completed', color: 'bg-purple-100 border-purple-300', textColor: 'text-purple-700' }
+  { id: 'preparing', title: 'Prepared', color: 'bg-blue-100 border-blue-300', textColor: 'text-blue-700' },
+  { id: 'delivered', title: 'Pick Up', color: 'bg-green-100 border-green-300', textColor: 'text-green-700' }
 ];
 
 export function YardSaleManagement() {
@@ -105,7 +104,7 @@ export function YardSaleManagement() {
       if (order.status === 'preparing') {
         stage = 'preparing';
       } else if (order.status === 'delivered') {
-        stage = 'completed';
+        stage = 'delivered';
       }
 
       grouped[stage].push(order);
@@ -250,9 +249,8 @@ export function YardSaleManagement() {
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="requested">Requested</SelectItem>
-                <SelectItem value="preparing">Preparing</SelectItem>
-                <SelectItem value="ready_for_pickup">Ready for Pickup</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="preparing">Prepared</SelectItem>
+                <SelectItem value="delivered">Pick Up</SelectItem>
               </SelectContent>
             </Select>
             {hasActiveFilters && (
@@ -270,7 +268,7 @@ export function YardSaleManagement() {
       </Card>
 
       {/* Status Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {YARD_SALE_STAGES.map((stage) => (
           <Card key={stage.id} className={`border-2 ${stage.color}`}>
             <CardHeader className="pb-3">
@@ -305,7 +303,7 @@ export function YardSaleManagement() {
                           onClick={() => updateOrderStatus(order.id, 'requested', 'preparing', order.order_number, order.customer_name)}
                           className="w-full"
                         >
-                          Start Preparing
+                          Mark Prepared
                         </Button>
                       )}
                       {stage.id === 'preparing' && (
@@ -314,7 +312,7 @@ export function YardSaleManagement() {
                           onClick={() => updateOrderStatus(order.id, 'preparing', 'delivered', order.order_number, order.customer_name)}
                           className="w-full"
                         >
-                          Complete Pickup
+                          Mark Picked Up
                         </Button>
                       )}
                     </div>

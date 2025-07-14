@@ -15,10 +15,6 @@ const menuItems = [{
   icon: Target,
   id: "opportunities"
 }, {
-  title: "Yard Sale",
-  icon: ShoppingBag,
-  id: "yard-sale"
-}, {
   title: "Order Management",
   icon: ShoppingCart,
   id: "orders"

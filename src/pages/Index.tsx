@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LogOut, Loader2 } from "lucide-react";
 import { TeamManagement } from "@/components/TeamManagement";
 import { PersonalizedGreeting } from "@/components/PersonalizedGreeting";
-import { YardSaleManagement } from "@/components/YardSaleManagement";
+
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -49,8 +49,6 @@ const Index = () => {
         return <DashboardOverview />;
       case "opportunities":
         return <OpportunityPipeline />;
-      case "yard-sale":
-        return <YardSaleManagement />;
       case "orders":
         return <OrderManagement />;
       case "products":
