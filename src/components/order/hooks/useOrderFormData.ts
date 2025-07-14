@@ -24,6 +24,10 @@ export interface OrderFormData {
   truck_id: string;
   payment_method: string;
   adjustments: number;
+  contact_id: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
 }
 
 export function useOrderFormData(order: Order) {
@@ -48,7 +52,11 @@ export function useOrderFormData(order: Order) {
     truck_type: order.truck_type || 'none',
     truck_id: order.truck_id || 'none',
     payment_method: order.payment_method || 'cash',
-    adjustments: order.adjustments || 0
+    adjustments: order.adjustments || 0,
+    contact_id: order.contact_id || null,
+    contact_name: order.contact_name || null,
+    contact_email: order.contact_email || null,
+    contact_phone: order.contact_phone || null
   });
 
   // Calculate totals whenever pricing components change
@@ -124,6 +132,18 @@ export function useOrderFormData(order: Order) {
     }));
   };
 
+  const handleContactChange = (contactData: {
+    contact_id: string | null;
+    contact_name: string | null;
+    contact_email: string | null;
+    contact_phone: string | null;
+  }) => {
+    setFormData(prev => ({
+      ...prev,
+      ...contactData
+    }));
+  };
+
   // Recalculate totals when payment settings are loaded
   useEffect(() => {
     if (paymentSettings) {
@@ -191,6 +211,7 @@ export function useOrderFormData(order: Order) {
     handleSuburbChange,
     handleProductsChange,
     handleSubtotalChange,
+    handleContactChange,
     getFormDataForSubmission,
     getCalculationBreakdown,
     paymentSettings

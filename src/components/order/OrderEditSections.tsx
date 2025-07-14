@@ -18,6 +18,7 @@ interface OrderEditSectionsProps {
   formData: OrderFormData;
   deliveryRate: string;
   orderId: string;
+  customerId?: string;
   businessInfo?: {
     company_name?: string;
     business_name?: string;
@@ -28,6 +29,12 @@ interface OrderEditSectionsProps {
   onSuburbChange: (suburbId: string) => void;
   onProductsChange: (products: any[]) => void;
   onSubtotalChange: (subtotal: number) => void;
+  onContactChange: (contactData: {
+    contact_id: string | null;
+    contact_name: string | null;
+    contact_email: string | null;
+    contact_phone: string | null;
+  }) => void;
   onFormDataChange: (updates: any) => void;
   calculationBreakdown?: any;
   paymentSettings?: any;
@@ -37,12 +44,14 @@ export function OrderEditSections({
   formData,
   deliveryRate,
   orderId,
+  customerId,
   businessInfo,
   onInputChange,
   onDriverChange,
   onSuburbChange,
   onProductsChange,
   onSubtotalChange,
+  onContactChange,
   onFormDataChange,
   calculationBreakdown,
   paymentSettings
@@ -75,6 +84,19 @@ export function OrderEditSections({
           <p className="text-xs text-orange-600 mt-1">Customer's purchase order number for reference</p>
         </div>
       </div>
+
+      {/* Contact Selection for Business Customers */}
+      {customerId && businessInfo?.customer_type && 
+       (businessInfo.customer_type === 'account' || businessInfo.customer_type === 'business') && (
+        <ContactSelectionSection
+          customerId={customerId}
+          currentContactId={formData.contact_id}
+          currentContactName={formData.contact_name}
+          currentContactEmail={formData.contact_email}
+          currentContactPhone={formData.contact_phone}
+          onContactChange={onContactChange}
+        />
+      )}
 
       <OrderBasicInfoForm 
         formData={formData}

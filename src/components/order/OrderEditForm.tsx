@@ -23,6 +23,7 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
     handleSuburbChange,
     handleProductsChange,
     handleSubtotalChange,
+    handleContactChange,
     handleFormDataChange,
     getFormDataForSubmission,
     calculationBreakdown,
@@ -62,12 +63,14 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
         formData={formData}
         deliveryRate={deliveryRate}
         orderId={order.id}
+        customerId={order.customer_id}
         businessInfo={businessInfo}
         onInputChange={handleInputChange}
         onDriverChange={handleDriverChange}
         onSuburbChange={handleSuburbChange}
         onProductsChange={handleProductsChange}
         onSubtotalChange={handleSubtotalChange}
+        onContactChange={handleContactChange}
         onFormDataChange={handleFormDataChange}
         calculationBreakdown={calculationBreakdown}
         paymentSettings={paymentSettings}

@@ -46,6 +46,7 @@ export function useOrderEditFormLogic(order: Order) {
     handleSuburbChange,
     handleProductsChange,
     handleSubtotalChange,
+    handleContactChange,
     getFormDataForSubmission,
     getCalculationBreakdown,
     paymentSettings
@@ -123,6 +124,7 @@ export function useOrderEditFormLogic(order: Order) {
     handleSuburbChange,
     handleProductsChange,
     handleSubtotalChange,
+    handleContactChange,
     handleFormDataChange,
     getFormDataForSubmission,
     calculationBreakdown,
