@@ -79,6 +79,7 @@ export function useOrderData() {
           truck_registration,
           truck_type_display,
           delivery_suburb_id,
+          deleted_at,
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
@@ -91,6 +92,7 @@ export function useOrderData() {
             id, name, state, postcode
           )
         `)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (ordersError) {
