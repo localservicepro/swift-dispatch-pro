@@ -81,12 +81,15 @@ export function PaymentManagement() {
           products,
           delivery_fee,
           subtotal,
+          deleted_at,
           customers!orders_customer_id_fkey(
             email,
             company_name,
             business_name
           )
-        `).order('created_at', {
+        `)
+        .is('deleted_at', null)
+        .order('created_at', {
         ascending: false
       });
       if (error) {
