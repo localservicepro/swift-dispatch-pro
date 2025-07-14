@@ -16,6 +16,8 @@ interface Order {
   products_formatted?: string;
   total_amount: number;
   status: OrderStatus;
+  payment_status?: string;
+  payment_date?: string;
   driver_id?: string;
   created_at: string;
   delivery_date?: string;
@@ -48,6 +50,7 @@ interface OrderListProps {
   onDelete: (order: Order) => void;
   onStatusUpdate: (orderId: string, newStatus: OrderStatus, currentOrder: Order) => void;
   onNotesEdit: (order: Order) => void;
+  onPaymentStatusUpdate?: () => void;
 }
 
 export function OrderList({ 
@@ -58,7 +61,8 @@ export function OrderList({
   onEdit,
   onDelete,
   onStatusUpdate,
-  onNotesEdit
+  onNotesEdit,
+  onPaymentStatusUpdate
 }: OrderListProps) {
   if (isLoading) {
     return (
@@ -96,6 +100,7 @@ export function OrderList({
           onDelete={onDelete}
           onStatusUpdate={onStatusUpdate}
           onNotesEdit={onNotesEdit}
+          onPaymentStatusUpdate={onPaymentStatusUpdate}
         />
       ))}
     </div>

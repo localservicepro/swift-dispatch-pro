@@ -16,6 +16,8 @@ function OrderManagementContent() {
     setSearchQuery,
     statusFilter,
     setStatusFilter,
+    paymentStatusFilter,
+    setPaymentStatusFilter,
     hasActiveFilters,
     clearFilters,
     setIsCreating,
@@ -59,8 +61,10 @@ function OrderManagementContent() {
           <OrderSearchFilters
             searchQuery={searchQuery}
             statusFilter={statusFilter}
+            paymentStatusFilter={paymentStatusFilter}
             onSearchChange={setSearchQuery}
             onStatusFilterChange={setStatusFilter}
+            onPaymentStatusFilterChange={setPaymentStatusFilter}
             onClearFilters={clearFilters}
             hasActiveFilters={hasActiveFilters}
             ordersCount={filteredOrders.length}
@@ -70,8 +74,10 @@ function OrderManagementContent() {
           <OrderSearchControls
             searchQuery={searchQuery}
             statusFilter={statusFilter}
+            paymentStatusFilter={paymentStatusFilter}
             onSearchChange={setSearchQuery}
             onStatusFilterChange={setStatusFilter}
+            onPaymentStatusFilterChange={setPaymentStatusFilter}
           />
         </CardHeader>
         <CardContent>
@@ -84,6 +90,7 @@ function OrderManagementContent() {
             onDelete={setDeletingOrder}
             onStatusUpdate={updateOrderStatus}
             onNotesEdit={handleNotesEdit}
+            onPaymentStatusUpdate={refetch}
           />
         </CardContent>
       </Card>

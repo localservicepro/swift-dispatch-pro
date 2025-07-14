@@ -17,6 +17,8 @@ interface Order {
   products_formatted?: string;
   total_amount: number;
   status: OrderStatus;
+  payment_status?: string;
+  payment_date?: string;
   driver_id?: string;
   created_at: string;
   delivery_date?: string;
@@ -63,6 +65,8 @@ export function useOrderData() {
           products_formatted,
           total_amount,
           status,
+          payment_status,
+          payment_date,
           driver_id,
           created_at,
           delivery_date,
@@ -134,7 +138,7 @@ export function useOrderData() {
   return { orders, isLoading, error, refetch };
 }
 
-export function useFilteredOrders(orders: Order[], searchQuery: string, statusFilter: string) {
+export function useFilteredOrders(orders: Order[], searchQuery: string, statusFilter: string, paymentStatusFilter?: string) {
   const filteredOrders = useMemo(() => {
     let filtered = orders;
 
@@ -156,8 +160,13 @@ export function useFilteredOrders(orders: Order[], searchQuery: string, statusFi
       filtered = filtered.filter(order => order.status === statusFilter);
     }
 
+    // Apply payment status filter
+    if (paymentStatusFilter && paymentStatusFilter !== "all") {
+      filtered = filtered.filter(order => order.payment_status === paymentStatusFilter);
+    }
+
     return filtered;
-  }, [orders, searchQuery, statusFilter]);
+  }, [orders, searchQuery, statusFilter, paymentStatusFilter]);
 
   return filteredOrders;
 }

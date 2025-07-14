@@ -7,8 +7,10 @@ import { Search, Filter, X } from "lucide-react";
 interface OrderSearchFiltersProps {
   searchQuery: string;
   statusFilter: string;
+  paymentStatusFilter?: string;
   onSearchChange: (value: string) => void;
   onStatusFilterChange: (value: string) => void;
+  onPaymentStatusFilterChange?: (value: string) => void;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
   ordersCount: number;
@@ -18,8 +20,10 @@ interface OrderSearchFiltersProps {
 export function OrderSearchFilters({
   searchQuery,
   statusFilter,
+  paymentStatusFilter,
   onSearchChange,
   onStatusFilterChange,
+  onPaymentStatusFilterChange,
   onClearFilters,
   hasActiveFilters,
   ordersCount,
@@ -46,9 +50,11 @@ export function OrderSearchFilters({
 export function OrderSearchControls({
   searchQuery,
   statusFilter,
+  paymentStatusFilter,
   onSearchChange,
-  onStatusFilterChange
-}: Pick<OrderSearchFiltersProps, 'searchQuery' | 'statusFilter' | 'onSearchChange' | 'onStatusFilterChange'>) {
+  onStatusFilterChange,
+  onPaymentStatusFilterChange
+}: Pick<OrderSearchFiltersProps, 'searchQuery' | 'statusFilter' | 'paymentStatusFilter' | 'onSearchChange' | 'onStatusFilterChange' | 'onPaymentStatusFilterChange'>) {
   return (
     <div className="flex flex-col sm:flex-row gap-4 mt-4">
       <div className="relative flex-1">
@@ -76,6 +82,23 @@ export function OrderSearchControls({
           </SelectContent>
         </Select>
       </div>
+      {onPaymentStatusFilterChange && (
+        <div className="flex items-center gap-2 sm:w-48">
+          <Select value={paymentStatusFilter || "all"} onValueChange={onPaymentStatusFilterChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Payment status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Payments</SelectItem>
+              <SelectItem value="pending">Payment Pending</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="invoiced">Invoiced</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   );
 }

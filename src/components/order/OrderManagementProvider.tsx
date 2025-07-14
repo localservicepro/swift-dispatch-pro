@@ -20,6 +20,8 @@ interface Order {
   products: any;
   total_amount: number;
   status: OrderStatus;
+  payment_status?: string;
+  payment_date?: string;
   driver_id?: string;
   created_at: string;
   delivery_date?: string;
@@ -49,6 +51,8 @@ interface OrderManagementContextType {
   setSearchQuery: (query: string) => void;
   statusFilter: string;
   setStatusFilter: (filter: string) => void;
+  paymentStatusFilter: string;
+  setPaymentStatusFilter: (filter: string) => void;
   deletingOrder: Order | null;
   setDeletingOrder: (order: Order | null) => void;
   isDeleting: boolean;
@@ -90,6 +94,7 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>("all");
   const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingNotes, setEditingNotes] = useState<Order | null>(null);
@@ -99,16 +104,17 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
   // Use custom hooks for data and actions
   const { orders, isLoading, error, refetch } = useOrderData();
   const { updateOrderStatus, handleDeleteOrder: handleDeleteOrderAction } = useOrderActions(refetch);
-  const filteredOrders = useFilteredOrders(orders, searchQuery, statusFilter);
+  const filteredOrders = useFilteredOrders(orders, searchQuery, statusFilter, paymentStatusFilter);
 
   // Clear all filters
   const clearFilters = () => {
     setSearchQuery("");
     setStatusFilter("all");
+    setPaymentStatusFilter("all");
   };
 
   // Check if any filters are active
-  const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all";
+  const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all" || paymentStatusFilter !== "all";
 
   // Enhanced delete handler that supports both single and group deletion
   const handleDeleteOrder = async (orderId: string, deleteType: 'single' | 'group') => {
@@ -177,6 +183,8 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
     setSearchQuery,
     statusFilter,
     setStatusFilter,
+    paymentStatusFilter,
+    setPaymentStatusFilter,
     deletingOrder,
     setDeletingOrder,
     isDeleting,

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { PurchaseOrderDisplay } from "./PurchaseOrderDisplay";
 import { NotesIndicator } from "../notes/NotesIndicator";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
+import { PaymentStatusDropdown } from "../opportunity/PaymentStatusDropdown";
 import { MapPin, Truck, Edit3, Trash2, Building, User } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 
@@ -20,6 +21,8 @@ interface Order {
   products_formatted?: string;
   total_amount: number;
   status: OrderStatus;
+  payment_status?: string;
+  payment_date?: string;
   driver_id?: string;
   created_at: string;
   delivery_date?: string;
@@ -52,9 +55,10 @@ interface OrderCardProps {
   onDelete: (order: Order) => void;
   onStatusUpdate: (orderId: string, newStatus: OrderStatus, currentOrder: Order) => void;
   onNotesEdit: (order: Order) => void;
+  onPaymentStatusUpdate?: () => void;
 }
 
-export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit }: OrderCardProps) {
+export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit, onPaymentStatusUpdate }: OrderCardProps) {
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
       case "delivered":
@@ -179,6 +183,10 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           <Badge className={getStatusColor(order.status)}>
             {getStatusLabel(order.status)}
           </Badge>
+          <PaymentStatusDropdown 
+            order={order} 
+            onStatusUpdate={() => onPaymentStatusUpdate?.()} 
+          />
           <PurchaseOrderDisplay purchaseOrder={order.purchase_order} variant="secondary" />
           <NotesIndicator 
             orderNotes={order.order_notes} 
