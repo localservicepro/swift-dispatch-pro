@@ -55,6 +55,7 @@ export function useOpportunityData() {
           master_order_id,
           is_split_order,
           delivery_suburb_id,
+          delivery_method,
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
@@ -70,6 +71,7 @@ export function useOpportunityData() {
           trucks!orders_truck_id_fkey(registration_number, truck_type)
         `)
         .is('deleted_at', null) // Exclude soft-deleted orders
+        .eq('delivery_method', 'delivery') // Only include delivery orders, exclude pickup/yard sale orders
         .order('created_at', { ascending: false });
 
       if (ordersError) {

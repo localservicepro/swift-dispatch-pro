@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { BarChart3, Package, ShoppingCart, Users, CreditCard, Mail, Settings, Users2, Target, Trash2, Truck } from "lucide-react";
+import { BarChart3, Package, ShoppingCart, Users, CreditCard, Mail, Settings, Users2, Target, Trash2, Truck, ShoppingBag } from "lucide-react";
 import { useState } from "react";
+
 const menuItems = [{
   title: "Dashboard",
   icon: BarChart3,
@@ -13,6 +14,10 @@ const menuItems = [{
   title: "Opportunities",
   icon: Target,
   id: "opportunities"
+}, {
+  title: "Yard Sale",
+  icon: ShoppingBag,
+  id: "yard-sale"
 }, {
   title: "Order Management",
   icon: ShoppingCart,
