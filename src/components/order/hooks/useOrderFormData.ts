@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Order } from "../OrderEditFormTypes";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals } from "../utils/paymentCalculations";
+import { useDeliveryFeeCalculation } from "@/hooks/useDeliveryFeeCalculation";
 
 export interface OrderFormData {
   customer_name: string;
@@ -32,6 +33,8 @@ export interface OrderFormData {
 
 export function useOrderFormData(order: Order) {
   const { data: paymentSettings } = usePaymentSettings();
+  const { autoPopulateDeliveryFee, getDeliveryFeeInfo } = useDeliveryFeeCalculation();
+  const [isDeliveryFeeManuallySet, setIsDeliveryFeeManuallySet] = useState(false);
   
   const [formData, setFormData] = useState<OrderFormData>({
     customer_name: order.customer_name || '',
@@ -113,8 +116,23 @@ export function useOrderFormData(order: Order) {
     setFormData(prev => ({ ...prev, driver_id: driverId }));
   };
 
-  const handleSuburbChange = (suburbId: string) => {
+  const handleSuburbChange = (suburbId: string, suburb?: any) => {
     setFormData(prev => ({ ...prev, suburb_id: suburbId }));
+    
+    // Auto-populate delivery fee if not manually set and we have suburb data
+    if (suburb && !isDeliveryFeeManuallySet) {
+      autoPopulateDeliveryFee(suburbId, (fee: number, isAutoPopulated: boolean) => {
+        const updatedData = { delivery_fee: fee };
+        const newTotal = calculateTotals(updatedData);
+        
+        setFormData(prev => ({
+          ...prev,
+          delivery_fee: fee,
+          total_amount: newTotal
+        }));
+        setIsDeliveryFeeManuallySet(!isAutoPopulated);
+      });
+    }
   };
 
   const handleProductsChange = (products: any[]) => {
@@ -214,6 +232,8 @@ export function useOrderFormData(order: Order) {
     handleContactChange,
     getFormDataForSubmission,
     getCalculationBreakdown,
-    paymentSettings
+    paymentSettings,
+    isDeliveryFeeManuallySet,
+    getDeliveryFeeInfo
   };
 }

@@ -71,9 +71,11 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setUseGlobalDeliveryAddress,
     setSelectedSuburbId,
     setManualDeliveryFee,
+    isDeliveryFeeManuallySet,
     handleSuburbChange,
     clearDeliveryAddress,
     resetToCustomerAddress,
+    getDeliveryFeeInfo,
     nextStep,
     prevStep,
     setCurrentStep,
@@ -299,7 +301,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
                   setSelectedSuburbId(updates.suburb_id);
                 }
               }}
-              onSuburbChange={handleSuburbChange}
+              onSuburbChange={(suburbId, suburb) => handleSuburbChange(suburbId, suburb)}
               onDeliveryDateChange={setDeliveryDate}
               onDeliveryTimeChange={setDeliveryTime}
               onBack={prevStep}
@@ -349,6 +351,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             onOrderNotesChange={setOrderNotes}
             onDeliveryNotesChange={setDeliveryNotes}
             onPurchaseOrderChange={setPurchaseOrder}
+            isDeliveryFeeManuallySet={isDeliveryFeeManuallySet}
+            deliveryFeeInfo={getDeliveryFeeInfo()}
           />
         );
 

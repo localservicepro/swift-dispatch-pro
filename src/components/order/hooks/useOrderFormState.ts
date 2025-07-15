@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Customer, CartItem, SplitConfig, TruckType, Truck, SelectedContact } from "../types";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals } from "../utils/paymentCalculations";
+import { useDeliveryFeeCalculation } from "@/hooks/useDeliveryFeeCalculation";
 
 export function useOrderFormState() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -41,12 +42,16 @@ export function useOrderFormState() {
   
   // Manual delivery fee state (number, not string)
   const [manualDeliveryFee, setManualDeliveryFee] = useState<number>(0);
+  const [isDeliveryFeeManuallySet, setIsDeliveryFeeManuallySet] = useState(false);
 
   // Track if address was auto-populated from customer
   const [isUsingCustomerAddress, setIsUsingCustomerAddress] = useState(false);
 
   // Fetch payment settings for calculations
   const { data: paymentSettings } = usePaymentSettings();
+  
+  // Delivery fee calculation hook
+  const { autoPopulateDeliveryFee, getDeliveryFeeInfo } = useDeliveryFeeCalculation();
 
   // Auto-populate delivery address when customer is selected
   useEffect(() => {
@@ -85,9 +90,23 @@ export function useOrderFormState() {
     }
   };
 
-  // Suburb change handler - only sets suburb ID, no automatic rate
-  const handleSuburbChange = (suburbId: string) => {
+  // Suburb change handler with auto-population
+  const handleSuburbChange = (suburbId: string, suburb?: any) => {
     setSelectedSuburbId(suburbId);
+    
+    // Auto-populate delivery fee if not manually set and we have suburb data
+    if (suburb && !isDeliveryFeeManuallySet && deliveryMethod === "delivery") {
+      autoPopulateDeliveryFee(suburbId, (fee: number, isAutoPopulated: boolean) => {
+        setManualDeliveryFee(fee);
+        setIsDeliveryFeeManuallySet(!isAutoPopulated);
+      });
+    }
+  };
+
+  // Handle manual delivery fee changes
+  const handleManualDeliveryFeeChange = (fee: number) => {
+    setManualDeliveryFee(fee);
+    setIsDeliveryFeeManuallySet(true);
   };
 
   // Clear delivery address and reset to customer address
@@ -180,6 +199,7 @@ export function useOrderFormState() {
     useGlobalDeliveryAddress,
     selectedSuburbId,
     manualDeliveryFee,
+    isDeliveryFeeManuallySet,
     isUsingCustomerAddress,
     subtotal: orderTotals.subtotal,
     deliveryFee: orderTotals.deliveryFee,
@@ -208,8 +228,9 @@ export function useOrderFormState() {
     setSameAsBilling,
     setUseGlobalDeliveryAddress,
     setSelectedSuburbId,
-    setManualDeliveryFee,
+    setManualDeliveryFee: handleManualDeliveryFeeChange,
     handleSuburbChange,
+    getDeliveryFeeInfo,
     clearDeliveryAddress,
     resetToCustomerAddress,
     

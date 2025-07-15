@@ -21,7 +21,7 @@ interface DeliveryAddressStepProps {
   deliveryDate: string;
   deliveryTime: string;
   onFormDataChange: (updates: Partial<DeliveryAddressStepProps['formData']>) => void;
-  onSuburbChange: (suburbId: string) => void;
+  onSuburbChange: (suburbId: string, suburb?: any) => void;
   onDeliveryDateChange: (date: string) => void;
   onDeliveryTimeChange: (time: string) => void;
   onBack: () => void;

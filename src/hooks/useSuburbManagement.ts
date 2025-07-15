@@ -45,13 +45,13 @@ export function useSuburbManagement() {
 
   const handleAutoSuburbSelection = (
     postcode: string,
-    onSuburbChange: (suburbId: string) => void
+    onSuburbChange: (suburbId: string, suburb?: Suburb) => void
   ) => {
     const matchingSuburb = findSuburbByPostcode(postcode);
     
     if (matchingSuburb) {
       console.log('Auto-selecting suburb:', matchingSuburb);
-      onSuburbChange(matchingSuburb.id);
+      onSuburbChange(matchingSuburb.id, matchingSuburb);
       
       const distanceText = matchingSuburb.distance_km ? ` (${matchingSuburb.distance_km}km away)` : '';
       

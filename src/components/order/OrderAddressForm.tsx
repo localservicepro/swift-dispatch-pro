@@ -11,7 +11,7 @@ interface OrderAddressFormProps {
   };
   deliveryRate: string;
   onFormDataChange: (updates: Partial<OrderAddressFormProps['formData']>) => void;
-  onSuburbChange: (suburbId: string) => void;
+  onSuburbChange: (suburbId: string, suburb?: any) => void;
   isDeliveryAddress?: boolean;
 }
 
@@ -60,7 +60,7 @@ export function OrderAddressForm({
 
       <SuburbSelector
         selectedSuburbId={formData.suburb_id}
-        onSuburbChange={onSuburbChange}
+        onSuburbChange={(suburbId, suburb) => onSuburbChange(suburbId, suburb)}
         label={isDeliveryAddress ? "Delivery Suburb" : "Suburb"}
       />
 

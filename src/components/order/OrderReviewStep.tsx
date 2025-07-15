@@ -35,6 +35,11 @@ interface OrderReviewStepProps {
   onOrderNotesChange?: (notes: string) => void;
   onDeliveryNotesChange?: (notes: string) => void;
   onPurchaseOrderChange?: (purchaseOrder: string) => void;
+  isDeliveryFeeManuallySet?: boolean;
+  deliveryFeeInfo?: {
+    suburbName: string;
+    displayText: string;
+  } | null;
 }
 
 export function OrderReviewStep({
@@ -60,7 +65,9 @@ export function OrderReviewStep({
   onDeliveryFeeChange,
   onOrderNotesChange,
   onDeliveryNotesChange,
-  onPurchaseOrderChange
+  onPurchaseOrderChange,
+  isDeliveryFeeManuallySet = false,
+  deliveryFeeInfo
 }: OrderReviewStepProps) {
   const { data: paymentSettings } = usePaymentSettings();
   const stepNumber = deliveryMethod === "pickup" ? "5" : "7";
@@ -412,21 +419,40 @@ export function OrderReviewStep({
               </div>
             )}
             {deliveryMethod === "delivery" && (
-              <div className="flex justify-between items-center">
-                <Label htmlFor="delivery-fee">Delivery Fee:</Label>
-                <div className="flex items-center gap-2">
-                  <span>AU$</span>
-                  <Input
-                    id="delivery-fee"
-                    type="number"
-                    value={deliveryFee.toFixed(2)}
-                    onChange={handleDeliveryFeeChange}
-                    className="w-20 h-8 text-right"
-                    min="0"
-                    step="0.01"
-                    disabled={isCreating}
-                  />
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="delivery-fee" className="flex items-center gap-2">
+                    Delivery Fee:
+                    {deliveryFeeInfo && !isDeliveryFeeManuallySet && (
+                      <Badge variant="outline" className="text-xs text-green-600 bg-green-50">
+                        Auto from {deliveryFeeInfo.suburbName}
+                      </Badge>
+                    )}
+                    {isDeliveryFeeManuallySet && (
+                      <Badge variant="outline" className="text-xs text-blue-600 bg-blue-50">
+                        Manually set
+                      </Badge>
+                    )}
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <span>AU$</span>
+                    <Input
+                      id="delivery-fee"
+                      type="number"
+                      value={deliveryFee.toFixed(2)}
+                      onChange={handleDeliveryFeeChange}
+                      className="w-20 h-8 text-right"
+                      min="0"
+                      step="0.01"
+                      disabled={isCreating}
+                    />
+                  </div>
                 </div>
+                {deliveryFeeInfo && !isDeliveryFeeManuallySet && (
+                  <p className="text-xs text-muted-foreground">
+                    📍 Auto-populated from {deliveryFeeInfo.displayText}. You can edit if needed.
+                  </p>
+                )}
               </div>
             )}
             {orderTotals.hasSurcharge && orderTotals.surchargeAmount > 0 && (

@@ -18,7 +18,7 @@ interface Suburb {
 
 interface SuburbSelectorProps {
   selectedSuburbId?: string;
-  onSuburbChange: (suburbId: string) => void;
+  onSuburbChange: (suburbId: string, suburb?: Suburb) => void;
   label?: string;
 }
 
@@ -54,7 +54,7 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange, label = "Subu
     const selectedSuburb = suburbs.find(s => s.id === suburbId);
     console.log('Suburb selected:', selectedSuburb);
     if (selectedSuburb) {
-      onSuburbChange(suburbId);
+      onSuburbChange(suburbId, selectedSuburb);
       setOpen(false);
     }
   };
