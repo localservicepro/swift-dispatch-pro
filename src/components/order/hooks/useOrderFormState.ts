@@ -92,13 +92,33 @@ export function useOrderFormState() {
 
   // Suburb change handler with auto-population
   const handleSuburbChange = (suburbId: string, suburb?: any) => {
+    console.log('handleSuburbChange called with:', { suburbId, suburb, isDeliveryFeeManuallySet, deliveryMethod });
     setSelectedSuburbId(suburbId);
     
     // Auto-populate delivery fee if not manually set and we have suburb data
     if (suburb && !isDeliveryFeeManuallySet && deliveryMethod === "delivery") {
-      autoPopulateDeliveryFee(suburbId, (fee: number, isAutoPopulated: boolean) => {
+      console.log('Attempting to auto-populate delivery fee for suburb:', suburb.name, 'rate:', suburb.delivery_rate);
+      
+      // Parse delivery rate directly from suburb data
+      const deliveryRate = suburb.delivery_rate || '';
+      const cleanedRate = deliveryRate.replace(/[AU$\s]/gi, '').trim();
+      const fee = parseFloat(cleanedRate);
+      
+      if (!isNaN(fee) && fee > 0) {
+        console.log('Setting delivery fee to:', fee);
         setManualDeliveryFee(fee);
-        setIsDeliveryFeeManuallySet(!isAutoPopulated);
+        setIsDeliveryFeeManuallySet(false); // Mark as auto-populated
+        
+        // Show toast notification
+        autoPopulateDeliveryFee(suburbId, () => {}); // Just for the toast notification
+      } else {
+        console.log('Invalid delivery rate:', deliveryRate, 'parsed as:', fee);
+      }
+    } else {
+      console.log('Skipping auto-population:', { 
+        hasSuburb: !!suburb, 
+        isManuallySet: isDeliveryFeeManuallySet, 
+        isDelivery: deliveryMethod === "delivery" 
       });
     }
   };
