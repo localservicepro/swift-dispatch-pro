@@ -2124,6 +2124,7 @@ export type Database = {
         | "en_route"
         | "delivered"
         | "cancelled"
+        | "back_order"
       special_type:
         | "monthly"
         | "limited_time"
@@ -2271,6 +2272,7 @@ export const Constants = {
         "en_route",
         "delivered",
         "cancelled",
+        "back_order",
       ],
       special_type: [
         "monthly",

@@ -74,6 +74,8 @@ export function OrderSearchControls({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="back_order">Back Order</SelectItem>
+            <SelectItem value="requested">Requested</SelectItem>
             <SelectItem value="preparing">Preparing</SelectItem>
             <SelectItem value="loading">Loading</SelectItem>
             <SelectItem value="en_route">En Route</SelectItem>
