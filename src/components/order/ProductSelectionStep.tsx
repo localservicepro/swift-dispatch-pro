@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Package, Plus, Minus, ShoppingCart, Star, Clock, Edit3, Trash2 } from "lucide-react";
 import { useSpecialPricing } from "@/hooks/useSpecialPricing";
+import { useDebounce } from "@/hooks/useDebounce";
 import { format } from "date-fns";
 
 interface Product {
@@ -59,8 +60,12 @@ export function ProductSelectionStep({
   const [adjustmentValue, setAdjustmentValue] = useState<string>("");
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
+  const [specialsLoading, setSpecialsLoading] = useState(false);
   const { toast } = useToast();
   const { loadSpecialsForProducts, hasActiveSpecial, getSpecialForProduct, applySpecialDiscount } = useSpecialPricing();
+  
+  // Debounce search query to prevent excessive API calls
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   // Add decimal input parsing function
   const parseQuantityInput = (input: string): number => {
@@ -91,40 +96,8 @@ export function ProductSelectionStep({
     return quantity % 1 === 0 ? quantity.toString() : quantity.toFixed(3).replace(/\.?0+$/, '');
   };
 
-  useEffect(() => {
-    loadCategories();
-    loadProducts();
-
-    // Set up realtime subscription with proper cleanup
-    const channel = supabase
-      .channel('product-selection-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'products' },
-        () => {
-          console.log('Products table changed, reloading...');
-          loadProducts();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('Cleaning up product selection subscription...');
-      supabase.removeChannel(channel);
-    };
-  }, []); // Empty dependency array to prevent re-subscriptions
-
-  useEffect(() => {
-    loadProducts();
-  }, [searchQuery, selectedCategory]);
-
-  useEffect(() => {
-    if (products.length > 0) {
-      const productIds = products.map(p => p.id);
-      loadSpecialsForProducts(productIds);
-    }
-  }, [products, loadSpecialsForProducts]);
-
-  const loadCategories = async () => {
+  // Memoized functions to prevent unnecessary re-renders
+  const loadCategories = useCallback(async () => {
     const { data, error } = await supabase
       .from('product_categories')
       .select('*')
@@ -134,9 +107,9 @@ export function ProductSelectionStep({
     if (!error && data) {
       setCategories(data);
     }
-  };
+  }, []);
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     setLoading(true);
     let query = supabase
       .from('products')
@@ -148,8 +121,8 @@ export function ProductSelectionStep({
       .gt('stock_quantity', 0)
       .order('name');
 
-    if (searchQuery) {
-      query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%`);
+    if (debouncedSearchQuery) {
+      query = query.or(`name.ilike.%${debouncedSearchQuery}%,description.ilike.%${debouncedSearchQuery}%,sku.ilike.%${debouncedSearchQuery}%`);
     }
 
     if (selectedCategory && selectedCategory !== "all") {
@@ -167,19 +140,78 @@ export function ProductSelectionStep({
       setProducts(productsWithImages);
     }
     setLoading(false);
-  };
+  }, [debouncedSearchQuery, selectedCategory]);
 
-  const getProductPrice = (product: Product) => {
+  const loadSpecialsForProductsBatched = useCallback(async (productIds: string[]) => {
+    if (productIds.length === 0 || specialsLoading) return;
+    
+    setSpecialsLoading(true);
+    try {
+      await loadSpecialsForProducts(productIds);
+    } finally {
+      setSpecialsLoading(false);
+    }
+  }, [loadSpecialsForProducts, specialsLoading]);
+
+  // Load categories and set up realtime subscription on mount
+  useEffect(() => {
+    loadCategories();
+
+    // Set up realtime subscription with proper cleanup
+    const channel = supabase
+      .channel('product-selection-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'products' },
+        () => {
+          console.log('Products table changed, reloading...');
+          loadProducts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up product selection subscription...');
+      supabase.removeChannel(channel);
+    };
+  }, [loadCategories, loadProducts]);
+
+  // Load products when search or category changes
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
+  // Load specials when products change
+  useEffect(() => {
+    if (products.length > 0) {
+      const productIds = products.map(p => p.id);
+      loadSpecialsForProductsBatched(productIds);
+    }
+  }, [products, loadSpecialsForProductsBatched]);
+
+
+  const getProductPrice = useCallback((product: Product) => {
     // Apply special pricing if available
     return hasActiveSpecial(product.id) ? applySpecialDiscount(product.price, product.id) : product.price;
-  };
+  }, [hasActiveSpecial, applySpecialDiscount]);
 
-  const addToCart = (product: Product) => {
+  const addToCart = useCallback((product: Product) => {
     const existingItem = cart.find(item => item.product.id === product.id);
     const price = getProductPrice(product);
     
     if (existingItem) {
-      updateQuantity(product.id, existingItem.quantity + 0.25);
+      const finalQuantity = Math.max(0.25, existingItem.quantity + 0.25);
+      const updatedCart = cart.map(item => {
+        if (item.product.id === product.id) {
+          return { 
+            ...item, 
+            quantity: finalQuantity, 
+            unit_price: price,
+            total_price: price * finalQuantity 
+          };
+        }
+        return item;
+      });
+      onCartUpdate(updatedCart);
     } else {
       const newItem: CartItem = {
         product,
@@ -189,9 +221,9 @@ export function ProductSelectionStep({
       };
       onCartUpdate([...cart, newItem]);
     }
-  };
+  }, [cart, getProductPrice, onCartUpdate]);
 
-  const updateQuantity = (productId: string, newQuantity: number) => {
+  const updateQuantity = useCallback((productId: string, newQuantity: number) => {
     // Set minimum quantity to 0.25 instead of removing
     const finalQuantity = Math.max(0.25, newQuantity);
 
@@ -208,7 +240,7 @@ export function ProductSelectionStep({
       return item;
     });
     onCartUpdate(updatedCart);
-  };
+  }, [cart, getProductPrice, onCartUpdate]);
 
   const removeFromCart = (productId: string) => {
     onCartUpdate(cart.filter(item => item.product.id !== productId));
@@ -258,10 +290,10 @@ export function ProductSelectionStep({
     setAdjustmentValue("");
   };
 
-  const getCartQuantity = (productId: string) => {
+  const getCartQuantity = useCallback((productId: string) => {
     const item = cart.find(item => item.product.id === productId);
     return item ? item.quantity : 0;
-  };
+  }, [cart]);
 
   const grandTotal = subtotal + adjustments;
 
