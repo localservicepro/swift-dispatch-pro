@@ -47,7 +47,7 @@ export function ProductReplacementDialog({
         query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%`);
       }
 
-      const { data, error } = await query.limit(20);
+      const { data, error } = await query.limit(50);
       
       if (error) throw error;
       setProducts(data || []);
@@ -135,44 +135,49 @@ export function ProductReplacementDialog({
                 {searchTerm ? 'No products found matching your search' : 'No products available'}
               </div>
             ) : (
-              <div className="space-y-2">
-                {products.map((product) => (
-                  <div
-                    key={product.id}
-                    onClick={() => setSelectedProduct(product)}
-                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                      selectedProduct?.id === product.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium text-sm">{product.name}</p>
-                          {product.category && (
-                            <Badge variant="secondary" className="text-xs">
-                              {product.category.name}
-                            </Badge>
+              <>
+                <div className="text-sm text-gray-600 mb-2 px-1">
+                  Showing {products.length} product{products.length !== 1 ? 's' : ''} {searchTerm && `for "${searchTerm}"`}
+                </div>
+                <div className="space-y-2">
+                  {products.map((product) => (
+                    <div
+                      key={product.id}
+                      onClick={() => setSelectedProduct(product)}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        selectedProduct?.id === product.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-sm">{product.name}</p>
+                            {product.category && (
+                              <Badge variant="secondary" className="text-xs">
+                                {product.category.name}
+                              </Badge>
+                            )}
+                          </div>
+                          {product.description && (
+                            <p className="text-xs text-gray-600 mb-2">{product.description}</p>
                           )}
-                        </div>
-                        {product.description && (
-                          <p className="text-xs text-gray-600 mb-2">{product.description}</p>
-                        )}
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-green-600">
-                            ${product.price.toFixed(2)}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            {product.sku && <span>SKU: {product.sku}</span>}
-                            <span>Stock: {product.stock_quantity}</span>
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-green-600">
+                              ${product.price.toFixed(2)}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              {product.sku && <span>SKU: {product.sku}</span>}
+                              <span>Stock: {product.stock_quantity}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 

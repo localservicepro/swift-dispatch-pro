@@ -44,7 +44,7 @@ export function AddProductToSplitDialog({
         query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%`);
       }
 
-      const { data, error } = await query.limit(20);
+      const { data, error } = await query.limit(50);
       
       if (error) throw error;
       setProducts(data || []);
@@ -117,6 +117,10 @@ export function AddProductToSplitDialog({
                 {searchTerm ? 'No products found matching your search' : 'No products available'}
               </div>
             ) : (
+              <>
+                <div className="text-sm text-gray-600 mb-2 px-1">
+                  Showing {products.length} product{products.length !== 1 ? 's' : ''} {searchTerm && `for "${searchTerm}"`}
+                </div>
               <div className="space-y-2">
                 {products.map((product) => {
                   const existingQuantity = getExistingProductQuantity(product.id);
@@ -163,6 +167,7 @@ export function AddProductToSplitDialog({
                   );
                 })}
               </div>
+              </>
             )}
           </div>
 
