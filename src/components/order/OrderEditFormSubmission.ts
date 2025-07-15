@@ -74,6 +74,11 @@ export function useOrderFormSubmission() {
         truck_type: submissionData.truck_type === 'none' ? null : submissionData.truck_type as TruckType,
         truck_id: submissionData.truck_id === 'none' ? null : submissionData.truck_id,
         delivery_suburb_id: submissionData.delivery_suburb_id || null,
+        // Add contact fields that were missing
+        contact_id: submissionData.contact_id || null,
+        contact_name: submissionData.contact_name || null,
+        contact_email: submissionData.contact_email || null,
+        contact_phone: submissionData.contact_phone || null,
         updated_at: new Date().toISOString(),
       };
 
