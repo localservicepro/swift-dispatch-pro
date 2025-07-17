@@ -85,7 +85,7 @@ export function ProductEditSection({
       query = query.eq('category_id', selectedCategory);
     }
 
-    const { data, error } = await query.limit(200);
+    const { data, error } = await query.limit(1000);
 
     if (!error && data) {
       const productsWithImages = data.map(product => ({
@@ -342,7 +342,9 @@ export function ProductEditSection({
 
               {!loading && (
                 <div className="text-sm text-gray-600 mb-2">
-                  Showing {products.length} product{products.length !== 1 ? 's' : ''} {searchQuery && `for "${searchQuery}"`}
+                  Showing {products.length} product{products.length !== 1 ? 's' : ''} 
+                  {products.length === 1000 && ' (maximum limit reached)'} 
+                  {searchQuery && ` for "${searchQuery}"`}
                 </div>
               )}
 

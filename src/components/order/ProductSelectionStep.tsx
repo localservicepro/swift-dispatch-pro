@@ -129,7 +129,7 @@ export function ProductSelectionStep({
       query = query.eq('category_id', selectedCategory);
     }
 
-    const { data, error } = await query.limit(200);
+    const { data, error } = await query.limit(1000);
 
     if (!error && data) {
       // Ensure images array exists for each product
@@ -338,7 +338,9 @@ export function ProductSelectionStep({
 
             {!loading && (
               <div className="text-sm text-gray-600 mb-2">
-                Showing {products.length} product{products.length !== 1 ? 's' : ''} {searchQuery && `for "${searchQuery}"`}
+                Showing {products.length} product{products.length !== 1 ? 's' : ''} 
+                {products.length === 1000 && ' (maximum limit reached)'} 
+                {searchQuery && ` for "${searchQuery}"`}
               </div>
             )}
 
