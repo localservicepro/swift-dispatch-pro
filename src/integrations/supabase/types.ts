@@ -2053,6 +2053,10 @@ export type Database = {
         Args: { p_master_order_data: Json; p_split_orders: Json[] }
         Returns: string[]
       }
+      create_stock_split_order: {
+        Args: { p_order_id: string }
+        Returns: string[]
+      }
       deduct_inventory: {
         Args: { order_id_param: string }
         Returns: undefined
@@ -2105,6 +2109,10 @@ export type Database = {
       get_truck_display_info: {
         Args: { truck_type_param: Database["public"]["Enums"]["truck_type"] }
         Returns: string
+      }
+      has_mixed_stock_availability: {
+        Args: { order_id_param: string }
+        Returns: boolean
       }
       is_current_user_admin: {
         Args: Record<PropertyKey, never>

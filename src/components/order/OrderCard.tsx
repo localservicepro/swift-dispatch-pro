@@ -4,8 +4,12 @@ import { PurchaseOrderDisplay } from "./PurchaseOrderDisplay";
 import { NotesIndicator } from "../notes/NotesIndicator";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { PaymentStatusDropdown } from "../opportunity/PaymentStatusDropdown";
-import { MapPin, Truck, Edit3, Trash2, Building, User } from "lucide-react";
+import { MixedStockBadge } from "./MixedStockBadge";
+import { StockSplitDialog } from "./StockSplitDialog";
+import { useStockStatus } from "@/hooks/useStockStatus";
+import { MapPin, Truck, Edit3, Trash2, Building, User, Package } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
+import { useState } from "react";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -59,6 +63,8 @@ interface OrderCardProps {
 }
 
 export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit, onPaymentStatusUpdate }: OrderCardProps) {
+  const [showStockSplitDialog, setShowStockSplitDialog] = useState(false);
+  const { hasMixedStock } = useStockStatus(order.id);
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
       case "delivered":
@@ -188,6 +194,7 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
             onStatusUpdate={() => onPaymentStatusUpdate?.()} 
           />
           <PurchaseOrderDisplay purchaseOrder={order.purchase_order} variant="secondary" />
+          {hasMixedStock && <MixedStockBadge size="sm" />}
           <NotesIndicator 
             orderNotes={order.order_notes} 
             deliveryNotes={order.delivery_notes} 
@@ -282,6 +289,18 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           Edit
         </Button>
         
+        {hasMixedStock && order.status !== 'back_order' && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowStockSplitDialog(true)}
+            className="text-amber-600 border-amber-200 hover:bg-amber-50"
+          >
+            <Package className="w-4 h-4 mr-1" />
+            Handle Stock
+          </Button>
+        )}
+        
         {/* Quick status update buttons for admin */}
         {order.status === 'preparing' && (
           <Button
@@ -335,6 +354,14 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           Delete
         </Button>
       </div>
+      
+      {/* Stock Split Dialog */}
+      <StockSplitDialog
+        isOpen={showStockSplitDialog}
+        onClose={() => setShowStockSplitDialog(false)}
+        order={order}
+        onSplitComplete={() => onPaymentStatusUpdate?.()}
+      />
     </div>
   );
 }
