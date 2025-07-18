@@ -5,8 +5,6 @@ import { Eye, Edit3, Camera, Package } from "lucide-react";
 import { PaymentStatusDropdown } from "./PaymentStatusDropdown";
 import { NotesIndicator } from "../notes/NotesIndicator";
 import { PurchaseOrderDisplay } from "../order/PurchaseOrderDisplay";
-import { MixedStockBadge } from "../order/MixedStockBadge";
-import { useStockStatus } from "@/hooks/useStockStatus";
 
 interface OpportunityCardHeaderProps {
   order: any;
@@ -15,7 +13,6 @@ interface OpportunityCardHeaderProps {
   onOrderMove: () => void;
   onNotesEdit: (e: React.MouseEvent) => void;
   onViewProof: (e: React.MouseEvent) => void;
-  onStockSplit?: (e: React.MouseEvent) => void;
 }
 
 export function OpportunityCardHeader({ 
@@ -24,10 +21,8 @@ export function OpportunityCardHeader({
   hasDeliveryPhotos, 
   onOrderMove, 
   onNotesEdit, 
-  onViewProof,
-  onStockSplit
+  onViewProof 
 }: OpportunityCardHeaderProps) {
-  const { hasMixedStock } = useStockStatus(order.id);
   return (
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-2">
@@ -43,7 +38,6 @@ export function OpportunityCardHeader({
           variant="secondary"
           showIcon={false}
         />
-        {hasMixedStock && <MixedStockBadge size="sm" />}
         <Eye className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
         <NotesIndicator 
           orderNotes={order.order_notes}
@@ -54,18 +48,6 @@ export function OpportunityCardHeader({
       </div>
       <div className="flex items-center gap-2">
         <PaymentStatusDropdown order={order} onStatusUpdate={onOrderMove} />
-        {/* Stock Split Button for Mixed Stock Orders */}
-        {hasMixedStock && currentStage !== 'delivered' && order.status !== 'back_order' && onStockSplit && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onStockSplit}
-            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Handle Mixed Stock"
-          >
-            <Package className="w-3 h-3 text-amber-600" />
-          </Button>
-        )}
         {/* View Proof Button for Delivered Orders */}
         {currentStage === 'delivered' && hasDeliveryPhotos && (
           <Button

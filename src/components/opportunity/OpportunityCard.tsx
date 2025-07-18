@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { NotesEditDialog } from "../notes/NotesEditDialog";
 import { ProofOfDeliveryDialog } from "../order/ProofOfDeliveryDialog";
-import { StockSplitDialog } from "../order/StockSplitDialog";
 import { useDeliveryPhotos } from "@/hooks/useDeliveryPhotos";
 import { OpportunityCardHeader } from "./OpportunityCardHeader";
 import { OpportunityCardInfo } from "./OpportunityCardInfo";
@@ -25,7 +24,6 @@ interface OpportunityCardProps {
 export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick }: OpportunityCardProps) {
   const [showNotesEdit, setShowNotesEdit] = useState(false);
   const [showProofDialog, setShowProofDialog] = useState(false);
-  const [showStockSplitDialog, setShowStockSplitDialog] = useState(false);
 
   // Fetch delivery photos for delivered orders
   const { data: deliveryPhotos } = useDeliveryPhotos(
@@ -56,11 +54,6 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
     setShowProofDialog(true);
   };
 
-  const handleStockSplit = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowStockSplitDialog(true);
-  };
-
   return (
     <>
       <Card 
@@ -82,7 +75,6 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
             onOrderMove={onOrderMove}
             onNotesEdit={handleNotesEdit}
             onViewProof={handleViewProof}
-            onStockSplit={handleStockSplit}
           />
 
           {/* Order Information */}
@@ -143,14 +135,6 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
         onClose={() => setShowProofDialog(false)}
         orderId={order.id}
         orderNumber={order.order_number}
-      />
-
-      {/* Stock Split Dialog */}
-      <StockSplitDialog
-        isOpen={showStockSplitDialog}
-        onClose={() => setShowStockSplitDialog(false)}
-        order={order}
-        onSplitComplete={onOrderMove}
       />
     </>
   );
