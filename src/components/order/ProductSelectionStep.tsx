@@ -118,7 +118,6 @@ export function ProductSelectionStep({
         category:product_categories(name)
       `)
       .eq('is_active', true)
-      .gt('stock_quantity', 0)
       .order('name');
 
     if (debouncedSearchQuery) {
@@ -394,7 +393,9 @@ export function ProductSelectionStep({
                             AU${currentPrice.toFixed(2)}
                           </div>
                         )}
-                        <div className="text-xs text-gray-500">Stock: {product.stock_quantity}</div>
+                        <div className={`text-xs ${product.stock_quantity <= 0 ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                          Stock: {product.stock_quantity <= 0 ? 'Out of Stock' : product.stock_quantity}
+                        </div>
                       </div>
                     </div>
 

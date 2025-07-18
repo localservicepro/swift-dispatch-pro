@@ -74,7 +74,6 @@ export function ProductEditSection({
         category:product_categories(name)
       `)
       .eq('is_active', true)
-      .gt('stock_quantity', 0)
       .order('name');
 
     if (searchQuery) {
@@ -362,7 +361,14 @@ export function ProductEditSection({
                       </div>
                       <div className="text-right">
                         <div className="font-semibold text-green-600">${product.price.toFixed(2)}</div>
-                        <div className="text-xs text-gray-500">Stock: {formatQuantity(product.stock_quantity)}</div>
+                        <div className={`text-xs ${product.stock_quantity <= 0 ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                          Stock: {product.stock_quantity <= 0 ? 'Out of Stock' : formatQuantity(product.stock_quantity)}
+                        </div>
+                        {product.stock_quantity <= 0 && (
+                          <Badge variant="outline" className="text-xs text-red-600 border-red-300 mt-1">
+                            Back Order Available
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     
