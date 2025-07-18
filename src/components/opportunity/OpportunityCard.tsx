@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { NotesEditDialog } from "../notes/NotesEditDialog";
 import { ProofOfDeliveryDialog } from "../order/ProofOfDeliveryDialog";
@@ -11,6 +12,7 @@ import { OpportunityCardActionButton } from "./OpportunityCardActionButton";
 import { OpportunityCardCompleted } from "./OpportunityCardCompleted";
 import { getCustomerTypeColors } from "@/utils/customerTypeColors";
 import { cn } from "@/lib/utils";
+import { Package, AlertTriangle } from "lucide-react";
 
 interface OpportunityCardProps {
   order: any;

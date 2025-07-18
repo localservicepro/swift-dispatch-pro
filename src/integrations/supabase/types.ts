@@ -2031,6 +2031,16 @@ export type Database = {
         }
         Returns: number
       }
+      check_stock_availability: {
+        Args: { order_items: Json }
+        Returns: {
+          product_id: string
+          product_name: string
+          requested_quantity: number
+          available_stock: number
+          is_sufficient: boolean
+        }[]
+      }
       create_driver: {
         Args: { driver_id: string; driver_name: string; driver_license: string }
         Returns: undefined
@@ -2042,6 +2052,14 @@ export type Database = {
       create_split_order: {
         Args: { p_master_order_data: Json; p_split_orders: Json[] }
         Returns: string[]
+      }
+      deduct_inventory: {
+        Args: { order_id_param: string }
+        Returns: undefined
+      }
+      determine_order_status: {
+        Args: { order_items: Json }
+        Returns: Database["public"]["Enums"]["order_status"]
       }
       format_products_text: {
         Args: { products_json: Json }
@@ -2055,6 +2073,25 @@ export type Database = {
           discount_type: Database["public"]["Enums"]["discount_type"]
           discount_value: number
           end_date: string
+        }[]
+      }
+      get_back_order_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          product_id: string
+          product_name: string
+          total_back_ordered: number
+          current_stock: number
+          orders_count: number
+        }[]
+      }
+      get_low_stock_products: {
+        Args: { threshold?: number }
+        Returns: {
+          product_id: string
+          product_name: string
+          current_stock: number
+          category_name: string
         }[]
       }
       get_product_price: {
@@ -2084,6 +2121,10 @@ export type Database = {
           p_description?: string
         }
         Returns: string
+      }
+      restore_inventory: {
+        Args: { order_id_param: string }
+        Returns: undefined
       }
       restore_order: {
         Args: { p_order_id: string }

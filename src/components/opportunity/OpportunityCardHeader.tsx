@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
-import { Eye, Edit3, Camera } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Eye, Edit3, Camera, Package } from "lucide-react";
 import { PaymentStatusDropdown } from "./PaymentStatusDropdown";
 import { NotesIndicator } from "../notes/NotesIndicator";
 import { PurchaseOrderDisplay } from "../order/PurchaseOrderDisplay";
@@ -26,6 +27,12 @@ export function OpportunityCardHeader({
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-2">
         <h3 className="font-semibold text-slate-800 text-sm">{order.order_number}</h3>
+        {order.status === 'back_order' && (
+          <Badge variant="outline" className="text-xs text-amber-700 border-amber-300 bg-amber-50">
+            <Package className="w-3 h-3 mr-1" />
+            Back Order
+          </Badge>
+        )}
         <PurchaseOrderDisplay 
           purchaseOrder={order.purchase_order}
           variant="secondary"

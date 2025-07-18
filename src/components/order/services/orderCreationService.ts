@@ -56,11 +56,34 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       throw new Error('Payment settings not found. Please configure payment settings first.');
     }
 
+    // Serialize cart items for database storage and stock checking
+    const serializedProducts = serializeCartItemsWithFormatting(params.cart);
+
+    // Check stock availability before creating order
+    const { data: stockAvailability, error: stockError } = await supabase
+      .rpc('check_stock_availability', { order_items: serializedProducts });
+
+    if (stockError) {
+      console.error('Error checking stock availability:', stockError);
+      // Don't throw error - continue with order creation but log the issue
+      console.warn('Proceeding with order creation despite stock check failure');
+    }
+
+    // Determine appropriate order status based on stock availability
+    const { data: orderStatus, error: statusError } = await supabase
+      .rpc('determine_order_status', { order_items: serializedProducts });
+
+    if (statusError) {
+      console.error('Error determining order status:', statusError);
+      console.warn('Defaulting to requested status');
+    }
+
+    const finalStatus = orderStatus || 'requested';
+    console.log('Stock availability check:', stockAvailability);
+    console.log('Determined order status:', finalStatus);
+
     // Generate unique order number
     const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random()* 1000)}`;
-
-    // Serialize cart items for database storage - the trigger will automatically create products_formatted
-    const serializedProducts = serializeCartItemsWithFormatting(params.cart);
 
     const orderData = {
       order_number: orderNumber,
@@ -90,7 +113,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       delivery_notes: params.deliveryNotes,
       purchase_order: params.purchaseOrder,
       payment_method: params.paymentMethod,
-      status: 'requested' as const,
+      status: finalStatus, // Use dynamically determined status
       is_split_order: false,
       payment_status: 'pending'
       // Note: driver_name, truck_registration, truck_type_display will be automatically populated by the database trigger
@@ -114,7 +137,9 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
     return {
       type: 'single' as const,
       orderNumber: order.order_number,
-      orderId: order.id
+      orderId: order.id,
+      stockAvailability: stockAvailability || [],
+      isBackOrder: finalStatus === 'back_order'
     };
   } catch (error: any) {
     console.error('Error in createSingleOrder:', error);
