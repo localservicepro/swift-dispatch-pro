@@ -8,7 +8,8 @@ import {
   Truck,
   Clock,
   CalendarDays,
-  Building
+  Building,
+  Package
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { formatDeliveryDate, formatDeliveryTime, formatCreatedDate, formatCreatedTime } from "@/utils/dateTimeUtils";
@@ -85,6 +86,21 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
 
   const { displayName, contactInfo, contactPhone, isCompany } = getDisplayInfo();
 
+  // Get first product info
+  const getFirstProductInfo = () => {
+    if (!order.products || !Array.isArray(order.products) || order.products.length === 0) {
+      return null;
+    }
+    
+    const firstProduct = order.products[0];
+    const productName = firstProduct.name || firstProduct.product_name || 'Product';
+    const quantity = firstProduct.quantity || 1;
+    
+    return { productName, quantity };
+  };
+
+  const firstProduct = getFirstProductInfo();
+
   return (
     <>
       {/* Customer/Company Info */}
@@ -111,6 +127,21 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
         )}
       </div>
 
+      {/* First Product Info */}
+      {firstProduct && (
+        <div className="flex items-center gap-2 mb-3">
+          <Package className="w-3 h-3 text-slate-400" />
+          <div className="flex-1 min-w-0">
+            <span className="text-xs text-slate-600 truncate block">
+              {firstProduct.productName} (Qty: {firstProduct.quantity})
+            </span>
+          </div>
+          <button className="text-xs text-blue-600 hover:text-blue-800 underline whitespace-nowrap">
+            View Items
+          </button>
+        </div>
+      )}
+
       {/* Amount */}
       <div className="flex items-center gap-2 mb-3">
         <DollarSign className="w-4 h-4 text-green-600" />
@@ -133,15 +164,6 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
           </>
         )}
         
-        {/* Created Date - Always show */}
-        <div className="flex items-center gap-2">
-          <Calendar className="w-3 h-3" />
-          <span>Created: {formatCreatedDate(order.created_at)}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Clock className="w-3 h-3" />
-          <span>{formatCreatedTime(order.created_at)}</span>
-        </div>
         
         {/* Delivery Address - Show full address instead of just suburb */}
         {deliveryAddress && (
