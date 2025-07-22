@@ -56,6 +56,10 @@ export function useOpportunityData() {
           is_split_order,
           delivery_suburb_id,
           delivery_method,
+          contact_id,
+          contact_name,
+          contact_email,
+          contact_phone,
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
@@ -95,7 +99,12 @@ export function useOpportunityData() {
         customer_type: order.customers?.customer_type || null,
         driver_name: order.profiles?.full_name || 'Not Assigned',
         truck_registration: order.trucks?.registration_number || null,
-        truck_type_from_truck: order.trucks?.truck_type || order.truck_type
+        truck_type_from_truck: order.trucks?.truck_type || order.truck_type,
+        // Contact information from the order
+        contact_id: order.contact_id || null,
+        contact_name: order.contact_name || null,
+        contact_email: order.contact_email || null,
+        contact_phone: order.contact_phone || null
       })) || [];
 
       // Sort orders by delivery date and time (earliest first), then by creation time

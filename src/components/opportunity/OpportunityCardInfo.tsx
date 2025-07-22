@@ -24,12 +24,19 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
   // Get the delivery address to display
   const deliveryAddress = order.delivery_address || order.customer_address;
 
-  // Determine display name and company info
+  // Determine display name and contact info - prioritize selected contact over primary contact
   const getDisplayInfo = () => {
     // Check for company name (account customers)
     if (order.company_name) {
-      // Only set contactInfo if customer_name exists and is not null/empty
-      const hasValidContact = order.customer_name && 
+      // Prioritize selected contact information if available
+      const hasSelectedContact = order.contact_name && 
+        order.contact_name !== 'null null' && 
+        order.contact_name.trim() !== '' &&
+        order.contact_name !== 'null' &&
+        order.contact_name !== 'undefined';
+      
+      // Fall back to customer info if no selected contact
+      const hasValidCustomer = order.customer_name && 
         order.customer_name !== 'null null' && 
         order.customer_name.trim() !== '' &&
         order.customer_name !== 'null' &&
@@ -37,15 +44,23 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
       
       return {
         displayName: order.company_name,
-        contactInfo: hasValidContact ? order.customer_name : null,
+        contactInfo: hasSelectedContact ? order.contact_name : (hasValidCustomer ? order.customer_name : null),
+        contactPhone: order.contact_phone || order.customer_phone,
         isCompany: true
       };
     }
     
     // Check for business name (business customers)
     if (order.business_name) {
-      // Only set contactInfo if customer_name exists and is not null/empty
-      const hasValidContact = order.customer_name && 
+      // Prioritize selected contact information if available
+      const hasSelectedContact = order.contact_name && 
+        order.contact_name !== 'null null' && 
+        order.contact_name.trim() !== '' &&
+        order.contact_name !== 'null' &&
+        order.contact_name !== 'undefined';
+      
+      // Fall back to customer info if no selected contact
+      const hasValidCustomer = order.customer_name && 
         order.customer_name !== 'null null' && 
         order.customer_name.trim() !== '' &&
         order.customer_name !== 'null' &&
@@ -53,20 +68,22 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
       
       return {
         displayName: order.business_name,
-        contactInfo: hasValidContact ? order.customer_name : null,
+        contactInfo: hasSelectedContact ? order.contact_name : (hasValidCustomer ? order.customer_name : null),
+        contactPhone: order.contact_phone || order.customer_phone,
         isCompany: true
       };
     }
     
-    // Default to customer name
+    // Default to customer name (individual customers)
     return {
-      displayName: order.customer_name,
+      displayName: order.contact_name || order.customer_name,
       contactInfo: null,
+      contactPhone: order.contact_phone || order.customer_phone,
       isCompany: false
     };
   };
 
-  const { displayName, contactInfo, isCompany } = getDisplayInfo();
+  const { displayName, contactInfo, contactPhone, isCompany } = getDisplayInfo();
 
   return (
     <>
@@ -86,10 +103,10 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
             <span>Contact: {contactInfo}</span>
           </div>
         )}
-        {order.customer_phone && (
+        {contactPhone && (
           <div className="flex items-center gap-2 text-xs text-slate-600">
             <Phone className="w-3 h-3" />
-            <span>{order.customer_phone}</span>
+            <span>{contactPhone}</span>
           </div>
         )}
       </div>

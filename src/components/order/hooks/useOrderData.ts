@@ -1,3 +1,4 @@
+
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +44,10 @@ interface Order {
   company_name?: string;
   business_name?: string;
   customer_type?: string;
+  contact_id?: string;
+  contact_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
 }
 
 export function useOrderData() {
@@ -84,6 +89,10 @@ export function useOrderData() {
           truck_type_display,
           delivery_suburb_id,
           deleted_at,
+          contact_id,
+          contact_name,
+          contact_email,
+          contact_phone,
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
@@ -126,7 +135,12 @@ export function useOrderData() {
           customer_type: order.customers?.customer_type || null,
           driver_name: order.driver_name || 'Not Assigned',
           truck_registration: order.truck_registration || null,
-          truck_type_display: order.truck_type_display || null
+          truck_type_display: order.truck_type_display || null,
+          // Contact information from the order
+          contact_id: order.contact_id || null,
+          contact_name: order.contact_name || null,
+          contact_email: order.contact_email || null,
+          contact_phone: order.contact_phone || null
         };
       }) || [];
 
@@ -151,7 +165,9 @@ export function useFilteredOrders(orders: Order[], searchQuery: string, statusFi
         (order.customer_phone && order.customer_phone.toLowerCase().includes(query)) ||
         (order.purchase_order && order.purchase_order.toLowerCase().includes(query)) ||
         (order.company_name && order.company_name.toLowerCase().includes(query)) ||
-        (order.business_name && order.business_name.toLowerCase().includes(query))
+        (order.business_name && order.business_name.toLowerCase().includes(query)) ||
+        (order.contact_name && order.contact_name.toLowerCase().includes(query)) ||
+        (order.contact_phone && order.contact_phone.toLowerCase().includes(query))
       );
     }
 
