@@ -8,7 +8,17 @@ export interface CustomerTypeColors {
   leftBorder: string;
 }
 
-export const getCustomerTypeColors = (customerType?: string | null): CustomerTypeColors => {
+export const getCustomerTypeColors = (customerType?: string | null, paymentStatus?: string | null): CustomerTypeColors => {
+  // If payment is pending, override with red highlighting
+  if (paymentStatus === 'pending') {
+    return {
+      card: 'bg-red-50',
+      border: 'border-red-200',
+      hoverBorder: 'hover:border-red-300',
+      leftBorder: 'border-l-4 border-l-red-500'
+    };
+  }
+
   const normalizedType = customerType?.toLowerCase() as CustomerType;
   
   switch (normalizedType) {

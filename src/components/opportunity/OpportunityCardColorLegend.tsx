@@ -1,6 +1,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { getCustomerTypeColors, getCustomerTypeLabel } from "@/utils/customerTypeColors";
+import { AlertTriangle } from "lucide-react";
 
 export function OpportunityCardColorLegend() {
   const customerTypes = ['account', 'trade', 'residential'] as const;
@@ -21,6 +22,13 @@ export function OpportunityCardColorLegend() {
           </div>
         );
       })}
+      
+      {/* Payment Status Indicator */}
+      <div className="flex items-center gap-1 ml-2">
+        <div className="w-3 h-3 rounded border bg-red-50 border-red-200" />
+        <AlertTriangle className="w-3 h-3 text-red-500" />
+        <span>Payment Pending</span>
+      </div>
     </div>
   );
 }

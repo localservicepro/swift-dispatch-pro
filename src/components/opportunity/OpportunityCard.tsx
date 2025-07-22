@@ -31,8 +31,8 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
   );
   const hasDeliveryPhotos = deliveryPhotos && deliveryPhotos.length > 0;
 
-  // Get customer type colors
-  const colors = getCustomerTypeColors(order.customer_type);
+  // Get customer type colors, passing payment status for red highlighting
+  const colors = getCustomerTypeColors(order.customer_type, order.payment_status);
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't trigger card click if clicking on action buttons, payment dropdown, or notes edit
@@ -67,6 +67,14 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
         onClick={handleCardClick}
       >
         <CardContent className="p-4">
+          {/* Payment Status Warning for pending payments */}
+          {order.payment_status === 'pending' && (
+            <div className="mb-3 flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded p-2">
+              <AlertTriangle className="w-4 h-4" />
+              <span className="text-xs font-medium">Payment Pending</span>
+            </div>
+          )}
+
           {/* Header */}
           <OpportunityCardHeader
             order={order}

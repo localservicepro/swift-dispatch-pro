@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -25,14 +24,6 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
   };
 
   const getNextStageAction = (current: string) => {
-    if (current === 'requested' && order.payment_status === 'pending') {
-      const customerType = order.customers?.customer_type || order.customer_type;
-      if (customerType === 'account') {
-        return 'Confirm Order';
-      }
-      return 'Awaiting Payment';
-    }
-    
     switch (current) {
       case 'requested': return 'Confirm Order';
       case 'preparing': return 'Start Loading';
@@ -42,30 +33,9 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
     }
   };
 
-  const canMoveToNextStage = (current: string) => {
-    if (current === 'requested' && order.payment_status === 'pending') {
-      // Account customers can proceed without upfront payment (they're billed monthly)
-      const customerType = order.customers?.customer_type || order.customer_type;
-      if (customerType === 'account') {
-        return true;
-      }
-      return false;
-    }
-    return true;
-  };
-
   const moveToNextStage = async () => {
     const nextStage = getNextStage(currentStage);
     if (!nextStage || isMoving) return;
-
-    if (!canMoveToNextStage(currentStage)) {
-      toast({
-        title: "Payment Required",
-        description: `Order ${order.order_number} requires payment confirmation before it can be processed`,
-        variant: "destructive",
-      });
-      return;
-    }
 
     setIsMoving(true);
     try {
@@ -73,10 +43,10 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
       
       switch (nextStage) {
         case 'preparing':
-          const customerType = order.customers?.customer_type || order.customer_type;
+          // Always allow progression to preparing, keeping payment status as is
           updateData = { 
-            payment_status: customerType === 'account' ? 'pending' : 'paid',
             status: 'preparing'
+            // Don't modify payment_status - it stays as 'pending' if not paid
           };
           break;
         case 'loading':
@@ -101,25 +71,14 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
       if (error) throw error;
 
       if (profile?.full_name) {
-        if (nextStage === 'preparing') {
-          await activityLogger.orderStatusUpdate(
-            order.id,
-            order.order_number,
-            order.customer_name,
-            'requested',
-            'preparing',
-            profile.full_name
-          );
-        } else {
-          await activityLogger.orderStatusUpdate(
-            order.id,
-            order.order_number,
-            order.customer_name,
-            order.status,
-            updateData.status,
-            profile.full_name
-          );
-        }
+        await activityLogger.orderStatusUpdate(
+          order.id,
+          order.order_number,
+          order.customer_name,
+          currentStage,
+          updateData.status,
+          profile.full_name
+        );
       }
 
       const actionText = getNextStageAction(currentStage);
@@ -141,7 +100,6 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
   };
 
   const nextAction = getNextStageAction(currentStage);
-  const canMove = canMoveToNextStage(currentStage);
 
   if (!nextAction || currentStage === 'delivered') {
     return null;
@@ -150,17 +108,12 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
   return (
     <Button
       size="sm"
-      onClick={canMove ? moveToNextStage : undefined}
-      disabled={isMoving || !canMove}
-      className={`w-full flex items-center gap-2 text-xs ${
-        !canMove ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border border-yellow-300' : ''
-      }`}
-      variant={!canMove ? 'outline' : 'default'}
+      onClick={moveToNextStage}
+      disabled={isMoving}
+      className="w-full flex items-center gap-2 text-xs"
     >
       {currentStage === 'delivered' ? (
         <CheckCircle className="w-3 h-3" />
-      ) : !canMove ? (
-        <Clock className="w-3 h-3" />
       ) : (
         <ArrowRight className="w-3 h-3" />
       )}
