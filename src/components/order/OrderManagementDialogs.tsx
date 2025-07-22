@@ -1,4 +1,3 @@
-
 import { MultiStepOrderForm } from "./MultiStepOrderForm";
 import { OrderEditDialog } from "./OrderEditDialog";
 import { EnhancedDeleteOrderDialog } from "./EnhancedDeleteOrderDialog";
@@ -25,6 +24,7 @@ export function OrderManagementDialogs() {
 
   const handleOrderCreated = () => {
     refetch();
+    setIsCreating(false); // Auto-close the dialog
     toast({
       title: "Success",
       description: "Order created successfully!"
