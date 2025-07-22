@@ -1,11 +1,14 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, Star, AlertCircle } from "lucide-react";
+import { User, Star, AlertCircle, Plus } from "lucide-react";
+import { AddContactDialog } from "./AddContactDialog";
 
 interface Contact {
   id: string;
@@ -41,6 +44,7 @@ export function ContactSelector({
 }: ContactSelectorProps) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -95,6 +99,14 @@ export function ContactSelector({
     }
   };
 
+  const handleContactAdded = (newContact: SelectedContact) => {
+    // Refresh contacts list
+    loadContacts();
+    
+    // Automatically select the new contact
+    onContactSelect(newContact);
+  };
+
   const formatContactDisplay = (contact: Contact) => {
     const name = `${contact.first_name} ${contact.last_name}`;
     const role = contact.contact_role || 'Contact';
@@ -105,83 +117,125 @@ export function ContactSelector({
     return (
       <Card className="border-amber-200 bg-amber-50">
         <CardContent className="pt-4">
-          <div className="flex items-center gap-2 text-amber-700">
-            <AlertCircle className="w-4 h-4" />
-            <span className="text-sm">
-              No contacts found for this company. Order will be created without a specific contact.
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-700">
+              <AlertCircle className="w-4 h-4" />
+              <span className="text-sm">
+                No contacts found for this company.
+              </span>
+            </div>
+            <Button
+              onClick={() => setShowAddDialog(true)}
+              size="sm"
+              className="flex items-center gap-1"
+              disabled={disabled}
+            >
+              <Plus className="w-3 h-3" />
+              Add Contact
+            </Button>
           </div>
+          <p className="text-xs text-amber-600 mt-2">
+            Add a contact to assign them to this order.
+          </p>
         </CardContent>
+
+        <AddContactDialog
+          open={showAddDialog}
+          onOpenChange={setShowAddDialog}
+          customerId={customerId}
+          onContactAdded={handleContactAdded}
+        />
       </Card>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <User className="w-4 h-4" />
-          Select Contact
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div>
-          <Label htmlFor="contact-select">Company Contact</Label>
-          <Select
-            value={selectedContact?.id || "none"}
-            onValueChange={handleContactChange}
-            disabled={disabled || loading}
-          >
-            <SelectTrigger id="contact-select">
-              <SelectValue placeholder={loading ? "Loading contacts..." : "Select a contact (optional)"} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No specific contact</SelectItem>
-              {contacts.map((contact) => (
-                <SelectItem key={contact.id} value={contact.id}>
-                  <div className="flex items-center gap-2 w-full">
-                    <span>{formatContactDisplay(contact)}</span>
-                    {contact.is_primary_contact && (
-                      <Star className="w-3 h-3 text-amber-500 fill-current" />
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {selectedContact && (
-          <div className="border rounded-lg p-3 bg-green-50">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-green-800">{selectedContact.name}</h4>
-              {contacts.find(c => c.id === selectedContact.id)?.is_primary_contact && (
-                <Badge variant="secondary" className="text-xs">
-                  <Star className="w-3 h-3 mr-1" />
-                  Primary
-                </Badge>
-              )}
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4" />
+              Select Contact
             </div>
-            <div className="space-y-1 text-sm text-green-700">
-              {selectedContact.role && (
-                <div>Role: {selectedContact.role}</div>
-              )}
-              {selectedContact.email && (
-                <div>Email: {selectedContact.email}</div>
-              )}
-              {selectedContact.phone && (
-                <div>Phone: {selectedContact.phone}</div>
-              )}
-            </div>
+            <Button
+              onClick={() => setShowAddDialog(true)}
+              size="sm"
+              variant="outline"
+              className="flex items-center gap-1"
+              disabled={disabled || loading}
+            >
+              <Plus className="w-3 h-3" />
+              Add Contact
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label htmlFor="contact-select">Company Contact</Label>
+            <Select
+              value={selectedContact?.id || "none"}
+              onValueChange={handleContactChange}
+              disabled={disabled || loading}
+            >
+              <SelectTrigger id="contact-select">
+                <SelectValue placeholder={loading ? "Loading contacts..." : "Select a contact (optional)"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No specific contact</SelectItem>
+                {contacts.map((contact) => (
+                  <SelectItem key={contact.id} value={contact.id}>
+                    <div className="flex items-center gap-2 w-full">
+                      <span>{formatContactDisplay(contact)}</span>
+                      {contact.is_primary_contact && (
+                        <Star className="w-3 h-3 text-amber-500 fill-current" />
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
 
-        {contacts.length > 0 && !selectedContact && (
-          <p className="text-xs text-gray-500">
-            Selecting a contact is optional. Primary contacts are marked with a star.
-          </p>
-        )}
-      </CardContent>
-    </Card>
+          {selectedContact && (
+            <div className="border rounded-lg p-3 bg-green-50">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-green-800">{selectedContact.name}</h4>
+                {contacts.find(c => c.id === selectedContact.id)?.is_primary_contact && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Star className="w-3 h-3 mr-1" />
+                    Primary
+                  </Badge>
+                )}
+              </div>
+              <div className="space-y-1 text-sm text-green-700">
+                {selectedContact.role && (
+                  <div>Role: {selectedContact.role}</div>
+                )}
+                {selectedContact.email && (
+                  <div>Email: {selectedContact.email}</div>
+                )}
+                {selectedContact.phone && (
+                  <div>Phone: {selectedContact.phone}</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {contacts.length > 0 && !selectedContact && (
+            <p className="text-xs text-gray-500">
+              Selecting a contact is optional. Primary contacts are marked with a star.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <AddContactDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        customerId={customerId}
+        onContactAdded={handleContactAdded}
+      />
+    </>
   );
 }
