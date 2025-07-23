@@ -36,6 +36,14 @@ export interface Order {
   contact_name?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
+  delivery_method?: string;
+  pickup_location_address?: string;
+  pickup_location_name?: string;
+  pickup_contact_name?: string;
+  pickup_contact_phone?: string;
+  pickup_instructions?: string;
+  pickup_date?: string;
+  pickup_time?: string;
 }
 
 export interface OrderEditFormProps {

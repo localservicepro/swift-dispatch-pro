@@ -29,6 +29,14 @@ export interface OrderFormData {
   contact_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
+  delivery_method: string;
+  pickup_location_address?: string;
+  pickup_location_name?: string;
+  pickup_contact_name?: string;
+  pickup_contact_phone?: string;
+  pickup_instructions?: string;
+  pickup_date?: string;
+  pickup_time?: string;
 }
 
 export function useOrderFormData(order: Order) {
@@ -59,7 +67,15 @@ export function useOrderFormData(order: Order) {
     contact_id: order.contact_id || null,
     contact_name: order.contact_name || null,
     contact_email: order.contact_email || null,
-    contact_phone: order.contact_phone || null
+    contact_phone: order.contact_phone || null,
+    delivery_method: order.delivery_method || 'delivery',
+    pickup_location_address: order.pickup_location_address || '',
+    pickup_location_name: order.pickup_location_name || '',
+    pickup_contact_name: order.pickup_contact_name || '',
+    pickup_contact_phone: order.pickup_contact_phone || '',
+    pickup_instructions: order.pickup_instructions || '',
+    pickup_date: order.pickup_date || '',
+    pickup_time: order.pickup_time || ''
   });
 
   // Calculate totals whenever pricing components change
@@ -194,6 +210,7 @@ export function useOrderFormData(order: Order) {
     return {
       ...formData,
       delivery_time: formatTimeForDB(formData.delivery_time),
+      pickup_time: formatTimeForDB(formData.pickup_time || ''),
       total_amount: parseFloat(formData.total_amount) || 0
     };
   };
