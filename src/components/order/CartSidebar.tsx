@@ -139,8 +139,9 @@ export function CartSidebar({
   const grandTotal = subtotal + adjustments;
 
   const CartContent = () => (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b">
+    <div className="h-full flex flex-col">
+      {/* Header - Fixed */}
+      <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
         <div className="flex items-center gap-2">
           <ShoppingCart className="w-5 h-5" />
           <span className="font-semibold">Cart ({cart.length} items)</span>
@@ -158,7 +159,7 @@ export function CartSidebar({
       </div>
 
       {cart.length === 0 ? (
-        <div className="flex items-center justify-center text-gray-500 py-20">
+        <div className="flex-1 flex items-center justify-center text-gray-500">
           <div className="text-center">
             <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-gray-300" />
             <p>No items in cart</p>
@@ -166,123 +167,127 @@ export function CartSidebar({
         </div>
       ) : (
         <>
-          <ScrollArea className="flex-1">
-            <div className="p-4 space-y-3">
-              {cart.map((item) => {
-                const hasSpecial = hasActiveSpecial(item.product.id);
-                const originalPrice = item.product.price;
-                const productSpecial = getSpecialForProduct(item.product.id);
-                
-                return (
-                  <div key={item.product.id} className="border rounded-lg p-3 space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate flex items-center gap-2">
-                          {item.product.name}
-                          {hasSpecial && (
-                            <Badge className="bg-red-500 text-white flex items-center gap-1 text-xs">
-                              <Star className="w-3 h-3" />
-                              SPECIAL
-                            </Badge>
-                          )}
+          {/* Scrollable Cart Items */}
+          <div className="flex-1 min-h-0">
+            <ScrollArea className="h-full">
+              <div className="p-4 space-y-3">
+                {cart.map((item) => {
+                  const hasSpecial = hasActiveSpecial(item.product.id);
+                  const originalPrice = item.product.price;
+                  const productSpecial = getSpecialForProduct(item.product.id);
+                  
+                  return (
+                    <div key={item.product.id} className="border rounded-lg p-3 space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate flex items-center gap-2">
+                            {item.product.name}
+                            {hasSpecial && (
+                              <Badge className="bg-red-500 text-white flex items-center gap-1 text-xs">
+                                <Star className="w-3 h-3" />
+                                SPECIAL
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {hasSpecial ? (
+                              <>
+                                <span className="line-through">AU${originalPrice.toFixed(2)}</span>
+                                <span className="text-red-600 ml-1">AU${item.unit_price.toFixed(2)} each</span>
+                              </>
+                            ) : (
+                              `AU${item.unit_price.toFixed(2)} each`
+                            )}
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {hasSpecial ? (
-                            <>
-                              <span className="line-through">AU${originalPrice.toFixed(2)}</span>
-                              <span className="text-red-600 ml-1">AU${item.unit_price.toFixed(2)} each</span>
-                            </>
-                          ) : (
-                            `AU${item.unit_price.toFixed(2)} each`
-                          )}
+                        <div className="text-right">
+                          <div className="font-medium text-sm">AU${item.total_price.toFixed(2)}</div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                            onClick={() => removeFromCart(item.product.id)}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-medium text-sm">AU${item.total_price.toFixed(2)}</div>
+
+                      {hasSpecial && productSpecial && (
+                        <div className="p-2 bg-red-50 border border-red-200 rounded text-xs">
+                          <div className="text-red-700 font-medium">
+                            {productSpecial.special_name}
+                          </div>
+                          <div className="text-red-600">
+                            {productSpecial.discount_type === 'percentage' 
+                              ? `${productSpecial.discount_value}% off` 
+                              : `AU$${productSpecial.discount_value.toFixed(2)} off`
+                            }
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                          onClick={() => removeFromCart(item.product.id)}
+                          className="h-8 w-8 p-0"
+                          onClick={() => updateQuantity(item.product.id, item.quantity - 0.25)}
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Minus className="w-4 h-4" />
+                        </Button>
+                        
+                        {editingQuantity === item.product.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              value={inputValue}
+                              onChange={(e) => setInputValue(e.target.value)}
+                              className="h-8 w-20 text-sm text-center"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleQuantitySubmit(item.product.id);
+                                if (e.key === 'Escape') handleQuantityCancel();
+                              }}
+                              onBlur={() => handleQuantitySubmit(item.product.id)}
+                              placeholder="1.25"
+                              step="0.25"
+                              autoFocus
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleQuantitySubmit(item.product.id)}
+                              className="h-8 w-8 p-0 text-green-600"
+                            >
+                              ✓
+                            </Button>
+                          </div>
+                        ) : (
+                          <span 
+                            className="text-sm font-medium px-3 py-1 cursor-pointer hover:bg-gray-100 rounded border min-w-[60px] text-center"
+                            onClick={() => handleQuantityEdit(item.product.id, item.quantity)}
+                          >
+                            {formatQuantity(item.quantity)}
+                          </span>
+                        )}
+                        
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          onClick={() => updateQuantity(item.product.id, item.quantity + 0.25)}
+                        >
+                          <Plus className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </div>
 
-                    {hasSpecial && productSpecial && (
-                      <div className="p-2 bg-red-50 border border-red-200 rounded text-xs">
-                        <div className="text-red-700 font-medium">
-                          {productSpecial.special_name}
-                        </div>
-                        <div className="text-red-600">
-                          {productSpecial.discount_type === 'percentage' 
-                            ? `${productSpecial.discount_value}% off` 
-                            : `AU$${productSpecial.discount_value.toFixed(2)} off`
-                          }
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                        onClick={() => updateQuantity(item.product.id, item.quantity - 0.25)}
-                      >
-                        <Minus className="w-4 h-4" />
-                      </Button>
-                      
-                      {editingQuantity === item.product.id ? (
-                        <div className="flex items-center gap-1">
-                          <Input
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            className="h-8 w-20 text-sm text-center"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleQuantitySubmit(item.product.id);
-                              if (e.key === 'Escape') handleQuantityCancel();
-                            }}
-                            onBlur={() => handleQuantitySubmit(item.product.id)}
-                            placeholder="1.25"
-                            step="0.25"
-                            autoFocus
-                          />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleQuantitySubmit(item.product.id)}
-                            className="h-8 w-8 p-0 text-green-600"
-                          >
-                            ✓
-                          </Button>
-                        </div>
-                      ) : (
-                        <span 
-                          className="text-sm font-medium px-3 py-1 cursor-pointer hover:bg-gray-100 rounded border min-w-[60px] text-center"
-                          onClick={() => handleQuantityEdit(item.product.id, item.quantity)}
-                        >
-                          {formatQuantity(item.quantity)}
-                        </span>
-                      )}
-                      
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                        onClick={() => updateQuantity(item.product.id, item.quantity + 0.25)}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
-
-          <div className="border-t p-4 space-y-3">
+          {/* Footer - Fixed */}
+          <div className="border-t p-4 space-y-3 flex-shrink-0">
             <div className="flex justify-between">
               <span>Subtotal:</span>
               <span className="font-medium">AU${subtotal.toFixed(2)}</span>
@@ -374,11 +379,11 @@ export function CartSidebar({
           <DrawerTrigger asChild>
             <CartTrigger />
           </DrawerTrigger>
-          <DrawerContent className="max-h-[85vh]">
-            <DrawerHeader>
+          <DrawerContent className="h-[85vh] flex flex-col">
+            <DrawerHeader className="flex-shrink-0">
               <DrawerTitle>Shopping Cart</DrawerTitle>
             </DrawerHeader>
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0">
               <CartContent />
             </div>
           </DrawerContent>
@@ -394,11 +399,11 @@ export function CartSidebar({
         <SheetTrigger asChild>
           <CartTrigger />
         </SheetTrigger>
-        <SheetContent className="w-[400px] sm:max-w-[400px]">
-          <SheetHeader>
+        <SheetContent className="w-[400px] sm:max-w-[400px] flex flex-col">
+          <SheetHeader className="flex-shrink-0">
             <SheetTitle>Shopping Cart</SheetTitle>
           </SheetHeader>
-          <div className="mt-6 flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 mt-6">
             <CartContent />
           </div>
         </SheetContent>
