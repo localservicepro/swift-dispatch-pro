@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -166,7 +167,8 @@ export function CartSidebar({
         </div>
       ) : (
         <>
-          <div className="flex-1 space-y-3 overflow-y-auto">
+          <ScrollArea className="flex-1 max-h-[400px]">
+            <div className="space-y-3 pr-4">
             {cart.map((item) => {
               const hasSpecial = hasActiveSpecial(item.product.id);
               const originalPrice = item.product.price;
@@ -278,7 +280,8 @@ export function CartSidebar({
                 </div>
               );
             })}
-          </div>
+            </div>
+          </ScrollArea>
 
           <div className="border-t pt-4 space-y-3">
             <div className="flex justify-between">
