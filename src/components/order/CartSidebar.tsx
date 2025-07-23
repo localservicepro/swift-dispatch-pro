@@ -166,11 +166,11 @@ export function CartSidebar({
           </div>
         </div>
       ) : (
-        <>
-          {/* Scrollable Cart Items */}
-          <div className="flex-1 min-h-0">
-            <ScrollArea className="h-full">
-              <div className="p-4 space-y-3">
+        <div className="flex-1 min-h-0">
+          <ScrollArea className="h-full">
+            <div className="p-4 space-y-4">
+              {/* Cart Items */}
+              <div className="space-y-3">
                 {cart.map((item) => {
                   const hasSpecial = hasActiveSpecial(item.product.id);
                   const originalPrice = item.product.price;
@@ -283,73 +283,73 @@ export function CartSidebar({
                   );
                 })}
               </div>
-            </ScrollArea>
-          </div>
 
-          {/* Footer - Fixed */}
-          <div className="border-t p-4 space-y-3 flex-shrink-0">
-            <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span className="font-medium">AU${subtotal.toFixed(2)}</span>
-            </div>
+              {/* Totals and Controls Section */}
+              <div className="border-t pt-4 space-y-3">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span className="font-medium">AU${subtotal.toFixed(2)}</span>
+                </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Price Adjustment</Label>
-              <div className="flex gap-2">
-                <Select value={adjustmentType} onValueChange={(value: "percentage" | "fixed") => setAdjustmentType(value)}>
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentage">%</SelectItem>
-                    <SelectItem value="fixed">AU$</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={adjustmentValue}
-                  onChange={(e) => setAdjustmentValue(e.target.value)}
-                  className="flex-1"
-                />
-                <Button size="sm" onClick={applyAdjustment} variant="outline">
-                  Apply
-                </Button>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Price Adjustment</Label>
+                  <div className="flex gap-2">
+                    <Select value={adjustmentType} onValueChange={(value: "percentage" | "fixed") => setAdjustmentType(value)}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">%</SelectItem>
+                        <SelectItem value="fixed">AU$</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={adjustmentValue}
+                      onChange={(e) => setAdjustmentValue(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button size="sm" onClick={applyAdjustment} variant="outline">
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+
+                {adjustments !== 0 && (
+                  <div className="flex justify-between">
+                    <span>Adjustments:</span>
+                    <span className={adjustments > 0 ? "text-red-600" : "text-green-600"}>
+                      {adjustments > 0 ? '+' : ''}AU${adjustments.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex justify-between font-semibold text-lg border-t pt-2">
+                  <span>Total:</span>
+                  <span>AU${grandTotal.toFixed(2)}</span>
+                </div>
+
+                <div className="flex gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={onBack}>
+                    Back
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      onNext();
+                      setIsOpen(false);
+                    }} 
+                    disabled={cart.length === 0}
+                    className="flex-1"
+                  >
+                    Next: Delivery Details
+                  </Button>
+                </div>
               </div>
             </div>
-
-            {adjustments !== 0 && (
-              <div className="flex justify-between">
-                <span>Adjustments:</span>
-                <span className={adjustments > 0 ? "text-red-600" : "text-green-600"}>
-                  {adjustments > 0 ? '+' : ''}AU${adjustments.toFixed(2)}
-                </span>
-              </div>
-            )}
-
-            <div className="flex justify-between font-semibold text-lg border-t pt-2">
-              <span>Total:</span>
-              <span>AU${grandTotal.toFixed(2)}</span>
-            </div>
-
-            <div className="flex gap-2 pt-4 border-t">
-              <Button variant="outline" onClick={onBack}>
-                Back
-              </Button>
-              <Button 
-                onClick={() => {
-                  onNext();
-                  setIsOpen(false);
-                }} 
-                disabled={cart.length === 0}
-                className="flex-1"
-              >
-                Next: Delivery Details
-              </Button>
-            </div>
-          </div>
-        </>
+          </ScrollArea>
+        </div>
       )}
     </div>
   );
