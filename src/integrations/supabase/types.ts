@@ -731,6 +731,13 @@ export type Database = {
           payment_date: string | null
           payment_method: string | null
           payment_status: string | null
+          pickup_contact_name: string | null
+          pickup_contact_phone: string | null
+          pickup_date: string | null
+          pickup_instructions: string | null
+          pickup_location_address: string | null
+          pickup_location_name: string | null
+          pickup_time: string | null
           products: Json
           products_formatted: string | null
           purchase_order: string | null
@@ -781,6 +788,13 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string | null
           payment_status?: string | null
+          pickup_contact_name?: string | null
+          pickup_contact_phone?: string | null
+          pickup_date?: string | null
+          pickup_instructions?: string | null
+          pickup_location_address?: string | null
+          pickup_location_name?: string | null
+          pickup_time?: string | null
           products: Json
           products_formatted?: string | null
           purchase_order?: string | null
@@ -831,6 +845,13 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string | null
           payment_status?: string | null
+          pickup_contact_name?: string | null
+          pickup_contact_phone?: string | null
+          pickup_date?: string | null
+          pickup_instructions?: string | null
+          pickup_location_address?: string | null
+          pickup_location_name?: string | null
+          pickup_time?: string | null
           products?: Json
           products_formatted?: string | null
           purchase_order?: string | null
@@ -2171,7 +2192,7 @@ export type Database = {
     Enums: {
       attribute_type: "select" | "color" | "size" | "text" | "number"
       customer_type: "trade" | "account" | "residential"
-      delivery_method: "delivery" | "pickup"
+      delivery_method: "delivery" | "pickup" | "pickup_delivery"
       discount_type: "percentage" | "fixed_amount"
       entity_type: "individual" | "business"
       order_status:
@@ -2182,6 +2203,9 @@ export type Database = {
         | "delivered"
         | "cancelled"
         | "back_order"
+        | "pickup_scheduled"
+        | "pickup_in_progress"
+        | "pickup_complete"
       special_type:
         | "monthly"
         | "limited_time"
@@ -2319,7 +2343,7 @@ export const Constants = {
     Enums: {
       attribute_type: ["select", "color", "size", "text", "number"],
       customer_type: ["trade", "account", "residential"],
-      delivery_method: ["delivery", "pickup"],
+      delivery_method: ["delivery", "pickup", "pickup_delivery"],
       discount_type: ["percentage", "fixed_amount"],
       entity_type: ["individual", "business"],
       order_status: [
@@ -2330,6 +2354,9 @@ export const Constants = {
         "delivered",
         "cancelled",
         "back_order",
+        "pickup_scheduled",
+        "pickup_in_progress",
+        "pickup_complete",
       ],
       special_type: [
         "monthly",

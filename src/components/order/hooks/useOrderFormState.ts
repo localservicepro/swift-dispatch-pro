@@ -13,7 +13,18 @@ export function useOrderFormState() {
   const [adjustments, setAdjustments] = useState(0);
   
   // Delivery method state - starts with delivery as default
-  const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup">("delivery");
+  const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup" | "pickup_delivery">("delivery");
+  
+  // Pickup location state for pickup_delivery orders
+  const [pickupLocation, setPickupLocation] = useState({
+    address: "",
+    name: "",
+    contactName: "",
+    contactPhone: "",
+    instructions: "",
+    date: "",
+    time: ""
+  });
   
   // Order splitting state - auto-set to "single" for pickup orders
   const [orderType, setOrderType] = useState<"single" | "split">("single");
@@ -76,17 +87,22 @@ export function useOrderFormState() {
   const getTotalSteps = () => {
     if (deliveryMethod === "pickup") {
       return 5; // Customer → Products → Method → Payment → Review
+    } else if (deliveryMethod === "pickup_delivery") {
+      return 8; // Customer → Products → Method → Pickup Location → Order Type → Address → Payment → Review
     }
     return 7; // Customer → Products → Method → Order Type → Address → Payment → Review
   };
 
   // Enhanced delivery method setter to auto-set order type
-  const handleDeliveryMethodChange = (method: "delivery" | "pickup") => {
+  const handleDeliveryMethodChange = (method: "delivery" | "pickup" | "pickup_delivery") => {
     setDeliveryMethod(method);
     if (method === "pickup") {
       setOrderType("single"); // Auto-set to single for pickup orders
       setManualDeliveryFee(0); // Clear delivery fee for pickup
       setSelectedSuburbId(""); // Clear suburb for pickup
+    } else if (method === "pickup_delivery") {
+      setOrderType("single"); // Auto-set to single for pickup_delivery orders
+      // Keep delivery fee for pickup_delivery since we're still delivering
     }
   };
 
@@ -207,6 +223,7 @@ export function useOrderFormState() {
     deliveryMethod,
     orderType,
     splits,
+    pickupLocation,
     deliveryDate,
     deliveryTime,
     specialInstructions,
@@ -237,6 +254,7 @@ export function useOrderFormState() {
     setDeliveryMethod: handleDeliveryMethodChange,
     setOrderType,
     setSplits,
+    setPickupLocation,
     setDeliveryDate,
     setDeliveryTime,
     setSpecialInstructions,

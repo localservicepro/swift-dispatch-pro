@@ -10,6 +10,7 @@ import { DeliveryAddressStep } from "./DeliveryAddressStep";
 import { PaymentMethodStep } from "./PaymentMethodStep";
 import { OrderReviewStep } from "./OrderReviewStep";
 import { SplitOrderConfigurationStep } from "./SplitOrderConfigurationStep";
+import { PickupLocationStep } from "./PickupLocationStep";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { createSingleOrder, createSplitOrder } from "./services/orderCreationService";
 import { useOrderFormState } from "./hooks/useOrderFormState";
@@ -32,6 +33,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     deliveryMethod,
     orderType,
     splits,
+    pickupLocation,
     deliveryDate,
     deliveryTime,
     specialInstructions,
@@ -59,6 +61,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setDeliveryMethod,
     setOrderType,
     setSplits,
+    setPickupLocation,
     setDeliveryDate,
     setDeliveryTime,
     setSpecialInstructions,
@@ -161,6 +164,15 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       setDeliveryMethod("delivery");
       setOrderType("single");
       setSplits([]);
+      setPickupLocation({
+        address: "",
+        name: "",
+        contactName: "",
+        contactPhone: "",
+        instructions: "",
+        date: "",
+        time: ""
+      });
       setDeliveryDate("");
       setDeliveryTime("");
       setSpecialInstructions("");
@@ -233,6 +245,17 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               onNext={nextStep}
             />
           );
+        } else if (deliveryMethod === "pickup_delivery") {
+          return (
+            <PickupLocationStep
+              pickupLocation={pickupLocation}
+              onPickupLocationChange={(data) => 
+                setPickupLocation(prev => ({ ...prev, ...data }))
+              }
+              onBack={prevStep}
+              onNext={nextStep}
+            />
+          );
         } else {
           return (
             <OrderTypeSelectionStep
@@ -271,6 +294,15 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               onOrderNotesChange={setOrderNotes}
               onDeliveryNotesChange={setDeliveryNotes}
               onPurchaseOrderChange={setPurchaseOrder}
+            />
+          );
+        } else if (deliveryMethod === "pickup_delivery") {
+          return (
+            <OrderTypeSelectionStep
+              orderType={orderType}
+              onOrderTypeChange={setOrderType}
+              onBack={prevStep}
+              onNext={nextStep}
             />
           );
         } else if (orderType === "split") {
@@ -315,17 +347,103 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         }
 
       case 6:
-        return (
-          <PaymentMethodStep
-            customer={selectedCustomer!}
-            paymentMethod={paymentMethod}
-            onPaymentMethodChange={setPaymentMethod}
-            onBack={prevStep}
-            onNext={nextStep}
-          />
-        );
+        if (deliveryMethod === "pickup_delivery") {
+          if (orderType === "split") {
+            return (
+              <SplitOrderConfigurationStep
+                cart={cart}
+                splits={splits}
+                onSplitsChange={setSplits}
+                onCartChange={setCart}
+                onBack={prevStep}
+                onNext={nextStep}
+              />
+            );
+          } else {
+            return (
+              <DeliveryAddressStep
+                formData={{
+                  full_address: deliveryAddress,
+                  suburb_id: selectedSuburbId
+                }}
+                deliveryDate={deliveryDate}
+                deliveryTime={deliveryTime}
+                onFormDataChange={(updates) => {
+                  if (updates.full_address !== undefined) {
+                    setDeliveryAddress(updates.full_address);
+                  }
+                  if (updates.suburb_id !== undefined) {
+                    setSelectedSuburbId(updates.suburb_id);
+                  }
+                }}
+                onSuburbChange={(suburbId, suburb) => handleSuburbChange(suburbId, suburb)}
+                onDeliveryDateChange={setDeliveryDate}
+                onDeliveryTimeChange={setDeliveryTime}
+                onBack={prevStep}
+                onNext={nextStep}
+                selectedCustomer={selectedCustomer}
+                isUsingCustomerAddress={isUsingCustomerAddress}
+                onClearAddress={clearDeliveryAddress}
+                onResetToCustomerAddress={resetToCustomerAddress}
+              />
+            );
+          }
+        } else {
+          return (
+            <PaymentMethodStep
+              customer={selectedCustomer!}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
+              onBack={prevStep}
+              onNext={nextStep}
+            />
+          );
+        }
 
       case 7:
+        if (deliveryMethod === "pickup_delivery") {
+          return (
+            <PaymentMethodStep
+              customer={selectedCustomer!}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
+              onBack={prevStep}
+              onNext={nextStep}
+            />
+          );
+        } else {
+          return (
+            <OrderReviewStep
+              customer={selectedCustomer!}
+              selectedContact={selectedContact}
+              cart={cart}
+              subtotal={subtotal}
+              adjustments={adjustments}
+              deliveryFee={deliveryFee}
+              deliveryMethod={deliveryMethod as "delivery" | "pickup"}
+              deliveryDate={deliveryDate}
+              deliveryTime={deliveryTime}
+              specialInstructions={specialInstructions}
+              paymentMethod={paymentMethod}
+              orderNotes={orderNotes}
+              deliveryNotes={deliveryNotes}
+              purchaseOrder={purchaseOrder}
+              deliveryAddress={deliveryAddress}
+              sameAsBilling={sameAsBilling}
+              onBack={prevStep}
+              onConfirm={handleOrderCreation}
+              isCreating={isCreatingOrder}
+              onDeliveryFeeChange={setManualDeliveryFee}
+              onOrderNotesChange={setOrderNotes}
+              onDeliveryNotesChange={setDeliveryNotes}
+              onPurchaseOrderChange={setPurchaseOrder}
+              isDeliveryFeeManuallySet={isDeliveryFeeManuallySet}
+              deliveryFeeInfo={getDeliveryFeeInfo()}
+            />
+          );
+        }
+
+      case 8:
         return (
           <OrderReviewStep
             customer={selectedCustomer!}
@@ -334,7 +452,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             subtotal={subtotal}
             adjustments={adjustments}
             deliveryFee={deliveryFee}
-            deliveryMethod={deliveryMethod as "delivery" | "pickup"}
+            deliveryMethod={deliveryMethod as "delivery" | "pickup" | "pickup_delivery"}
             deliveryDate={deliveryDate}
             deliveryTime={deliveryTime}
             specialInstructions={specialInstructions}
@@ -344,6 +462,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             purchaseOrder={purchaseOrder}
             deliveryAddress={deliveryAddress}
             sameAsBilling={sameAsBilling}
+            pickupLocation={pickupLocation}
             onBack={prevStep}
             onConfirm={handleOrderCreation}
             isCreating={isCreatingOrder}
@@ -355,6 +474,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             deliveryFeeInfo={getDeliveryFeeInfo()}
           />
         );
+
 
       default:
         return null;

@@ -2,7 +2,7 @@
 import { Database } from "@/integrations/supabase/types";
 
 export type TruckType = Database["public"]["Enums"]["truck_type"];
-export type DeliveryMethod = "delivery" | "pickup";
+export type DeliveryMethod = "delivery" | "pickup" | "pickup_delivery";
 
 export interface Customer {
   id: string;

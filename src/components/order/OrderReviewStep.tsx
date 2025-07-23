@@ -18,7 +18,7 @@ interface OrderReviewStepProps {
   subtotal: number;
   adjustments: number;
   deliveryFee: number;
-  deliveryMethod: "delivery" | "pickup";
+  deliveryMethod: "delivery" | "pickup" | "pickup_delivery";
   deliveryDate: string;
   deliveryTime: string;
   specialInstructions: string;
@@ -28,6 +28,15 @@ interface OrderReviewStepProps {
   purchaseOrder: string;
   deliveryAddress: string;
   sameAsBilling: boolean;
+  pickupLocation?: {
+    address: string;
+    name: string;
+    contactName: string;
+    contactPhone: string;
+    instructions: string;
+    date: string;
+    time: string;
+  };
   onBack: () => void;
   onConfirm: () => void;
   isCreating: boolean;
@@ -59,6 +68,7 @@ export function OrderReviewStep({
   purchaseOrder,
   deliveryAddress,
   sameAsBilling,
+  pickupLocation,
   onBack,
   onConfirm,
   isCreating,
@@ -70,7 +80,8 @@ export function OrderReviewStep({
   deliveryFeeInfo
 }: OrderReviewStepProps) {
   const { data: paymentSettings } = usePaymentSettings();
-  const stepNumber = deliveryMethod === "pickup" ? "5" : "7";
+  const stepNumber = deliveryMethod === "pickup" ? "5" : 
+                     deliveryMethod === "pickup_delivery" ? "8" : "7";
 
   // Calculate totals with payment settings
   const orderTotals = paymentSettings ? 
@@ -240,8 +251,49 @@ export function OrderReviewStep({
           </div>
         </div>
 
-        {/* Delivery Address - Only show for delivery orders */}
-        {deliveryMethod === "delivery" && (
+        {/* Pickup Location - Show for pickup_delivery orders */}
+        {deliveryMethod === "pickup_delivery" && pickupLocation && (
+          <div className="space-y-3">
+            <h3 className="flex items-center gap-2 font-semibold">
+              <MapPin className="w-4 h-4 text-purple-600" />
+              Pickup Location
+            </h3>
+            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+              <div className="space-y-2">
+                <div>
+                  <p className="font-medium text-purple-900">{pickupLocation.name}</p>
+                  <p className="text-sm text-purple-700">{pickupLocation.address}</p>
+                </div>
+                {pickupLocation.contactName && (
+                  <div>
+                    <p className="text-xs font-medium text-purple-600">Contact:</p>
+                    <p className="text-sm text-purple-700">
+                      {pickupLocation.contactName}
+                      {pickupLocation.contactPhone && ` • ${pickupLocation.contactPhone}`}
+                    </p>
+                  </div>
+                )}
+                {pickupLocation.date && pickupLocation.time && (
+                  <div>
+                    <p className="text-xs font-medium text-purple-600">Pickup Time:</p>
+                    <p className="text-sm text-purple-700">
+                      {pickupLocation.date} at {pickupLocation.time}
+                    </p>
+                  </div>
+                )}
+                {pickupLocation.instructions && (
+                  <div>
+                    <p className="text-xs font-medium text-purple-600">Instructions:</p>
+                    <p className="text-sm text-purple-700">{pickupLocation.instructions}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delivery Address - Show for delivery and pickup_delivery orders */}
+        {(deliveryMethod === "delivery" || deliveryMethod === "pickup_delivery") && (
           <div className="space-y-3">
             <h3 className="flex items-center gap-2 font-semibold">
               <MapPin className="w-4 h-4" />
@@ -291,23 +343,36 @@ export function OrderReviewStep({
         {/* Delivery Method */}
         <div className="space-y-3">
           <h3 className="flex items-center gap-2 font-semibold">
-            {deliveryMethod === "delivery" ? <MapPin className="w-4 h-4" /> : <Store className="w-4 h-4" />}
+            {deliveryMethod === "delivery" ? <MapPin className="w-4 h-4" /> : 
+             deliveryMethod === "pickup_delivery" ? <MapPin className="w-4 h-4 text-purple-600" /> :
+             <Store className="w-4 h-4" />}
             Delivery Method
           </h3>
           <div className="bg-gray-50 p-4 rounded-lg">
-            <Badge variant={deliveryMethod === "delivery" ? "default" : "secondary"}>
-              {deliveryMethod === "delivery" ? "Delivery" : "Yard Sale / Pickup"}
+            <Badge variant={
+              deliveryMethod === "delivery" ? "default" : 
+              deliveryMethod === "pickup_delivery" ? "secondary" : 
+              "secondary"
+            } className={deliveryMethod === "pickup_delivery" ? "bg-purple-100 text-purple-800" : ""}>
+              {deliveryMethod === "delivery" ? "Delivery" : 
+               deliveryMethod === "pickup_delivery" ? "Pickup & Delivery" :
+               "Yard Sale / Pickup"}
             </Badge>
             {deliveryMethod === "pickup" && (
               <p className="text-sm text-muted-foreground mt-2">
                 Customer will pick up from our yard
               </p>  
             )}
+            {deliveryMethod === "pickup_delivery" && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Products will be collected from pickup location and delivered to customer
+              </p>  
+            )}
           </div>
         </div>
 
-        {/* Delivery Details - Only show for delivery orders */}
-        {deliveryMethod === "delivery" && deliveryDate && (
+        {/* Delivery Details - Show for delivery and pickup_delivery orders */}
+        {(deliveryMethod === "delivery" || deliveryMethod === "pickup_delivery") && deliveryDate && (
           <div className="space-y-3">
             <h3 className="flex items-center gap-2 font-semibold">
               <Clock className="w-4 h-4" />
@@ -356,8 +421,8 @@ export function OrderReviewStep({
           </div>
         </div>
 
-        {/* Delivery Notes - Only show for delivery orders */}
-        {deliveryMethod === "delivery" && (
+        {/* Delivery Notes - Show for delivery and pickup_delivery orders */}
+        {(deliveryMethod === "delivery" || deliveryMethod === "pickup_delivery") && (
           <div className="space-y-3">
             <h3 className="flex items-center gap-2 font-semibold">
               <Truck className="w-4 h-4" />
@@ -418,7 +483,7 @@ export function OrderReviewStep({
                 </span>
               </div>
             )}
-            {deliveryMethod === "delivery" && (
+            {(deliveryMethod === "delivery" || deliveryMethod === "pickup_delivery") && (
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label htmlFor="delivery-fee" className="flex items-center gap-2">

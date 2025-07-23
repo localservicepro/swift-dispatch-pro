@@ -1,9 +1,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Truck, Store } from "lucide-react";
+import { Truck, Store, MapPin } from "lucide-react";
 
-type DeliveryMethod = "delivery" | "pickup";
+type DeliveryMethod = "delivery" | "pickup" | "pickup_delivery";
 
 interface DeliveryMethodSelectionStepProps {
   deliveryMethod: DeliveryMethod | "";
@@ -28,7 +28,7 @@ export function DeliveryMethodSelectionStep({
           How would you like the customer to receive their order?
         </p>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div
             className={`p-6 border-2 rounded-lg cursor-pointer transition-all ${
               deliveryMethod === "delivery"
@@ -59,6 +59,23 @@ export function DeliveryMethodSelectionStep({
               <h3 className="text-lg font-semibold">Yard Sale / Pickup</h3>
               <p className="text-sm text-muted-foreground">
                 Customer will pick up the order from our yard
+              </p>
+            </div>
+          </div>
+
+          <div
+            className={`p-6 border-2 rounded-lg cursor-pointer transition-all ${
+              deliveryMethod === "pickup_delivery"
+                ? "border-purple-500 bg-purple-50"
+                : "border-gray-200 hover:border-gray-300"
+            }`}
+            onClick={() => onDeliveryMethodChange("pickup_delivery")}
+          >
+            <div className="flex flex-col items-center text-center space-y-3">
+              <MapPin className="w-12 h-12 text-purple-600" />
+              <h3 className="text-lg font-semibold">Pickup & Delivery</h3>
+              <p className="text-sm text-muted-foreground">
+                Pick up from another location and deliver to customer
               </p>
             </div>
           </div>
