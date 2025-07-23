@@ -167,7 +167,7 @@ export function CartSidebar({
         </div>
       ) : (
         <>
-          <ScrollArea className="flex-1 max-h-[400px]">
+          <ScrollArea className="flex-1 max-h-[350px]">
             <div className="space-y-3 pr-4">
             {cart.map((item) => {
               const hasSpecial = hasActiveSpecial(item.product.id);
