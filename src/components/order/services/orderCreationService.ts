@@ -18,14 +18,14 @@ export interface CreateOrderData {
   delivery_time?: string;
   special_instructions?: string;
   driver_id?: string;
-  truck_type?: string;
+  truck_type?: "small" | "medium" | "large" | "crane" | "none";
   truck_id?: string;
   purchase_order?: string;
   contact_id?: string;
   contact_name?: string;
   contact_email?: string;
   contact_phone?: string;
-  delivery_method?: string;
+  delivery_method?: "delivery" | "pickup" | "pickup_delivery";
   pickup_location_address?: string;
   pickup_location_name?: string;
   pickup_contact_name?: string;
@@ -103,7 +103,7 @@ export async function createOrder(orderData: CreateOrderData) {
       pickup_instructions: orderData.pickup_instructions || null,
       pickup_date: orderData.pickup_date || null,
       pickup_time: formatTimeForDB(orderData.pickup_time),
-      status: 'preparing'
+      status: 'preparing' as const
     };
 
     console.log('Order payload:', orderPayload);

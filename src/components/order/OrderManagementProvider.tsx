@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { emailService } from "@/utils/emailService";
-import { useOrderData, useFilteredOrders } from "./hooks/useOrderData";
+import { useOrderData } from "./hooks/useOrderData";
 import { useOrderActions } from "./hooks/useOrderActions";
 import { Database } from "@/integrations/supabase/types";
 
@@ -102,9 +102,21 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
   const queryClient = useQueryClient();
 
   // Use custom hooks for data and actions
-  const { orders, isLoading, error, refetch } = useOrderData();
+  const { data: orders = [], isLoading, error, refetch } = useOrderData();
   const { updateOrderStatus, handleDeleteOrder: handleDeleteOrderAction } = useOrderActions(refetch);
-  const filteredOrders = useFilteredOrders(orders, searchQuery, statusFilter, paymentStatusFilter);
+  
+  // Filter orders logic
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = !searchQuery.trim() || 
+      order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (order.purchase_order && order.purchase_order.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+    const matchesPaymentStatus = paymentStatusFilter === "all" || order.payment_status === paymentStatusFilter;
+
+    return matchesSearch && matchesStatus && matchesPaymentStatus;
+  });
 
   // Clear all filters
   const clearFilters = () => {

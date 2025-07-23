@@ -74,11 +74,10 @@ export function OpportunityPipeline() {
   const topScrollRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const {
-    orders,
+    data: orders = [],
     isLoading,
     error,
-    refetch,
-    invalidateOrdersCache
+    refetch
   } = useOpportunityData();
 
   // Configure drag sensors
@@ -340,8 +339,8 @@ export function OpportunityPipeline() {
         description: `Order ${orderForAssignment.order_number} assigned and moved to preparing stage`,
       });
 
-      // Use enhanced cache invalidation
-      await invalidateOrdersCache('truck and driver assignment');
+      // Invalidate cache
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       
     } catch (error: any) {
       console.error('Error completing assignment:', error);
@@ -410,8 +409,8 @@ export function OpportunityPipeline() {
         description: `Order ${order.order_number} moved to ${PIPELINE_STAGES.find(s => s.id === newStage)?.title}`,
       });
 
-      // Use enhanced cache invalidation
-      await invalidateOrdersCache('status update via drag and drop');
+      // Invalidate cache
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
     } catch (error: any) {
       console.error('Error moving order:', error);
       toast({
