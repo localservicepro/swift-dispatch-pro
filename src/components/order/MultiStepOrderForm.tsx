@@ -1,481 +1,183 @@
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { CustomerSearchStep } from "./CustomerSearchStep";
-import { ProductSelectionStep } from "./ProductSelectionStep";
-import { DeliveryMethodSelectionStep } from "./DeliveryMethodSelectionStep";
-import { OrderTypeSelectionStep } from "./OrderTypeSelectionStep";
-import { DeliveryAddressStep } from "./DeliveryAddressStep";
-import { PaymentMethodStep } from "./PaymentMethodStep";
-import { OrderReviewStep } from "./OrderReviewStep";
-import { SplitOrderConfigurationStep } from "./SplitOrderConfigurationStep";
-import { PickupLocationStep } from "./PickupLocationStep";
-import { ProgressIndicator } from "./ProgressIndicator";
-import { createSingleOrder, createSplitOrder } from "./services/orderCreationService";
-import { useOrderFormState } from "./hooks/useOrderFormState";
+import React, { useState } from 'react';
+import { CustomerSearchStep } from './CustomerSearchStep';
+import { OrderTypeSelectionStep } from './OrderTypeSelectionStep';
+import { DeliveryMethodSelectionStep } from './DeliveryMethodSelectionStep';
+import { PickupLocationStep } from './PickupLocationStep';
+import { DeliveryAddressStep } from './DeliveryAddressStep';
+import { ProductSelectionStep } from './ProductSelectionStep';
+import { DeliveryDetailsStep } from './DeliveryDetailsStep';
+import { PaymentMethodStep } from './PaymentMethodStep';
+import { OrderReviewStep } from './OrderReviewStep';
+import { ProgressIndicator } from './ProgressIndicator';
+import { useOrderFormState } from './hooks/useOrderFormState';
+import { useOrderActions } from './hooks/useOrderActions';
 
 interface MultiStepOrderFormProps {
-  onOrderCreated?: () => void;
-  onClose?: () => void;
+  onOrderCreated: () => void;
+  onClose: () => void;
 }
 
 export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFormProps) {
-  const { toast } = useToast();
-  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
-
   const {
     currentStep,
-    selectedCustomer,
-    selectedContact,
-    cart,
-    adjustments,
-    deliveryMethod,
-    orderType,
-    splits,
-    pickupLocation,
-    deliveryDate,
-    deliveryTime,
-    specialInstructions,
-    paymentMethod,
-    orderNotes,
-    deliveryNotes,
-    purchaseOrder,
-    deliveryAddress,
-    sameAsBilling,
-    useGlobalDeliveryAddress,
-    selectedSuburbId,
-    manualDeliveryFee,
-    isUsingCustomerAddress,
-    subtotal,
-    deliveryFee,
-    surchargeAmount,
-    gstAmount,
-    totalAmount,
-    orderTotals,
-    paymentSettings,
-    setSelectedCustomer,
-    setSelectedContact,
-    setCart,
-    setAdjustments,
-    setDeliveryMethod,
-    setOrderType,
-    setSplits,
-    setPickupLocation,
-    setDeliveryDate,
-    setDeliveryTime,
-    setSpecialInstructions,
-    setPaymentMethod,
-    setOrderNotes,
-    setDeliveryNotes,
-    setPurchaseOrder,
-    setDeliveryAddress,
-    setSameAsBilling,
-    setUseGlobalDeliveryAddress,
-    setSelectedSuburbId,
-    setManualDeliveryFee,
-    isDeliveryFeeManuallySet,
-    handleSuburbChange,
-    clearDeliveryAddress,
-    resetToCustomerAddress,
-    getDeliveryFeeInfo,
-    nextStep,
-    prevStep,
     setCurrentStep,
-    getTotalSteps
+    formData,
+    updateFormData,
+    resetForm
   } = useOrderFormState();
 
-  const handleOrderCreation = async () => {
-    if (!selectedCustomer) {
-      toast({
-        title: "Error",
-        description: "Please select a customer",
-        variant: "destructive",
-      });
-      return;
-    }
+  const { createOrder, isCreating } = useOrderActions();
 
-    if (cart.length === 0) {
-      toast({
-        title: "Error", 
-        description: "Please add at least one product to the cart",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleNext = () => {
+    setCurrentStep(currentStep + 1);
+  };
 
-    setIsCreatingOrder(true);
+  const handleBack = () => {
+    setCurrentStep(currentStep - 1);
+  };
 
+  const handleSubmit = async () => {
     try {
-      let result;
+      // Ensure pickup details are included in the order creation
+      const orderData = {
+        ...formData,
+        // Make sure pickup fields are properly included
+        pickup_location_address: formData.pickup_location_address || '',
+        pickup_location_name: formData.pickup_location_name || '',
+        pickup_contact_name: formData.pickup_contact_name || '',
+        pickup_contact_phone: formData.pickup_contact_phone || '',
+        pickup_instructions: formData.pickup_instructions || '',
+        pickup_date: formData.pickup_date || '',
+        pickup_time: formData.pickup_time || ''
+      };
 
-      if (orderType === "single") {
-        result = await createSingleOrder({
-          customer: selectedCustomer,
-          selectedContact,
-          cart,
-          adjustments,
-          deliveryMethod: deliveryMethod as "delivery" | "pickup",
-          deliveryDate,
-          deliveryTime,
-          specialInstructions,
-          paymentMethod,
-          orderNotes,
-          deliveryNotes,
-          purchaseOrder,
-          deliveryAddress,
-          sameAsBilling,
-          suburbId: selectedSuburbId,
-          orderTotals
-        });
-      } else {
-        result = await createSplitOrder({
-          customer: selectedCustomer,
-          selectedContact,
-          cart,
-          adjustments,
-          deliveryMethod: deliveryMethod as "delivery" | "pickup",
-          splits,
-          paymentMethod,
-          specialInstructions,
-          orderNotes,
-          deliveryNotes,
-          purchaseOrder,
-          orderTotals
-        });
-      }
-
-      toast({
-        title: "Success!",
-        description: `Order ${result.orderNumber} created successfully`,
-      });
-
-      // Call the onOrderCreated callback if provided
-      if (onOrderCreated) {
-        onOrderCreated();
-      }
-
-      // Reset form after successful creation
-      setCurrentStep(1);
-      setSelectedCustomer(null);
-      setSelectedContact(null);
-      setCart([]);
-      setAdjustments(0);
-      setDeliveryMethod("delivery");
-      setOrderType("single");
-      setSplits([]);
-      setPickupLocation({
-        address: "",
-        name: "",
-        contactName: "",
-        contactPhone: "",
-        instructions: "",
-        date: "",
-        time: ""
-      });
-      setDeliveryDate("");
-      setDeliveryTime("");
-      setSpecialInstructions("");
-      setPaymentMethod("");
-      setOrderNotes("");
-      setDeliveryNotes("");
-      setPurchaseOrder("");
-      setDeliveryAddress("");
-      setSameAsBilling(true);
-      setUseGlobalDeliveryAddress(true);
-      setSelectedSuburbId("");
-      setManualDeliveryFee(0);
-
-    } catch (error: any) {
-      console.error('Order creation error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create order. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCreatingOrder(false);
+      await createOrder(orderData);
+      onOrderCreated();
+      resetForm();
+    } catch (error) {
+      console.error('Error creating order:', error);
     }
   };
 
+  const getStepName = (step: number) => {
+    const stepNames = [
+      'Customer',
+      'Order Type',
+      'Delivery Method',
+      ...(formData.delivery_method === 'pickup_delivery' ? ['Pickup Location'] : []),
+      'Delivery Address',
+      'Products',
+      'Delivery Details',
+      'Payment',
+      'Review'
+    ];
+    return stepNames[step - 1];
+  };
+
+  const getTotalSteps = () => {
+    return formData.delivery_method === 'pickup_delivery' ? 9 : 8;
+  };
+
   const renderCurrentStep = () => {
-    switch (currentStep) {
+    let adjustedStep = currentStep;
+    
+    // Adjust step numbers for pickup_delivery orders
+    if (formData.delivery_method !== 'pickup_delivery' && currentStep > 3) {
+      adjustedStep = currentStep + 1;
+    }
+
+    switch (adjustedStep) {
       case 1:
         return (
           <CustomerSearchStep
-            selectedCustomer={selectedCustomer}
-            selectedContact={selectedContact}
-            onCustomerSelect={setSelectedCustomer}
-            onContactSelect={setSelectedContact}
-            onNext={nextStep}
+            formData={formData}
+            onFormDataChange={updateFormData}
+            onNext={handleNext}
           />
         );
-
       case 2:
         return (
-          <ProductSelectionStep
-            cart={cart}
-            subtotal={subtotal}
-            adjustments={adjustments}
-            onCartUpdate={setCart}
-            onAdjustmentsChange={setAdjustments}
-            onBack={prevStep}
-            onNext={nextStep}
+          <OrderTypeSelectionStep
+            formData={formData}
+            onFormDataChange={updateFormData}
+            onNext={handleNext}
+            onBack={handleBack}
           />
         );
-
       case 3:
         return (
           <DeliveryMethodSelectionStep
-            deliveryMethod={deliveryMethod}
-            onDeliveryMethodChange={setDeliveryMethod}
-            onBack={prevStep}
-            onNext={nextStep}
+            formData={formData}
+            onFormDataChange={updateFormData}
+            onNext={handleNext}
+            onBack={handleBack}
           />
         );
-
       case 4:
-        if (deliveryMethod === "pickup") {
-          return (
-            <PaymentMethodStep
-              customer={selectedCustomer!}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else if (deliveryMethod === "pickup_delivery") {
+        if (formData.delivery_method === 'pickup_delivery') {
           return (
             <PickupLocationStep
-              pickupLocation={pickupLocation}
-              onPickupLocationChange={(data) => 
-                setPickupLocation(prev => ({ ...prev, ...data }))
-              }
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else {
-          return (
-            <OrderTypeSelectionStep
-              orderType={orderType}
-              onOrderTypeChange={setOrderType}
-              onBack={prevStep}
-              onNext={nextStep}
+              formData={formData}
+              onFormDataChange={updateFormData}
+              onNext={handleNext}
+              onBack={handleBack}
             />
           );
         }
-
-      case 5:
-        if (deliveryMethod === "pickup") {
-          return (
-            <OrderReviewStep
-              customer={selectedCustomer!}
-              selectedContact={selectedContact}
-              cart={cart}
-              subtotal={subtotal}
-              adjustments={adjustments}
-              deliveryFee={deliveryFee}
-              deliveryMethod="pickup"
-              deliveryDate={deliveryDate}
-              deliveryTime={deliveryTime}
-              specialInstructions={specialInstructions}
-              paymentMethod={paymentMethod}
-              orderNotes={orderNotes}
-              deliveryNotes={deliveryNotes}
-              purchaseOrder={purchaseOrder}
-              deliveryAddress={deliveryAddress}
-              sameAsBilling={sameAsBilling}
-              onBack={prevStep}
-              onConfirm={handleOrderCreation}
-              isCreating={isCreatingOrder}
-              onDeliveryFeeChange={setManualDeliveryFee}
-              onOrderNotesChange={setOrderNotes}
-              onDeliveryNotesChange={setDeliveryNotes}
-              onPurchaseOrderChange={setPurchaseOrder}
-            />
-          );
-        } else if (deliveryMethod === "pickup_delivery") {
-          return (
-            <OrderTypeSelectionStep
-              orderType={orderType}
-              onOrderTypeChange={setOrderType}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else if (orderType === "split") {
-          return (
-            <SplitOrderConfigurationStep
-              cart={cart}
-              splits={splits}
-              onSplitsChange={setSplits}
-              onCartChange={setCart}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else {
-          return (
-            <DeliveryAddressStep
-              formData={{
-                full_address: deliveryAddress,
-                suburb_id: selectedSuburbId
-              }}
-              deliveryDate={deliveryDate}
-              deliveryTime={deliveryTime}
-              onFormDataChange={(updates) => {
-                if (updates.full_address !== undefined) {
-                  setDeliveryAddress(updates.full_address);
-                }
-                if (updates.suburb_id !== undefined) {
-                  setSelectedSuburbId(updates.suburb_id);
-                }
-              }}
-              onSuburbChange={(suburbId, suburb) => handleSuburbChange(suburbId, suburb)}
-              onDeliveryDateChange={setDeliveryDate}
-              onDeliveryTimeChange={setDeliveryTime}
-              onBack={prevStep}
-              onNext={nextStep}
-              selectedCustomer={selectedCustomer}
-              isUsingCustomerAddress={isUsingCustomerAddress}
-              onClearAddress={clearDeliveryAddress}
-              onResetToCustomerAddress={resetToCustomerAddress}
-            />
-          );
-        }
-
-      case 6:
-        if (deliveryMethod === "pickup_delivery") {
-          if (orderType === "split") {
-            return (
-              <SplitOrderConfigurationStep
-                cart={cart}
-                splits={splits}
-                onSplitsChange={setSplits}
-                onCartChange={setCart}
-                onBack={prevStep}
-                onNext={nextStep}
-              />
-            );
-          } else {
-            return (
-              <DeliveryAddressStep
-                formData={{
-                  full_address: deliveryAddress,
-                  suburb_id: selectedSuburbId
-                }}
-                deliveryDate={deliveryDate}
-                deliveryTime={deliveryTime}
-                onFormDataChange={(updates) => {
-                  if (updates.full_address !== undefined) {
-                    setDeliveryAddress(updates.full_address);
-                  }
-                  if (updates.suburb_id !== undefined) {
-                    setSelectedSuburbId(updates.suburb_id);
-                  }
-                }}
-                onSuburbChange={(suburbId, suburb) => handleSuburbChange(suburbId, suburb)}
-                onDeliveryDateChange={setDeliveryDate}
-                onDeliveryTimeChange={setDeliveryTime}
-                onBack={prevStep}
-                onNext={nextStep}
-                selectedCustomer={selectedCustomer}
-                isUsingCustomerAddress={isUsingCustomerAddress}
-                onClearAddress={clearDeliveryAddress}
-                onResetToCustomerAddress={resetToCustomerAddress}
-              />
-            );
-          }
-        } else {
-          return (
-            <PaymentMethodStep
-              customer={selectedCustomer!}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        }
-
-      case 7:
-        if (deliveryMethod === "pickup_delivery") {
-          return (
-            <PaymentMethodStep
-              customer={selectedCustomer!}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else {
-          return (
-            <OrderReviewStep
-              customer={selectedCustomer!}
-              selectedContact={selectedContact}
-              cart={cart}
-              subtotal={subtotal}
-              adjustments={adjustments}
-              deliveryFee={deliveryFee}
-              deliveryMethod={deliveryMethod as "delivery" | "pickup"}
-              deliveryDate={deliveryDate}
-              deliveryTime={deliveryTime}
-              specialInstructions={specialInstructions}
-              paymentMethod={paymentMethod}
-              orderNotes={orderNotes}
-              deliveryNotes={deliveryNotes}
-              purchaseOrder={purchaseOrder}
-              deliveryAddress={deliveryAddress}
-              sameAsBilling={sameAsBilling}
-              onBack={prevStep}
-              onConfirm={handleOrderCreation}
-              isCreating={isCreatingOrder}
-              onDeliveryFeeChange={setManualDeliveryFee}
-              onOrderNotesChange={setOrderNotes}
-              onDeliveryNotesChange={setDeliveryNotes}
-              onPurchaseOrderChange={setPurchaseOrder}
-              isDeliveryFeeManuallySet={isDeliveryFeeManuallySet}
-              deliveryFeeInfo={getDeliveryFeeInfo()}
-            />
-          );
-        }
-
-      case 8:
         return (
-          <OrderReviewStep
-            customer={selectedCustomer!}
-            selectedContact={selectedContact}
-            cart={cart}
-            subtotal={subtotal}
-            adjustments={adjustments}
-            deliveryFee={deliveryFee}
-            deliveryMethod={deliveryMethod as "delivery" | "pickup" | "pickup_delivery"}
-            deliveryDate={deliveryDate}
-            deliveryTime={deliveryTime}
-            specialInstructions={specialInstructions}
-            paymentMethod={paymentMethod}
-            orderNotes={orderNotes}
-            deliveryNotes={deliveryNotes}
-            purchaseOrder={purchaseOrder}
-            deliveryAddress={deliveryAddress}
-            sameAsBilling={sameAsBilling}
-            pickupLocation={pickupLocation}
-            onBack={prevStep}
-            onConfirm={handleOrderCreation}
-            isCreating={isCreatingOrder}
-            onDeliveryFeeChange={setManualDeliveryFee}
-            onOrderNotesChange={setOrderNotes}
-            onDeliveryNotesChange={setDeliveryNotes}
-            onPurchaseOrderChange={setPurchaseOrder}
-            isDeliveryFeeManuallySet={isDeliveryFeeManuallySet}
-            deliveryFeeInfo={getDeliveryFeeInfo()}
+          <DeliveryAddressStep
+            formData={formData}
+            onFormDataChange={updateFormData}
+            onNext={handleNext}
+            onBack={handleBack}
           />
         );
-
-
+      case 5:
+        return (
+          <DeliveryAddressStep
+            formData={formData}
+            onFormDataChange={updateFormData}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        );
+      case 6:
+        return (
+          <ProductSelectionStep
+            formData={formData}
+            onFormDataChange={updateFormData}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        );
+      case 7:
+        return (
+          <DeliveryDetailsStep
+            formData={formData}
+            onFormDataChange={updateFormData}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        );
+      case 8:
+        return (
+          <PaymentMethodStep
+            formData={formData}
+            onFormDataChange={updateFormData}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        );
+      case 9:
+        return (
+          <OrderReviewStep
+            formData={formData}
+            onSubmit={handleSubmit}
+            onBack={handleBack}
+            isCreating={isCreating}
+          />
+        );
       default:
         return null;
     }
@@ -483,20 +185,24 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Create New Order</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ProgressIndicator
-            currentStep={currentStep}
-            totalSteps={getTotalSteps()}
-            deliveryMethod={deliveryMethod}
-          />
-        </CardContent>
-      </Card>
-
-      {renderCurrentStep()}
+      <ProgressIndicator 
+        currentStep={currentStep} 
+        totalSteps={getTotalSteps()}
+        stepName={getStepName(currentStep)}
+      />
+      
+      <div className="min-h-[400px]">
+        {renderCurrentStep()}
+      </div>
+      
+      <div className="flex justify-between pt-4 border-t">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-gray-600 hover:text-gray-800"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,314 +1,139 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Customer, CartItem, SelectedContact } from "../types";
-import { serializeCartItemsWithFormatting } from "./orderFormattingService";
+import { toast } from "@/hooks/use-toast";
 
-// Interface for creating single orders
-interface CreateSingleOrderParams {
-  customer: Customer;
-  selectedContact?: SelectedContact | null;
-  cart: CartItem[];
+export interface CreateOrderData {
+  customer_id: string;
+  customer_name: string;
+  customer_phone?: string;
+  customer_address: string;
+  delivery_address: string;
+  products: any[];
+  total_amount: number;
+  subtotal: number;
+  delivery_fee: number;
   adjustments: number;
-  deliveryMethod: "delivery" | "pickup";
-  deliveryDate: string;
-  deliveryTime: string;
-  specialInstructions: string;
-  paymentMethod: string;
-  orderNotes: string;
-  deliveryNotes: string;
-  purchaseOrder: string;
-  deliveryAddress: string;
-  sameAsBilling: boolean;
-  suburbId: string;
-  orderTotals: any;
+  payment_method: string;
+  delivery_date?: string;
+  delivery_time?: string;
+  special_instructions?: string;
+  driver_id?: string;
+  truck_type?: string;
+  truck_id?: string;
+  purchase_order?: string;
+  contact_id?: string;
+  contact_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  delivery_method?: string;
+  pickup_location_address?: string;
+  pickup_location_name?: string;
+  pickup_contact_name?: string;
+  pickup_contact_phone?: string;
+  pickup_instructions?: string;
+  pickup_date?: string;
+  pickup_time?: string;
 }
 
-// Interface for creating split orders (simplified)
-interface CreateSplitOrderParams {
-  customer: Customer;
-  selectedContact?: SelectedContact | null;
-  cart: CartItem[];
-  adjustments: number;
-  deliveryMethod: "delivery" | "pickup";
-  splits: any[];
-  paymentMethod: string;
-  specialInstructions: string;
-  orderNotes: string;
-  deliveryNotes: string;
-  purchaseOrder: string;
-  orderTotals: any;
-}
-
-export async function createSingleOrder(params: CreateSingleOrderParams) {
+export async function createOrder(orderData: CreateOrderData) {
   try {
-    // Fetch current payment settings for calculations
-    const { data: paymentSettings, error: settingsError } = await supabase
-      .from('payment_settings')
-      .select('*')
-      .single();
+    console.log('Creating order with data:', orderData);
 
-    if (settingsError) {
-      console.error('Error fetching payment settings:', settingsError);
-      throw new Error(`Failed to fetch payment settings: ${settingsError.message}`);
+    // Generate order number
+    const { data: existingOrders } = await supabase
+      .from('orders')
+      .select('order_number')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    let orderNumber = 'ORD-001';
+    if (existingOrders && existingOrders.length > 0) {
+      const lastNumber = parseInt(existingOrders[0].order_number.split('-')[1]);
+      orderNumber = `ORD-${String(lastNumber + 1).padStart(3, '0')}`;
     }
 
-    if (!paymentSettings) {
-      throw new Error('Payment settings not found. Please configure payment settings first.');
-    }
-
-    // Serialize cart items for database storage and stock checking
-    const serializedProducts = serializeCartItemsWithFormatting(params.cart);
-
-    // Check stock availability before creating order
-    const { data: stockAvailability, error: stockError } = await supabase
-      .rpc('check_stock_availability', { order_items: serializedProducts });
-
-    if (stockError) {
-      console.error('Error checking stock availability:', stockError);
-      // Don't throw error - continue with order creation but log the issue
-      console.warn('Proceeding with order creation despite stock check failure');
-    }
-
-    // Determine appropriate order status based on stock availability
-    const { data: orderStatus, error: statusError } = await supabase
-      .rpc('determine_order_status', { order_items: serializedProducts });
-
-    if (statusError) {
-      console.error('Error determining order status:', statusError);
-      console.warn('Defaulting to requested status');
-    }
-
-    const finalStatus = orderStatus || 'requested';
-    console.log('Stock availability check:', stockAvailability);
-    console.log('Determined order status:', finalStatus);
-
-    // Generate unique order number
-    const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random()* 1000)}`;
-
-    const orderData = {
-      order_number: orderNumber,
-      customer_id: params.customer.id,
-      customer_name: `${params.customer.first_name} ${params.customer.last_name}`,
-      customer_phone: params.customer.phone,
-      customer_address: params.sameAsBilling ? params.customer.full_address : params.deliveryAddress,
-      delivery_address: params.sameAsBilling ? params.customer.full_address : params.deliveryAddress,
-      same_as_billing: params.sameAsBilling,
-      contact_id: params.selectedContact?.id || null,
-      contact_name: params.selectedContact?.name || null,
-      contact_email: params.selectedContact?.email || null,
-      contact_phone: params.selectedContact?.phone || null,
-      products: serializedProducts,
-      subtotal: params.orderTotals.subtotal,
-      adjustments: params.orderTotals.adjustments,
-      delivery_fee: params.orderTotals.deliveryFee,
-      total_amount: params.orderTotals.totalAmount,
-      delivery_method: params.deliveryMethod,
-      delivery_date: params.deliveryDate || null,
-      delivery_time: params.deliveryTime || null,
-      truck_type: null,
-      truck_id: null,
-      driver_id: null,
-      special_instructions: params.specialInstructions,
-      order_notes: params.orderNotes,
-      delivery_notes: params.deliveryNotes,
-      purchase_order: params.purchaseOrder,
-      payment_method: params.paymentMethod,
-      status: finalStatus, // Use dynamically determined status
-      is_split_order: false,
-      payment_status: 'pending'
-      // Note: driver_name, truck_registration, truck_type_display will be automatically populated by the database trigger
+    // Format time fields for database
+    const formatTimeForDB = (timeString?: string) => {
+      if (!timeString) return null;
+      
+      // If already in HH:MM:SS format, return as is
+      if (timeString.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        return timeString;
+      }
+      
+      // If in HH:MM format, add seconds
+      if (timeString.match(/^\d{2}:\d{2}$/)) {
+        return `${timeString}:00`;
+      }
+      
+      return timeString;
     };
 
-    console.log('Creating single order with data:', orderData);
+    // Prepare order data with all pickup fields
+    const orderPayload = {
+      order_number: orderNumber,
+      customer_id: orderData.customer_id,
+      customer_name: orderData.customer_name,
+      customer_phone: orderData.customer_phone,
+      customer_address: orderData.customer_address,
+      delivery_address: orderData.delivery_address,
+      products: orderData.products,
+      total_amount: orderData.total_amount,
+      subtotal: orderData.subtotal,
+      delivery_fee: orderData.delivery_fee,
+      adjustments: orderData.adjustments,
+      payment_method: orderData.payment_method,
+      delivery_date: orderData.delivery_date,
+      delivery_time: formatTimeForDB(orderData.delivery_time),
+      special_instructions: orderData.special_instructions,
+      driver_id: orderData.driver_id === 'unassigned' ? null : orderData.driver_id,
+      truck_type: orderData.truck_type === 'none' ? null : orderData.truck_type,
+      truck_id: orderData.truck_id === 'none' ? null : orderData.truck_id,
+      purchase_order: orderData.purchase_order,
+      contact_id: orderData.contact_id,
+      contact_name: orderData.contact_name,
+      contact_email: orderData.contact_email,
+      contact_phone: orderData.contact_phone,
+      delivery_method: orderData.delivery_method || 'delivery',
+      // Pickup fields - ensure they're included
+      pickup_location_address: orderData.pickup_location_address || null,
+      pickup_location_name: orderData.pickup_location_name || null,
+      pickup_contact_name: orderData.pickup_contact_name || null,
+      pickup_contact_phone: orderData.pickup_contact_phone || null,
+      pickup_instructions: orderData.pickup_instructions || null,
+      pickup_date: orderData.pickup_date || null,
+      pickup_time: formatTimeForDB(orderData.pickup_time),
+      status: 'preparing'
+    };
+
+    console.log('Order payload:', orderPayload);
 
     const { data: order, error } = await supabase
       .from('orders')
-      .insert(orderData)
+      .insert(orderPayload)
       .select()
       .single();
 
     if (error) {
       console.error('Error creating order:', error);
-      throw new Error(`Failed to create order: ${error.message}`);
+      throw error;
     }
 
-    console.log('Single order created successfully:', order);
+    console.log('Order created successfully:', order);
 
-    return {
-      type: 'single' as const,
-      orderNumber: order.order_number,
-      orderId: order.id,
-      stockAvailability: stockAvailability || [],
-      isBackOrder: finalStatus === 'back_order'
-    };
-  } catch (error: any) {
-    console.error('Error in createSingleOrder:', error);
-    throw new Error(error.message || 'Failed to create single order');
-  }
-}
+    toast({
+      title: "Success",
+      description: `Order ${orderNumber} created successfully!`,
+    });
 
-export async function createSplitOrder(params: CreateSplitOrderParams) {
-  try {
-    // Fetch current payment settings for calculations
-    const { data: paymentSettings, error: settingsError } = await supabase
-      .from('payment_settings')
-      .select('*')
-      .single();
-
-    if (settingsError) {
-      console.error('Error fetching payment settings:', settingsError);
-      throw new Error(`Failed to fetch payment settings: ${settingsError.message}`);
-    }
-
-    if (!paymentSettings) {
-      throw new Error('Payment settings not found. Please configure payment settings first.');
-    }
-
-    const masterOrderNumber = `SPL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    const orders = [];
-
-    // Serialize cart items for database storage
-    const serializedProducts = serializeCartItemsWithFormatting(params.cart);
-
-    // Create master order entry - this is a summary record
-    const masterOrderData = {
-      order_number: masterOrderNumber,
-      customer_id: params.customer.id,
-      customer_name: `${params.customer.first_name} ${params.customer.last_name}`,
-      customer_phone: params.customer.phone,
-      customer_address: params.customer.full_address,
-      delivery_address: params.customer.full_address,
-      same_as_billing: true,
-      contact_id: params.selectedContact?.id || null,
-      contact_name: params.selectedContact?.name || null,
-      contact_email: params.selectedContact?.email || null,
-      contact_phone: params.selectedContact?.phone || null,
-      products: serializedProducts,
-      subtotal: params.orderTotals.subtotal,
-      adjustments: params.orderTotals.adjustments,
-      delivery_fee: params.orderTotals.deliveryFee,
-      total_amount: params.orderTotals.totalAmount,
-      delivery_method: params.deliveryMethod,
-      payment_method: params.paymentMethod,
-      order_notes: params.orderNotes,
-      delivery_notes: params.deliveryNotes,
-      purchase_order: params.purchaseOrder,
-      status: 'requested' as const,
-      is_split_order: false, // Master order is not a split order itself
-      master_order_id: null,
-      split_number: null,
-      payment_status: 'pending',
-      truck_type: null,
-      truck_id: null,
-      driver_id: null
-    };
-
-    const { data: masterOrder, error: masterError } = await supabase
-      .from('orders')
-      .insert(masterOrderData)
-      .select()
-      .single();
-
-    if (masterError) {
-      console.error('Error creating master order:', masterError);
-      throw new Error(`Failed to create master order: ${masterError.message}`);
-    }
-
-    orders.push(masterOrder);
-
-    // Create individual split orders
-    for (let i = 0; i < params.splits.length; i++) {
-      const split = params.splits[i];
-      const splitOrderNumber = `${masterOrderNumber}-${i + 1}`;
-      
-      // Calculate split totals with decimal quantity support
-      const splitSubtotal = split.products.reduce((sum: number, splitProduct: any) => {
-        const cartItem = params.cart.find(cartItem => cartItem.product.id === splitProduct.productId);
-        if (!cartItem) {
-          console.error(`Product not found in cart: ${splitProduct.productId}`);
-          return sum;
-        }
-        return sum + (cartItem.unit_price * parseFloat(splitProduct.quantity.toString()));
-      }, 0);
-
-      // Convert split products to match the expected format
-      const splitProducts = split.products.map((splitProduct: any) => {
-        const cartItem = params.cart.find(cartItem => cartItem.product.id === splitProduct.productId);
-        if (!cartItem) {
-          console.error(`Product not found in cart for split product: ${splitProduct.productId}`);
-          return null;
-        }
-        return {
-          id: cartItem.product.id,
-          name: cartItem.product.name,
-          price: cartItem.unit_price,
-          quantity: parseFloat(splitProduct.quantity.toString()),
-          total_price: cartItem.unit_price * parseFloat(splitProduct.quantity.toString())
-        };
-      }).filter(Boolean);
-
-      const splitOrderData = {
-        order_number: splitOrderNumber,
-        customer_id: params.customer.id,
-        customer_name: `${params.customer.first_name} ${params.customer.last_name}`,
-        customer_phone: params.customer.phone,
-        customer_address: split.deliveryAddress,
-        delivery_address: split.deliveryAddress,
-        same_as_billing: false,
-        contact_id: params.selectedContact?.id || null,
-        contact_name: params.selectedContact?.name || null,
-        contact_email: params.selectedContact?.email || null,
-        contact_phone: params.selectedContact?.phone || null,
-        products: splitProducts,
-        subtotal: splitSubtotal,
-        adjustments: 0,
-        delivery_fee: split.deliveryFee || 0,
-        total_amount: splitSubtotal + (split.deliveryFee || 0),
-        delivery_method: params.deliveryMethod,
-        delivery_date: split.deliveryDate,
-        delivery_time: split.deliveryTime,
-        truck_type: null,
-        truck_id: null,
-        driver_id: null,
-        special_instructions: split.specialInstructions || '',
-        order_notes: params.orderNotes,
-        delivery_notes: params.deliveryNotes,
-        purchase_order: params.purchaseOrder,
-        payment_method: params.paymentMethod,
-        status: 'requested' as const,
-        is_split_order: true,
-        master_order_id: masterOrder.id,
-        split_number: i + 1,
-        payment_status: 'pending'
-        // Note: driver_name, truck_registration, truck_type_display will be automatically populated by the database trigger
-      };
-
-      console.log(`Creating split order ${i + 1}:`, splitOrderData);
-
-      const { data: splitOrder, error: splitError } = await supabase
-        .from('orders')
-        .insert(splitOrderData)
-        .select()
-        .single();
-
-      if (splitError) {
-        console.error(`Error creating split order ${i + 1}:`, splitError);
-        throw new Error(`Failed to create split order ${i + 1}: ${splitError.message}`);
-      }
-
-      orders.push(splitOrder);
-    }
-
-    console.log('Split orders created successfully:', orders);
-
-    return {
-      type: 'split' as const,
-      orderNumber: masterOrderNumber,
-      splitCount: params.splits.length,
-      orders
-    };
-  } catch (error: any) {
-    console.error('Error in createSplitOrder:', error);
-    throw new Error(error.message || 'Failed to create split order');
+    return order;
+  } catch (error) {
+    console.error('Error in createOrder:', error);
+    toast({
+      title: "Error",
+      description: "Failed to create order. Please try again.",
+      variant: "destructive",
+    });
+    throw error;
   }
 }
