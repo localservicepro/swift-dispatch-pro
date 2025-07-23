@@ -9,7 +9,9 @@ import {
   Clock,
   CalendarDays,
   Building,
-  Package
+  Package,
+  ArrowRight,
+  Store
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { formatDeliveryDate, formatDeliveryTime, formatCreatedDate, formatCreatedTime } from "@/utils/dateTimeUtils";
@@ -21,6 +23,7 @@ interface OpportunityCardInfoProps {
 export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
   const truckInfo = getTruckInfo(order.truck_type_from_truck || order.truck_type);
   const hasDeliverySchedule = order.delivery_date && order.delivery_time;
+  const hasPickupSchedule = order.pickup_date && order.pickup_time;
 
   // Get the delivery address to display
   const deliveryAddress = order.delivery_address || order.customer_address;
@@ -148,6 +151,48 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
         <span className="font-bold text-green-600">${order.total_amount.toFixed(2)}</span>
       </div>
 
+      {/* Pickup & Delivery Information for pickup_delivery orders */}
+      {order.delivery_method === 'pickup_delivery' && (
+        <div className="space-y-2 mb-3 border-l-2 border-purple-200 pl-3">
+          <div className="text-xs font-medium text-purple-700 mb-2">Pickup & Delivery</div>
+          
+          {/* Pickup Location */}
+          {order.pickup_location_address && (
+            <div className="flex items-start gap-2 text-xs text-slate-600">
+              <Store className="w-3 h-3 mt-0.5 flex-shrink-0 text-purple-600" />
+              <div>
+                <div className="font-medium">Pickup from:</div>
+                <div className="line-clamp-2">{order.pickup_location_name || order.pickup_location_address}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Pickup Contact */}
+          {order.pickup_contact_name && (
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <User className="w-3 h-3 text-purple-600" />
+              <span>{order.pickup_contact_name}</span>
+              {order.pickup_contact_phone && (
+                <span className="text-slate-400">• {order.pickup_contact_phone}</span>
+              )}
+            </div>
+          )}
+
+          {/* Pickup Schedule */}
+          {hasPickupSchedule && (
+            <div className="flex items-center gap-2 text-xs text-purple-600">
+              <CalendarDays className="w-3 h-3" />
+              <span>Pickup: {formatDeliveryDate(order.pickup_date)} at {formatDeliveryTime(order.pickup_time)}</span>
+            </div>
+          )}
+
+          {/* Arrow indicating flow */}
+          <div className="flex justify-center">
+            <ArrowRight className="w-4 h-4 text-purple-400" />
+          </div>
+        </div>
+      )}
+
       {/* Date and Time Information */}
       <div className="space-y-1 mb-3 text-xs text-slate-500">
         {/* Delivery Schedule - Show if available */}
@@ -155,7 +200,9 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
           <>
             <div className="flex items-center gap-2 text-blue-600 font-medium">
               <CalendarDays className="w-3 h-3" />
-              <span>Scheduled: {formatDeliveryDate(order.delivery_date)}</span>
+              <span>
+                {order.delivery_method === 'pickup_delivery' ? 'Deliver to' : 'Scheduled'}: {formatDeliveryDate(order.delivery_date)}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-blue-600 font-medium">
               <Clock className="w-3 h-3" />
@@ -164,12 +211,16 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
           </>
         )}
         
-        
         {/* Delivery Address - Show full address instead of just suburb */}
         {deliveryAddress && (
           <div className="flex items-start gap-2">
             <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-            <span className="line-clamp-2 break-words">{deliveryAddress}</span>
+            <div>
+              {order.delivery_method === 'pickup_delivery' && (
+                <div className="font-medium text-xs mb-1">Deliver to:</div>
+              )}
+              <span className="line-clamp-2 break-words">{deliveryAddress}</span>
+            </div>
           </div>
         )}
 

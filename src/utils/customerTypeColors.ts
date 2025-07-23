@@ -1,5 +1,6 @@
 
 export type CustomerType = 'account' | 'trade' | 'residential';
+export type DeliveryMethod = 'delivery' | 'pickup' | 'pickup_delivery';
 
 export interface CustomerTypeColors {
   card: string;
@@ -47,6 +48,35 @@ export const getCustomerTypeColors = (customerType?: string | null, paymentStatu
   }
 };
 
+export const getDeliveryMethodColors = (deliveryMethod?: string | null): CustomerTypeColors => {
+  const normalizedMethod = deliveryMethod?.toLowerCase() as DeliveryMethod;
+  
+  switch (normalizedMethod) {
+    case 'pickup_delivery':
+      return {
+        card: 'bg-purple-50',
+        border: 'border-purple-200',
+        hoverBorder: 'hover:border-purple-300',
+        leftBorder: 'border-l-4 border-l-purple-500'
+      };
+    case 'pickup':
+      return {
+        card: 'bg-orange-50',
+        border: 'border-orange-200',
+        hoverBorder: 'hover:border-orange-300',
+        leftBorder: 'border-l-4 border-l-orange-400'
+      };
+    case 'delivery':
+    default:
+      return {
+        card: 'bg-white',
+        border: 'border-slate-200',
+        hoverBorder: 'hover:border-slate-300',
+        leftBorder: 'border-l-4 border-l-slate-300'
+      };
+  }
+};
+
 export const getCustomerTypeLabel = (customerType?: string | null): string => {
   const normalizedType = customerType?.toLowerCase();
   
@@ -59,5 +89,19 @@ export const getCustomerTypeLabel = (customerType?: string | null): string => {
       return 'Residential';
     default:
       return 'Residential';
+  }
+};
+
+export const getDeliveryMethodLabel = (deliveryMethod?: string | null): string => {
+  const normalizedMethod = deliveryMethod?.toLowerCase();
+  
+  switch (normalizedMethod) {
+    case 'pickup_delivery':
+      return 'Pickup & Delivery';
+    case 'pickup':
+      return 'Pickup';
+    case 'delivery':
+    default:
+      return 'Delivery';
   }
 };

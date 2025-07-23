@@ -10,9 +10,9 @@ import { OpportunityCardHeader } from "./OpportunityCardHeader";
 import { OpportunityCardInfo } from "./OpportunityCardInfo";
 import { OpportunityCardActionButton } from "./OpportunityCardActionButton";
 import { OpportunityCardCompleted } from "./OpportunityCardCompleted";
-import { getCustomerTypeColors } from "@/utils/customerTypeColors";
+import { getCustomerTypeColors, getDeliveryMethodColors, getDeliveryMethodLabel } from "@/utils/customerTypeColors";
 import { cn } from "@/lib/utils";
-import { Package, AlertTriangle } from "lucide-react";
+import { Package, AlertTriangle, ArrowRightLeft } from "lucide-react";
 
 interface OpportunityCardProps {
   order: any;
@@ -31,8 +31,12 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
   );
   const hasDeliveryPhotos = deliveryPhotos && deliveryPhotos.length > 0;
 
-  // Get customer type colors, passing payment status for red highlighting
-  const colors = getCustomerTypeColors(order.customer_type, order.payment_status);
+  // Get colors based on delivery method first, then customer type
+  const deliveryMethodColors = getDeliveryMethodColors(order.delivery_method);
+  const customerTypeColors = getCustomerTypeColors(order.customer_type, order.payment_status);
+  
+  // Use delivery method colors for pickup_delivery orders, otherwise use customer type colors
+  const colors = order.delivery_method === 'pickup_delivery' ? deliveryMethodColors : customerTypeColors;
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't trigger card click if clicking on action buttons, payment dropdown, or notes edit
@@ -72,6 +76,14 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
             <div className="mb-3 flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded p-2">
               <AlertTriangle className="w-4 h-4" />
               <span className="text-xs font-medium">Payment Pending</span>
+            </div>
+          )}
+
+          {/* Delivery Method Badge for pickup_delivery orders */}
+          {order.delivery_method === 'pickup_delivery' && (
+            <div className="mb-3 flex items-center gap-2 text-purple-600 bg-purple-50 border border-purple-200 rounded p-2">
+              <ArrowRightLeft className="w-4 h-4" />
+              <span className="text-xs font-medium">{getDeliveryMethodLabel(order.delivery_method)}</span>
             </div>
           )}
 
