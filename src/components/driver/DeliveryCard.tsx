@@ -4,12 +4,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DeliveryActionDialog } from "./DeliveryActionDialog";
 import { OrderDetailsCard } from "./OrderDetailsCard";
 import { DeliveryMapCard } from "./DeliveryMapCard";
+import { PickupMapCard } from "./PickupMapCard";
 import { DeliveryCardHeader } from "./DeliveryCardHeader";
-import { DeliveryCardCustomerInfo } from "./DeliveryCardCustomerInfo";
+import { DeliveryLocationCard } from "./DeliveryLocationCard";
 import { DeliveryCardTruckAssignment } from "./DeliveryCardTruckAssignment";
 import { DeliveryCardActions } from "./DeliveryCardActions";
 import { PickupLocationCard } from "./PickupLocationCard";
-import { Navigation, ArrowRight } from "lucide-react";
+import { Navigation, ArrowDown } from "lucide-react";
 
 interface DeliveryCardProps {
   order: any;
@@ -44,29 +45,36 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
           {/* Header */}
           <DeliveryCardHeader order={order} />
 
-          {/* Customer Info */}
-          <DeliveryCardCustomerInfo order={order} />
-
           {/* Truck Assignment */}
           <DeliveryCardTruckAssignment order={order} />
 
-          {/* Pickup Location - Only show for pickup_delivery orders */}
+          {/* Pickup Section - Only show for pickup_delivery orders */}
           {isPickupDelivery && (
             <>
               <PickupLocationCard order={order} />
               
+              {/* Pickup Map */}
+              <PickupMapCard
+                address={order.pickup_location_address}
+                locationName={order.pickup_location_name || 'Pickup Location'}
+                orderId={order.id}
+              />
+              
               {/* Flow Indicator */}
               <div className="flex items-center justify-center py-2">
                 <div className="flex items-center gap-2 text-slate-500">
-                  <span className="text-sm">Pickup</span>
-                  <ArrowRight className="w-4 h-4" />
-                  <span className="text-sm">Delivery</span>
+                  <span className="text-sm font-medium">Pickup Complete</span>
+                  <ArrowDown className="w-4 h-4" />
+                  <span className="text-sm font-medium">Proceed to Delivery</span>
                 </div>
               </div>
             </>
           )}
 
-          {/* Google Maps Integration */}
+          {/* Delivery Section */}
+          <DeliveryLocationCard order={order} />
+
+          {/* Delivery Map */}
           <DeliveryMapCard
             address={deliveryAddress}
             customerName={order.customer_name}

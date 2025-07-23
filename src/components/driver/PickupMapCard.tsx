@@ -2,13 +2,13 @@
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation } from "lucide-react";
 
-interface DeliveryMapCardProps {
+interface PickupMapCardProps {
   address: string;
-  customerName: string;
+  locationName: string;
   orderId: string;
 }
 
-export function DeliveryMapCard({ address, customerName, orderId }: DeliveryMapCardProps) {
+export function PickupMapCard({ address, locationName, orderId }: PickupMapCardProps) {
   const openDirections = () => {
     // Use address-based directions
     const encodedAddress = encodeURIComponent(address);
@@ -39,23 +39,23 @@ export function DeliveryMapCard({ address, customerName, orderId }: DeliveryMapC
   };
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+    <div className="bg-purple-50 border border-purple-200 rounded-lg overflow-hidden">
       <div className="p-3">
         <div className="flex items-start gap-2 text-slate-700 mb-3">
-          <MapPin className="w-4 h-4 text-blue-600 mt-0.5" />
+          <MapPin className="w-4 h-4 text-purple-600 mt-0.5" />
           <div className="flex-1">
-            <div className="font-medium text-sm text-blue-900">Delivery to {customerName}</div>
-            <div className="text-sm text-blue-700">{address}</div>
+            <div className="font-medium text-sm text-purple-900">{locationName || 'Pickup Location'}</div>
+            <div className="text-sm text-purple-700">{address}</div>
           </div>
         </div>
         
         <Button
           onClick={openDirections}
           size="sm"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white"
         >
           <Navigation className="w-4 h-4 mr-2" />
-          Get Directions to Delivery
+          Get Directions to Pickup
         </Button>
       </div>
     </div>

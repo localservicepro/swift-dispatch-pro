@@ -35,14 +35,20 @@ export function PickupLocationCard({ order }: PickupLocationCardProps) {
 
           {/* Contact Information */}
           {order.pickup_contact_name && (
-            <div className="flex items-center gap-2">
-              <User className="w-4 h-4 text-purple-600" />
-              <div>
-                <span className="font-medium text-slate-800">{order.pickup_contact_name}</span>
+            <div className="flex items-start gap-2">
+              <User className="w-4 h-4 text-purple-600 mt-0.5" />
+              <div className="flex-1">
+                <div className="font-medium text-slate-800">{order.pickup_contact_name}</div>
                 {order.pickup_contact_phone && (
-                  <span className="text-sm text-slate-600 ml-2">
-                    • {order.pickup_contact_phone}
-                  </span>
+                  <div className="mt-1">
+                    <a 
+                      href={`tel:${order.pickup_contact_phone}`}
+                      className="flex items-center gap-1 text-purple-600 hover:text-purple-800 text-sm"
+                    >
+                      <Phone className="w-3 h-3" />
+                      {order.pickup_contact_phone}
+                    </a>
+                  </div>
                 )}
               </div>
             </div>
