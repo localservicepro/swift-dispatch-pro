@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CustomerSearchStep } from './CustomerSearchStep';
 import { ProductSelectionStep } from './ProductSelectionStep';
 import { DeliveryMethodSelectionStep } from './DeliveryMethodSelectionStep';
@@ -18,8 +18,12 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedContact, setSelectedContact] = useState<SelectedContact | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [subtotal, setSubtotal] = useState(0);
   const [adjustments, setAdjustments] = useState(0);
+  
+  // Calculate subtotal dynamically based on cart items
+  const subtotal = useMemo(() => {
+    return cart.reduce((sum, item) => sum + item.total_price, 0);
+  }, [cart]);
   const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup" | "pickup_delivery" | "">("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const { toast } = useToast();
