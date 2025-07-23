@@ -12,6 +12,7 @@ import { OrderDeliveryForm } from "./OrderDeliveryForm";
 import { DeliveryScheduler } from "./DeliveryScheduler";
 import { ProductEditSection } from "./ProductEditSection";
 import { ContactSelectionSection } from "./ContactSelectionSection";
+import { PickupDetailsEditSection } from "./PickupDetailsEditSection";
 import { OrderFormData } from "./hooks/useOrderFormData";
 
 interface OrderEditSectionsProps {
@@ -104,6 +105,14 @@ export function OrderEditSections({
         onInputChange={onInputChange}
       />
 
+      {/* Pickup Details Section - Only show for pickup_delivery orders */}
+      {formData.delivery_method === 'pickup_delivery' && (
+        <PickupDetailsEditSection
+          formData={formData}
+          onInputChange={onInputChange}
+        />
+      )}
+
       <OrderDeliveryForm
         formData={{
           full_address: formData.customer_address,
@@ -153,6 +162,9 @@ export function OrderEditSections({
               <SelectItem value="en_route">En Route</SelectItem>
               <SelectItem value="delivered">Delivered</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="pickup_scheduled">Pickup Scheduled</SelectItem>
+              <SelectItem value="pickup_in_progress">Pickup In Progress</SelectItem>
+              <SelectItem value="pickup_complete">Pickup Complete</SelectItem>
             </SelectContent>
           </Select>
         </div>

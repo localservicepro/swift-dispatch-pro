@@ -8,7 +8,8 @@ import { DeliveryCardHeader } from "./DeliveryCardHeader";
 import { DeliveryCardCustomerInfo } from "./DeliveryCardCustomerInfo";
 import { DeliveryCardTruckAssignment } from "./DeliveryCardTruckAssignment";
 import { DeliveryCardActions } from "./DeliveryCardActions";
-import { Navigation } from "lucide-react";
+import { PickupLocationCard } from "./PickupLocationCard";
+import { Navigation, ArrowRight } from "lucide-react";
 
 interface DeliveryCardProps {
   order: any;
@@ -34,6 +35,7 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
 
   // Use delivery_address first, fallback to customer_address for backwards compatibility
   const deliveryAddress = order.delivery_address || order.customer_address;
+  const isPickupDelivery = order.delivery_method === 'pickup_delivery';
 
   return (
     <>
@@ -45,8 +47,24 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
           {/* Customer Info */}
           <DeliveryCardCustomerInfo order={order} />
 
-          {/* Prominent Truck Assignment - Moved up for visibility */}
+          {/* Truck Assignment */}
           <DeliveryCardTruckAssignment order={order} />
+
+          {/* Pickup Location - Only show for pickup_delivery orders */}
+          {isPickupDelivery && (
+            <>
+              <PickupLocationCard order={order} />
+              
+              {/* Flow Indicator */}
+              <div className="flex items-center justify-center py-2">
+                <div className="flex items-center gap-2 text-slate-500">
+                  <span className="text-sm">Pickup</span>
+                  <ArrowRight className="w-4 h-4" />
+                  <span className="text-sm">Delivery</span>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Google Maps Integration */}
           <DeliveryMapCard
