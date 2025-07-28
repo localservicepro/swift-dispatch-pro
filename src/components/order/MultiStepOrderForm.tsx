@@ -24,7 +24,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
   const subtotal = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.total_price, 0);
   }, [cart]);
-  const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup" | "pickup_delivery" | "">("");
+  const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup" | "">("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const { toast } = useToast();
 
@@ -87,29 +87,9 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             customer={selectedCustomer!}
             paymentMethod={paymentMethod}
             onPaymentMethodChange={setPaymentMethod}
-            onNext={handleNext}
+            onCreateOrder={handleCreateOrder}
             onBack={handleBack}
           />
-        );
-      
-      default:
-        return (
-          <div className="text-center space-y-4">
-            <h3 className="text-lg font-semibold">Review Order</h3>
-            <p>Customer: {selectedCustomer?.first_name} {selectedCustomer?.last_name}</p>
-            <p>Items: {cart.length}</p>
-            <p>Total: ${subtotal.toFixed(2)}</p>
-            <p>Delivery Method: {deliveryMethod}</p>
-            <p>Payment Method: {paymentMethod}</p>
-            <div className="flex gap-4 justify-center">
-              <Button variant="outline" onClick={handleBack}>
-                Back
-              </Button>
-              <Button onClick={handleCreateOrder}>
-                Create Order
-              </Button>
-            </div>
-          </div>
         );
     }
   };
@@ -133,7 +113,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     <div className="space-y-6">
       {/* Simple Progress Indicator */}
       <div className="flex items-center justify-center space-x-4 mb-6">
-        {[1, 2, 3, 4, 5].map((step) => (
+        {[1, 2, 3, 4].map((step) => (
           <div
             key={step}
             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -158,7 +138,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           Cancel
         </Button>
         <div className="text-sm text-muted-foreground">
-          Step {currentStep} of 5
+          Step {currentStep} of 4
         </div>
       </div>
     </div>

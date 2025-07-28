@@ -1,29 +1,17 @@
 
 interface ProgressIndicatorProps {
   currentStep: number;
-  deliveryMethod?: "delivery" | "pickup" | "pickup_delivery" | "";
+  deliveryMethod?: "delivery" | "pickup" | "";
   totalSteps?: number;
 }
 
-const getStepLabels = (deliveryMethod: "delivery" | "pickup" | "pickup_delivery" | "" = "") => {
+const getStepLabels = (deliveryMethod: "delivery" | "pickup" | "" = "") => {
   if (deliveryMethod === "pickup") {
     return {
       1: "Customer",
       2: "Products", 
       3: "Method",
-      4: "Payment",
-      5: "Review"
-    };
-  } else if (deliveryMethod === "pickup_delivery") {
-    return {
-      1: "Customer",
-      2: "Products", 
-      3: "Method",
-      4: "Pickup",
-      5: "Order Type",
-      6: "Address",
-      7: "Payment",
-      8: "Review"
+      4: "Payment"
     };
   }
   
@@ -31,10 +19,7 @@ const getStepLabels = (deliveryMethod: "delivery" | "pickup" | "pickup_delivery"
     1: "Customer",
     2: "Products", 
     3: "Method",
-    4: "Order Type",
-    5: "Address",
-    6: "Payment",
-    7: "Review"
+    4: "Payment"
   };
 };
 
@@ -43,10 +28,7 @@ export function ProgressIndicator({
   deliveryMethod = "", 
   totalSteps 
 }: ProgressIndicatorProps) {
-  const steps = totalSteps || (
-    deliveryMethod === "pickup" ? 5 : 
-    deliveryMethod === "pickup_delivery" ? 8 : 7
-  );
+  const steps = totalSteps || 4;
   const stepLabels = getStepLabels(deliveryMethod);
 
   return (

@@ -24,7 +24,7 @@ interface PaymentMethodStepProps {
   paymentMethod: string;
   onPaymentMethodChange: (method: string) => void;
   onBack: () => void;
-  onNext: () => void;
+  onCreateOrder: () => void;
 }
 
 const PAYMENT_METHODS = [
@@ -83,7 +83,7 @@ export function PaymentMethodStep({
   paymentMethod,
   onPaymentMethodChange,
   onBack,
-  onNext
+  onCreateOrder
 }: PaymentMethodStepProps) {
   const isAccountCustomer = customer.customer_type === 'account';
   
@@ -102,11 +102,11 @@ export function PaymentMethodStep({
                true
   }));
 
-  const handleNext = () => {
+  const handleCreateOrder = () => {
     if (!paymentMethod) {
       return;
     }
-    onNext();
+    onCreateOrder();
   };
 
   const formatCardBrand = (brand: string) => {
@@ -300,11 +300,11 @@ export function PaymentMethodStep({
             Back
           </Button>
           <Button 
-            onClick={handleNext}
+            onClick={handleCreateOrder}
             disabled={!paymentMethod}
             className="ml-auto"
           >
-            {paymentMethod ? 'Continue to Review' : 'Select Payment Method'}
+            {paymentMethod ? 'Create Order' : 'Select Payment Method'}
           </Button>
         </div>
       </CardContent>

@@ -48,14 +48,21 @@ export function calculateOrderTotals(
   const hasSurcharge = getPaymentMethodSurcharge(paymentMethod);
   const surchargeAmount = hasSurcharge ? calculateSurcharge(baseAmount, settings.service_charge_rate) : 0;
   
-  // Amount after surcharge, before GST
+  // Amount after surcharge
   const amountAfterSurcharge = baseAmount + surchargeAmount;
   
-  // Calculate GST on the total amount including surcharge
-  const gstAmount = calculateGST(amountAfterSurcharge, settings.gst_rate);
+  let gstAmount: number;
+  let totalAmount: number;
   
-  // Final total
-  const totalAmount = amountAfterSurcharge + gstAmount;
+  if (settings.include_gst_in_prices) {
+    // GST Inclusive: Extract GST from the total amount
+    gstAmount = (amountAfterSurcharge * settings.gst_rate) / (100 + settings.gst_rate);
+    totalAmount = amountAfterSurcharge; // GST is already included in prices
+  } else {
+    // GST Exclusive: Add GST on top
+    gstAmount = calculateGST(amountAfterSurcharge, settings.gst_rate);
+    totalAmount = amountAfterSurcharge + gstAmount;
+  }
 
   const result = {
     subtotal,
@@ -67,7 +74,8 @@ export function calculateOrderTotals(
     baseAmount,
     hasSurcharge,
     surchargeRate: settings.service_charge_rate,
-    gstRate: settings.gst_rate
+    gstRate: settings.gst_rate,
+    includeGstInPrices: settings.include_gst_in_prices
   };
 
   console.log('Calculation result:', result);
