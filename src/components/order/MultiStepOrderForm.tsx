@@ -1,12 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { CustomerSearchStep } from './CustomerSearchStep';
 import { ProductSelectionStep } from './ProductSelectionStep';
 import { DeliveryMethodSelectionStep } from './DeliveryMethodSelectionStep';
+import { DeliveryAddressStep } from './DeliveryAddressStep';
 import { PaymentMethodStep } from './PaymentMethodStep';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Customer, SelectedContact, CartItem } from './types';
 import { useToast } from '@/hooks/use-toast';
+import { useSuburbManagement } from '@/hooks/useSuburbManagement';
 
 interface MultiStepOrderFormProps {
   onOrderCreated: () => void;
@@ -26,7 +28,28 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
   }, [cart]);
   const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup" | "">("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  
+  // Delivery address state
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliverySuburbId, setDeliverySuburbId] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState("");
+  const [isUsingCustomerAddress, setIsUsingCustomerAddress] = useState(true);
+  
   const { toast } = useToast();
+  const { handleAutoSuburbSelection } = useSuburbManagement();
+
+  // Auto-populate delivery address when customer is selected
+  useEffect(() => {
+    if (selectedCustomer && isUsingCustomerAddress) {
+      setDeliveryAddress(selectedCustomer.full_address);
+      setDeliverySuburbId(selectedCustomer.suburb_id);
+    }
+  }, [selectedCustomer, isUsingCustomerAddress]);
+
+  const getTotalSteps = () => {
+    return deliveryMethod === "delivery" ? 5 : 4;
+  };
 
   const handleNext = () => {
     setCurrentStep(prev => prev + 1);
@@ -36,8 +59,68 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setCurrentStep(prev => prev - 1);
   };
 
+  const handleDeliveryMethodChange = (method: "delivery" | "pickup") => {
+    setDeliveryMethod(method);
+    // Reset delivery data when changing methods
+    if (method === "pickup") {
+      setDeliveryAddress("");
+      setDeliverySuburbId("");
+      setDeliveryDate("");
+      setDeliveryTime("");
+    } else if (method === "delivery" && selectedCustomer) {
+      // Auto-populate with customer address for delivery
+      setDeliveryAddress(selectedCustomer.full_address);
+      setDeliverySuburbId(selectedCustomer.suburb_id);
+      setIsUsingCustomerAddress(true);
+    }
+  };
+
+  const handleAddressFormChange = (updates: { full_address?: string; suburb_id?: string }) => {
+    if (updates.full_address !== undefined) {
+      setDeliveryAddress(updates.full_address);
+      setIsUsingCustomerAddress(false);
+    }
+    if (updates.suburb_id !== undefined) {
+      setDeliverySuburbId(updates.suburb_id);
+    }
+  };
+
+  const handleSuburbChange = (suburbId: string, suburb?: any) => {
+    setDeliverySuburbId(suburbId);
+    setIsUsingCustomerAddress(false);
+  };
+
+  const clearDeliveryAddress = () => {
+    setDeliveryAddress("");
+    setDeliverySuburbId("");
+    setIsUsingCustomerAddress(false);
+  };
+
+  const resetToCustomerAddress = () => {
+    if (selectedCustomer) {
+      setDeliveryAddress(selectedCustomer.full_address);
+      setDeliverySuburbId(selectedCustomer.suburb_id);
+      setIsUsingCustomerAddress(true);
+    }
+  };
+
   const handleCreateOrder = () => {
-    // Simplified order creation for now
+    // Include delivery data in order creation
+    const orderData = {
+      customer: selectedCustomer,
+      contact: selectedContact,
+      cart,
+      adjustments,
+      deliveryMethod,
+      deliveryAddress: deliveryMethod === "delivery" ? deliveryAddress : null,
+      deliverySuburbId: deliveryMethod === "delivery" ? deliverySuburbId : null,
+      deliveryDate: deliveryMethod === "delivery" ? deliveryDate : null,
+      deliveryTime: deliveryMethod === "delivery" ? deliveryTime : null,
+      paymentMethod
+    };
+    
+    console.log("Creating order with data:", orderData);
+    
     toast({
       title: "Success",
       description: "Order created successfully!",
@@ -75,13 +158,50 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         return (
           <DeliveryMethodSelectionStep
             deliveryMethod={deliveryMethod}
-            onDeliveryMethodChange={setDeliveryMethod}
+            onDeliveryMethodChange={handleDeliveryMethodChange}
             onNext={handleNext}
             onBack={handleBack}
           />
         );
       
       case 4:
+        // For delivery method, show address step. For pickup, skip to payment.
+        if (deliveryMethod === "delivery") {
+          return (
+            <DeliveryAddressStep
+              formData={{
+                full_address: deliveryAddress,
+                suburb_id: deliverySuburbId
+              }}
+              deliveryDate={deliveryDate}
+              deliveryTime={deliveryTime}
+              onFormDataChange={handleAddressFormChange}
+              onSuburbChange={handleSuburbChange}
+              onDeliveryDateChange={setDeliveryDate}
+              onDeliveryTimeChange={setDeliveryTime}
+              onBack={handleBack}
+              onNext={handleNext}
+              selectedCustomer={selectedCustomer}
+              isUsingCustomerAddress={isUsingCustomerAddress}
+              onClearAddress={clearDeliveryAddress}
+              onResetToCustomerAddress={resetToCustomerAddress}
+            />
+          );
+        } else {
+          // For pickup, go directly to payment
+          return (
+            <PaymentMethodStep
+              customer={selectedCustomer!}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
+              onCreateOrder={handleCreateOrder}
+              onBack={handleBack}
+            />
+          );
+        }
+      
+      case 5:
+        // Payment step for delivery orders
         return (
           <PaymentMethodStep
             customer={selectedCustomer!}
@@ -103,6 +223,15 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       case 3:
         return deliveryMethod !== "";
       case 4:
+        if (deliveryMethod === "delivery") {
+          // For delivery, step 4 is address confirmation
+          return deliveryAddress && deliverySuburbId && deliveryDate && deliveryTime;
+        } else {
+          // For pickup, step 4 is payment
+          return paymentMethod !== "";
+        }
+      case 5:
+        // Payment step for delivery orders
         return paymentMethod !== "";
       default:
         return true;
@@ -111,9 +240,9 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
   return (
     <div className="space-y-6">
-      {/* Simple Progress Indicator */}
+      {/* Progress Indicator */}
       <div className="flex items-center justify-center space-x-4 mb-6">
-        {[1, 2, 3, 4].map((step) => (
+        {Array.from({ length: getTotalSteps() }, (_, i) => i + 1).map((step) => (
           <div
             key={step}
             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -138,7 +267,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           Cancel
         </Button>
         <div className="text-sm text-muted-foreground">
-          Step {currentStep} of 4
+          Step {currentStep} of {getTotalSteps()}
         </div>
       </div>
     </div>

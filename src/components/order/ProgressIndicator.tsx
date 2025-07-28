@@ -15,6 +15,16 @@ const getStepLabels = (deliveryMethod: "delivery" | "pickup" | "" = "") => {
     };
   }
   
+  if (deliveryMethod === "delivery") {
+    return {
+      1: "Customer",
+      2: "Products", 
+      3: "Method",
+      4: "Address",
+      5: "Payment"
+    };
+  }
+  
   return {
     1: "Customer",
     2: "Products", 
