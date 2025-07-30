@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSuburbManagement } from '@/hooks/useSuburbManagement';
 import { usePaymentSettings } from '@/hooks/usePaymentSettings';
 import { calculateOrderTotals } from './utils/paymentCalculations';
+import { createOrder, CreateOrderData } from './services/orderCreationService';
 
 interface MultiStepOrderFormProps {
   onOrderCreated: () => void;
@@ -45,6 +46,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
   const [deliveryNotes, setDeliveryNotes] = useState("");
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [isDeliveryFeeManuallySet, setIsDeliveryFeeManuallySet] = useState(false);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   
   const { toast } = useToast();
   const { handleAutoSuburbSelection, suburbs } = useSuburbManagement();
@@ -121,32 +123,56 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     }
   };
 
-  const handleCreateOrder = () => {
-    // Include all order data including review step fields
-    const orderData = {
-      customer: selectedCustomer,
-      contact: selectedContact,
-      cart,
-      adjustments,
-      deliveryMethod,
-      deliveryAddress: deliveryMethod === "delivery" ? deliveryAddress : null,
-      deliverySuburbId: deliveryMethod === "delivery" ? deliverySuburbId : null,
-      deliveryDate: deliveryMethod === "delivery" ? deliveryDate : null,
-      deliveryTime: deliveryMethod === "delivery" ? deliveryTime : null,
-      paymentMethod,
-      purchaseOrder,
-      orderNotes,
-      deliveryNotes,
-      deliveryFee: deliveryMethod === "delivery" ? deliveryFee : 0
-    };
+  const handleCreateOrder = async () => {
+    if (!selectedCustomer || !paymentSettings) return;
     
-    console.log("Creating order with data:", orderData);
+    setIsCreatingOrder(true);
     
-    toast({
-      title: "Success",
-      description: "Order created successfully!",
-    });
-    onOrderCreated();
+    try {
+      // Calculate final totals
+      const finalTotals = calculateOrderTotals(subtotal, adjustments, deliveryFee, paymentMethod, paymentSettings);
+      
+      // Map form data to CreateOrderData interface
+      const orderData: CreateOrderData = {
+        customer_id: selectedCustomer.id,
+        customer_name: selectedCustomer.company_name || selectedCustomer.business_name || 
+                     `${selectedCustomer.first_name || ''} ${selectedCustomer.last_name || ''}`.trim(),
+        customer_phone: selectedCustomer.phone || undefined,
+        customer_address: selectedCustomer.full_address,
+        delivery_address: deliveryMethod === "delivery" ? deliveryAddress : selectedCustomer.full_address,
+        products: cart.map(item => ({
+          product_id: item.product.id,
+          name: item.product.name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total_price: item.total_price
+        })),
+        total_amount: finalTotals.totalAmount,
+        subtotal: finalTotals.subtotal,
+        delivery_fee: finalTotals.deliveryFee,
+        adjustments: finalTotals.adjustments,
+        payment_method: paymentMethod,
+        delivery_date: deliveryMethod === "delivery" ? deliveryDate : undefined,
+        delivery_time: deliveryMethod === "delivery" ? deliveryTime : undefined,
+        special_instructions: [orderNotes, deliveryNotes].filter(Boolean).join('; ') || undefined,
+        purchase_order: purchaseOrder || undefined,
+        contact_id: selectedContact?.id || undefined,
+        contact_name: selectedContact?.name || undefined,
+        contact_email: selectedContact?.email || undefined,
+        contact_phone: selectedContact?.phone || undefined,
+        delivery_method: deliveryMethod as "delivery" | "pickup"
+      };
+      
+      console.log("Creating order with data:", orderData);
+      
+      await createOrder(orderData);
+      onOrderCreated();
+    } catch (error) {
+      console.error('Failed to create order:', error);
+      // Error toast is handled by createOrder service
+    } finally {
+      setIsCreatingOrder(false);
+    }
   };
 
   // Calculate order totals for review step
@@ -204,7 +230,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         );
       
       case 4:
-        // For delivery method, show address step. For pickup, go to review.
+        // For delivery method, show address step. For pickup, go to payment.
         if (deliveryMethod === "delivery") {
           return (
             <DeliveryAddressStep
@@ -227,7 +253,32 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             />
           );
         } else {
-          // For pickup, show review step
+          // For pickup, show payment step
+          return (
+            <PaymentMethodStep
+              customer={selectedCustomer!}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
+              onBack={handleBack}
+              onNext={handleNext}
+            />
+          );
+        }
+      
+      case 5:
+        // Payment step for delivery orders or Review step for pickup orders
+        if (deliveryMethod === "delivery") {
+          return (
+            <PaymentMethodStep
+              customer={selectedCustomer!}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
+              onBack={handleBack}
+              onNext={handleNext}
+            />
+          );
+        } else {
+          // Review step for pickup orders
           return (
             <OrderReviewStep
               customer={selectedCustomer!}
@@ -247,8 +298,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               deliveryAddress=""
               sameAsBilling={true}
               onBack={handleBack}
-              onConfirm={handleNext}
-              isCreating={false}
+              onConfirm={handleCreateOrder}
+              isCreating={isCreatingOrder}
               onDeliveryFeeChange={() => {}}
               onOrderNotesChange={setOrderNotes}
               onDeliveryNotesChange={() => {}}
@@ -258,64 +309,39 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             />
           );
         }
-      
-      case 5:
-        // Review step for delivery orders or Payment step for pickup orders
-        if (deliveryMethod === "delivery") {
-          return (
-            <OrderReviewStep
-              customer={selectedCustomer!}
-              selectedContact={selectedContact}
-              cart={cart}
-              subtotal={subtotal}
-              adjustments={adjustments}
-              deliveryFee={deliveryFee}
-              deliveryMethod={deliveryMethod}
-              deliveryDate={deliveryDate}
-              deliveryTime={deliveryTime}
-              specialInstructions=""
-              paymentMethod={paymentMethod}
-              orderNotes={orderNotes}
-              deliveryNotes={deliveryNotes}
-              purchaseOrder={purchaseOrder}
-              deliveryAddress={deliveryAddress}
-              sameAsBilling={isUsingCustomerAddress}
-              onBack={handleBack}
-              onConfirm={handleNext}
-              isCreating={false}
-              onDeliveryFeeChange={(fee) => {
-                setDeliveryFee(fee);
-                setIsDeliveryFeeManuallySet(true);
-              }}
-              onOrderNotesChange={setOrderNotes}
-              onDeliveryNotesChange={setDeliveryNotes}
-              onPurchaseOrderChange={setPurchaseOrder}
-              isDeliveryFeeManuallySet={isDeliveryFeeManuallySet}
-              deliveryFeeInfo={deliveryFeeInfo}
-            />
-          );
-        } else {
-          // Payment step for pickup orders
-          return (
-            <PaymentMethodStep
-              customer={selectedCustomer!}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
-              onCreateOrder={handleCreateOrder}
-              onBack={handleBack}
-            />
-          );
-        }
 
       case 6:
-        // Payment step for delivery orders only
+        // Review step for delivery orders only
         return (
-          <PaymentMethodStep
+          <OrderReviewStep
             customer={selectedCustomer!}
+            selectedContact={selectedContact}
+            cart={cart}
+            subtotal={subtotal}
+            adjustments={adjustments}
+            deliveryFee={deliveryFee}
+            deliveryMethod={deliveryMethod as "delivery" | "pickup"}
+            deliveryDate={deliveryDate}
+            deliveryTime={deliveryTime}
+            specialInstructions=""
             paymentMethod={paymentMethod}
-            onPaymentMethodChange={setPaymentMethod}
-            onCreateOrder={handleCreateOrder}
+            orderNotes={orderNotes}
+            deliveryNotes={deliveryNotes}
+            purchaseOrder={purchaseOrder}
+            deliveryAddress={deliveryAddress}
+            sameAsBilling={isUsingCustomerAddress}
             onBack={handleBack}
+            onConfirm={handleCreateOrder}
+            isCreating={isCreatingOrder}
+            onDeliveryFeeChange={(fee) => {
+              setDeliveryFee(fee);
+              setIsDeliveryFeeManuallySet(true);
+            }}
+            onOrderNotesChange={setOrderNotes}
+            onDeliveryNotesChange={setDeliveryNotes}
+            onPurchaseOrderChange={setPurchaseOrder}
+            isDeliveryFeeManuallySet={isDeliveryFeeManuallySet}
+            deliveryFeeInfo={deliveryFeeInfo}
           />
         );
     }
@@ -334,20 +360,20 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           // For delivery, step 4 is address confirmation
           return deliveryAddress && deliverySuburbId && deliveryDate && deliveryTime;
         } else {
-          // For pickup, step 4 is review - always can proceed
-          return true;
+          // For pickup, step 4 is payment method
+          return paymentMethod !== "";
         }
       case 5:
         if (deliveryMethod === "delivery") {
-          // Review step for delivery orders - always can proceed
-          return true;
-        } else {
-          // Payment step for pickup orders
+          // Payment step for delivery orders
           return paymentMethod !== "";
+        } else {
+          // Review step for pickup orders - always can proceed
+          return true;
         }
       case 6:
-        // Payment step for delivery orders
-        return paymentMethod !== "";
+        // Review step for delivery orders - always can proceed
+        return true;
       default:
         return true;
     }

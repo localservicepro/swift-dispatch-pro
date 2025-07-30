@@ -11,8 +11,8 @@ const getStepLabels = (deliveryMethod: "delivery" | "pickup" | "" = "") => {
       1: "Customer",
       2: "Products", 
       3: "Method",
-      4: "Review",
-      5: "Payment"
+      4: "Payment",
+      5: "Review"
     };
   }
   
@@ -22,8 +22,8 @@ const getStepLabels = (deliveryMethod: "delivery" | "pickup" | "" = "") => {
       2: "Products", 
       3: "Method",
       4: "Address",
-      5: "Review",
-      6: "Payment"
+      5: "Payment",
+      6: "Review"
     };
   }
   
