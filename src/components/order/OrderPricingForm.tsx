@@ -49,6 +49,7 @@ export function OrderPricingForm({
             className="border-amber-200 focus:border-amber-400 focus:ring-amber-200"
             placeholder="0.00"
           />
+          <p className="text-xs text-amber-600 mt-1">Calculated from products but can be manually adjusted</p>
         </div>
         <div>
           <Label htmlFor="delivery_fee" className="text-gray-700 font-medium">Delivery Fee (AU$)</Label>

@@ -44,22 +44,42 @@ export function useOrderFormData(order: Order) {
   const { autoPopulateDeliveryFee, getDeliveryFeeInfo } = useDeliveryFeeCalculation();
   const [isDeliveryFeeManuallySet, setIsDeliveryFeeManuallySet] = useState(false);
   
+  // Calculate subtotal from order products
+  const calculateSubtotalFromProducts = (products: any[]) => {
+    if (!Array.isArray(products)) return 0;
+    return products.reduce((sum, item) => {
+      const price = parseFloat(item.price) || 0;
+      const quantity = parseFloat(item.quantity) || 0;
+      return sum + (price * quantity);
+    }, 0);
+  };
+
+  const orderProducts = Array.isArray(order.products) ? order.products : [];
+  const initialSubtotal = order.subtotal || calculateSubtotalFromProducts(orderProducts);
+
+  console.log('Order data initialization:', {
+    orderSubtotal: order.subtotal,
+    orderProducts: orderProducts,
+    calculatedSubtotal: calculateSubtotalFromProducts(orderProducts),
+    finalSubtotal: initialSubtotal
+  });
+
   const [formData, setFormData] = useState<OrderFormData>({
     customer_name: order.customer_name || '',
     customer_phone: order.customer_phone || '',
     customer_address: order.delivery_address || order.customer_address || '',
     purchase_order: order.purchase_order || '',
-    products: Array.isArray(order.products) ? order.products : [],
+    products: orderProducts,
     total_amount: order.total_amount?.toString() || '0',
-    subtotal: order.subtotal || 0,
+    subtotal: initialSubtotal,
     delivery_fee: order.delivery_fee || 0,
     status: order.status || 'preparing',
     delivery_date: order.delivery_date || '',
     delivery_time: order.delivery_time || '',
     special_instructions: order.special_instructions || '',
     driver_id: order.driver_id || 'unassigned',
-    suburb_id: order.suburb_id || '',
-    delivery_suburb_id: order.delivery_suburb_id || '',
+    suburb_id: order.suburb_id || order.delivery_suburb_id || '',
+    delivery_suburb_id: order.delivery_suburb_id || order.suburb_id || '',
     truck_type: order.truck_type || 'none',
     truck_id: order.truck_id || 'none',
     payment_method: order.payment_method || 'cash',
@@ -155,7 +175,17 @@ export function useOrderFormData(order: Order) {
   };
 
   const handleProductsChange = (products: any[]) => {
-    setFormData(prev => ({ ...prev, products }));
+    // Calculate new subtotal when products change
+    const newSubtotal = calculateSubtotalFromProducts(products);
+    const updatedData = { subtotal: newSubtotal };
+    const newTotal = calculateTotals(updatedData);
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      products,
+      subtotal: newSubtotal,
+      total_amount: newTotal
+    }));
   };
 
   const handleSubtotalChange = (subtotal: number) => {
