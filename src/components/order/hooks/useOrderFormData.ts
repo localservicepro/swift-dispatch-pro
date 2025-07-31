@@ -101,10 +101,9 @@ export function useOrderFormData(order: Order) {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
-    
-    // Handle pricing fields that need recalculation
-    if (field === 'delivery_fee' || field === 'adjustments') {
+    // Handle numeric fields that need recalculation
+    if (field === 'subtotal' || field === 'delivery_fee' || field === 'adjustments') {
+      const numValue = parseFloat(value) || 0;
       const updatedData = { [field]: numValue };
       const newTotal = calculateTotals(updatedData);
       
@@ -133,7 +132,11 @@ export function useOrderFormData(order: Order) {
   };
 
   const handleSuburbChange = (suburbId: string, suburb?: any) => {
-    setFormData(prev => ({ ...prev, suburb_id: suburbId }));
+    setFormData(prev => ({ 
+      ...prev, 
+      suburb_id: suburbId,
+      delivery_suburb_id: suburbId 
+    }));
     
     // Auto-populate delivery fee if not manually set and we have suburb data
     if (suburb && !isDeliveryFeeManuallySet) {
