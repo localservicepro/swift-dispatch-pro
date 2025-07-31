@@ -32,34 +32,44 @@ export interface OrderFormData {
 }
 
 export function useOrderFormData(order: Order) {
+  console.log('useOrderFormData called with order:', order);
+  
   const { data: paymentSettings } = usePaymentSettings();
   const { autoPopulateDeliveryFee, getDeliveryFeeInfo } = useDeliveryFeeCalculation();
   const [isDeliveryFeeManuallySet, setIsDeliveryFeeManuallySet] = useState(false);
   
-  const [formData, setFormData] = useState<OrderFormData>({
-    customer_name: order.customer_name || '',
-    customer_phone: order.customer_phone || '',
-    customer_address: order.delivery_address || order.customer_address || '',
-    purchase_order: order.purchase_order || '',
-    products: Array.isArray(order.products) ? order.products : [],
-    total_amount: order.total_amount?.toString() || '0',
-    subtotal: order.subtotal || 0,
-    delivery_fee: order.delivery_fee || 0,
-    status: order.status || 'preparing',
-    delivery_date: order.delivery_date || '',
-    delivery_time: order.delivery_time || '',
-    special_instructions: order.special_instructions || '',
-    driver_id: order.driver_id || 'unassigned',
-    suburb_id: order.suburb_id || '',
-    delivery_suburb_id: order.delivery_suburb_id || '',
-    truck_type: order.truck_type || 'none',
-    truck_id: order.truck_id || 'none',
-    payment_method: order.payment_method || 'cash',
-    adjustments: order.adjustments || 0,
-    contact_id: order.contact_id || null,
-    contact_name: order.contact_name || null,
-    contact_email: order.contact_email || null,
-    contact_phone: order.contact_phone || null
+  const [formData, setFormData] = useState<OrderFormData>(() => {
+    console.log('Initializing form data with order data:', {
+      products: order.products,
+      subtotal: order.subtotal,
+      total_amount: order.total_amount
+    });
+    
+    return {
+      customer_name: order.customer_name || '',
+      customer_phone: order.customer_phone || '',
+      customer_address: order.delivery_address || order.customer_address || '',
+      purchase_order: order.purchase_order || '',
+      products: Array.isArray(order.products) ? order.products : [],
+      total_amount: order.total_amount?.toString() || '0',
+      subtotal: order.subtotal || 0,
+      delivery_fee: order.delivery_fee || 0,
+      status: order.status || 'preparing',
+      delivery_date: order.delivery_date || '',
+      delivery_time: order.delivery_time || '',
+      special_instructions: order.special_instructions || '',
+      driver_id: order.driver_id || 'unassigned',
+      suburb_id: order.suburb_id || '',
+      delivery_suburb_id: order.delivery_suburb_id || '',
+      truck_type: order.truck_type || 'none',
+      truck_id: order.truck_id || 'none',
+      payment_method: order.payment_method || 'cash',
+      adjustments: order.adjustments || 0,
+      contact_id: order.contact_id || null,
+      contact_name: order.contact_name || null,
+      contact_email: order.contact_email || null,
+      contact_phone: order.contact_phone || null
+    };
   });
 
   // Calculate totals whenever pricing components change
