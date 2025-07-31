@@ -8,10 +8,7 @@ import {
   Truck,
   Clock,
   CalendarDays,
-  Building,
-  Package,
-  ArrowRight,
-  Store
+  Building
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { formatDeliveryDate, formatDeliveryTime, formatCreatedDate, formatCreatedTime } from "@/utils/dateTimeUtils";
@@ -23,24 +20,16 @@ interface OpportunityCardInfoProps {
 export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
   const truckInfo = getTruckInfo(order.truck_type_from_truck || order.truck_type);
   const hasDeliverySchedule = order.delivery_date && order.delivery_time;
-  const hasPickupSchedule = order.pickup_date && order.pickup_time;
 
   // Get the delivery address to display
   const deliveryAddress = order.delivery_address || order.customer_address;
 
-  // Determine display name and contact info - prioritize selected contact over primary contact
+  // Determine display name and company info
   const getDisplayInfo = () => {
     // Check for company name (account customers)
     if (order.company_name) {
-      // Prioritize selected contact information if available
-      const hasSelectedContact = order.contact_name && 
-        order.contact_name !== 'null null' && 
-        order.contact_name.trim() !== '' &&
-        order.contact_name !== 'null' &&
-        order.contact_name !== 'undefined';
-      
-      // Fall back to customer info if no selected contact
-      const hasValidCustomer = order.customer_name && 
+      // Only set contactInfo if customer_name exists and is not null/empty
+      const hasValidContact = order.customer_name && 
         order.customer_name !== 'null null' && 
         order.customer_name.trim() !== '' &&
         order.customer_name !== 'null' &&
@@ -48,23 +37,15 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
       
       return {
         displayName: order.company_name,
-        contactInfo: hasSelectedContact ? order.contact_name : (hasValidCustomer ? order.customer_name : null),
-        contactPhone: order.contact_phone || order.customer_phone,
+        contactInfo: hasValidContact ? order.customer_name : null,
         isCompany: true
       };
     }
     
     // Check for business name (business customers)
     if (order.business_name) {
-      // Prioritize selected contact information if available
-      const hasSelectedContact = order.contact_name && 
-        order.contact_name !== 'null null' && 
-        order.contact_name.trim() !== '' &&
-        order.contact_name !== 'null' &&
-        order.contact_name !== 'undefined';
-      
-      // Fall back to customer info if no selected contact
-      const hasValidCustomer = order.customer_name && 
+      // Only set contactInfo if customer_name exists and is not null/empty
+      const hasValidContact = order.customer_name && 
         order.customer_name !== 'null null' && 
         order.customer_name.trim() !== '' &&
         order.customer_name !== 'null' &&
@@ -72,37 +53,20 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
       
       return {
         displayName: order.business_name,
-        contactInfo: hasSelectedContact ? order.contact_name : (hasValidCustomer ? order.customer_name : null),
-        contactPhone: order.contact_phone || order.customer_phone,
+        contactInfo: hasValidContact ? order.customer_name : null,
         isCompany: true
       };
     }
     
-    // Default to customer name (individual customers)
+    // Default to customer name
     return {
-      displayName: order.contact_name || order.customer_name,
+      displayName: order.customer_name,
       contactInfo: null,
-      contactPhone: order.contact_phone || order.customer_phone,
       isCompany: false
     };
   };
 
-  const { displayName, contactInfo, contactPhone, isCompany } = getDisplayInfo();
-
-  // Get first product info
-  const getFirstProductInfo = () => {
-    if (!order.products || !Array.isArray(order.products) || order.products.length === 0) {
-      return null;
-    }
-    
-    const firstProduct = order.products[0];
-    const productName = firstProduct.name || firstProduct.product_name || 'Product';
-    const quantity = firstProduct.quantity || 1;
-    
-    return { productName, quantity };
-  };
-
-  const firstProduct = getFirstProductInfo();
+  const { displayName, contactInfo, isCompany } = getDisplayInfo();
 
   return (
     <>
@@ -122,76 +86,19 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
             <span>Contact: {contactInfo}</span>
           </div>
         )}
-        {contactPhone && (
+        {order.customer_phone && (
           <div className="flex items-center gap-2 text-xs text-slate-600">
             <Phone className="w-3 h-3" />
-            <span>{contactPhone}</span>
+            <span>{order.customer_phone}</span>
           </div>
         )}
       </div>
-
-      {/* First Product Info */}
-      {firstProduct && (
-        <div className="flex items-center gap-2 mb-3">
-          <Package className="w-3 h-3 text-slate-400" />
-          <div className="flex-1 min-w-0">
-            <span className="text-xs text-slate-600 truncate block">
-              {firstProduct.productName} (Qty: {firstProduct.quantity})
-            </span>
-          </div>
-          <button className="text-xs text-blue-600 hover:text-blue-800 underline whitespace-nowrap">
-            View Items
-          </button>
-        </div>
-      )}
 
       {/* Amount */}
       <div className="flex items-center gap-2 mb-3">
         <DollarSign className="w-4 h-4 text-green-600" />
         <span className="font-bold text-green-600">${order.total_amount.toFixed(2)}</span>
       </div>
-
-      {/* Pickup & Delivery Information for pickup_delivery orders */}
-      {order.delivery_method === 'pickup_delivery' && (
-        <div className="space-y-2 mb-3 border-l-2 border-purple-200 pl-3">
-          <div className="text-xs font-medium text-purple-700 mb-2">Pickup & Delivery</div>
-          
-          {/* Pickup Location */}
-          {order.pickup_location_address && (
-            <div className="flex items-start gap-2 text-xs text-slate-600">
-              <Store className="w-3 h-3 mt-0.5 flex-shrink-0 text-purple-600" />
-              <div>
-                <div className="font-medium">Pickup from:</div>
-                <div className="line-clamp-2">{order.pickup_location_name || order.pickup_location_address}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Pickup Contact */}
-          {order.pickup_contact_name && (
-            <div className="flex items-center gap-2 text-xs text-slate-600">
-              <User className="w-3 h-3 text-purple-600" />
-              <span>{order.pickup_contact_name}</span>
-              {order.pickup_contact_phone && (
-                <span className="text-slate-400">• {order.pickup_contact_phone}</span>
-              )}
-            </div>
-          )}
-
-          {/* Pickup Schedule */}
-          {hasPickupSchedule && (
-            <div className="flex items-center gap-2 text-xs text-purple-600">
-              <CalendarDays className="w-3 h-3" />
-              <span>Pickup: {formatDeliveryDate(order.pickup_date)} at {formatDeliveryTime(order.pickup_time)}</span>
-            </div>
-          )}
-
-          {/* Arrow indicating flow */}
-          <div className="flex justify-center">
-            <ArrowRight className="w-4 h-4 text-purple-400" />
-          </div>
-        </div>
-      )}
 
       {/* Date and Time Information */}
       <div className="space-y-1 mb-3 text-xs text-slate-500">
@@ -200,9 +107,7 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
           <>
             <div className="flex items-center gap-2 text-blue-600 font-medium">
               <CalendarDays className="w-3 h-3" />
-              <span>
-                {order.delivery_method === 'pickup_delivery' ? 'Deliver to' : 'Scheduled'}: {formatDeliveryDate(order.delivery_date)}
-              </span>
+              <span>Scheduled: {formatDeliveryDate(order.delivery_date)}</span>
             </div>
             <div className="flex items-center gap-2 text-blue-600 font-medium">
               <Clock className="w-3 h-3" />
@@ -211,16 +116,21 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
           </>
         )}
         
+        {/* Created Date - Always show */}
+        <div className="flex items-center gap-2">
+          <Calendar className="w-3 h-3" />
+          <span>Created: {formatCreatedDate(order.created_at)}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Clock className="w-3 h-3" />
+          <span>{formatCreatedTime(order.created_at)}</span>
+        </div>
+        
         {/* Delivery Address - Show full address instead of just suburb */}
         {deliveryAddress && (
           <div className="flex items-start gap-2">
             <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-            <div>
-              {order.delivery_method === 'pickup_delivery' && (
-                <div className="font-medium text-xs mb-1">Deliver to:</div>
-              )}
-              <span className="line-clamp-2 break-words">{deliveryAddress}</span>
-            </div>
+            <span className="line-clamp-2 break-words">{deliveryAddress}</span>
           </div>
         )}
 

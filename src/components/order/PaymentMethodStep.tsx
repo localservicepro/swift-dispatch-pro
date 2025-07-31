@@ -304,7 +304,7 @@ export function PaymentMethodStep({
             disabled={!paymentMethod}
             className="ml-auto"
           >
-            {paymentMethod ? 'Next' : 'Select Payment Method'}
+            {paymentMethod ? 'Continue to Review' : 'Select Payment Method'}
           </Button>
         </div>
       </CardContent>

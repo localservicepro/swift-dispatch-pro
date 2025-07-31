@@ -39,13 +39,13 @@ export function DeliveryMapCard({ address, customerName, orderId }: DeliveryMapC
   };
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
       <div className="p-3">
         <div className="flex items-start gap-2 text-slate-700 mb-3">
-          <MapPin className="w-4 h-4 text-blue-600 mt-0.5" />
+          <MapPin className="w-4 h-4 text-slate-500 mt-0.5" />
           <div className="flex-1">
-            <div className="font-medium text-sm text-blue-900">Delivery to {customerName}</div>
-            <div className="text-sm text-blue-700">{address}</div>
+            <div className="font-medium text-sm">{customerName}</div>
+            <div className="text-sm text-slate-600">{address}</div>
           </div>
         </div>
         
@@ -55,7 +55,7 @@ export function DeliveryMapCard({ address, customerName, orderId }: DeliveryMapC
           className="w-full bg-blue-600 hover:bg-blue-700 text-white"
         >
           <Navigation className="w-4 h-4 mr-2" />
-          Get Directions to Delivery
+          Get Directions
         </Button>
       </div>
     </div>

@@ -379,15 +379,13 @@ export function PaymentManagement() {
 
   const updatePaymentStatus = async (orderId: string, newStatus: string) => {
     try {
-      // Use the database function instead of direct table update
-      const { error } = await supabase.rpc('update_payment_status', {
-        p_order_id: orderId,
-        p_new_status: newStatus,
-        p_payment_date: newStatus === 'paid' ? new Date().toISOString() : null
-      });
-      
+      const {
+        error
+      } = await supabase.from('orders').update({
+        payment_status: newStatus,
+        payment_date: newStatus === 'paid' ? new Date().toISOString() : null
+      }).eq('id', orderId);
       if (error) throw error;
-      
       toast({
         title: "Payment Status Updated",
         description: `Payment status changed to ${newStatus}`

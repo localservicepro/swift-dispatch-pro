@@ -29,14 +29,6 @@ export interface OrderFormData {
   contact_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
-  delivery_method: string;
-  pickup_location_address?: string;
-  pickup_location_name?: string;
-  pickup_contact_name?: string;
-  pickup_contact_phone?: string;
-  pickup_instructions?: string;
-  pickup_date?: string;
-  pickup_time?: string;
 }
 
 export function useOrderFormData(order: Order) {
@@ -44,42 +36,22 @@ export function useOrderFormData(order: Order) {
   const { autoPopulateDeliveryFee, getDeliveryFeeInfo } = useDeliveryFeeCalculation();
   const [isDeliveryFeeManuallySet, setIsDeliveryFeeManuallySet] = useState(false);
   
-  // Calculate subtotal from order products
-  const calculateSubtotalFromProducts = (products: any[]) => {
-    if (!Array.isArray(products)) return 0;
-    return products.reduce((sum, item) => {
-      const price = parseFloat(item.price) || 0;
-      const quantity = parseFloat(item.quantity) || 0;
-      return sum + (price * quantity);
-    }, 0);
-  };
-
-  const orderProducts = Array.isArray(order.products) ? order.products : [];
-  const initialSubtotal = order.subtotal || calculateSubtotalFromProducts(orderProducts);
-
-  console.log('Order data initialization:', {
-    orderSubtotal: order.subtotal,
-    orderProducts: orderProducts,
-    calculatedSubtotal: calculateSubtotalFromProducts(orderProducts),
-    finalSubtotal: initialSubtotal
-  });
-
   const [formData, setFormData] = useState<OrderFormData>({
     customer_name: order.customer_name || '',
     customer_phone: order.customer_phone || '',
     customer_address: order.delivery_address || order.customer_address || '',
     purchase_order: order.purchase_order || '',
-    products: orderProducts,
+    products: Array.isArray(order.products) ? order.products : [],
     total_amount: order.total_amount?.toString() || '0',
-    subtotal: initialSubtotal,
+    subtotal: order.subtotal || 0,
     delivery_fee: order.delivery_fee || 0,
     status: order.status || 'preparing',
     delivery_date: order.delivery_date || '',
     delivery_time: order.delivery_time || '',
     special_instructions: order.special_instructions || '',
     driver_id: order.driver_id || 'unassigned',
-    suburb_id: order.suburb_id || order.delivery_suburb_id || '',
-    delivery_suburb_id: order.delivery_suburb_id || order.suburb_id || '',
+    suburb_id: order.suburb_id || '',
+    delivery_suburb_id: order.delivery_suburb_id || '',
     truck_type: order.truck_type || 'none',
     truck_id: order.truck_id || 'none',
     payment_method: order.payment_method || 'cash',
@@ -87,15 +59,7 @@ export function useOrderFormData(order: Order) {
     contact_id: order.contact_id || null,
     contact_name: order.contact_name || null,
     contact_email: order.contact_email || null,
-    contact_phone: order.contact_phone || null,
-    delivery_method: order.delivery_method || 'delivery',
-    pickup_location_address: order.pickup_location_address || '',
-    pickup_location_name: order.pickup_location_name || '',
-    pickup_contact_name: order.pickup_contact_name || '',
-    pickup_contact_phone: order.pickup_contact_phone || '',
-    pickup_instructions: order.pickup_instructions || '',
-    pickup_date: order.pickup_date || '',
-    pickup_time: order.pickup_time || ''
+    contact_phone: order.contact_phone || null
   });
 
   // Calculate totals whenever pricing components change
@@ -121,9 +85,10 @@ export function useOrderFormData(order: Order) {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    // Handle numeric fields that need recalculation
-    if (field === 'subtotal' || field === 'delivery_fee' || field === 'adjustments') {
-      const numValue = parseFloat(value) || 0;
+    const numValue = parseFloat(value) || 0;
+    
+    // Handle pricing fields that need recalculation
+    if (field === 'delivery_fee' || field === 'adjustments') {
       const updatedData = { [field]: numValue };
       const newTotal = calculateTotals(updatedData);
       
@@ -152,11 +117,7 @@ export function useOrderFormData(order: Order) {
   };
 
   const handleSuburbChange = (suburbId: string, suburb?: any) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      suburb_id: suburbId,
-      delivery_suburb_id: suburbId 
-    }));
+    setFormData(prev => ({ ...prev, suburb_id: suburbId }));
     
     // Auto-populate delivery fee if not manually set and we have suburb data
     if (suburb && !isDeliveryFeeManuallySet) {
@@ -175,17 +136,7 @@ export function useOrderFormData(order: Order) {
   };
 
   const handleProductsChange = (products: any[]) => {
-    // Calculate new subtotal when products change
-    const newSubtotal = calculateSubtotalFromProducts(products);
-    const updatedData = { subtotal: newSubtotal };
-    const newTotal = calculateTotals(updatedData);
-    
-    setFormData(prev => ({ 
-      ...prev, 
-      products,
-      subtotal: newSubtotal,
-      total_amount: newTotal
-    }));
+    setFormData(prev => ({ ...prev, products }));
   };
 
   const handleSubtotalChange = (subtotal: number) => {
@@ -243,7 +194,6 @@ export function useOrderFormData(order: Order) {
     return {
       ...formData,
       delivery_time: formatTimeForDB(formData.delivery_time),
-      pickup_time: formatTimeForDB(formData.pickup_time || ''),
       total_amount: parseFloat(formData.total_amount) || 0
     };
   };

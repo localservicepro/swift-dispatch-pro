@@ -23,14 +23,13 @@ export function useOrderActions(refetch: () => void) {
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
     try {
       const oldStatus = currentOrder.status;
-      
-      // Use the database function for proper validation and triggers
-      const { error } = await supabase.rpc('update_order_status', {
-        order_id: orderId,
-        new_status: newStatus,
-        notes: null,
-        location: null
-      });
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
 
       if (error) throw error;
 
@@ -50,10 +49,9 @@ export function useOrderActions(refetch: () => void) {
 
       refetch();
     } catch (error: any) {
-      console.error('Update order status error:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update order status",
+        description: "Failed to update order status",
         variant: "destructive"
       });
     }

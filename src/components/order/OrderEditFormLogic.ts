@@ -105,7 +105,7 @@ export function useOrderEditFormLogic(order: Order) {
     }
     // Handle delivery suburb changes
     if (updates.delivery_suburb_id !== undefined) {
-      handleSuburbChange(updates.delivery_suburb_id);
+      setFormData(prev => ({ ...prev, delivery_suburb_id: updates.delivery_suburb_id }));
     }
   };
 

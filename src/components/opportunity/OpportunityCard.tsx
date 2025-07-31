@@ -5,14 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { NotesEditDialog } from "../notes/NotesEditDialog";
 import { ProofOfDeliveryDialog } from "../order/ProofOfDeliveryDialog";
+import { StockSplitDialog } from "../order/StockSplitDialog";
 import { useDeliveryPhotos } from "@/hooks/useDeliveryPhotos";
 import { OpportunityCardHeader } from "./OpportunityCardHeader";
 import { OpportunityCardInfo } from "./OpportunityCardInfo";
 import { OpportunityCardActionButton } from "./OpportunityCardActionButton";
 import { OpportunityCardCompleted } from "./OpportunityCardCompleted";
-import { getCustomerTypeColors, getDeliveryMethodColors, getDeliveryMethodLabel } from "@/utils/customerTypeColors";
+import { getCustomerTypeColors } from "@/utils/customerTypeColors";
 import { cn } from "@/lib/utils";
-import { Package, AlertTriangle, ArrowRightLeft } from "lucide-react";
+import { Package, AlertTriangle } from "lucide-react";
 
 interface OpportunityCardProps {
   order: any;
@@ -24,6 +25,7 @@ interface OpportunityCardProps {
 export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick }: OpportunityCardProps) {
   const [showNotesEdit, setShowNotesEdit] = useState(false);
   const [showProofDialog, setShowProofDialog] = useState(false);
+  const [showStockSplitDialog, setShowStockSplitDialog] = useState(false);
 
   // Fetch delivery photos for delivered orders
   const { data: deliveryPhotos } = useDeliveryPhotos(
@@ -31,12 +33,8 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
   );
   const hasDeliveryPhotos = deliveryPhotos && deliveryPhotos.length > 0;
 
-  // Get colors based on delivery method first, then customer type
-  const deliveryMethodColors = getDeliveryMethodColors(order.delivery_method);
-  const customerTypeColors = getCustomerTypeColors(order.customer_type, order.payment_status);
-  
-  // Use delivery method colors for pickup_delivery orders, otherwise use customer type colors
-  const colors = order.delivery_method === 'pickup_delivery' ? deliveryMethodColors : customerTypeColors;
+  // Get customer type colors
+  const colors = getCustomerTypeColors(order.customer_type);
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't trigger card click if clicking on action buttons, payment dropdown, or notes edit
@@ -58,6 +56,11 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
     setShowProofDialog(true);
   };
 
+  const handleStockSplit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowStockSplitDialog(true);
+  };
+
   return (
     <>
       <Card 
@@ -71,22 +74,6 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
         onClick={handleCardClick}
       >
         <CardContent className="p-4">
-          {/* Payment Status Warning for pending payments */}
-          {order.payment_status === 'pending' && (
-            <div className="mb-3 flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded p-2">
-              <AlertTriangle className="w-4 h-4" />
-              <span className="text-xs font-medium">Payment Pending</span>
-            </div>
-          )}
-
-          {/* Delivery Method Badge for pickup_delivery orders */}
-          {order.delivery_method === 'pickup_delivery' && (
-            <div className="mb-3 flex items-center gap-2 text-purple-600 bg-purple-50 border border-purple-200 rounded p-2">
-              <ArrowRightLeft className="w-4 h-4" />
-              <span className="text-xs font-medium">{getDeliveryMethodLabel(order.delivery_method)}</span>
-            </div>
-          )}
-
           {/* Header */}
           <OpportunityCardHeader
             order={order}
@@ -95,6 +82,7 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
             onOrderMove={onOrderMove}
             onNotesEdit={handleNotesEdit}
             onViewProof={handleViewProof}
+            onStockSplit={handleStockSplit}
           />
 
           {/* Order Information */}
@@ -155,6 +143,14 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
         onClose={() => setShowProofDialog(false)}
         orderId={order.id}
         orderNumber={order.order_number}
+      />
+
+      {/* Stock Split Dialog */}
+      <StockSplitDialog
+        isOpen={showStockSplitDialog}
+        onClose={() => setShowStockSplitDialog(false)}
+        order={order}
+        onSplitComplete={onOrderMove}
       />
     </>
   );

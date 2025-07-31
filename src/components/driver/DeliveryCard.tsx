@@ -4,13 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DeliveryActionDialog } from "./DeliveryActionDialog";
 import { OrderDetailsCard } from "./OrderDetailsCard";
 import { DeliveryMapCard } from "./DeliveryMapCard";
-import { PickupMapCard } from "./PickupMapCard";
 import { DeliveryCardHeader } from "./DeliveryCardHeader";
-import { DeliveryLocationCard } from "./DeliveryLocationCard";
+import { DeliveryCardCustomerInfo } from "./DeliveryCardCustomerInfo";
 import { DeliveryCardTruckAssignment } from "./DeliveryCardTruckAssignment";
 import { DeliveryCardActions } from "./DeliveryCardActions";
-import { PickupLocationCard } from "./PickupLocationCard";
-import { Navigation, ArrowDown } from "lucide-react";
+import { Navigation } from "lucide-react";
 
 interface DeliveryCardProps {
   order: any;
@@ -36,7 +34,6 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
 
   // Use delivery_address first, fallback to customer_address for backwards compatibility
   const deliveryAddress = order.delivery_address || order.customer_address;
-  const isPickupDelivery = order.delivery_method === 'pickup_delivery';
 
   return (
     <>
@@ -45,36 +42,13 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
           {/* Header */}
           <DeliveryCardHeader order={order} />
 
-          {/* Truck Assignment */}
+          {/* Customer Info */}
+          <DeliveryCardCustomerInfo order={order} />
+
+          {/* Prominent Truck Assignment - Moved up for visibility */}
           <DeliveryCardTruckAssignment order={order} />
 
-          {/* Pickup Section - Only show for pickup_delivery orders */}
-          {isPickupDelivery && (
-            <>
-              <PickupLocationCard order={order} />
-              
-              {/* Pickup Map */}
-              <PickupMapCard
-                address={order.pickup_location_address}
-                locationName={order.pickup_location_name || 'Pickup Location'}
-                orderId={order.id}
-              />
-              
-              {/* Flow Indicator */}
-              <div className="flex items-center justify-center py-2">
-                <div className="flex items-center gap-2 text-slate-500">
-                  <span className="text-sm font-medium">Pickup Complete</span>
-                  <ArrowDown className="w-4 h-4" />
-                  <span className="text-sm font-medium">Proceed to Delivery</span>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Delivery Section */}
-          <DeliveryLocationCard order={order} />
-
-          {/* Delivery Map */}
+          {/* Google Maps Integration */}
           <DeliveryMapCard
             address={deliveryAddress}
             customerName={order.customer_name}

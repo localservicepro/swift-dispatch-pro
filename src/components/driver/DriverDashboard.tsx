@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { DeliveryCard } from "./DeliveryCard";
-import { Truck, Package, Clock, CheckCircle, LogOut, User, Loader2, MapPin } from "lucide-react";
+import { Truck, Package, Clock, CheckCircle, LogOut, User, Loader2 } from "lucide-react";
 import { emailService } from "@/utils/emailService";
 
 interface DriverDashboardProps {
@@ -91,7 +90,7 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
           )
         `)
         .eq('driver_id', user.id)
-        .in('status', ['pickup_scheduled', 'pickup_in_progress', 'pickup_complete', 'preparing', 'loading', 'en_route'])
+        .in('status', ['preparing', 'loading', 'en_route'])
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -134,22 +133,11 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
   };
 
   const getStatusStats = () => {
-    const pickupScheduled = orders.filter(o => o.status === 'pickup_scheduled').length;
-    const pickupInProgress = orders.filter(o => o.status === 'pickup_in_progress').length;
-    const pickupComplete = orders.filter(o => o.status === 'pickup_complete').length;
     const preparing = orders.filter(o => o.status === 'preparing').length;
     const loading = orders.filter(o => o.status === 'loading').length;
     const enRoute = orders.filter(o => o.status === 'en_route').length;
     
-    return { 
-      pickupScheduled, 
-      pickupInProgress, 
-      pickupComplete, 
-      preparing, 
-      loading, 
-      enRoute, 
-      total: orders.length 
-    };
+    return { preparing, loading, enRoute, total: orders.length };
   };
 
   const stats = getStatusStats();
@@ -199,13 +187,7 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
 
       <div className="max-w-md mx-auto p-4 space-y-6">
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-2">
-          <Card className="text-center p-3">
-            <MapPin className="w-6 h-6 mx-auto text-purple-600 mb-1" />
-            <div className="text-lg font-bold text-purple-600">{stats.pickupScheduled}</div>
-            <div className="text-xs text-slate-600">Pickup Scheduled</div>
-          </Card>
-          
+        <div className="grid grid-cols-4 gap-2">
           <Card className="text-center p-3">
             <Package className="w-6 h-6 mx-auto text-orange-600 mb-1" />
             <div className="text-lg font-bold text-orange-600">{stats.preparing}</div>
@@ -222,6 +204,12 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
             <Truck className="w-6 h-6 mx-auto text-purple-600 mb-1" />
             <div className="text-lg font-bold text-purple-600">{stats.enRoute}</div>
             <div className="text-xs text-slate-600">En Route</div>
+          </Card>
+          
+          <Card className="text-center p-3">
+            <CheckCircle className="w-6 h-6 mx-auto text-green-600 mb-1" />
+            <div className="text-lg font-bold text-green-600">{stats.total}</div>
+            <div className="text-xs text-slate-600">Total</div>
           </Card>
         </div>
 

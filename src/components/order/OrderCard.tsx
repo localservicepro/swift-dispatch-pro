@@ -4,9 +4,12 @@ import { PurchaseOrderDisplay } from "./PurchaseOrderDisplay";
 import { NotesIndicator } from "../notes/NotesIndicator";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { PaymentStatusDropdown } from "../opportunity/PaymentStatusDropdown";
-import { MapPin, Truck, Edit3, Trash2, Building, User, Store, ArrowRight } from "lucide-react";
+import { MixedStockBadge } from "./MixedStockBadge";
+import { StockSplitDialog } from "./StockSplitDialog";
+import { useStockStatus } from "@/hooks/useStockStatus";
+import { MapPin, Truck, Edit3, Trash2, Building, User, Package } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
-import { getDeliveryMethodLabel } from "@/utils/customerTypeColors";
+import { useState } from "react";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -48,14 +51,6 @@ interface Order {
   company_name?: string;
   business_name?: string;
   customer_type?: string;
-  delivery_method?: string;
-  pickup_location_address?: string;
-  pickup_location_name?: string;
-  pickup_contact_name?: string;
-  pickup_contact_phone?: string;
-  pickup_instructions?: string;
-  pickup_date?: string;
-  pickup_time?: string;
 }
 
 interface OrderCardProps {
@@ -68,6 +63,8 @@ interface OrderCardProps {
 }
 
 export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit, onPaymentStatusUpdate }: OrderCardProps) {
+  const [showStockSplitDialog, setShowStockSplitDialog] = useState(false);
+  const { hasMixedStock } = useStockStatus(order.id);
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
       case "delivered":
@@ -102,8 +99,11 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
     }
   };
 
+  // Determine display name and company info
   const getDisplayInfo = () => {
+    // Check for company name (account customers)
     if (order.company_name) {
+      // Only set contactInfo if customer_name exists and is not null/empty
       const hasValidContact = order.customer_name && 
         order.customer_name !== 'null null' && 
         order.customer_name.trim() !== '' &&
@@ -117,7 +117,9 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
       };
     }
     
+    // Check for business name (business customers)
     if (order.business_name) {
+      // Only set contactInfo if customer_name exists and is not null/empty
       const hasValidContact = order.customer_name && 
         order.customer_name !== 'null null' && 
         order.customer_name.trim() !== '' &&
@@ -131,6 +133,7 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
       };
     }
     
+    // Default to customer name
     return {
       displayName: order.customer_name,
       contactInfo: null,
@@ -156,6 +159,7 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
     return 'Products listed';
   };
 
+  // Create formatted truck info using denormalized fields
   let truckDisplayInfo = '';
   if (order.truck_type_display && order.truck_registration) {
     truckDisplayInfo = `${order.truck_type_display} ${order.truck_registration}`;
@@ -165,10 +169,12 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
     truckDisplayInfo = order.truck_registration;
   }
 
+  // Get delivery suburb info - prioritize delivery suburb over customer suburb
   const getDeliverySuburbInfo = () => {
     if (order.delivery_suburb_name) {
       return `${order.delivery_suburb_name}, ${order.delivery_suburb_state}${order.delivery_suburb_postcode ? ` (${order.delivery_suburb_postcode})` : ''}`;
     }
+    // Fallback to customer suburb if delivery suburb not available
     if (order.suburb_name) {
       return `${order.suburb_name}, ${order.suburb_state}${order.suburb_postcode ? ` (${order.suburb_postcode})` : ''}`;
     }
@@ -183,16 +189,12 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           <Badge className={getStatusColor(order.status)}>
             {getStatusLabel(order.status)}
           </Badge>
-          {order.delivery_method && order.delivery_method !== 'delivery' && (
-            <Badge variant="outline" className="text-purple-600 border-purple-200">
-              {getDeliveryMethodLabel(order.delivery_method)}
-            </Badge>
-          )}
           <PaymentStatusDropdown 
             order={order} 
             onStatusUpdate={() => onPaymentStatusUpdate?.()} 
           />
           <PurchaseOrderDisplay purchaseOrder={order.purchase_order} variant="secondary" />
+          {hasMixedStock && <MixedStockBadge size="sm" />}
           <NotesIndicator 
             orderNotes={order.order_notes} 
             deliveryNotes={order.delivery_notes} 
@@ -216,6 +218,7 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
         </div>
       </div>
       
+      {/* Order Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-3">
         <div>
           <p className="text-slate-500 flex items-center gap-1">
@@ -245,38 +248,7 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
         </div>
       </div>
 
-      {order.delivery_method === 'pickup_delivery' && order.pickup_location_address && (
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-3">
-          <div className="text-sm font-medium text-purple-800 mb-2 flex items-center gap-2">
-            <Store className="w-4 h-4" />
-            Pickup & Delivery Details
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-purple-700 font-medium">Pickup From:</p>
-              <p className="text-slate-700">{order.pickup_location_name || 'Pickup Location'}</p>
-              <p className="text-slate-600 text-xs">{order.pickup_location_address}</p>
-              {order.pickup_contact_name && (
-                <p className="text-slate-600 text-xs">
-                  Contact: {order.pickup_contact_name}
-                  {order.pickup_contact_phone && ` • ${order.pickup_contact_phone}`}
-                </p>
-              )}
-              {order.pickup_date && (
-                <p className="text-slate-600 text-xs">
-                  Date: {order.pickup_date} {order.pickup_time && `at ${order.pickup_time}`}
-                </p>
-              )}
-            </div>
-            
-            <div className="flex items-center justify-center">
-              <ArrowRight className="w-6 h-6 text-purple-400" />
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* Truck Information using denormalized fields */}
       {truckDisplayInfo && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
           <div>
@@ -289,6 +261,7 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
         </div>
       )}
 
+      {/* Notes Section */}
       {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
         <div className="mb-3">
           <NotesDisplaySection
@@ -301,6 +274,7 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
         </div>
       )}
 
+      {/* Order Meta Information */}
       <div className="mt-3 text-xs text-slate-400">
         <p>Delivery Address: {order.delivery_address || order.customer_address}</p>
         <p>Created: {new Date(order.created_at).toLocaleDateString()}</p>
@@ -309,11 +283,25 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
         )}
       </div>
       
+      {/* Action Buttons */}
       <div className="flex gap-2 mt-4">
         <Button size="sm" variant="outline" onClick={() => onEdit(order)}>
           Edit
         </Button>
         
+        {hasMixedStock && order.status !== 'back_order' && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowStockSplitDialog(true)}
+            className="text-amber-600 border-amber-200 hover:bg-amber-50"
+          >
+            <Package className="w-4 h-4 mr-1" />
+            Handle Stock
+          </Button>
+        )}
+        
+        {/* Quick status update buttons for admin */}
         {order.status === 'preparing' && (
           <Button
             size="sm"
@@ -366,6 +354,14 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           Delete
         </Button>
       </div>
+      
+      {/* Stock Split Dialog */}
+      <StockSplitDialog
+        isOpen={showStockSplitDialog}
+        onClose={() => setShowStockSplitDialog(false)}
+        order={order}
+        onSplitComplete={() => onPaymentStatusUpdate?.()}
+      />
     </div>
   );
 }

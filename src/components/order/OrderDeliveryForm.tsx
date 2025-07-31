@@ -39,7 +39,7 @@ export function OrderDeliveryForm({
         }}
         deliveryRate={deliveryRate}
         onFormDataChange={onFormDataChange}
-        onSuburbChange={onSuburbChange}
+        onSuburbChange={handleDeliverySuburbChange}
         isDeliveryAddress={true}
       />
     </div>

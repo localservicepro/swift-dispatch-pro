@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
-import { CheckCircle, XCircle, Package, Truck } from "lucide-react";
+import { CheckCircle, XCircle } from "lucide-react";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -19,56 +19,18 @@ export function DeliveryCardActions({ order, onStatusUpdate, onActionDialog }: D
   const { toast } = useToast();
 
   const getNextStatus = (currentStatus: string): OrderStatus | null => {
-    const isPickupDelivery = order.delivery_method === 'pickup_delivery';
-    
-    if (isPickupDelivery) {
-      switch (currentStatus) {
-        case 'pickup_scheduled': return 'pickup_in_progress';
-        case 'pickup_in_progress': return 'pickup_complete';
-        case 'pickup_complete': return 'en_route';
-        case 'en_route': return null; // Final actions handled by buttons
-        default: return null;
-      }
-    } else {
-      switch (currentStatus) {
-        case 'preparing': return 'loading';
-        case 'loading': return 'en_route';
-        default: return null;
-      }
+    switch (currentStatus) {
+      case 'preparing': return 'loading';
+      case 'loading': return 'en_route';
+      default: return null;
     }
   };
 
   const getStatusLabel = (status: string) => {
-    const isPickupDelivery = order.delivery_method === 'pickup_delivery';
-    
-    if (isPickupDelivery) {
-      switch (status) {
-        case 'pickup_scheduled': return 'Start Pickup';
-        case 'pickup_in_progress': return 'Complete Pickup';
-        case 'pickup_complete': return 'Start Delivery';
-        default: return null;
-      }
-    } else {
-      switch (status) {
-        case 'preparing': return 'Start Loading';
-        case 'loading': return 'Start Delivery';
-        default: return null;
-      }
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    const isPickupDelivery = order.delivery_method === 'pickup_delivery';
-    
-    if (isPickupDelivery) {
-      switch (status) {
-        case 'pickup_scheduled': return <Package className="w-4 h-4 mr-2" />;
-        case 'pickup_in_progress': return <Package className="w-4 h-4 mr-2" />;
-        case 'pickup_complete': return <Truck className="w-4 h-4 mr-2" />;
-        default: return null;
-      }
-    } else {
-      return null;
+    switch (status) {
+      case 'preparing': return 'Start Loading';
+      case 'loading': return 'Start Delivery';
+      default: return null;
     }
   };
 
@@ -101,7 +63,6 @@ export function DeliveryCardActions({ order, onStatusUpdate, onActionDialog }: D
 
   const nextStatus = getNextStatus(order.status);
   const statusLabel = getStatusLabel(order.status);
-  const statusIcon = getStatusIcon(order.status);
 
   return (
     <div className="space-y-2">
@@ -113,7 +74,6 @@ export function DeliveryCardActions({ order, onStatusUpdate, onActionDialog }: D
           className="w-full"
           variant="outline"
         >
-          {statusIcon}
           {updating ? 'Updating...' : statusLabel}
         </Button>
       )}

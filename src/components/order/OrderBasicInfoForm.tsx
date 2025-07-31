@@ -26,12 +26,7 @@ export function OrderBasicInfoForm({ formData, businessInfo, onInputChange }: Or
   };
 
   const businessName = getDisplayName();
-  const showBusinessInfo = businessName;
-
-  // Determine which contact info to display and edit
-  const contactName = formData.contact_name || formData.customer_name;
-  const contactPhone = formData.contact_phone || formData.customer_phone;
-  const isOrderContact = !!formData.contact_name;
+  const showBusinessInfo = businessName && businessName !== formData.customer_name;
 
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
@@ -50,33 +45,33 @@ export function OrderBasicInfoForm({ formData, businessInfo, onInputChange }: Or
             {businessName}
           </div>
           <div className="text-sm text-gray-600">
-            {isOrderContact ? "Order Contact" : "Contact"}: {contactName}
+            Contact: {formData.customer_name}
           </div>
         </div>
       )}
       
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="contact_name" className="text-gray-700 font-medium">
-            {isOrderContact ? "Order Contact Name" : "Contact Name"}
+          <Label htmlFor="customer_name" className="text-gray-700 font-medium">
+            {showBusinessInfo ? "Contact Name" : "Customer Name"}
           </Label>
           <Input
-            id="contact_name"
-            value={contactName}
-            onChange={(e) => onInputChange(isOrderContact ? 'contact_name' : 'customer_name', e.target.value)}
+            id="customer_name"
+            value={formData.customer_name}
+            onChange={(e) => onInputChange('customer_name', e.target.value)}
             required
             className="border-blue-200 focus:border-blue-400 focus:ring-blue-200"
           />
         </div>
         <div>
-          <Label htmlFor="contact_phone" className="text-gray-700 font-medium">
+          <Label htmlFor="customer_phone" className="text-gray-700 font-medium">
             <Phone className="w-4 h-4 inline mr-1" />
-            {isOrderContact ? "Order Contact Phone" : "Contact Phone"}
+            Customer Phone
           </Label>
           <Input
-            id="contact_phone"
-            value={contactPhone}
-            onChange={(e) => onInputChange(isOrderContact ? 'contact_phone' : 'customer_phone', e.target.value)}
+            id="customer_phone"
+            value={formData.customer_phone}
+            onChange={(e) => onInputChange('customer_phone', e.target.value)}
             className="border-blue-200 focus:border-blue-400 focus:ring-blue-200"
           />
         </div>

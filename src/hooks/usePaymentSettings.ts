@@ -35,7 +35,7 @@ export function usePaymentSettings() {
         service_charge_rate: 1.50,
         currency: 'AUD',
         gst_label: 'GST',
-        include_gst_in_prices: true,
+        include_gst_in_prices: false,
         default_delivery_fee: 0.00
       };
 

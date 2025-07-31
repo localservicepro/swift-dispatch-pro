@@ -16,23 +16,14 @@ const getStepLabels = (deliveryMethod: "delivery" | "pickup" | "" = "") => {
     };
   }
   
-  if (deliveryMethod === "delivery") {
-    return {
-      1: "Customer",
-      2: "Products", 
-      3: "Method",
-      4: "Address",
-      5: "Payment",
-      6: "Review"
-    };
-  }
-  
   return {
     1: "Customer",
     2: "Products", 
     3: "Method",
-    4: "Review",
-    5: "Payment"
+    4: "Order Type",
+    5: "Address",
+    6: "Payment",
+    7: "Review"
   };
 };
 
@@ -41,7 +32,7 @@ export function ProgressIndicator({
   deliveryMethod = "", 
   totalSteps 
 }: ProgressIndicatorProps) {
-  const steps = totalSteps || 5;
+  const steps = totalSteps || (deliveryMethod === "pickup" ? 5 : 7);
   const stepLabels = getStepLabels(deliveryMethod);
 
   return (
