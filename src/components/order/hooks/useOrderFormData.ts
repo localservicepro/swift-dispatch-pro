@@ -216,24 +216,49 @@ export function useOrderFormData(order: Order) {
     const totalAmount = Number(formData.total_amount) || 0;
     
     if (!paymentSettings) {
+      // Return complete fallback object with all required properties
+      const baseAmount = subtotal + adjustments + deliveryFee;
+      const gstAmount = baseAmount * 0.1;
       return {
         subtotal,
         adjustments,
         deliveryFee,
         surchargeAmount: 0,
-        gstAmount: (subtotal + adjustments + deliveryFee) * 0.1,
-        totalAmount,
-        hasSurcharge: false
+        gstAmount,
+        totalAmount: baseAmount + gstAmount,
+        baseAmount,
+        hasSurcharge: false,
+        surchargeRate: 0,
+        gstRate: 10
       };
     }
 
-    return calculateOrderTotals(
-      subtotal,
-      adjustments,
-      deliveryFee,
-      formData.payment_method,
-      paymentSettings
-    );
+    try {
+      return calculateOrderTotals(
+        subtotal,
+        adjustments,
+        deliveryFee,
+        formData.payment_method,
+        paymentSettings
+      );
+    } catch (error) {
+      console.error('Error calculating order totals:', error);
+      // Return safe fallback on calculation error
+      const baseAmount = subtotal + adjustments + deliveryFee;
+      const gstAmount = baseAmount * 0.1;
+      return {
+        subtotal,
+        adjustments,
+        deliveryFee,
+        surchargeAmount: 0,
+        gstAmount,
+        totalAmount: baseAmount + gstAmount,
+        baseAmount,
+        hasSurcharge: false,
+        surchargeRate: paymentSettings.service_charge_rate || 0,
+        gstRate: paymentSettings.gst_rate || 10
+      };
+    }
   };
 
   return {
