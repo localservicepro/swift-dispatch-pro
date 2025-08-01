@@ -52,8 +52,8 @@ export function useOrderFormData(order: Order) {
       purchase_order: order.purchase_order || '',
       products: Array.isArray(order.products) ? order.products : [],
       total_amount: order.total_amount?.toString() || '0',
-      subtotal: order.subtotal || 0,
-      delivery_fee: order.delivery_fee || 0,
+      subtotal: Number(order.subtotal) || 0,
+      delivery_fee: Number(order.delivery_fee) || 0,
       status: order.status || 'preparing',
       delivery_date: order.delivery_date || '',
       delivery_time: order.delivery_time || '',
@@ -64,7 +64,7 @@ export function useOrderFormData(order: Order) {
       truck_type: order.truck_type || 'none',
       truck_id: order.truck_id || 'none',
       payment_method: order.payment_method || 'cash',
-      adjustments: order.adjustments || 0,
+      adjustments: Number(order.adjustments) || 0,
       contact_id: order.contact_id || null,
       contact_name: order.contact_name || null,
       contact_email: order.contact_email || null,
@@ -210,22 +210,27 @@ export function useOrderFormData(order: Order) {
 
   // Get calculation breakdown for display
   const getCalculationBreakdown = () => {
+    const subtotal = Number(formData.subtotal) || 0;
+    const adjustments = Number(formData.adjustments) || 0;
+    const deliveryFee = Number(formData.delivery_fee) || 0;
+    const totalAmount = Number(formData.total_amount) || 0;
+    
     if (!paymentSettings) {
       return {
-        subtotal: formData.subtotal,
-        adjustments: formData.adjustments,
-        deliveryFee: formData.delivery_fee,
+        subtotal,
+        adjustments,
+        deliveryFee,
         surchargeAmount: 0,
-        gstAmount: (formData.subtotal + formData.adjustments + formData.delivery_fee) * 0.1,
-        totalAmount: parseFloat(formData.total_amount),
+        gstAmount: (subtotal + adjustments + deliveryFee) * 0.1,
+        totalAmount,
         hasSurcharge: false
       };
     }
 
     return calculateOrderTotals(
-      formData.subtotal,
-      formData.adjustments,
-      formData.delivery_fee,
+      subtotal,
+      adjustments,
+      deliveryFee,
       formData.payment_method,
       paymentSettings
     );
