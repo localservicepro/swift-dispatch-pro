@@ -45,7 +45,7 @@ export function ProductEditSection({
 
   // Calculate subtotal from current products
   const subtotal = useMemo(() => {
-    return currentProducts.reduce((sum, item) => sum + (item.price * parseFloat(item.quantity)), 0);
+    return currentProducts.reduce((sum, item) => sum + ((item.price || 0) * parseFloat(item.quantity || 0)), 0);
   }, [currentProducts]);
 
   // Update parent when subtotal changes
@@ -241,7 +241,7 @@ export function ProductEditSection({
                   <div key={item.id} className="flex items-center justify-between p-3 border rounded">
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm">{item.name}</div>
-                      <div className="text-xs text-gray-500">${item.price.toFixed(2)} each</div>
+                      <div className="text-xs text-gray-500">${(item.price || 0).toFixed(2)} each</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
@@ -288,7 +288,7 @@ export function ProductEditSection({
                           <Plus className="w-3 h-3" />
                         </Button>
                       </div>
-                      <div className="font-medium text-sm w-16 text-right">${(item.price * parseFloat(item.quantity)).toFixed(2)}</div>
+                      <div className="font-medium text-sm w-16 text-right">${((item.price || 0) * parseFloat(item.quantity || 0)).toFixed(2)}</div>
                       <Button
                         type="button"
                         size="sm"
@@ -359,8 +359,8 @@ export function ProductEditSection({
                         )}
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold text-green-600">${product.price.toFixed(2)}</div>
-                        <div className="text-xs text-gray-500">Stock: {formatQuantity(product.stock_quantity)}</div>
+                        <div className="font-semibold text-green-600">${(product.price || 0).toFixed(2)}</div>
+                        <div className="text-xs text-gray-500">Stock: {formatQuantity(product.stock_quantity || 0)}</div>
                       </div>
                     </div>
                     
