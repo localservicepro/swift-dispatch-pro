@@ -74,6 +74,7 @@ export function ProductEditSection({
         category:product_categories(name)
       `)
       .eq('is_active', true)
+      .gt('stock_quantity', 0)
       .order('name');
 
     if (searchQuery) {
@@ -84,7 +85,7 @@ export function ProductEditSection({
       query = query.eq('category_id', selectedCategory);
     }
 
-    const { data, error } = await query.limit(1000);
+    const { data, error } = await query.limit(200);
 
     if (!error && data) {
       const productsWithImages = data.map(product => ({
@@ -341,9 +342,7 @@ export function ProductEditSection({
 
               {!loading && (
                 <div className="text-sm text-gray-600 mb-2">
-                  Showing {products.length} product{products.length !== 1 ? 's' : ''} 
-                  {products.length === 1000 && ' (maximum limit reached)'} 
-                  {searchQuery && ` for "${searchQuery}"`}
+                  Showing {products.length} product{products.length !== 1 ? 's' : ''} {searchQuery && `for "${searchQuery}"`}
                 </div>
               )}
 
@@ -361,14 +360,7 @@ export function ProductEditSection({
                       </div>
                       <div className="text-right">
                         <div className="font-semibold text-green-600">${product.price.toFixed(2)}</div>
-                        <div className={`text-xs ${product.stock_quantity <= 0 ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
-                          Stock: {product.stock_quantity <= 0 ? 'Out of Stock' : formatQuantity(product.stock_quantity)}
-                        </div>
-                        {product.stock_quantity <= 0 && (
-                          <Badge variant="outline" className="text-xs text-red-600 border-red-300 mt-1">
-                            Back Order Available
-                          </Badge>
-                        )}
+                        <div className="text-xs text-gray-500">Stock: {formatQuantity(product.stock_quantity)}</div>
                       </div>
                     </div>
                     

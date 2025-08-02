@@ -34,7 +34,7 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
     last_name: '',
     email: '',
     phone: '',
-    contact_role: 'Contact'
+    contact_role: 'Associated Contact'
   });
   const [editContact, setEditContact] = useState({
     first_name: '',
@@ -68,52 +68,42 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
   };
 
   const handleAddContact = async () => {
-    if (!newContact.first_name || !newContact.last_name) {
+    if (!newContact.first_name && !newContact.last_name) {
       toast({
         title: "Error",
-        description: "First name and last name are required",
+        description: "At least one name (first or last) is required",
         variant: "destructive",
       });
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('customer_contacts')
-        .insert({
-          customer_id: customerId,
-          first_name: newContact.first_name,
-          last_name: newContact.last_name,
-          email: newContact.email || null,
-          phone: newContact.phone || null,
-          contact_role: newContact.contact_role || 'Contact',
-          is_primary_contact: false, // Explicitly set as non-primary
-          is_active: true, // Explicitly set as active
-        });
+    const { error } = await supabase
+      .from('customer_contacts')
+      .insert([{
+        customer_id: customerId,
+        ...newContact
+      }]);
 
-      if (error) throw error;
-
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add contact",
+        variant: "destructive",
+      });
+    } else {
       toast({
         title: "Success",
         description: "Contact added successfully",
       });
-
       setNewContact({
         first_name: '',
         last_name: '',
         email: '',
         phone: '',
-        contact_role: 'Contact'
+        contact_role: 'Associated Contact'
       });
       setIsAddingContact(false);
       loadContacts();
-    } catch (error) {
-      console.error('Error adding contact:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add contact. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 

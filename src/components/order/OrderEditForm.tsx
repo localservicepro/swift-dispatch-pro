@@ -6,13 +6,10 @@ import { OrderEditConflictSection } from "./OrderEditConflictSection";
 import { OrderEditFormProps } from "./OrderEditFormTypes";
 import { useOrderEditFormLogic, convertToConflictInfo } from "./OrderEditFormLogic";
 import { useOrderFormSubmission } from "./OrderEditFormSubmission";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const { handleOrderSubmission } = useOrderFormSubmission();
-
-  console.log('OrderEditForm rendering with order:', order);
   
   const {
     formData,
@@ -61,41 +58,39 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
   const truckConflictInfo = convertToConflictInfo(truckConflict);
 
   return (
-    <ErrorBoundary>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <OrderEditSections
-          formData={formData}
-          deliveryRate={deliveryRate}
-          orderId={order.id}
-          customerId={order.customer_id}
-          businessInfo={businessInfo}
-          onInputChange={handleInputChange}
-          onDriverChange={handleDriverChange}
-          onSuburbChange={handleSuburbChange}
-          onProductsChange={handleProductsChange}
-          onSubtotalChange={handleSubtotalChange}
-          onContactChange={handleContactChange}
-          onFormDataChange={handleFormDataChange}
-          calculationBreakdown={calculationBreakdown}
-          paymentSettings={paymentSettings}
-        />
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <OrderEditSections
+        formData={formData}
+        deliveryRate={deliveryRate}
+        orderId={order.id}
+        customerId={order.customer_id}
+        businessInfo={businessInfo}
+        onInputChange={handleInputChange}
+        onDriverChange={handleDriverChange}
+        onSuburbChange={handleSuburbChange}
+        onProductsChange={handleProductsChange}
+        onSubtotalChange={handleSubtotalChange}
+        onContactChange={handleContactChange}
+        onFormDataChange={handleFormDataChange}
+        calculationBreakdown={calculationBreakdown}
+        paymentSettings={paymentSettings}
+      />
 
-        <OrderEditConflictSection
-          deliveryDate={formData.delivery_date}
-          deliveryTime={formData.delivery_time}
-          driverConflict={driverConflict}
-          truckConflict={truckConflict}
-          isChecking={isChecking}
-        />
+      <OrderEditConflictSection
+        deliveryDate={formData.delivery_date}
+        deliveryTime={formData.delivery_time}
+        driverConflict={driverConflict}
+        truckConflict={truckConflict}
+        isChecking={isChecking}
+      />
 
-        <OrderEditFooter
-          isUpdating={isUpdating}
-          onClose={onClose}
-          driverConflict={driverConflictInfo}
-          truckConflict={truckConflictInfo}
-          hasAnyConflict={hasAnyConflict}
-        />
-      </form>
-    </ErrorBoundary>
+      <OrderEditFooter
+        isUpdating={isUpdating}
+        onClose={onClose}
+        driverConflict={driverConflictInfo}
+        truckConflict={truckConflictInfo}
+        hasAnyConflict={hasAnyConflict}
+      />
+    </form>
   );
 }
