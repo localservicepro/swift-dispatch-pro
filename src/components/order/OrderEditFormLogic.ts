@@ -44,6 +44,8 @@ export function useOrderEditFormLogic(order: Order) {
     handleInputChange,
     handleDriverChange,
     handleSuburbChange,
+    handleDeliverySuburbChange,
+    handleFormDataChange: handleFormDataChangeHook,
     handleProductsChange,
     handleSubtotalChange,
     handleContactChange,
@@ -97,6 +99,7 @@ export function useOrderEditFormLogic(order: Order) {
   }, [formData.truck_type, order.truck_type, setFormData]);
 
   const handleFormDataChange = (updates: any) => {
+    console.log('OrderEditFormLogic - handleFormDataChange called with:', updates);
     if (updates.full_address !== undefined) {
       handleInputChange('customer_address', updates.full_address);
     }
@@ -105,7 +108,7 @@ export function useOrderEditFormLogic(order: Order) {
     }
     // Handle delivery suburb changes
     if (updates.delivery_suburb_id !== undefined) {
-      setFormData(prev => ({ ...prev, delivery_suburb_id: updates.delivery_suburb_id }));
+      handleFormDataChangeHook({ delivery_suburb_id: updates.delivery_suburb_id });
     }
   };
 
@@ -122,6 +125,7 @@ export function useOrderEditFormLogic(order: Order) {
     handleInputChange,
     handleDriverChange,
     handleSuburbChange,
+    handleDeliverySuburbChange,
     handleProductsChange,
     handleSubtotalChange,
     handleContactChange,

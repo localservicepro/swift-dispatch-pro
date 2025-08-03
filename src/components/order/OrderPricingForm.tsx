@@ -20,13 +20,19 @@ export function OrderPricingForm({
   calculationBreakdown,
   paymentSettings 
 }: OrderPricingFormProps) {
+  // Helper function to safely format currency values
+  const safeToFixed = (value: any, decimals: number = 2): string => {
+    const num = Number(value) || 0;
+    return num.toFixed(decimals);
+  };
+
   const breakdown = calculationBreakdown || {
-    subtotal: formData.subtotal,
-    adjustments: formData.adjustments || 0,
-    deliveryFee: formData.delivery_fee,
+    subtotal: Number(formData.subtotal) || 0,
+    adjustments: Number(formData.adjustments) || 0,
+    deliveryFee: Number(formData.delivery_fee) || 0,
     surchargeAmount: 0,
     gstAmount: 0,
-    totalAmount: parseFloat(formData.total_amount),
+    totalAmount: Number(formData.total_amount) || 0,
     hasSurcharge: false
   };
 
@@ -108,40 +114,40 @@ export function OrderPricingForm({
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span>Subtotal:</span>
-            <span>AU${breakdown.subtotal.toFixed(2)}</span>
+            <span>AU${safeToFixed(breakdown.subtotal)}</span>
           </div>
           
           {breakdown.adjustments !== 0 && (
             <div className="flex justify-between">
               <span>Adjustments:</span>
               <span className={breakdown.adjustments > 0 ? "text-green-600" : "text-red-600"}>
-                {breakdown.adjustments > 0 ? '+' : ''}AU${breakdown.adjustments.toFixed(2)}
+                {breakdown.adjustments > 0 ? '+' : ''}AU${safeToFixed(breakdown.adjustments)}
               </span>
             </div>
           )}
           
           <div className="flex justify-between">
             <span>Delivery Fee:</span>
-            <span>AU${breakdown.deliveryFee.toFixed(2)}</span>
+            <span>AU${safeToFixed(breakdown.deliveryFee)}</span>
           </div>
           
           {breakdown.hasSurcharge && breakdown.surchargeAmount > 0 && (
             <div className="flex justify-between text-orange-600">
               <span>Surcharge ({paymentSettings?.service_charge_rate || 0}%):</span>
-              <span>AU${breakdown.surchargeAmount.toFixed(2)}</span>
+              <span>AU${safeToFixed(breakdown.surchargeAmount)}</span>
             </div>
           )}
           
           <div className="flex justify-between text-blue-600">
             <span>{paymentSettings?.gst_label || 'GST'} ({paymentSettings?.gst_rate || 10}%):</span>
-            <span>AU${breakdown.gstAmount.toFixed(2)}</span>
+            <span>AU${safeToFixed(breakdown.gstAmount)}</span>
           </div>
           
           <Separator className="my-2" />
           
           <div className="flex justify-between font-semibold text-lg">
             <span>Total:</span>
-            <span>AU${breakdown.totalAmount.toFixed(2)}</span>
+            <span>AU${safeToFixed(breakdown.totalAmount)}</span>
           </div>
         </div>
 
@@ -160,7 +166,7 @@ export function OrderPricingForm({
         <Input
           id="total_amount"
           type="text"
-          value={`AU$${breakdown.totalAmount.toFixed(2)}`}
+          value={`AU$${safeToFixed(breakdown.totalAmount)}`}
           readOnly
           className="border-amber-200 bg-gray-50 font-semibold text-lg cursor-not-allowed"
           placeholder="Calculated automatically"

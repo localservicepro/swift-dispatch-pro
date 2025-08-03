@@ -4,6 +4,7 @@ import { Order } from "../OrderEditFormTypes";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals } from "../utils/paymentCalculations";
 import { useDeliveryFeeCalculation } from "@/hooks/useDeliveryFeeCalculation";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface OrderFormData {
   customer_name: string;
@@ -43,8 +44,8 @@ export function useOrderFormData(order: Order) {
     purchase_order: order.purchase_order || '',
     products: Array.isArray(order.products) ? order.products : [],
     total_amount: order.total_amount?.toString() || '0',
-    subtotal: order.subtotal || 0,
-    delivery_fee: order.delivery_fee || 0,
+    subtotal: Number(order.subtotal) || 0,
+    delivery_fee: Number(order.delivery_fee) || 0,
     status: order.status || 'preparing',
     delivery_date: order.delivery_date || '',
     delivery_time: order.delivery_time || '',
@@ -55,12 +56,93 @@ export function useOrderFormData(order: Order) {
     truck_type: order.truck_type || 'none',
     truck_id: order.truck_id || 'none',
     payment_method: order.payment_method || 'cash',
-    adjustments: order.adjustments || 0,
+    adjustments: Number(order.adjustments) || 0,
     contact_id: order.contact_id || null,
     contact_name: order.contact_name || null,
     contact_email: order.contact_email || null,
     contact_phone: order.contact_phone || null
   });
+
+  // Initialize products with current prices from database
+  useEffect(() => {
+    const initializeProductsWithPrices = async () => {
+      if (!order.products || !Array.isArray(order.products) || order.products.length === 0) {
+        console.log('No products to initialize for order:', order.id);
+        return;
+      }
+
+      console.log('Initializing products with current prices for order:', order.id, order.products);
+      
+      try {
+        // Get unique product IDs from the order
+        const productIds = order.products
+          .map(p => p.product_id)
+          .filter(Boolean)
+          .filter((id, index, arr) => arr.indexOf(id) === index); // Remove duplicates
+
+        if (productIds.length === 0) {
+          console.log('No valid product IDs found in order products');
+          return;
+        }
+
+        // Fetch current product prices from database
+        const { data: currentProducts, error } = await supabase
+          .from('products')
+          .select('id, name, price')
+          .in('id', productIds);
+
+        if (error) {
+          console.error('Error fetching current product prices:', error);
+          return;
+        }
+
+        console.log('Fetched current product prices:', currentProducts);
+
+        // Update order products with current prices
+        const updatedProducts = order.products.map(orderProduct => {
+          const currentProduct = currentProducts?.find(p => p.id === orderProduct.product_id);
+          const updatedProduct = {
+            ...orderProduct,
+            // Use current database price if available, fallback to order price, then 0
+            price: currentProduct?.price || Number(orderProduct.unit_price) || Number(orderProduct.price) || 0,
+            // Ensure quantity is a number
+            quantity: Number(orderProduct.quantity) || 0
+          };
+          
+          console.log('Updated product:', {
+            original: orderProduct,
+            current: currentProduct,
+            updated: updatedProduct
+          });
+          
+          return updatedProduct;
+        });
+
+        // Calculate initial subtotal
+        const initialSubtotal = updatedProducts.reduce((sum, product) => {
+          return sum + (Number(product.price) * Number(product.quantity));
+        }, 0);
+
+        console.log('Initial subtotal calculated:', initialSubtotal);
+
+        // Update form data with corrected products and subtotal
+        setFormData(prev => {
+          const updated = {
+            ...prev,
+            products: updatedProducts,
+            subtotal: initialSubtotal
+          };
+          console.log('Form data updated with products and subtotal:', updated);
+          return updated;
+        });
+
+      } catch (error) {
+        console.error('Error initializing products with prices:', error);
+      }
+    };
+
+    initializeProductsWithPrices();
+  }, [order.id]); // Only depend on order.id to avoid infinite loops
 
   // Calculate totals whenever pricing components change
   const calculateTotals = (updatedData: Partial<OrderFormData>) => {
@@ -117,6 +199,7 @@ export function useOrderFormData(order: Order) {
   };
 
   const handleSuburbChange = (suburbId: string, suburb?: any) => {
+    console.log('Suburb change - suburbId:', suburbId, 'suburb:', suburb);
     setFormData(prev => ({ ...prev, suburb_id: suburbId }));
     
     // Auto-populate delivery fee if not manually set and we have suburb data
@@ -133,6 +216,31 @@ export function useOrderFormData(order: Order) {
         setIsDeliveryFeeManuallySet(!isAutoPopulated);
       });
     }
+  };
+
+  const handleDeliverySuburbChange = (suburbId: string, suburb?: any) => {
+    console.log('Delivery suburb change - suburbId:', suburbId, 'suburb:', suburb);
+    setFormData(prev => ({ ...prev, delivery_suburb_id: suburbId }));
+    
+    // Auto-populate delivery fee for delivery suburb if not manually set and we have suburb data
+    if (suburb && !isDeliveryFeeManuallySet) {
+      autoPopulateDeliveryFee(suburbId, (fee: number, isAutoPopulated: boolean) => {
+        const updatedData = { delivery_fee: fee };
+        const newTotal = calculateTotals(updatedData);
+        
+        setFormData(prev => ({
+          ...prev,
+          delivery_fee: fee,
+          total_amount: newTotal
+        }));
+        setIsDeliveryFeeManuallySet(!isAutoPopulated);
+      });
+    }
+  };
+
+  const handleFormDataChange = (updates: Partial<OrderFormData>) => {
+    console.log('Form data change:', updates);
+    setFormData(prev => ({ ...prev, ...updates }));
   };
 
   const handleProductsChange = (products: any[]) => {
@@ -227,6 +335,8 @@ export function useOrderFormData(order: Order) {
     handleInputChange,
     handleDriverChange,
     handleSuburbChange,
+    handleDeliverySuburbChange,
+    handleFormDataChange,
     handleProductsChange,
     handleSubtotalChange,
     handleContactChange,

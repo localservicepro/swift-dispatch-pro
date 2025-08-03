@@ -11,7 +11,7 @@ interface OrderDeliveryFormProps {
   };
   deliveryRate: string;
   onFormDataChange: (updates: Partial<OrderDeliveryFormProps['formData']>) => void;
-  onSuburbChange: (suburbId: string) => void;
+  onSuburbChange: (suburbId: string, suburb?: any) => void;
 }
 
 export function OrderDeliveryForm({ 
@@ -20,9 +20,12 @@ export function OrderDeliveryForm({
   onFormDataChange, 
   onSuburbChange 
 }: OrderDeliveryFormProps) {
-  const handleDeliverySuburbChange = (suburbId: string) => {
-    // Update delivery suburb specifically
+  const handleDeliverySuburbChange = (suburbId: string, suburb?: any) => {
+    console.log('OrderDeliveryForm - delivery suburb change:', suburbId, suburb);
+    // Update delivery suburb specifically and call the main handler
     onFormDataChange({ delivery_suburb_id: suburbId });
+    // Also call the suburb change handler for delivery fee calculation
+    onSuburbChange(suburbId, suburb);
   };
 
   return (

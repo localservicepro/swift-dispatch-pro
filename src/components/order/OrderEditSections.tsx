@@ -108,6 +108,7 @@ export function OrderEditSections({
         formData={{
           full_address: formData.customer_address,
           suburb_id: formData.suburb_id || '',
+          delivery_suburb_id: formData.delivery_suburb_id || '',
         }}
         deliveryRate={deliveryRate}
         onFormDataChange={onFormDataChange}
