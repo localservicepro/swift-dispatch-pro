@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Package, Plus, Minus, ShoppingCart, Star, Clock, Edit3, Trash2 } from "lucide-react";
@@ -458,172 +459,177 @@ export function ProductSelectionStep({
 
       {/* Shopping Cart */}
       <div>
-        <Card>
-          <CardHeader>
+        <Card className="flex flex-col h-[calc(100vh-8rem)]">
+          <CardHeader className="flex-shrink-0">
             <CardTitle className="flex items-center gap-2">
               <ShoppingCart className="w-5 h-5" />
               Cart ({cart.length} items)
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="flex-1 flex flex-col p-0">
             {cart.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="flex-1 flex items-center justify-center text-gray-500">
                 No items in cart
               </div>
             ) : (
-              <>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {cart.map((item) => {
-                    const hasSpecial = hasActiveSpecial(item.product.id);
-                    const originalPrice = item.product.price;
-                    
-                    return (
-                      <div key={item.product.id} className="flex items-center justify-between p-2 border rounded">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate flex items-center gap-1">
-                            {item.product.name}
-                            {hasSpecial && <Star className="w-3 h-3 text-red-500" />}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {hasSpecial ? (
-                              <>
-                                <span className="line-through">AU${originalPrice.toFixed(2)}</span>
-                                <span className="text-red-600 ml-1">AU${item.unit_price.toFixed(2)} each</span>
-                              </>
-                            ) : (
-                              `AU${item.unit_price.toFixed(2)} each`
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0"
-                              onClick={() => updateQuantity(item.product.id, item.quantity - 0.25)}
-                            >
-                              <Minus className="w-3 h-3" />
-                            </Button>
-                            
-                            {editingQuantity === item.product.id ? (
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  value={inputValue}
-                                  onChange={(e) => setInputValue(e.target.value)}
-                                  className="h-6 w-16 text-xs text-center"
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleQuantitySubmit(item.product.id);
-                                    if (e.key === 'Escape') handleQuantityCancel();
-                                  }}
-                                  onBlur={() => handleQuantitySubmit(item.product.id)}
-                                  placeholder="1.25"
-                                  step="0.25"
-                                  autoFocus
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleQuantitySubmit(item.product.id)}
-                                  className="h-5 w-5 p-0 text-green-600"
-                                >
-                                  ✓
-                                </Button>
-                              </div>
-                            ) : (
-                              <span 
-                                className="text-sm font-medium w-12 text-center cursor-pointer hover:bg-gray-100 px-1 py-1 rounded"
-                                onClick={() => handleQuantityEdit(item.product.id, item.quantity)}
-                              >
-                                {formatQuantity(item.quantity)}
-                              </span>
-                            )}
-                            
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0"
-                              onClick={() => updateQuantity(item.product.id, item.quantity + 0.25)}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </Button>
-                          </div>
-                          <div className="font-medium text-sm">AU${item.total_price.toFixed(2)}</div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                            onClick={() => removeFromCart(item.product.id)}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="border-t pt-4 space-y-3">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span className="font-medium">AU${subtotal.toFixed(2)}</span>
-                  </div>
-
-                  {/* Price Adjustments */}
+              <ScrollArea className="flex-1 px-6">
+                <div className="space-y-4 pb-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Price Adjustment</Label>
-                    <div className="flex gap-2">
-                      <Select value={adjustmentType} onValueChange={(value: "percentage" | "fixed") => setAdjustmentType(value)}>
-                        <SelectTrigger className="w-24">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="percentage">%</SelectItem>
-                          <SelectItem value="fixed">AU$</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={adjustmentValue}
-                        onChange={(e) => setAdjustmentValue(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button size="sm" onClick={applyAdjustment} variant="outline">
-                        Apply
-                      </Button>
-                    </div>
+                    {cart.map((item) => {
+                      const hasSpecial = hasActiveSpecial(item.product.id);
+                      const originalPrice = item.product.price;
+                      
+                      return (
+                        <div key={item.product.id} className="flex items-center justify-between p-2 border rounded">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm truncate flex items-center gap-1">
+                              {item.product.name}
+                              {hasSpecial && <Star className="w-3 h-3 text-red-500" />}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {hasSpecial ? (
+                                <>
+                                  <span className="line-through">AU${originalPrice.toFixed(2)}</span>
+                                  <span className="text-red-600 ml-1">AU${item.unit_price.toFixed(2)} each</span>
+                                </>
+                              ) : (
+                                `AU${item.unit_price.toFixed(2)} each`
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                onClick={() => updateQuantity(item.product.id, item.quantity - 0.25)}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                              
+                              {editingQuantity === item.product.id ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    value={inputValue}
+                                    onChange={(e) => setInputValue(e.target.value)}
+                                    className="h-6 w-16 text-xs text-center"
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleQuantitySubmit(item.product.id);
+                                      if (e.key === 'Escape') handleQuantityCancel();
+                                    }}
+                                    onBlur={() => handleQuantitySubmit(item.product.id)}
+                                    placeholder="1.25"
+                                    step="0.25"
+                                    autoFocus
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleQuantitySubmit(item.product.id)}
+                                    className="h-5 w-5 p-0 text-green-600"
+                                  >
+                                    ✓
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span 
+                                  className="text-sm font-medium w-12 text-center cursor-pointer hover:bg-gray-100 px-1 py-1 rounded"
+                                  onClick={() => handleQuantityEdit(item.product.id, item.quantity)}
+                                >
+                                  {formatQuantity(item.quantity)}
+                                </span>
+                              )}
+                              
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                onClick={() => updateQuantity(item.product.id, item.quantity + 0.25)}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            <div className="font-medium text-sm">AU${item.total_price.toFixed(2)}</div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                              onClick={() => removeFromCart(item.product.id)}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {adjustments !== 0 && (
+                  <div className="border-t pt-4 space-y-3">
                     <div className="flex justify-between">
-                      <span>Adjustments:</span>
-                      <span className={adjustments > 0 ? "text-red-600" : "text-green-600"}>
-                        {adjustments > 0 ? '+' : ''}AU${adjustments.toFixed(2)}
-                      </span>
+                      <span>Subtotal:</span>
+                      <span className="font-medium">AU${subtotal.toFixed(2)}</span>
                     </div>
-                  )}
 
-                  <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                    <span>Total:</span>
-                    <span>AU${grandTotal.toFixed(2)}</span>
+                    {/* Price Adjustments */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Price Adjustment</Label>
+                      <div className="flex gap-2">
+                        <Select value={adjustmentType} onValueChange={(value: "percentage" | "fixed") => setAdjustmentType(value)}>
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">%</SelectItem>
+                            <SelectItem value="fixed">AU$</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={adjustmentValue}
+                          onChange={(e) => setAdjustmentValue(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button size="sm" onClick={applyAdjustment} variant="outline">
+                          Apply
+                        </Button>
+                      </div>
+                    </div>
+
+                    {adjustments !== 0 && (
+                      <div className="flex justify-between">
+                        <span>Adjustments:</span>
+                        <span className={adjustments > 0 ? "text-red-600" : "text-green-600"}>
+                          {adjustments > 0 ? '+' : ''}AU${adjustments.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between font-semibold text-lg border-t pt-2">
+                      <span>Total:</span>
+                      <span>AU${grandTotal.toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
-              </>
+              </ScrollArea>
             )}
-
-            <div className="flex gap-2 pt-4">
-              <Button variant="outline" onClick={onBack}>
-                Back
-              </Button>
-              <Button 
-                onClick={onNext} 
-                disabled={cart.length === 0}
-                className="ml-auto"
-              >
-                Next: Delivery Details
-              </Button>
+            
+            {/* Sticky Navigation Buttons */}
+            <div className="flex-shrink-0 border-t bg-background p-6">
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onBack}>
+                  Back
+                </Button>
+                <Button 
+                  onClick={onNext} 
+                  disabled={cart.length === 0}
+                  className="ml-auto"
+                >
+                  Next: Delivery Details
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
