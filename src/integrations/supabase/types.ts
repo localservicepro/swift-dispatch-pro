@@ -731,6 +731,13 @@ export type Database = {
           payment_date: string | null
           payment_method: string | null
           payment_status: string | null
+          pickup_contact_name: string | null
+          pickup_contact_phone: string | null
+          pickup_date: string | null
+          pickup_instructions: string | null
+          pickup_location_address: string | null
+          pickup_location_name: string | null
+          pickup_time: string | null
           products: Json
           products_formatted: string | null
           purchase_order: string | null
@@ -781,6 +788,13 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string | null
           payment_status?: string | null
+          pickup_contact_name?: string | null
+          pickup_contact_phone?: string | null
+          pickup_date?: string | null
+          pickup_instructions?: string | null
+          pickup_location_address?: string | null
+          pickup_location_name?: string | null
+          pickup_time?: string | null
           products: Json
           products_formatted?: string | null
           purchase_order?: string | null
@@ -831,6 +845,13 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string | null
           payment_status?: string | null
+          pickup_contact_name?: string | null
+          pickup_contact_phone?: string | null
+          pickup_date?: string | null
+          pickup_instructions?: string | null
+          pickup_location_address?: string | null
+          pickup_location_name?: string | null
+          pickup_time?: string | null
           products?: Json
           products_formatted?: string | null
           purchase_order?: string | null
@@ -2031,6 +2052,16 @@ export type Database = {
         }
         Returns: number
       }
+      check_stock_availability: {
+        Args: { order_items: Json }
+        Returns: {
+          product_id: string
+          product_name: string
+          requested_quantity: number
+          available_stock: number
+          is_sufficient: boolean
+        }[]
+      }
       create_driver: {
         Args: { driver_id: string; driver_name: string; driver_license: string }
         Returns: undefined
@@ -2042,6 +2073,18 @@ export type Database = {
       create_split_order: {
         Args: { p_master_order_data: Json; p_split_orders: Json[] }
         Returns: string[]
+      }
+      create_stock_split_order: {
+        Args: { p_order_id: string }
+        Returns: string[]
+      }
+      deduct_inventory: {
+        Args: { order_id_param: string }
+        Returns: undefined
+      }
+      determine_order_status: {
+        Args: { order_items: Json }
+        Returns: Database["public"]["Enums"]["order_status"]
       }
       format_products_text: {
         Args: { products_json: Json }
@@ -2057,6 +2100,25 @@ export type Database = {
           end_date: string
         }[]
       }
+      get_back_order_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          product_id: string
+          product_name: string
+          total_back_ordered: number
+          current_stock: number
+          orders_count: number
+        }[]
+      }
+      get_low_stock_products: {
+        Args: { threshold?: number }
+        Returns: {
+          product_id: string
+          product_name: string
+          current_stock: number
+          category_name: string
+        }[]
+      }
       get_product_price: {
         Args: {
           product_id_param: string
@@ -2068,6 +2130,10 @@ export type Database = {
       get_truck_display_info: {
         Args: { truck_type_param: Database["public"]["Enums"]["truck_type"] }
         Returns: string
+      }
+      has_mixed_stock_availability: {
+        Args: { order_id_param: string }
+        Returns: boolean
       }
       is_current_user_admin: {
         Args: Record<PropertyKey, never>
@@ -2085,13 +2151,25 @@ export type Database = {
         }
         Returns: string
       }
+      restore_inventory: {
+        Args: { order_id_param: string }
+        Returns: undefined
+      }
       restore_order: {
         Args: { p_order_id: string }
         Returns: undefined
       }
+      restore_split_order_group: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
       soft_delete_order: {
         Args: { p_order_id: string; p_reason?: string }
         Returns: undefined
+      }
+      soft_delete_split_order_group: {
+        Args: { p_order_id: string; p_reason?: string }
+        Returns: Json
       }
       update_order_status: {
         Args: {
@@ -2114,7 +2192,7 @@ export type Database = {
     Enums: {
       attribute_type: "select" | "color" | "size" | "text" | "number"
       customer_type: "trade" | "account" | "residential"
-      delivery_method: "delivery" | "pickup"
+      delivery_method: "delivery" | "pickup" | "pickup_delivery"
       discount_type: "percentage" | "fixed_amount"
       entity_type: "individual" | "business"
       order_status:
@@ -2124,6 +2202,10 @@ export type Database = {
         | "en_route"
         | "delivered"
         | "cancelled"
+        | "back_order"
+        | "pickup_scheduled"
+        | "pickup_in_progress"
+        | "pickup_complete"
       special_type:
         | "monthly"
         | "limited_time"
@@ -2261,7 +2343,7 @@ export const Constants = {
     Enums: {
       attribute_type: ["select", "color", "size", "text", "number"],
       customer_type: ["trade", "account", "residential"],
-      delivery_method: ["delivery", "pickup"],
+      delivery_method: ["delivery", "pickup", "pickup_delivery"],
       discount_type: ["percentage", "fixed_amount"],
       entity_type: ["individual", "business"],
       order_status: [
@@ -2271,6 +2353,10 @@ export const Constants = {
         "en_route",
         "delivered",
         "cancelled",
+        "back_order",
+        "pickup_scheduled",
+        "pickup_in_progress",
+        "pickup_complete",
       ],
       special_type: [
         "monthly",
