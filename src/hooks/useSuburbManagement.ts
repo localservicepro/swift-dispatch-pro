@@ -51,80 +51,39 @@ export function useSuburbManagement() {
     return matchingSuburb || null;
   };
 
-  const findSuburbByNameAndPostcode = (city: string, postcode: string): Suburb | null => {
-    if (!city && !postcode) return null;
-    if (suburbs.length === 0) return null;
+  const findSuburbByNameOnly = (suburbName: string): Suburb | null => {
+    if (!suburbName || suburbs.length === 0) return null;
     
-    // Primary: Match by both name and postcode (exact match)
-    if (city && postcode) {
-      const exactMatch = suburbs.find(suburb => 
-        suburb.name.toLowerCase() === city.toLowerCase() && 
-        suburb.postcode === postcode
-      );
-      if (exactMatch) return exactMatch;
-    }
+    // Find suburb by name only (case-insensitive)
+    const nameMatch = suburbs.find(suburb => 
+      suburb.name.toLowerCase() === suburbName.toLowerCase()
+    );
     
-    // Secondary: Match by name only (case-insensitive)
-    if (city) {
-      const nameMatch = suburbs.find(suburb => 
-        suburb.name.toLowerCase() === city.toLowerCase()
-      );
-      if (nameMatch) return nameMatch;
-    }
-    
-    // Fallback: Original postcode-only logic
-    if (postcode) {
-      return findSuburbByPostcode(postcode);
-    }
-    
-    return null;
+    return nameMatch || null;
   };
 
   const handleAutoSuburbSelection = (
-    cityOrPostcode: string,
-    onSuburbChange: (suburbId: string, suburb?: Suburb) => void,
-    postcode?: string
+    suburbName: string,
+    onSuburbChange: (suburbId: string, suburb?: Suburb) => void
   ) => {
-    let matchingSuburb: Suburb | null = null;
-    let matchMethod = '';
-    
-    // If we have both city and postcode (new method)
-    if (postcode) {
-      matchingSuburb = findSuburbByNameAndPostcode(cityOrPostcode, postcode);
-      if (matchingSuburb) {
-        if (matchingSuburb.name.toLowerCase() === cityOrPostcode.toLowerCase() && matchingSuburb.postcode === postcode) {
-          matchMethod = `based on suburb name "${cityOrPostcode}" and postcode ${postcode}`;
-        } else if (matchingSuburb.name.toLowerCase() === cityOrPostcode.toLowerCase()) {
-          matchMethod = `based on suburb name "${cityOrPostcode}"`;
-        } else {
-          matchMethod = `based on postcode ${postcode}`;
-        }
-      }
-    } else {
-      // Fallback to old method (postcode only)
-      matchingSuburb = findSuburbByPostcode(cityOrPostcode);
-      if (matchingSuburb) {
-        matchMethod = `based on postcode ${cityOrPostcode}`;
-      }
-    }
+    const matchingSuburb = findSuburbByNameOnly(suburbName);
     
     if (matchingSuburb) {
-      console.log('Auto-selecting suburb:', matchingSuburb);
+      console.log('Auto-selecting suburb by name:', matchingSuburb);
       onSuburbChange(matchingSuburb.id, matchingSuburb);
       
       const distanceText = matchingSuburb.distance_km ? ` (${matchingSuburb.distance_km}km away)` : '';
       
       toast({
         title: "Suburb Auto-Selected",
-        description: `${matchingSuburb.name} selected ${matchMethod}${distanceText}. Estimated delivery: ${matchingSuburb.delivery_rate}`,
+        description: `${matchingSuburb.name} selected based on suburb name "${suburbName}"${distanceText}. Estimated delivery: ${matchingSuburb.delivery_rate}`,
         duration: 3000,
       });
     } else {
-      const searchTerm = postcode ? `suburb "${cityOrPostcode}" with postcode ${postcode}` : `postcode ${cityOrPostcode}`;
-      console.log('No matching suburb found for:', searchTerm);
+      console.log('No matching suburb found for name:', suburbName);
       toast({
         title: "No Matching Suburb",
-        description: `No delivery suburb found for ${searchTerm}. Please select manually.`,
+        description: `No delivery suburb found for "${suburbName}". Please select manually.`,
         variant: "destructive",
         duration: 4000,
       });
@@ -135,7 +94,7 @@ export function useSuburbManagement() {
     suburbs,
     refreshSuburbs,
     findSuburbByPostcode,
-    findSuburbByNameAndPostcode,
+    findSuburbByNameOnly,
     handleAutoSuburbSelection
   };
 }
