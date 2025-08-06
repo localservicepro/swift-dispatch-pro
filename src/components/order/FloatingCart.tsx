@@ -82,21 +82,26 @@ export function FloatingCart({
 
   return (
     <>
-      {/* Floating Cart Button */}
+      {/* Horizontal Floating Cart Button */}
       <div className="fixed bottom-6 right-6 z-50">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
             <Button
-              size="lg"
-              className="relative rounded-full w-16 h-16 shadow-lg hover:shadow-xl transition-all duration-200 animate-pulse"
+              className="
+                bg-gradient-to-r from-blue-500 to-blue-600 
+                hover:from-blue-600 hover:to-blue-700 
+                text-white shadow-lg hover:shadow-xl 
+                transition-all duration-300 rounded-full 
+                px-6 py-3 flex items-center gap-3 h-auto
+              "
             >
-              <ShoppingCart className="w-6 h-6" />
-              {cart.length > 0 && (
-                <Badge 
-                  className="absolute -top-2 -right-2 px-2 py-1 min-w-[24px] h-6 rounded-full bg-red-500 hover:bg-red-600 text-white text-xs font-bold"
-                >
-                  {cart.length}
-                </Badge>
+              <ShoppingCart className="h-5 w-5 flex-shrink-0" />
+              {cart.length > 0 ? (
+                <span className="text-sm font-medium whitespace-nowrap">
+                  {cart.length} item{cart.length !== 1 ? 's' : ''} • AU${grandTotal.toFixed(2)}
+                </span>
+              ) : (
+                <span className="text-sm font-medium">Cart</span>
               )}
             </Button>
           </SheetTrigger>
@@ -304,17 +309,6 @@ export function FloatingCart({
         </Sheet>
       </div>
 
-      {/* Quick Cart Summary on Button */}
-      {cart.length > 0 && (
-        <div className="fixed bottom-24 right-6 z-40 pointer-events-none">
-          <div className="bg-card border rounded-lg shadow-lg p-2 text-sm">
-            <div className="text-center">
-              <div className="font-medium">{totalItems} items</div>
-              <div className="text-muted-foreground">AU${grandTotal.toFixed(2)}</div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
