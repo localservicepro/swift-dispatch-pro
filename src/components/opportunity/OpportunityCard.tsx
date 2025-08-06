@@ -76,7 +76,7 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
           />
 
           {/* Order Information */}
-          <OpportunityCardInfo order={order} />
+          <OpportunityCardInfo order={order} onOrderClick={onOrderClick} />
 
           {/* Notes Section */}
           {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && (

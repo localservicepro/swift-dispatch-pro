@@ -8,16 +8,18 @@ import {
   Truck,
   Clock,
   CalendarDays,
-  Building
+  Building,
+  Package
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { formatDeliveryDate, formatDeliveryTime, formatCreatedDate, formatCreatedTime } from "@/utils/dateTimeUtils";
 
 interface OpportunityCardInfoProps {
   order: any;
+  onOrderClick?: (order: any) => void;
 }
 
-export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
+export function OpportunityCardInfo({ order, onOrderClick }: OpportunityCardInfoProps) {
   const truckInfo = getTruckInfo(order.truck_type_from_truck || order.truck_type);
   const hasDeliverySchedule = order.delivery_date && order.delivery_time;
 
@@ -68,6 +70,39 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
 
   const { displayName, contactInfo, isCompany } = getDisplayInfo();
 
+  // Format products for display
+  const formatProductsForCard = () => {
+    if (order.products_formatted && order.products_formatted.trim() !== '') {
+      const items = order.products_formatted.split(',').map((item: string) => item.trim());
+      if (items.length === 1) return { text: items[0], hasMore: false };
+      return { text: items[0], hasMore: true, additional: items.length - 1 };
+    }
+    
+    if (!order.products) return { text: 'No products', hasMore: false };
+    
+    if (Array.isArray(order.products)) {
+      if (order.products.length === 1) {
+        const product = order.products[0];
+        const name = product.name || product.product_name || 'Product';
+        const quantity = product.quantity || 1;
+        return { text: `${name} (Qty: ${quantity})`, hasMore: false };
+      } else if (order.products.length > 1) {
+        const firstProduct = order.products[0];
+        const firstName = firstProduct.name || firstProduct.product_name || 'Product';
+        const firstQuantity = firstProduct.quantity || 1;
+        return { 
+          text: `${firstName} (Qty: ${firstQuantity})`, 
+          hasMore: true, 
+          additional: order.products.length - 1 
+        };
+      }
+    }
+    
+    return { text: 'Products listed', hasMore: false };
+  };
+
+  const productInfo = formatProductsForCard();
+
   return (
     <>
       {/* Customer/Company Info */}
@@ -116,14 +151,23 @@ export function OpportunityCardInfo({ order }: OpportunityCardInfoProps) {
           </>
         )}
         
-        {/* Created Date - Always show */}
-        <div className="flex items-center gap-2">
-          <Calendar className="w-3 h-3" />
-          <span>Created: {formatCreatedDate(order.created_at)}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Clock className="w-3 h-3" />
-          <span>{formatCreatedTime(order.created_at)}</span>
+        {/* Products Information */}
+        <div className="flex items-start gap-2">
+          <Package className="w-3 h-3 mt-0.5 text-green-600" />
+          <div className="flex flex-col">
+            <span>{productInfo.text}</span>
+            {productInfo.hasMore && onOrderClick && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOrderClick(order);
+                }}
+                className="text-blue-600 hover:text-blue-800 text-left text-xs underline"
+              >
+                and {productInfo.additional} more items - view more
+              </button>
+            )}
+          </div>
         </div>
         
         {/* Delivery Address - Show full address instead of just suburb */}
