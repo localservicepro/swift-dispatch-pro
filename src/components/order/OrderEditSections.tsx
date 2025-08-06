@@ -180,23 +180,28 @@ export function OrderEditSections({
         </div>
       </div>
 
-      <OrderTruckSelectionForm 
-        formData={formData}
-        onInputChange={onInputChange}
-        orderId={orderId}
-      />
+      {/* Only show truck and driver assignment for delivery orders */}
+      {formData.delivery_method === 'delivery' && (
+        <>
+          <OrderTruckSelectionForm 
+            formData={formData}
+            onInputChange={onInputChange}
+            orderId={orderId}
+          />
 
-      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-4">
-        <div className="flex items-center gap-2 mb-3">
-          <User2 className="w-5 h-5 text-indigo-600" />
-          <h3 className="font-semibold text-indigo-900">Driver Assignment</h3>
-        </div>
-        
-        <DriverSelector
-          selectedDriverId={formData.driver_id}
-          onDriverChange={onDriverChange}
-        />
-      </div>
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-4">
+            <div className="flex items-center gap-2 mb-3">
+              <User2 className="w-5 h-5 text-indigo-600" />
+              <h3 className="font-semibold text-indigo-900">Driver Assignment</h3>
+            </div>
+            
+            <DriverSelector
+              selectedDriverId={formData.driver_id}
+              onDriverChange={onDriverChange}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
