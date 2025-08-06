@@ -10,13 +10,16 @@ interface Suburb {
   postcode: string;
   delivery_rate: string;
   distance_km: number | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export function useSuburbManagement() {
   const [suburbs, setSuburbs] = useState<Suburb[]>([]);
   const { toast } = useToast();
 
-  // Fetch suburbs for postcode matching
+  // Fetch all suburbs (not just active ones for management)
   useEffect(() => {
     fetchSuburbs();
   }, []);
@@ -25,14 +28,19 @@ export function useSuburbManagement() {
     try {
       const { data, error } = await supabase
         .from('suburbs')
-        .select('id, name, state, postcode, delivery_rate, distance_km')
-        .eq('is_active', true);
+        .select('*')
+        .order('name');
 
       if (error) throw error;
       setSuburbs(data || []);
     } catch (error) {
       console.error('Error fetching suburbs:', error);
     }
+  };
+
+  // Refresh function for external use
+  const refreshSuburbs = () => {
+    fetchSuburbs();
   };
 
   const findSuburbByPostcode = (postcode: string): Suburb | null => {
@@ -73,6 +81,7 @@ export function useSuburbManagement() {
 
   return {
     suburbs,
+    refreshSuburbs,
     findSuburbByPostcode,
     handleAutoSuburbSelection
   };

@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LogOut, Loader2 } from "lucide-react";
 import { TeamManagement } from "@/components/TeamManagement";
 import { PersonalizedGreeting } from "@/components/PersonalizedGreeting";
+import { SuburbManagement } from "@/components/SuburbManagement";
 
 
 const Index = () => {
@@ -61,6 +62,8 @@ const Index = () => {
         return <TruckManagement />;
       case "drivers":
         return <TeamManagement />;
+      case "suburbs":
+        return <SuburbManagement />;
       case "emails":
         return <EmailManagement />;
       case "settings":

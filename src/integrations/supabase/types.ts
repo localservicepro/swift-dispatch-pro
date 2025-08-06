@@ -2044,6 +2044,10 @@ export type Database = {
       }
     }
     Functions: {
+      bulk_update_suburb_status: {
+        Args: { suburb_ids: string[]; new_status: boolean }
+        Returns: number
+      }
       calculate_special_price: {
         Args: {
           base_price: number
