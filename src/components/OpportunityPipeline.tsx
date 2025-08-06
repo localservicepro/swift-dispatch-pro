@@ -144,8 +144,8 @@ export function OpportunityPipeline() {
       let stage = 'requested';
       const customerType = order.customers?.customer_type || order.customer_type;
 
-      // Check for "On Hold" conditions first
-      if (order.status === 'back_order' || order.delivery_method === 'pickup' || order.delivery_method === 'pickup_delivery') {
+      // Check for "On Hold" conditions first - only back_order status
+      if (order.status === 'back_order') {
         stage = 'on_hold';
       } else if (customerType === 'account') {
         // Account customers can progress through stages even with pending payment
