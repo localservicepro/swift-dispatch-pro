@@ -12,6 +12,7 @@ import { Search, Package, Plus, Minus, ShoppingCart, Star, Clock, Edit3, Trash2 
 import { useSpecialPricing } from "@/hooks/useSpecialPricing";
 import { useDebounce } from "@/hooks/useDebounce";
 import { format } from "date-fns";
+import { FloatingCart } from "./FloatingCart";
 
 interface Product {
   id: string;
@@ -299,341 +300,188 @@ export function ProductSelectionStep({
   const grandTotal = subtotal + adjustments;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Product Search and Selection */}
-      <div className="lg:col-span-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5" />
-              Step 2: Select Products
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search products by name, description, or SKU..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+    <>
+      {/* Full-Width Product Selection */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="w-5 h-5" />
+            Step 2: Select Products
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search products by name, description, or SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
             </div>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-            {loading && <div className="text-center py-4">Loading products...</div>}
+          {loading && <div className="text-center py-4">Loading products...</div>}
 
-            {!loading && (
-              <div className="text-sm text-gray-600 mb-2">
-                Showing {products.length} product{products.length !== 1 ? 's' : ''} {searchQuery && `for "${searchQuery}"`}
-              </div>
-            )}
+          {!loading && (
+            <div className="text-sm text-gray-600 mb-2">
+              Showing {products.length} product{products.length !== 1 ? 's' : ''} {searchQuery && `for "${searchQuery}"`}
+            </div>
+          )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-              {products.map((product) => {
-                const productSpecial = getSpecialForProduct(product.id);
-                const originalPrice = product.price;
-                const currentPrice = getProductPrice(product);
-                const hasSpecial = hasActiveSpecial(product.id) && currentPrice !== originalPrice;
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-h-96 overflow-y-auto">
+            {products.map((product) => {
+              const productSpecial = getSpecialForProduct(product.id);
+              const originalPrice = product.price;
+              const currentPrice = getProductPrice(product);
+              const hasSpecial = hasActiveSpecial(product.id) && currentPrice !== originalPrice;
 
-                return (
-                  <div key={product.id} className="border rounded-lg p-4 relative">
-                    {hasSpecial && (
-                      <div className="absolute top-2 right-2 z-10">
-                        <Badge className="bg-red-500 text-white flex items-center gap-1 text-xs">
-                          <Star className="w-3 h-3" />
-                          SPECIAL
+              return (
+                <div key={product.id} className="border rounded-lg p-4 relative">
+                  {hasSpecial && (
+                    <div className="absolute top-2 right-2 z-10">
+                      <Badge className="bg-red-500 text-white flex items-center gap-1 text-xs">
+                        <Star className="w-3 h-3" />
+                        SPECIAL
+                      </Badge>
+                    </div>
+                  )}
+
+                  {product.images && product.images.length > 0 && (
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="w-full h-32 object-cover rounded mb-3"
+                    />
+                  )}
+                  
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">{product.name}</h4>
+                      {product.category?.name && (
+                        <Badge variant="outline" className="text-xs mt-1">
+                          {product.category.name}
                         </Badge>
-                      </div>
-                    )}
-
-                    {product.images && product.images.length > 0 && (
-                      <img
-                        src={product.images[0]}
-                        alt={product.name}
-                        className="w-full h-32 object-cover rounded mb-3"
-                      />
-                    )}
-                    
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-sm">{product.name}</h4>
-                        {product.category?.name && (
-                          <Badge variant="outline" className="text-xs mt-1">
-                            {product.category.name}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        {hasSpecial ? (
-                          <div>
-                            <div className="text-xs text-gray-500 line-through">
-                              AU${originalPrice.toFixed(2)}
-                            </div>
-                            <div className="font-semibold text-red-600">
-                              AU${currentPrice.toFixed(2)}
-                            </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      {hasSpecial ? (
+                        <div>
+                          <div className="text-xs text-gray-500 line-through">
+                            AU${originalPrice.toFixed(2)}
                           </div>
-                        ) : (
-                          <div className="font-semibold text-green-600">
+                          <div className="font-semibold text-red-600">
                             AU${currentPrice.toFixed(2)}
                           </div>
-                        )}
-                        <div className="text-xs text-gray-500">Stock: {product.stock_quantity}</div>
-                      </div>
-                    </div>
-
-                    {/* Special Details */}
-                    {productSpecial && (
-                      <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
-                        <div className="text-red-700 font-medium">
-                          {productSpecial.special_name}
-                        </div>
-                        <div className="text-red-600">
-                          {productSpecial.discount_type === 'percentage' 
-                            ? `${productSpecial.discount_value}% off` 
-                            : `AU$${productSpecial.discount_value.toFixed(2)} off`
-                          }
-                        </div>
-                        <div className="flex items-center gap-1 text-red-600">
-                          <Clock className="w-3 h-3" />
-                          Ends: {format(new Date(productSpecial.end_date), 'MMM d')}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {product.description && (
-                      <p className="text-xs text-gray-600 mb-2">{product.description}</p>
-                    )}
-                    
-                    <div className="flex items-center justify-between">
-                      {product.sku && (
-                        <span className="text-xs text-gray-500">SKU: {product.sku}</span>
-                      )}
-                      
-                      {getCartQuantity(product.id) > 0 ? (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateQuantity(product.id, getCartQuantity(product.id) - 0.25)}
-                          >
-                            <Minus className="w-3 h-3" />
-                          </Button>
-                          <span className="font-medium">{formatQuantity(getCartQuantity(product.id))}</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + 0.25)}
-                          >
-                            <Plus className="w-3 h-3" />
-                          </Button>
                         </div>
                       ) : (
-                        <Button size="sm" onClick={() => addToCart(product)}>
-                          Add to Cart
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Shopping Cart */}
-      <div>
-        <Card className="flex flex-col h-[calc(100vh-8rem)]">
-          <CardHeader className="flex-shrink-0">
-            <CardTitle className="flex items-center gap-2">
-              <ShoppingCart className="w-5 h-5" />
-              Cart ({cart.length} items)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col p-0">
-            {cart.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center text-gray-500">
-                No items in cart
-              </div>
-            ) : (
-              <ScrollArea className="flex-1 px-6">
-                <div className="space-y-4 pb-4">
-                  <div className="space-y-2">
-                    {cart.map((item) => {
-                      const hasSpecial = hasActiveSpecial(item.product.id);
-                      const originalPrice = item.product.price;
-                      
-                      return (
-                        <div key={item.product.id} className="flex items-center justify-between p-2 border rounded">
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm truncate flex items-center gap-1">
-                              {item.product.name}
-                              {hasSpecial && <Star className="w-3 h-3 text-red-500" />}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {hasSpecial ? (
-                                <>
-                                  <span className="line-through">AU${originalPrice.toFixed(2)}</span>
-                                  <span className="text-red-600 ml-1">AU${item.unit_price.toFixed(2)} each</span>
-                                </>
-                              ) : (
-                                `AU${item.unit_price.toFixed(2)} each`
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0"
-                                onClick={() => updateQuantity(item.product.id, item.quantity - 0.25)}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              
-                              {editingQuantity === item.product.id ? (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    value={inputValue}
-                                    onChange={(e) => setInputValue(e.target.value)}
-                                    className="h-6 w-16 text-xs text-center"
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') handleQuantitySubmit(item.product.id);
-                                      if (e.key === 'Escape') handleQuantityCancel();
-                                    }}
-                                    onBlur={() => handleQuantitySubmit(item.product.id)}
-                                    placeholder="1.25"
-                                    step="0.25"
-                                    autoFocus
-                                  />
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleQuantitySubmit(item.product.id)}
-                                    className="h-5 w-5 p-0 text-green-600"
-                                  >
-                                    ✓
-                                  </Button>
-                                </div>
-                              ) : (
-                                <span 
-                                  className="text-sm font-medium w-12 text-center cursor-pointer hover:bg-gray-100 px-1 py-1 rounded"
-                                  onClick={() => handleQuantityEdit(item.product.id, item.quantity)}
-                                >
-                                  {formatQuantity(item.quantity)}
-                                </span>
-                              )}
-                              
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0"
-                                onClick={() => updateQuantity(item.product.id, item.quantity + 0.25)}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
-                            <div className="font-medium text-sm">AU${item.total_price.toFixed(2)}</div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                              onClick={() => removeFromCart(item.product.id)}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
+                        <div className="font-semibold text-green-600">
+                          AU${currentPrice.toFixed(2)}
                         </div>
-                      );
-                    })}
+                      )}
+                      <div className="text-xs text-gray-500">Stock: {product.stock_quantity}</div>
+                    </div>
                   </div>
 
-                  <div className="border-t pt-4 space-y-3">
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span className="font-medium">AU${subtotal.toFixed(2)}</span>
+                  {/* Special Details */}
+                  {productSpecial && (
+                    <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
+                      <div className="text-red-700 font-medium">
+                        {productSpecial.special_name}
+                      </div>
+                      <div className="text-red-600">
+                        {productSpecial.discount_type === 'percentage' 
+                          ? `${productSpecial.discount_value}% off` 
+                          : `AU$${productSpecial.discount_value.toFixed(2)} off`
+                        }
+                      </div>
+                      <div className="flex items-center gap-1 text-red-600">
+                        <Clock className="w-3 h-3" />
+                        Ends: {format(new Date(productSpecial.end_date), 'MMM d')}
+                      </div>
                     </div>
-
-                    {/* Price Adjustments */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Price Adjustment</Label>
-                      <div className="flex gap-2">
-                        <Select value={adjustmentType} onValueChange={(value: "percentage" | "fixed") => setAdjustmentType(value)}>
-                          <SelectTrigger className="w-24">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="percentage">%</SelectItem>
-                            <SelectItem value="fixed">AU$</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={adjustmentValue}
-                          onChange={(e) => setAdjustmentValue(e.target.value)}
-                          className="flex-1"
-                        />
-                        <Button size="sm" onClick={applyAdjustment} variant="outline">
-                          Apply
+                  )}
+                  
+                  {product.description && (
+                    <p className="text-xs text-gray-600 mb-2">{product.description}</p>
+                  )}
+                  
+                  <div className="flex items-center justify-between">
+                    {product.sku && (
+                      <span className="text-xs text-gray-500">SKU: {product.sku}</span>
+                    )}
+                    
+                    {getCartQuantity(product.id) > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateQuantity(product.id, getCartQuantity(product.id) - 0.25)}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </Button>
+                        <span className="font-medium">{formatQuantity(getCartQuantity(product.id))}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + 0.25)}
+                        >
+                          <Plus className="w-3 h-3" />
                         </Button>
                       </div>
-                    </div>
-
-                    {adjustments !== 0 && (
-                      <div className="flex justify-between">
-                        <span>Adjustments:</span>
-                        <span className={adjustments > 0 ? "text-red-600" : "text-green-600"}>
-                          {adjustments > 0 ? '+' : ''}AU${adjustments.toFixed(2)}
-                        </span>
-                      </div>
+                    ) : (
+                      <Button size="sm" onClick={() => addToCart(product)}>
+                        Add to Cart
+                      </Button>
                     )}
-
-                    <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                      <span>Total:</span>
-                      <span>AU${grandTotal.toFixed(2)}</span>
-                    </div>
                   </div>
                 </div>
-              </ScrollArea>
-            )}
-            
-            {/* Sticky Navigation Buttons */}
-            <div className="flex-shrink-0 border-t bg-background p-6">
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={onBack}>
-                  Back
-                </Button>
-                <Button 
-                  onClick={onNext} 
-                  disabled={cart.length === 0}
-                  className="ml-auto"
-                >
-                  Next: Delivery Details
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Floating Cart */}
+      <FloatingCart
+        cart={cart}
+        subtotal={subtotal}
+        adjustments={adjustments}
+        onCartUpdate={onCartUpdate}
+        onAdjustmentsChange={onAdjustmentsChange}
+        onNext={onNext}
+        onBack={onBack}
+        hasActiveSpecial={hasActiveSpecial}
+        getProductPrice={getProductPrice}
+        updateQuantity={updateQuantity}
+        removeFromCart={removeFromCart}
+        handleQuantityEdit={handleQuantityEdit}
+        handleQuantitySubmit={handleQuantitySubmit}
+        handleQuantityCancel={handleQuantityCancel}
+        editingQuantity={editingQuantity}
+        inputValue={inputValue}
+        setInputValue={setInputValue}
+        formatQuantity={formatQuantity}
+        applyAdjustment={applyAdjustment}
+        adjustmentType={adjustmentType}
+        setAdjustmentType={setAdjustmentType}
+        adjustmentValue={adjustmentValue}
+        setAdjustmentValue={setAdjustmentValue}
+      />
+    </>
   );
 }
