@@ -249,30 +249,7 @@ export function OpportunityPipeline() {
       return; // Don't proceed with status update yet
     }
 
-    // Validate stage transition for other stages
-    const stageOrder = ['on_hold', 'requested', 'preparing', 'loading', 'en_route', 'delivered'];
-    const currentIndex = stageOrder.indexOf(currentStage);
-    const newIndex = stageOrder.indexOf(newStage);
-
-    // Don't allow moving backwards (except from on_hold and requested to any stage for flexibility)
-    if (currentStage !== 'on_hold' && currentStage !== 'requested' && newIndex < currentIndex) {
-      toast({
-        title: "Invalid Move",
-        description: "Orders cannot be moved backwards in the pipeline",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Don't allow skipping stages (except from on_hold and requested)
-    if (currentStage !== 'on_hold' && currentStage !== 'requested' && newIndex > currentIndex + 1) {
-      toast({
-        title: "Invalid Move",
-        description: "Orders must progress through stages sequentially",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Allow complete flexibility - orders can be moved to any stage
 
     // Proceed with regular status update for other stage transitions
     await updateOrderStatus(order, currentStage, newStage);
