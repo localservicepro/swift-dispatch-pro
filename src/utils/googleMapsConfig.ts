@@ -17,14 +17,9 @@ export const getGoogleMapsApiKey = () => {
     return tempKey;
   }
   
-  // IMPORTANT: Replace this with your actual Google Maps API key
-  // Get your key from: https://console.cloud.google.com/apis/credentials
-  const DEVELOPMENT_API_KEY = 'AIzaSyAY8Q84_WVfXmRkLgSeveoaJnlj03M9fyE';
-  
-  if (DEVELOPMENT_API_KEY) {
-    console.log('googleMapsConfig: Using development API key');
-    return DEVELOPMENT_API_KEY;
-  }
+  // SECURITY: Never hardcode API keys in production
+  // All API keys should be stored in environment variables or Supabase secrets
+  console.log('googleMapsConfig: No development key configured - using environment variables only');
   
   console.warn('googleMapsConfig: No valid Google Maps API key found');
   return null;

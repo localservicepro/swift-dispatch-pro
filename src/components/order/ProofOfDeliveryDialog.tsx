@@ -138,12 +138,21 @@ export function ProofOfDeliveryDialog({
                     target.style.display = 'none';
                     const parent = target.parentElement;
                     if (parent) {
-                      parent.innerHTML = `
-                        <div class="flex flex-col items-center justify-center py-12">
-                          <div class="w-12 h-12 text-gray-400 mb-4">⚠️</div>
-                          <p class="text-gray-600">Failed to load image</p>
-                        </div>
-                      `;
+                      // Create error message element safely without innerHTML
+                      const errorDiv = document.createElement('div');
+                      errorDiv.className = 'flex flex-col items-center justify-center py-12';
+                      
+                      const iconDiv = document.createElement('div');
+                      iconDiv.className = 'w-12 h-12 text-gray-400 mb-4';
+                      iconDiv.textContent = '⚠️';
+                      
+                      const messageP = document.createElement('p');
+                      messageP.className = 'text-gray-600';
+                      messageP.textContent = 'Failed to load image';
+                      
+                      errorDiv.appendChild(iconDiv);
+                      errorDiv.appendChild(messageP);
+                      parent.appendChild(errorDiv);
                     }
                   }}
                 />
