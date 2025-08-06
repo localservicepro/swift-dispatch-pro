@@ -129,14 +129,30 @@ export function useGoogleMaps() {
           lng
         };
 
-        // Parse address components
+        // Parse address components with improved suburb detection
+        console.log('Address components received:', result.address_components.map((c: any) => ({
+          types: c.types,
+          long_name: c.long_name,
+          short_name: c.short_name
+        })));
+        
         result.address_components.forEach((component: any) => {
-          const types = component.types;
+          const types = component.types || [];
           
           if (types.includes('street_number') || types.includes('route')) {
             addressData.street += (addressData.street ? ' ' : '') + component.long_name;
-          } else if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+          } else if (types.includes('sublocality_level_1')) {
+            // Priority 1: Most specific suburb level
             addressData.city = component.long_name;
+          } else if (types.includes('sublocality')) {
+            // Priority 2: General suburb level (only if no sublocality_level_1)
+            if (!addressData.city) addressData.city = component.long_name;
+          } else if (types.includes('locality')) {
+            // Priority 3: Town/suburb (only if no sublocality found)
+            if (!addressData.city) addressData.city = component.long_name;
+          } else if (types.includes('administrative_area_level_2')) {
+            // Priority 4: Local government area (last resort)
+            if (!addressData.city) addressData.city = component.long_name;
           } else if (types.includes('administrative_area_level_1')) {
             addressData.state = component.short_name;
           } else if (types.includes('postal_code')) {
@@ -145,6 +161,16 @@ export function useGoogleMaps() {
             addressData.country = component.long_name;
           }
         });
+
+        // Fallback: Extract suburb from formatted address if parsing failed
+        if (!addressData.city && addressData.fullAddress) {
+          const addressMatch = addressData.fullAddress.match(/,\s*([^,]+)\s+[A-Z]{2,3}\s+\d{4}/);
+          if (addressMatch) {
+            addressData.city = addressMatch[1].trim();
+          }
+        }
+
+        console.log('Parsed address result:', addressData);
 
         updateMapLocation(lat, lng);
         console.log('useGoogleMaps: Reverse geocoding successful:', addressData);
@@ -313,14 +339,30 @@ export function useGoogleMaps() {
           lng: geometry.location?.lng() || null,
         };
 
-        // Parse address components
+        // Parse address components with improved suburb detection
+        console.log('Address components received:', addressComponents.map((c: any) => ({
+          types: c.types,
+          long_name: c.long_name,
+          short_name: c.short_name
+        })));
+        
         addressComponents.forEach((component: any) => {
           const types = component.types || [];
           
           if (types.includes('street_number') || types.includes('route')) {
             parsedAddress.street += (parsedAddress.street ? ' ' : '') + component.long_name;
-          } else if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+          } else if (types.includes('sublocality_level_1')) {
+            // Priority 1: Most specific suburb level
             parsedAddress.city = component.long_name;
+          } else if (types.includes('sublocality')) {
+            // Priority 2: General suburb level (only if no sublocality_level_1)
+            if (!parsedAddress.city) parsedAddress.city = component.long_name;
+          } else if (types.includes('locality')) {
+            // Priority 3: Town/suburb (only if no sublocality found)
+            if (!parsedAddress.city) parsedAddress.city = component.long_name;
+          } else if (types.includes('administrative_area_level_2')) {
+            // Priority 4: Local government area (last resort)
+            if (!parsedAddress.city) parsedAddress.city = component.long_name;
           } else if (types.includes('administrative_area_level_1')) {
             parsedAddress.state = component.short_name;
           } else if (types.includes('postal_code')) {
@@ -329,6 +371,16 @@ export function useGoogleMaps() {
             parsedAddress.country = component.long_name;
           }
         });
+
+        // Fallback: Extract suburb from formatted address if parsing failed
+        if (!parsedAddress.city && parsedAddress.fullAddress) {
+          const addressMatch = parsedAddress.fullAddress.match(/,\s*([^,]+)\s+[A-Z]{2,3}\s+\d{4}/);
+          if (addressMatch) {
+            parsedAddress.city = addressMatch[1].trim();
+          }
+        }
+
+        console.log('Parsed address result:', parsedAddress);
 
         console.log('useGoogleMaps: Client-side place details successful');
         return parsedAddress;
