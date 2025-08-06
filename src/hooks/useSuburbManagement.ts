@@ -62,28 +62,56 @@ export function useSuburbManagement() {
     return nameMatch || null;
   };
 
+  const findSuburbInAddress = (fullAddress: string): Suburb | null => {
+    if (!fullAddress || suburbs.length === 0) return null;
+    
+    console.log('Searching for suburb in address:', fullAddress);
+    console.log('Available suburbs:', suburbs.map(s => s.name));
+    
+    // Sort suburbs by name length (descending) to prioritize longer, more specific matches
+    const sortedSuburbs = [...suburbs].sort((a, b) => b.name.length - a.name.length);
+    
+    // Search for suburb names in the address using word boundaries
+    for (const suburb of sortedSuburbs) {
+      const pattern = new RegExp(`\\b${suburb.name}\\b`, 'i');
+      if (pattern.test(fullAddress)) {
+        console.log('Found matching suburb in address:', suburb.name);
+        return suburb;
+      }
+    }
+    
+    console.log('No suburb found in address');
+    return null;
+  };
+
   const handleAutoSuburbSelection = (
-    suburbName: string,
+    fullAddressOrSuburbName: string,
     onSuburbChange: (suburbId: string, suburb?: Suburb) => void
   ) => {
-    const matchingSuburb = findSuburbByNameOnly(suburbName);
+    // First try to find suburb within the full address
+    let matchingSuburb = findSuburbInAddress(fullAddressOrSuburbName);
+    
+    // If not found and input looks like a suburb name (not a full address), try direct name match
+    if (!matchingSuburb && !fullAddressOrSuburbName.includes(',')) {
+      matchingSuburb = findSuburbByNameOnly(fullAddressOrSuburbName);
+    }
     
     if (matchingSuburb) {
-      console.log('Auto-selecting suburb by name:', matchingSuburb);
+      console.log('Auto-selecting suburb:', matchingSuburb);
       onSuburbChange(matchingSuburb.id, matchingSuburb);
       
       const distanceText = matchingSuburb.distance_km ? ` (${matchingSuburb.distance_km}km away)` : '';
       
       toast({
         title: "Suburb Auto-Selected",
-        description: `${matchingSuburb.name} selected based on suburb name "${suburbName}"${distanceText}. Estimated delivery: ${matchingSuburb.delivery_rate}`,
+        description: `${matchingSuburb.name} selected from address. ${distanceText} Estimated delivery: ${matchingSuburb.delivery_rate}`,
         duration: 3000,
       });
     } else {
-      console.log('No matching suburb found for name:', suburbName);
+      console.log('No matching suburb found for:', fullAddressOrSuburbName);
       toast({
         title: "No Matching Suburb",
-        description: `No delivery suburb found for "${suburbName}". Please select manually.`,
+        description: `No delivery suburb found in the address. Please select manually.`,
         variant: "destructive",
         duration: 4000,
       });
@@ -95,6 +123,7 @@ export function useSuburbManagement() {
     refreshSuburbs,
     findSuburbByPostcode,
     findSuburbByNameOnly,
+    findSuburbInAddress,
     handleAutoSuburbSelection
   };
 }

@@ -29,9 +29,9 @@ export function CustomerAddressForm({
     console.log('Delivery address selected:', addressData);
     onFormDataChange({ delivery_address: addressData.fullAddress });
     
-    // Auto-select suburb based on city (suburb name) only
-    if (addressData.city) {
-      handleAutoSuburbSelection(addressData.city, onSuburbChange);
+    // Auto-select suburb based on full address
+    if (addressData.fullAddress) {
+      handleAutoSuburbSelection(addressData.fullAddress, onSuburbChange);
     }
   };
 
