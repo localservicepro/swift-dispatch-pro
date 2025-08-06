@@ -36,6 +36,7 @@ export interface Order {
   contact_name?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
+  delivery_method?: string;
 }
 
 export interface OrderEditFormProps {

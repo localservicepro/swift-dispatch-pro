@@ -43,6 +43,7 @@ interface Order {
   company_name?: string;
   business_name?: string;
   customer_type?: string;
+  delivery_method?: string;
 }
 
 export function useOrderData() {
@@ -83,6 +84,7 @@ export function useOrderData() {
           truck_registration,
           truck_type_display,
           delivery_suburb_id,
+          delivery_method,
           deleted_at,
           customers!orders_customer_id_fkey(
             id,

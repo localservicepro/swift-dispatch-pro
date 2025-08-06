@@ -10,6 +10,7 @@ import { OrderPricingForm } from "./OrderPricingForm";
 import { OrderTruckSelectionForm } from "./OrderTruckSelectionForm";
 import { OrderDeliveryForm } from "./OrderDeliveryForm";
 import { DeliveryScheduler } from "./DeliveryScheduler";
+import { PickupScheduler } from "./PickupScheduler";
 import { ProductEditSection } from "./ProductEditSection";
 import { ContactSelectionSection } from "./ContactSelectionSection";
 import { OrderFormData } from "./hooks/useOrderFormData";
@@ -104,30 +105,50 @@ export function OrderEditSections({
         onInputChange={onInputChange}
       />
 
-      <OrderDeliveryForm
-        formData={{
-          full_address: formData.customer_address,
-          suburb_id: formData.suburb_id || '',
-          delivery_suburb_id: formData.delivery_suburb_id || '',
-        }}
-        deliveryRate={deliveryRate}
-        onFormDataChange={onFormDataChange}
-        onSuburbChange={onSuburbChange}
-      />
-
-      <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 space-y-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Calendar className="w-5 h-5 text-teal-600" />
-          <h3 className="font-semibold text-teal-900">Delivery Schedule</h3>
-        </div>
-        
-        <DeliveryScheduler
-          deliveryDate={formData.delivery_date}
-          deliveryTime={formData.delivery_time}
-          onDeliveryDateChange={(date) => onInputChange('delivery_date', date)}
-          onDeliveryTimeChange={(time) => onInputChange('delivery_time', time)}
+      {/* Only show delivery address form for delivery orders */}
+      {formData.delivery_method === 'delivery' && (
+        <OrderDeliveryForm
+          formData={{
+            full_address: formData.customer_address,
+            suburb_id: formData.suburb_id || '',
+            delivery_suburb_id: formData.delivery_suburb_id || '',
+          }}
+          deliveryRate={deliveryRate}
+          onFormDataChange={onFormDataChange}
+          onSuburbChange={onSuburbChange}
         />
-      </div>
+      )}
+
+      {/* Conditional rendering for delivery vs pickup scheduling */}
+      {formData.delivery_method === 'delivery' ? (
+        <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 space-y-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-5 h-5 text-teal-600" />
+            <h3 className="font-semibold text-teal-900">Delivery Schedule</h3>
+          </div>
+          
+          <DeliveryScheduler
+            deliveryDate={formData.delivery_date}
+            deliveryTime={formData.delivery_time}
+            onDeliveryDateChange={(date) => onInputChange('delivery_date', date)}
+            onDeliveryTimeChange={(time) => onInputChange('delivery_time', time)}
+          />
+        </div>
+      ) : (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-5 h-5 text-green-600" />
+            <h3 className="font-semibold text-green-900">Pickup Schedule</h3>
+          </div>
+          
+          <PickupScheduler
+            pickupDate={formData.delivery_date}
+            pickupTime={formData.delivery_time}
+            onPickupDateChange={(date) => onInputChange('delivery_date', date)}
+            onPickupTimeChange={(time) => onInputChange('delivery_time', time)}
+          />
+        </div>
+      )}
 
       <OrderPricingForm 
         formData={formData}
