@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, Star, AlertCircle, Edit } from "lucide-react";
+import { User, Star, AlertCircle, Edit, Plus } from "lucide-react";
+import { AddContactInlineForm } from "../customer/AddContactInlineForm";
 
 interface Contact {
   id: string;
@@ -46,6 +47,7 @@ export function ContactSelectionSection({
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -94,6 +96,12 @@ export function ContactSelectionSection({
       return;
     }
 
+    if (contactId === "add_new") {
+      setShowAddForm(true);
+      setEditMode(false);
+      return;
+    }
+
     const contact = contacts.find(c => c.id === contactId);
     if (contact) {
       onContactChange({
@@ -106,23 +114,79 @@ export function ContactSelectionSection({
     }
   };
 
+  const handleContactCreated = async (newContact: {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    role: string | null;
+  }) => {
+    // Refresh contacts list
+    await loadContacts();
+    // Select the newly created contact
+    onContactChange({
+      contact_id: newContact.id,
+      contact_name: newContact.name,
+      contact_email: newContact.email,
+      contact_phone: newContact.phone
+    });
+    // Hide the form
+    setShowAddForm(false);
+  };
+
+  const handleCancelAdd = () => {
+    setShowAddForm(false);
+  };
+
   const formatContactDisplay = (contact: Contact) => {
     const name = `${contact.first_name} ${contact.last_name}`;
     const role = contact.contact_role || 'Contact';
     return `${name} (${role})`;
   };
 
-  // If no contacts exist
-  if (contacts.length === 0 && !loading) {
+  // If no contacts exist and not showing add form
+  if (contacts.length === 0 && !loading && !showAddForm) {
     return (
       <Card className="border-amber-200 bg-amber-50">
         <CardContent className="pt-4">
-          <div className="flex items-center gap-2 text-amber-700">
-            <AlertCircle className="w-4 h-4" />
-            <span className="text-sm">
-              No contacts found for this company.
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-700">
+              <AlertCircle className="w-4 h-4" />
+              <span className="text-sm">
+                No contacts found for this company.
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddForm(true)}
+              disabled={disabled}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add Contact
+            </Button>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show add form when requested
+  if (showAddForm) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <User className="w-4 h-4" />
+            Add New Contact
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AddContactInlineForm
+            customerId={customerId}
+            onContactCreated={handleContactCreated}
+            onCancel={handleCancelAdd}
+          />
         </CardContent>
       </Card>
     );
@@ -196,6 +260,12 @@ export function ContactSelectionSection({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No specific contact</SelectItem>
+                  <SelectItem value="add_new">
+                    <div className="flex items-center gap-2 text-primary">
+                      <Plus className="w-3 h-3" />
+                      <span>Add New Contact</span>
+                    </div>
+                  </SelectItem>
                   {contacts.map((contact) => (
                     <SelectItem key={contact.id} value={contact.id}>
                       <div className="flex items-center gap-2 w-full">

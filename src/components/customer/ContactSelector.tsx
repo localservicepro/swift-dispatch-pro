@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, Star, AlertCircle } from "lucide-react";
+import { User, Star, AlertCircle, Plus } from "lucide-react";
+import { AddContactInlineForm } from "./AddContactInlineForm";
 
 interface Contact {
   id: string;
@@ -41,6 +43,7 @@ export function ContactSelector({
 }: ContactSelectorProps) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -83,6 +86,11 @@ export function ContactSelector({
       return;
     }
 
+    if (contactId === "add_new") {
+      setShowAddForm(true);
+      return;
+    }
+
     const contact = contacts.find(c => c.id === contactId);
     if (contact) {
       onContactSelect({
@@ -95,21 +103,45 @@ export function ContactSelector({
     }
   };
 
+  const handleContactCreated = async (newContact: SelectedContact) => {
+    // Refresh contacts list
+    await loadContacts();
+    // Select the newly created contact
+    onContactSelect(newContact);
+    // Hide the form
+    setShowAddForm(false);
+  };
+
+  const handleCancelAdd = () => {
+    setShowAddForm(false);
+  };
+
   const formatContactDisplay = (contact: Contact) => {
     const name = `${contact.first_name} ${contact.last_name}`;
     const role = contact.contact_role || 'Contact';
     return `${name} (${role})`;
   };
 
-  if (contacts.length === 0 && !loading) {
+  if (contacts.length === 0 && !loading && !showAddForm) {
     return (
       <Card className="border-amber-200 bg-amber-50">
         <CardContent className="pt-4">
-          <div className="flex items-center gap-2 text-amber-700">
-            <AlertCircle className="w-4 h-4" />
-            <span className="text-sm">
-              No contacts found for this company. Order will be created without a specific contact.
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-700">
+              <AlertCircle className="w-4 h-4" />
+              <span className="text-sm">
+                No contacts found for this company.
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddForm(true)}
+              disabled={disabled}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add Contact
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -123,33 +155,47 @@ export function ContactSelector({
           <User className="w-4 h-4" />
           Select Contact
         </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div>
-          <Label htmlFor="contact-select">Company Contact</Label>
-          <Select
-            value={selectedContact?.id || "none"}
-            onValueChange={handleContactChange}
-            disabled={disabled || loading}
-          >
-            <SelectTrigger id="contact-select">
-              <SelectValue placeholder={loading ? "Loading contacts..." : "Select a contact (optional)"} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No specific contact</SelectItem>
-              {contacts.map((contact) => (
-                <SelectItem key={contact.id} value={contact.id}>
-                  <div className="flex items-center gap-2 w-full">
-                    <span>{formatContactDisplay(contact)}</span>
-                    {contact.is_primary_contact && (
-                      <Star className="w-3 h-3 text-amber-500 fill-current" />
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {showAddForm ? (
+            <AddContactInlineForm
+              customerId={customerId}
+              onContactCreated={handleContactCreated}
+              onCancel={handleCancelAdd}
+            />
+          ) : (
+            <div>
+              <Label htmlFor="contact-select">Company Contact</Label>
+              <Select
+                value={selectedContact?.id || "none"}
+                onValueChange={handleContactChange}
+                disabled={disabled || loading}
+              >
+                <SelectTrigger id="contact-select">
+                  <SelectValue placeholder={loading ? "Loading contacts..." : "Select a contact (optional)"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No specific contact</SelectItem>
+                  <SelectItem value="add_new">
+                    <div className="flex items-center gap-2 text-primary">
+                      <Plus className="w-3 h-3" />
+                      <span>Add New Contact</span>
+                    </div>
+                  </SelectItem>
+                  {contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={contact.id}>
+                      <div className="flex items-center gap-2 w-full">
+                        <span>{formatContactDisplay(contact)}</span>
+                        {contact.is_primary_contact && (
+                          <Star className="w-3 h-3 text-amber-500 fill-current" />
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
         {selectedContact && (
           <div className="border rounded-lg p-3 bg-green-50">
