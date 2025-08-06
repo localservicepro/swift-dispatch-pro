@@ -106,15 +106,15 @@ export function FloatingCart({
             </Button>
           </SheetTrigger>
 
-          <SheetContent className="w-full sm:max-w-lg" side="right">
-            <SheetHeader>
+          <SheetContent className="w-full sm:max-w-lg max-h-[100vh] pb-safe" side="right">
+            <SheetHeader className="flex-shrink-0">
               <SheetTitle className="flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5" />
                 Shopping Cart ({cart.length} items)
               </SheetTitle>
             </SheetHeader>
 
-            <div className="flex flex-col h-full mt-6">
+            <div className="flex flex-col h-full max-h-[calc(100vh-8rem)] mt-6">
               {cart.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-muted-foreground">
                   <div className="text-center">
@@ -125,9 +125,9 @@ export function FloatingCart({
               ) : (
                 <>
                   {/* Scrollable Cart Items Section */}
-                  <div className="flex-1 overflow-hidden">
+                  <div className="flex-1 min-h-0 overflow-hidden">
                     <ScrollArea className="h-full -mx-6 px-6">
-                      <div className="space-y-4 pb-6">
+                      <div className="space-y-4 pb-4">
                         {cart.map((item) => {
                           const hasSpecial = hasActiveSpecial(item.product.id);
                           
