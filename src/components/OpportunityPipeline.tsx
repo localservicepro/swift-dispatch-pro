@@ -22,6 +22,11 @@ import { OpportunityCardColorLegend } from "./opportunity/OpportunityCardColorLe
 type TruckType = Database["public"]["Enums"]["truck_type"];
 
 const PIPELINE_STAGES = [{
+  id: 'on_hold',
+  title: 'On Hold',
+  color: 'bg-yellow-100 border-yellow-300',
+  textColor: 'text-yellow-700'
+}, {
   id: 'requested',
   title: 'Order Requested',
   color: 'bg-slate-100 border-slate-300',
@@ -139,9 +144,11 @@ export function OpportunityPipeline() {
       let stage = 'requested';
       const customerType = order.customers?.customer_type || order.customer_type;
 
-      // Account customers can progress through stages even with pending payment
-      if (customerType === 'account') {
-        // Account customers are grouped by their actual order status
+      // Check for "On Hold" conditions first
+      if (order.status === 'back_order' || order.delivery_method === 'pickup' || order.delivery_method === 'pickup_delivery') {
+        stage = 'on_hold';
+      } else if (customerType === 'account') {
+        // Account customers can progress through stages even with pending payment
         if (order.status === 'requested') {
           stage = 'requested';
         } else if (order.status === 'preparing') {
@@ -243,12 +250,12 @@ export function OpportunityPipeline() {
     }
 
     // Validate stage transition for other stages
-    const stageOrder = ['requested', 'preparing', 'loading', 'en_route', 'delivered'];
+    const stageOrder = ['on_hold', 'requested', 'preparing', 'loading', 'en_route', 'delivered'];
     const currentIndex = stageOrder.indexOf(currentStage);
     const newIndex = stageOrder.indexOf(newStage);
 
-    // Don't allow moving backwards (except from requested to any stage for flexibility)
-    if (currentStage !== 'requested' && newIndex < currentIndex) {
+    // Don't allow moving backwards (except from on_hold and requested to any stage for flexibility)
+    if (currentStage !== 'on_hold' && currentStage !== 'requested' && newIndex < currentIndex) {
       toast({
         title: "Invalid Move",
         description: "Orders cannot be moved backwards in the pipeline",
@@ -257,8 +264,8 @@ export function OpportunityPipeline() {
       return;
     }
 
-    // Don't allow skipping stages (except from requested)
-    if (currentStage !== 'requested' && newIndex > currentIndex + 1) {
+    // Don't allow skipping stages (except from on_hold and requested)
+    if (currentStage !== 'on_hold' && currentStage !== 'requested' && newIndex > currentIndex + 1) {
       toast({
         title: "Invalid Move",
         description: "Orders must progress through stages sequentially",
@@ -342,6 +349,12 @@ export function OpportunityPipeline() {
       let updateData: any = {};
 
       switch (newStage) {
+        case 'on_hold':
+          updateData = { status: 'back_order' };
+          break;
+        case 'requested':
+          updateData = { status: 'requested' };
+          break;
         case 'preparing':
           const customerType = order.customers?.customer_type || order.customer_type;
           updateData = {

@@ -71,7 +71,6 @@ export function useOpportunityData() {
           trucks!orders_truck_id_fkey(registration_number, truck_type)
         `)
         .is('deleted_at', null) // Exclude soft-deleted orders
-        .eq('delivery_method', 'delivery') // Only include delivery orders, exclude pickup/yard sale orders
         .order('created_at', { ascending: false });
 
       if (ordersError) {
