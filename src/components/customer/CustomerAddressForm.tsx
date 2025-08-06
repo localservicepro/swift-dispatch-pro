@@ -29,9 +29,9 @@ export function CustomerAddressForm({
     console.log('Delivery address selected:', addressData);
     onFormDataChange({ delivery_address: addressData.fullAddress });
     
-    // Auto-select suburb based on postcode if available
-    if (addressData.postcode) {
-      handleAutoSuburbSelection(addressData.postcode, onSuburbChange);
+    // Auto-select suburb based on city and postcode if available
+    if (addressData.city || addressData.postcode) {
+      handleAutoSuburbSelection(addressData.city || addressData.postcode, onSuburbChange, addressData.postcode);
     }
   };
 
