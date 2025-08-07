@@ -225,7 +225,7 @@ export type Database = {
           email: string | null
           entity_type: Database["public"]["Enums"]["entity_type"] | null
           first_name: string | null
-          full_address: string
+          full_address: string | null
           id: string
           is_active: boolean
           last_name: string | null
@@ -249,7 +249,7 @@ export type Database = {
           email?: string | null
           entity_type?: Database["public"]["Enums"]["entity_type"] | null
           first_name?: string | null
-          full_address: string
+          full_address?: string | null
           id?: string
           is_active?: boolean
           last_name?: string | null
@@ -273,7 +273,7 @@ export type Database = {
           email?: string | null
           entity_type?: Database["public"]["Enums"]["entity_type"] | null
           first_name?: string | null
-          full_address?: string
+          full_address?: string | null
           id?: string
           is_active?: boolean
           last_name?: string | null

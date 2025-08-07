@@ -37,10 +37,10 @@ export function useCustomerDialogActions(
     
     // Validation for Account Business entities
     if (isAccountBusiness) {
-      if (!formData.company_name || !formData.full_address || !formData.suburb_id) {
+      if (!formData.company_name) {
         toast({
           title: "Error",
-          description: "Company name, address, and suburb are required for business accounts",
+          description: "Company name is required for business accounts",
           variant: "destructive",
         });
         return;
@@ -72,7 +72,7 @@ export function useCustomerDialogActions(
         last_name: formData.last_name || null,
         email: formData.email || null,
         phone: formData.phone || null,
-        full_address: formData.full_address,
+        full_address: formData.full_address || null,
         suburb_id: formData.suburb_id || null,
         customer_type: formData.customer_type,
         entity_type: formData.entity_type,

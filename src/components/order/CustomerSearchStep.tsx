@@ -132,20 +132,20 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
     
     // Validation for Account Business entities
     if (isAccountBusiness) {
-      if (!newCustomer.company_name || !newCustomer.full_address || !newCustomer.suburb_id) {
+      if (!newCustomer.company_name) {
         toast({
           title: "Error",
-          description: "Company name, address, and suburb are required for business accounts",
+          description: "Company name is required for business accounts",
           variant: "destructive",
         });
         return;
       }
     } else {
       // Standard validation for all other customer types
-      if (!newCustomer.first_name || !newCustomer.last_name || !newCustomer.email || !newCustomer.suburb_id) {
+      if (!newCustomer.first_name || !newCustomer.last_name || !newCustomer.email) {
         toast({
           title: "Error",
-          description: "Please fill in all required fields",
+          description: "First name, last name, and email are required",
           variant: "destructive",
         });
         return;

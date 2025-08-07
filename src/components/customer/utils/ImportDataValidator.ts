@@ -153,10 +153,7 @@ export class ImportDataValidator {
     const warnings: string[] = [];
     let customerData: Database['public']['Tables']['customers']['Insert'] | null = null;
 
-    // Validate required fields
-    if (!row.full_address) {
-      warnings.push('Address is required');
-    }
+    // Address is now optional - no validation required
 
     // Validate entity-specific requirements
     if (row.entity_type === 'individual') {
