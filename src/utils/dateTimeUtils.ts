@@ -127,3 +127,23 @@ export const isDateBeforeToday = (date: Date): boolean => {
   const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   return compareDate < today;
 };
+
+export const formatDeliveredDate = (dateString: string | null | undefined): string => {
+  if (!dateString) return '';
+  
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-AU', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (error) {
+    console.error('Error formatting delivered date:', error);
+    return '';
+  }
+};

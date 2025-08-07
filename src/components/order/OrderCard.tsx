@@ -4,9 +4,10 @@ import { PurchaseOrderDisplay } from "./PurchaseOrderDisplay";
 import { NotesIndicator } from "../notes/NotesIndicator";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { PaymentStatusDropdown } from "../opportunity/PaymentStatusDropdown";
-import { MapPin, Truck, Edit3, Trash2, Building, User } from "lucide-react";
+import { MapPin, Truck, Edit3, Trash2, Building, User, Calendar } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
+import { formatDeliveredDate } from "@/utils/dateTimeUtils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -49,6 +50,7 @@ interface Order {
   business_name?: string;
   customer_type?: string;
   stop_credit?: boolean;
+  delivered_at?: string;
 }
 
 interface OrderCardProps {
@@ -279,7 +281,13 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
         <p>Delivery Address: {order.delivery_address || order.customer_address}</p>
         <p>Created: {new Date(order.created_at).toLocaleDateString()}</p>
         {order.delivery_date && (
-          <p>Delivery: {order.delivery_date} {order.delivery_time && `at ${order.delivery_time}`}</p>
+          <p>Scheduled: {order.delivery_date} {order.delivery_time && `at ${order.delivery_time}`}</p>
+        )}
+        {order.delivered_at && (
+          <p className="text-green-600 font-medium flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            Delivered: {formatDeliveredDate(order.delivered_at)}
+          </p>
         )}
       </div>
       

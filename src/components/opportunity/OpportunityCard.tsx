@@ -104,6 +104,7 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
             <OpportunityCardCompleted
               hasDeliveryPhotos={hasDeliveryPhotos}
               onViewProof={handleViewProof}
+              deliveredAt={order.delivered_at}
             />
           )}
 

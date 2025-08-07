@@ -68,7 +68,10 @@ export function useOpportunityData() {
             id, name, state, postcode
           ),
           profiles!orders_driver_id_fkey(full_name),
-          trucks!orders_truck_id_fkey(registration_number, truck_type)
+          trucks!orders_truck_id_fkey(registration_number, truck_type),
+          delivered_status:delivery_status_updates!delivery_status_updates_order_id_fkey(
+            created_at
+          )
         `)
         .is('deleted_at', null) // Exclude soft-deleted orders
         .order('created_at', { ascending: false });
@@ -79,23 +82,31 @@ export function useOpportunityData() {
       }
 
       // Map the data and sort by delivery date/time (earliest first)
-      const mappedOrders = ordersData?.map(order => ({
-        ...order,
-        suburb_id: order.customers?.suburb_id || null,
-        suburb_name: order.customers?.suburbs?.name || null,
-        suburb_state: order.customers?.suburbs?.state || null,
-        suburb_postcode: order.customers?.suburbs?.postcode || null,
-        delivery_suburb_id: order.delivery_suburb_id || null,
-        delivery_suburb_name: order.delivery_suburbs?.name || null,
-        delivery_suburb_state: order.delivery_suburbs?.state || null,
-        delivery_suburb_postcode: order.delivery_suburbs?.postcode || null,
-        company_name: order.customers?.company_name || null,
-        business_name: order.customers?.business_name || null,
-        customer_type: order.customers?.customer_type || null,
-        driver_name: order.profiles?.full_name || 'Not Assigned',
-        truck_registration: order.trucks?.registration_number || null,
-        truck_type_from_truck: order.trucks?.truck_type || order.truck_type
-      })) || [];
+      const mappedOrders = ordersData?.map(order => {
+        // Find the most recent delivery completion timestamp
+        const deliveredAt = order.status === 'delivered' && order.delivered_status?.length > 0 
+          ? order.delivered_status[order.delivered_status.length - 1].created_at 
+          : null;
+
+        return {
+          ...order,
+          suburb_id: order.customers?.suburb_id || null,
+          suburb_name: order.customers?.suburbs?.name || null,
+          suburb_state: order.customers?.suburbs?.state || null,
+          suburb_postcode: order.customers?.suburbs?.postcode || null,
+          delivery_suburb_id: order.delivery_suburb_id || null,
+          delivery_suburb_name: order.delivery_suburbs?.name || null,
+          delivery_suburb_state: order.delivery_suburbs?.state || null,
+          delivery_suburb_postcode: order.delivery_suburbs?.postcode || null,
+          company_name: order.customers?.company_name || null,
+          business_name: order.customers?.business_name || null,
+          customer_type: order.customers?.customer_type || null,
+          driver_name: order.profiles?.full_name || 'Not Assigned',
+          truck_registration: order.trucks?.registration_number || null,
+          truck_type_from_truck: order.trucks?.truck_type || order.truck_type,
+          delivered_at: deliveredAt
+        };
+      }) || [];
 
       // Sort orders by delivery date and time (earliest first), then by creation time
       const sortedOrders = mappedOrders.sort((a, b) => {

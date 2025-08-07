@@ -44,6 +44,7 @@ interface Order {
   business_name?: string;
   customer_type?: string;
   delivery_method?: string;
+  delivered_at?: string;
 }
 
 export function useOrderData() {
@@ -96,6 +97,9 @@ export function useOrderData() {
           ),
           delivery_suburbs:suburbs!orders_delivery_suburb_id_fkey(
             id, name, state, postcode
+          ),
+          delivered_status:delivery_status_updates!delivery_status_updates_order_id_fkey(
+            created_at
           )
         `)
         .is('deleted_at', null)
@@ -112,6 +116,11 @@ export function useOrderData() {
         const customerSuburbData = order.customers?.suburbs;
         const customerSuburbId = order.customers?.suburb_id;
         const deliverySuburbData = order.delivery_suburbs;
+        
+        // Find the most recent delivery completion timestamp
+        const deliveredAt = order.status === 'delivered' && order.delivered_status?.length > 0 
+          ? order.delivered_status[order.delivered_status.length - 1].created_at 
+          : null;
 
         return {
           ...order,
@@ -128,7 +137,8 @@ export function useOrderData() {
           customer_type: order.customers?.customer_type || null,
           driver_name: order.driver_name || 'Not Assigned',
           truck_registration: order.truck_registration || null,
-          truck_type_display: order.truck_type_display || null
+          truck_type_display: order.truck_type_display || null,
+          delivered_at: deliveredAt
         };
       }) || [];
 
