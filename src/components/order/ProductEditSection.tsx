@@ -279,19 +279,27 @@ export function ProductEditSection({
                         </Button>
                         {editingQuantity === item.id ? (
                           <div className="flex items-center gap-1">
-                            <Input
-                              className="w-20 h-6 text-xs text-center"
-                              value={inputValue}
-                              onChange={(e) => setInputValue(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleQuantitySubmit(item.id);
-                                if (e.key === 'Escape') handleQuantityCancel();
-                              }}
-                              onBlur={() => handleQuantitySubmit(item.id)}
-                              placeholder="1.25"
-                              step="0.25"
-                              autoFocus
-                            />
+                             <Input
+                               type="number"
+                               className="w-20 h-6 text-xs text-center"
+                               value={inputValue}
+                               onChange={(e) => setInputValue(e.target.value)}
+                               onKeyDown={(e) => {
+                                 if (e.key === 'Enter') handleQuantitySubmit(item.id);
+                                 if (e.key === 'Escape') handleQuantityCancel();
+                               }}
+                               onBlur={() => handleQuantitySubmit(item.id)}
+                               placeholder="1.25"
+                               step={(() => {
+                                 const product = products.find(p => p.id === item.id);
+                                 return product ? getQuantityIncrement(product) : 0.001;
+                               })()}
+                               min={(() => {
+                                 const product = products.find(p => p.id === item.id);
+                                 return product ? getMinimumQuantity(product) : 0.001;
+                               })()}
+                               autoFocus
+                             />
                           </div>
                         ) : (
                           <div 

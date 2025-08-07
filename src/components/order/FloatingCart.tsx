@@ -7,7 +7,7 @@ import { ShoppingCart, Plus, Minus, Trash2, Edit3 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getQuantityIncrement } from "@/utils/categoryUtils";
+import { getQuantityIncrement, getMinimumQuantity, validateQuantity, roundToValidQuantity } from "@/utils/categoryUtils";
 
 interface Product {
   id: string;
@@ -173,20 +173,22 @@ export function FloatingCart({
                                     <div className="flex items-center gap-2">
                                       {editingQuantity === item.product.id ? (
                                         <div className="flex items-center gap-1">
-                                          <Input
-                                            type="text"
-                                            value={inputValue}
-                                            onChange={(e) => setInputValue(e.target.value)}
-                                            className="w-20 h-8 text-center text-sm"
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter') {
-                                                handleQuantitySubmit(item.product.id);
-                                              } else if (e.key === 'Escape') {
-                                                handleQuantityCancel();
-                                              }
-                                            }}
-                                            autoFocus
-                                          />
+                                           <Input
+                                             type="number"
+                                             value={inputValue}
+                                             onChange={(e) => setInputValue(e.target.value)}
+                                             className="w-20 h-8 text-center text-sm"
+                                             onKeyDown={(e) => {
+                                               if (e.key === 'Enter') {
+                                                 handleQuantitySubmit(item.product.id);
+                                               } else if (e.key === 'Escape') {
+                                                 handleQuantityCancel();
+                                               }
+                                             }}
+                                             step={getQuantityIncrement(item.product)}
+                                             min={getMinimumQuantity(item.product)}
+                                             autoFocus
+                                           />
                                           <Button size="sm" variant="ghost" onClick={() => handleQuantitySubmit(item.product.id)} className="h-8 px-2">
                                             ✓
                                           </Button>

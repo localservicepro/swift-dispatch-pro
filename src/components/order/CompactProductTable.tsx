@@ -185,19 +185,21 @@ export function CompactProductTable({
                 <TableCell className="py-2 text-center">
                   {editingQuantity === cartItem.product.id ? (
                     <div className="flex items-center gap-1">
-                      <Input
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        className="h-6 w-16 text-xs text-center"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleQuantitySubmit(cartItem.product.id);
-                          if (e.key === 'Escape') handleQuantityCancel();
-                        }}
-                        onBlur={() => handleQuantitySubmit(cartItem.product.id)}
-                        placeholder="1.25"
-                        step="0.25"
-                        autoFocus
-                      />
+                       <Input
+                         type="number"
+                         value={inputValue}
+                         onChange={(e) => setInputValue(e.target.value)}
+                         className="h-6 w-16 text-xs text-center"
+                         onKeyDown={(e) => {
+                           if (e.key === 'Enter') handleQuantitySubmit(cartItem.product.id);
+                           if (e.key === 'Escape') handleQuantityCancel();
+                         }}
+                         onBlur={() => handleQuantitySubmit(cartItem.product.id)}
+                         placeholder="1.25"
+                         step={getQuantityIncrement(cartItem.product)}
+                         min={getMinimumQuantity(cartItem.product)}
+                         autoFocus
+                       />
                       <Button
                         variant="ghost"
                         size="sm"

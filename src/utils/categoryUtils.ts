@@ -11,14 +11,14 @@ export const isBulkCategory = (product: Product): boolean => {
  * Get the appropriate quantity increment for a product
  */
 export const getQuantityIncrement = (product: Product): number => {
-  return isBulkCategory(product) ? 0.25 : 1.0;
+  return isBulkCategory(product) ? 0.001 : 1.0;
 };
 
 /**
  * Get the minimum quantity allowed for a product
  */
 export const getMinimumQuantity = (product: Product): number => {
-  return isBulkCategory(product) ? 0.25 : 1.0;
+  return isBulkCategory(product) ? 0.001 : 1.0;
 };
 
 /**
@@ -26,26 +26,24 @@ export const getMinimumQuantity = (product: Product): number => {
  */
 export const validateQuantity = (quantity: number, product: Product): boolean => {
   const minQuantity = getMinimumQuantity(product);
-  const increment = getQuantityIncrement(product);
   
   if (quantity < minQuantity) {
     return false;
   }
   
-  // For non-bulk products, ensure it's a whole number
+  // For non-fractional products, ensure it's a whole number
   if (!isBulkCategory(product)) {
     return Number.isInteger(quantity);
   }
   
-  // For bulk products, ensure it's a multiple of 0.25
-  return (quantity * 4) % 1 === 0;
+  // For fractional products, allow any reasonable decimal (up to 3 decimal places)
+  return Number.isFinite(quantity) && quantity > 0;
 };
 
 /**
  * Round quantity to the nearest valid increment for a product
  */
 export const roundToValidQuantity = (quantity: number, product: Product): number => {
-  const increment = getQuantityIncrement(product);
   const minQuantity = getMinimumQuantity(product);
   
   if (quantity < minQuantity) {
@@ -56,8 +54,8 @@ export const roundToValidQuantity = (quantity: number, product: Product): number
     return Math.round(quantity);
   }
   
-  // Round to nearest 0.25 for bulk products
-  return Math.round(quantity * 4) / 4;
+  // Round to 3 decimal places for fractional products
+  return Math.round(quantity * 1000) / 1000;
 };
 
 /**
@@ -65,7 +63,7 @@ export const roundToValidQuantity = (quantity: number, product: Product): number
  */
 export const getQuantityErrorMessage = (product: Product): string => {
   if (isBulkCategory(product)) {
-    return "Fractional quantities allowed for bulk products (minimum 0.25)";
+    return "Any decimal quantity allowed (minimum 0.001)";
   }
   return "Please enter whole numbers only for this product type";
 };
