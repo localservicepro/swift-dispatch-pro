@@ -154,7 +154,15 @@ export function EnhancedAddressInput({
       });
 
       if (error || data?.error || data?.fallback) {
-        console.log('Edge function failed, trying client-side fallback:', error || data?.error);
+        const errorMessage = error?.message || data?.error || 'Unknown error';
+        console.error('Edge function failed:', errorMessage);
+        
+        // Check for specific API restriction errors
+        if (errorMessage.includes('REQUEST_DENIED') || errorMessage.includes('referer restrictions')) {
+          console.error('Google API Key Issue: Domain restrictions prevent API access from this domain');
+          console.error('Current domain needs to be added to Google Cloud Console API key restrictions');
+        }
+        
         await tryClientSideFallback(input);
         return;
       }
@@ -227,10 +235,11 @@ export function EnhancedAddressInput({
   const handleSearchFailure = () => {
     setPredictions([]);
     setShowDropdown(false);
-    setValidationStatus('idle');
+    setValidationStatus('invalid');
     onValidationChange?.(false);
     
-    console.log('Search failed - use map button to select address manually');
+    console.error('Address search failed: Both server and client-side searches unsuccessful');
+    console.error('This may be due to Google API key domain restrictions or service availability');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -476,10 +485,10 @@ export function EnhancedAddressInput({
             Address Not Found
           </Badge>
         )}
-        {hasSearched && predictions.length === 0 && !isLoading && validationStatus === 'idle' && value.length > 2 && searchAttempts > 0 && isUserTyping && (
-          <Badge variant="outline" className="text-blue-700 bg-blue-50">
-            <Map className="w-3 h-3 mr-1" />
-            No results found - try using the map button to select your address
+        {hasSearched && predictions.length === 0 && !isLoading && (validationStatus === 'idle' || validationStatus === 'invalid') && value.length > 2 && searchAttempts > 0 && (
+          <Badge variant="outline" className="text-amber-700 bg-amber-50">
+            <AlertCircle className="w-3 h-3 mr-1" />
+            Address search unavailable - may be due to domain restrictions. Use map button instead.
           </Badge>
         )}
       </div>
