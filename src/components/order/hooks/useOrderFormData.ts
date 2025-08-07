@@ -53,7 +53,7 @@ export function useOrderFormData(order: Order) {
     special_instructions: order.special_instructions || '',
     driver_id: order.driver_id || 'unassigned',
     suburb_id: order.suburb_id || '',
-    delivery_suburb_id: order.delivery_suburb_id || '',
+    delivery_suburb_id: order.delivery_suburb_id || order.suburb_id || '',
     truck_type: order.truck_type || 'none',
     truck_id: order.truck_id || 'none',
     payment_method: order.payment_method || 'cash',

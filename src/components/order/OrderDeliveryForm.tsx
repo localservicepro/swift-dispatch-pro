@@ -38,7 +38,7 @@ export function OrderDeliveryForm({
       <OrderAddressForm
         formData={{
           full_address: formData.full_address,
-          suburb_id: formData.delivery_suburb_id || formData.suburb_id || '',
+          suburb_id: formData.delivery_suburb_id || '',
         }}
         deliveryRate={deliveryRate}
         onFormDataChange={onFormDataChange}
