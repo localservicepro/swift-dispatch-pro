@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchStep } from "./CustomerSearchStep";
 import { ProductSelectionStep } from "./ProductSelectionStep";
 import { DeliveryMethodSelectionStep } from "./DeliveryMethodSelectionStep";
+import { PickupSchedulingStep } from "./PickupSchedulingStep";
 import { OrderTypeSelectionStep } from "./OrderTypeSelectionStep";
 import { DeliveryAddressStep } from "./DeliveryAddressStep";
 import { PaymentMethodStep } from "./PaymentMethodStep";
@@ -226,10 +227,11 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       case 4:
         if (deliveryMethod === "pickup") {
           return (
-            <PaymentMethodStep
-              customer={selectedCustomer!}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
+            <PickupSchedulingStep
+              pickupDate={deliveryDate}
+              pickupTime={deliveryTime}
+              onPickupDateChange={setDeliveryDate}
+              onPickupTimeChange={setDeliveryTime}
               onBack={prevStep}
               onNext={nextStep}
             />
@@ -248,30 +250,12 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       case 5:
         if (deliveryMethod === "pickup") {
           return (
-            <OrderReviewStep
+            <PaymentMethodStep
               customer={selectedCustomer!}
-              selectedContact={selectedContact}
-              cart={cart}
-              subtotal={subtotal}
-              adjustments={adjustments}
-              deliveryFee={deliveryFee}
-              deliveryMethod="pickup"
-              deliveryDate={deliveryDate}
-              deliveryTime={deliveryTime}
-              specialInstructions={specialInstructions}
               paymentMethod={paymentMethod}
-              orderNotes={orderNotes}
-              deliveryNotes={deliveryNotes}
-              purchaseOrder={purchaseOrder}
-              deliveryAddress={deliveryAddress}
-              sameAsBilling={sameAsBilling}
+              onPaymentMethodChange={setPaymentMethod}
               onBack={prevStep}
-              onConfirm={handleOrderCreation}
-              isCreating={isCreatingOrder}
-              onDeliveryFeeChange={setManualDeliveryFee}
-              onOrderNotesChange={setOrderNotes}
-              onDeliveryNotesChange={setDeliveryNotes}
-              onPurchaseOrderChange={setPurchaseOrder}
+              onNext={nextStep}
             />
           );
         } else if (orderType === "split") {
@@ -316,6 +300,35 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         }
 
       case 6:
+        if (deliveryMethod === "pickup") {
+          return (
+            <OrderReviewStep
+              customer={selectedCustomer!}
+              selectedContact={selectedContact}
+              cart={cart}
+              subtotal={subtotal}
+              adjustments={adjustments}
+              deliveryFee={deliveryFee}
+              deliveryMethod="pickup"
+              deliveryDate={deliveryDate}
+              deliveryTime={deliveryTime}
+              specialInstructions={specialInstructions}
+              paymentMethod={paymentMethod}
+              orderNotes={orderNotes}
+              deliveryNotes={deliveryNotes}
+              purchaseOrder={purchaseOrder}
+              deliveryAddress={deliveryAddress}
+              sameAsBilling={sameAsBilling}
+              onBack={prevStep}
+              onConfirm={handleOrderCreation}
+              isCreating={isCreatingOrder}
+              onDeliveryFeeChange={setManualDeliveryFee}
+              onOrderNotesChange={setOrderNotes}
+              onDeliveryNotesChange={setDeliveryNotes}
+              onPurchaseOrderChange={setPurchaseOrder}
+            />
+          );
+        }
         return (
           <PaymentMethodStep
             customer={selectedCustomer!}

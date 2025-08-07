@@ -75,7 +75,7 @@ export function useOrderFormState() {
   // Dynamic step calculation based on delivery method
   const getTotalSteps = () => {
     if (deliveryMethod === "pickup") {
-      return 5; // Customer → Products → Method → Payment → Review
+      return 6; // Customer → Products → Method → Pickup Scheduling → Payment → Review
     }
     return 7; // Customer → Products → Method → Order Type → Address → Payment → Review
   };
