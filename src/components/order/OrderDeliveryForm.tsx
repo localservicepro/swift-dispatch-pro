@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { OrderAddressForm } from './OrderAddressForm';
 import { MapPin } from 'lucide-react';
+import { useSuburbManagement } from '@/hooks/useSuburbManagement';
 
 interface OrderDeliveryFormProps {
   formData: {
@@ -20,6 +21,16 @@ export function OrderDeliveryForm({
   onFormDataChange, 
   onSuburbChange 
 }: OrderDeliveryFormProps) {
+  const { handleAutoSuburbSelection } = useSuburbManagement();
+
+  // Auto-detect suburb for legacy orders with missing delivery_suburb_id
+  useEffect(() => {
+    if (!formData.delivery_suburb_id && formData.full_address) {
+      console.log('Auto-detecting suburb for legacy order with address:', formData.full_address);
+      handleAutoSuburbSelection(formData.full_address, handleDeliverySuburbChange);
+    }
+  }, [formData.full_address, formData.delivery_suburb_id]);
+
   const handleDeliverySuburbChange = (suburbId: string, suburb?: any) => {
     console.log('OrderDeliveryForm - delivery suburb change:', suburbId, suburb);
     // Update delivery suburb specifically and call the main handler
