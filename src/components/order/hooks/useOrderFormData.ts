@@ -169,10 +169,18 @@ export function useOrderFormData(order: Order) {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
-    
     // Handle pricing fields that need recalculation
     if (field === 'delivery_fee' || field === 'adjustments') {
+      // Improved parsing to handle negative values and intermediate typing states
+      let numValue = 0;
+      if (value === '' || value === '-') {
+        // Allow empty string or just minus sign (intermediate typing state)
+        numValue = 0;
+      } else {
+        const parsed = parseFloat(value);
+        numValue = isNaN(parsed) ? 0 : parsed;
+      }
+      
       const updatedData = { [field]: numValue };
       const newTotal = calculateTotals(updatedData);
       
