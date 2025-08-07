@@ -2,10 +2,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { ArrowRight, Clock, CheckCircle } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
-import { activityLogger } from "@/utils/activityLogger";
+import { updateOrderStatus } from "@/utils/orderStatusService";
 
 interface OpportunityCardActionButtonProps {
   order: any;
@@ -47,57 +46,19 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
 
     setIsMoving(true);
     try {
-      let updateData: any = {};
-      
-      switch (nextStage) {
-        case 'requested':
-          updateData = { status: 'requested' };
-          break;
-        case 'preparing':
-          updateData = { status: 'preparing' };
-          break;
-        case 'loading':
-          updateData = { status: 'loading' };
-          break;
-        case 'en_route':
-          updateData = { status: 'en_route' };
-          break;
-        case 'delivered':
-          updateData = { status: 'delivered' };
-          break;
+      if (!profile?.full_name) {
+        throw new Error('User profile not found');
       }
 
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          ...updateData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', order.id);
-
-      if (error) throw error;
-
-      if (profile?.full_name) {
-        if (nextStage === 'preparing') {
-          await activityLogger.orderStatusUpdate(
-            order.id,
-            order.order_number,
-            order.customer_name,
-            'requested',
-            'preparing',
-            profile.full_name
-          );
-        } else {
-          await activityLogger.orderStatusUpdate(
-            order.id,
-            order.order_number,
-            order.customer_name,
-            order.status,
-            updateData.status,
-            profile.full_name
-          );
-        }
-      }
+      await updateOrderStatus({
+        orderId: order.id,
+        orderNumber: order.order_number,
+        customerName: order.customer_name,
+        oldStatus: currentStage,
+        newStatus: nextStage,
+        updatedBy: profile.full_name,
+        notes: `Status updated via opportunity pipeline`
+      });
 
       const actionText = getNextStageAction(currentStage);
       toast({

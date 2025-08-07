@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Package, Filter, X, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { activityLogger } from "@/utils/activityLogger";
+import { updateOrderStatus as updateOrderStatusService } from "@/utils/orderStatusService";
 
 const YARD_SALE_STAGES = [
   { id: 'requested', title: 'Requested', color: 'bg-slate-100 border-slate-300', textColor: 'text-slate-700' },
@@ -116,27 +116,19 @@ export function YardSaleManagement() {
   // Update order status
   const updateOrderStatus = async (orderId: string, currentStatus: string, newStatus: string, orderNumber: string, customerName: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          status: newStatus as any,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      // Log the activity
-      if (profile?.full_name) {
-        await activityLogger.orderStatusUpdate(
-          orderId,
-          orderNumber,
-          customerName,
-          currentStatus,
-          newStatus,
-          profile.full_name
-        );
+      if (!profile?.full_name) {
+        throw new Error('User profile not found');
       }
+
+      await updateOrderStatusService({
+        orderId,
+        orderNumber,
+        customerName,
+        oldStatus: currentStatus,
+        newStatus,
+        updatedBy: profile.full_name,
+        notes: `Status updated via yard sale management`
+      });
 
       toast({
         title: "Status Updated",
