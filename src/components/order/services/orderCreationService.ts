@@ -91,7 +91,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       delivery_notes: params.deliveryNotes,
       purchase_order: params.purchaseOrder,
       payment_method: params.paymentMethod,
-      status: 'requested' as const,
+      status: (params.deliveryMethod === 'pickup' ? 'back_order' : 'requested') as 'back_order' | 'requested',
       is_split_order: false,
       payment_status: 'pending'
       // Note: driver_name, truck_registration, truck_type_display will be automatically populated by the database trigger
@@ -169,7 +169,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       order_notes: params.orderNotes,
       delivery_notes: params.deliveryNotes,
       purchase_order: params.purchaseOrder,
-      status: 'requested' as const,
+      status: (params.deliveryMethod === 'pickup' ? 'back_order' : 'requested') as 'back_order' | 'requested',
       is_split_order: false, // Master order is not a split order itself
       master_order_id: null,
       split_number: null,
@@ -251,7 +251,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         delivery_notes: params.deliveryNotes,
         purchase_order: params.purchaseOrder,
         payment_method: params.paymentMethod,
-        status: 'requested' as const,
+        status: (params.deliveryMethod === 'pickup' ? 'back_order' : 'requested') as 'back_order' | 'requested',
         is_split_order: true,
         master_order_id: masterOrder.id,
         split_number: i + 1,
