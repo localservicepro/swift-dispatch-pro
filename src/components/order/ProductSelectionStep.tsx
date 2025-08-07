@@ -202,10 +202,10 @@ export function ProductSelectionStep({
     const existingItem = cart.find(item => item.product.id === product.id);
     const price = getProductPrice(product);
     const increment = getQuantityIncrement(product);
-    const minQuantity = getMinimumQuantity(product);
+    const defaultQuantity = 1.0; // Always start with 1 for better UX
     
     if (existingItem) {
-      const finalQuantity = Math.max(minQuantity, existingItem.quantity + increment);
+      const finalQuantity = existingItem.quantity + increment;
       const updatedCart = cart.map(item => {
         if (item.product.id === product.id) {
           return { 
@@ -221,9 +221,9 @@ export function ProductSelectionStep({
     } else {
       const newItem: CartItem = {
         product,
-        quantity: minQuantity,
+        quantity: defaultQuantity,
         unit_price: price,
-        total_price: price * minQuantity
+        total_price: price * defaultQuantity
       };
       onCartUpdate([...cart, newItem]);
     }
