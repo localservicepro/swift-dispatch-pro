@@ -7,6 +7,7 @@ import { ShoppingCart, Plus, Minus, Trash2, Edit3 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getQuantityIncrement } from "@/utils/categoryUtils";
 
 interface Product {
   id: string;
@@ -18,6 +19,7 @@ interface Product {
   images: string[];
   category?: {
     name: string;
+    allows_fractional_quantities?: boolean;
   };
 }
 
@@ -194,14 +196,14 @@ export function FloatingCart({
                                         </div>
                                       ) : (
                                         <>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => updateQuantity(item.product.id, item.quantity - 0.25)}
-                                            className="h-8 w-8 p-0"
-                                          >
-                                            <Minus className="w-3 h-3" />
-                                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateQuantity(item.product.id, item.quantity - getQuantityIncrement(item.product))}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
                                           <Button
                                             variant="ghost"
                                             onClick={() => handleQuantityEdit(item.product.id, item.quantity)}
@@ -210,14 +212,14 @@ export function FloatingCart({
                                             {formatQuantity(item.quantity)}
                                             <Edit3 className="w-3 h-3 ml-1 opacity-50" />
                                           </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => updateQuantity(item.product.id, item.quantity + 0.25)}
-                                            className="h-8 w-8 p-0"
-                                          >
-                                            <Plus className="w-3 h-3" />
-                                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateQuantity(item.product.id, item.quantity + getQuantityIncrement(item.product))}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
                                         </>
                                       )}
                                     </div>

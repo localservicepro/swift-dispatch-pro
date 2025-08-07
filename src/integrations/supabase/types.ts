@@ -1110,6 +1110,7 @@ export type Database = {
       }
       product_categories: {
         Row: {
+          allows_fractional_quantities: boolean
           created_at: string
           description: string | null
           id: string
@@ -1118,6 +1119,7 @@ export type Database = {
           parent_category_id: string | null
         }
         Insert: {
+          allows_fractional_quantities?: boolean
           created_at?: string
           description?: string | null
           id?: string
@@ -1126,6 +1128,7 @@ export type Database = {
           parent_category_id?: string | null
         }
         Update: {
+          allows_fractional_quantities?: boolean
           created_at?: string
           description?: string | null
           id?: string

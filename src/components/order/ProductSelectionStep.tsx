@@ -13,6 +13,7 @@ import { useSpecialPricing } from "@/hooks/useSpecialPricing";
 import { useDebounce } from "@/hooks/useDebounce";
 import { format } from "date-fns";
 import { FloatingCart } from "./FloatingCart";
+import { getQuantityIncrement, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
 
 interface Product {
   id: string;
@@ -24,6 +25,7 @@ interface Product {
   images: string[];
   category?: {
     name: string;
+    allows_fractional_quantities?: boolean;
   };
 }
 
@@ -117,7 +119,7 @@ export function ProductSelectionStep({
       .from('products')
       .select(`
         *,
-        category:product_categories(name)
+        category:product_categories(name, allows_fractional_quantities)
       `)
       .eq('is_active', true)
       .gt('stock_quantity', 0)
@@ -199,9 +201,11 @@ export function ProductSelectionStep({
   const addToCart = useCallback((product: Product) => {
     const existingItem = cart.find(item => item.product.id === product.id);
     const price = getProductPrice(product);
+    const increment = getQuantityIncrement(product);
+    const minQuantity = getMinimumQuantity(product);
     
     if (existingItem) {
-      const finalQuantity = Math.max(0.25, existingItem.quantity + 0.25);
+      const finalQuantity = Math.max(minQuantity, existingItem.quantity + increment);
       const updatedCart = cart.map(item => {
         if (item.product.id === product.id) {
           return { 
@@ -217,17 +221,20 @@ export function ProductSelectionStep({
     } else {
       const newItem: CartItem = {
         product,
-        quantity: 1,
+        quantity: minQuantity,
         unit_price: price,
-        total_price: price * 1
+        total_price: price * minQuantity
       };
       onCartUpdate([...cart, newItem]);
     }
   }, [cart, getProductPrice, onCartUpdate]);
 
   const updateQuantity = useCallback((productId: string, newQuantity: number) => {
-    // Set minimum quantity to 0.25 instead of removing
-    const finalQuantity = Math.max(0.25, newQuantity);
+    const cartItem = cart.find(item => item.product.id === productId);
+    if (!cartItem) return;
+    
+    const minQuantity = getMinimumQuantity(cartItem.product);
+    const finalQuantity = Math.max(minQuantity, roundToValidQuantity(newQuantity, cartItem.product));
 
     const updatedCart = cart.map(item => {
       if (item.product.id === productId) {
@@ -254,19 +261,31 @@ export function ProductSelectionStep({
   };
 
   const handleQuantitySubmit = (productId: string) => {
+    const cartItem = cart.find(item => item.product.id === productId);
+    if (!cartItem) return;
+
     const newQuantity = parseQuantityInput(inputValue);
+    const minQuantity = getMinimumQuantity(cartItem.product);
     
     if (isNaN(newQuantity) || newQuantity < 0) {
       toast({
         title: "Invalid quantity",
-        description: "Please enter a valid quantity (minimum 0.25)",
+        description: getQuantityErrorMessage(cartItem.product),
         variant: "destructive",
       });
       return;
     }
 
-    // Set minimum quantity to 0.25 if user enters 0
-    const finalQuantity = newQuantity === 0 ? 0.25 : newQuantity;
+    if (!validateQuantity(newQuantity, cartItem.product)) {
+      toast({
+        title: "Invalid quantity",
+        description: getQuantityErrorMessage(cartItem.product),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const finalQuantity = newQuantity === 0 ? minQuantity : newQuantity;
     updateQuantity(productId, finalQuantity);
     setEditingQuantity(null);
     setInputValue("");
@@ -430,7 +449,7 @@ export function ProductSelectionStep({
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => updateQuantity(product.id, getCartQuantity(product.id) - 0.25)}
+                          onClick={() => updateQuantity(product.id, getCartQuantity(product.id) - getQuantityIncrement(product))}
                         >
                           <Minus className="w-3 h-3" />
                         </Button>
@@ -438,7 +457,7 @@ export function ProductSelectionStep({
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + 0.25)}
+                          onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + getQuantityIncrement(product))}
                         >
                           <Plus className="w-3 h-3" />
                         </Button>

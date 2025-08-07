@@ -8,12 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit, Trash2, Tag } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface Category {
   id: string;
   name: string;
   description: string | null;
   is_active: boolean;
+  allows_fractional_quantities: boolean;
   created_at: string;
 }
 
@@ -23,7 +25,8 @@ export function CategoryManagement() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCategory, setNewCategory] = useState({
     name: "",
-    description: ""
+    description: "",
+    allows_fractional_quantities: false
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -82,7 +85,8 @@ export function CategoryManagement() {
       .from('product_categories')
       .insert({
         name: newCategory.name.trim(),
-        description: newCategory.description.trim() || null
+        description: newCategory.description.trim() || null,
+        allows_fractional_quantities: newCategory.allows_fractional_quantities
       });
 
     if (error) {
@@ -96,7 +100,7 @@ export function CategoryManagement() {
         title: "Success",
         description: "Category created successfully!",
       });
-      setNewCategory({ name: "", description: "" });
+      setNewCategory({ name: "", description: "", allows_fractional_quantities: false });
       setIsCreating(false);
     }
   };
@@ -108,7 +112,8 @@ export function CategoryManagement() {
       .from('product_categories')
       .update({
         name: editingCategory.name.trim(),
-        description: editingCategory.description?.trim() || null
+        description: editingCategory.description?.trim() || null,
+        allows_fractional_quantities: editingCategory.allows_fractional_quantities
       })
       .eq('id', editingCategory.id);
 
@@ -218,6 +223,22 @@ export function CategoryManagement() {
                 rows={3}
               />
             </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="fractional-quantities"
+                checked={isCreating ? newCategory.allows_fractional_quantities : editingCategory?.allows_fractional_quantities || false}
+                onCheckedChange={(checked) => {
+                  if (isCreating) {
+                    setNewCategory({...newCategory, allows_fractional_quantities: checked});
+                  } else if (editingCategory) {
+                    setEditingCategory({...editingCategory, allows_fractional_quantities: checked});
+                  }
+                }}
+              />
+              <Label htmlFor="fractional-quantities" className="text-sm font-medium">
+                Allow Fractional Quantities (0.25 increments)
+              </Label>
+            </div>
             <div className="flex gap-3">
               <Button 
                 onClick={isCreating ? handleCreateCategory : handleUpdateCategory} 
@@ -230,7 +251,7 @@ export function CategoryManagement() {
                 onClick={() => {
                   setIsCreating(false);
                   setEditingCategory(null);
-                  setNewCategory({ name: "", description: "" });
+                  setNewCategory({ name: "", description: "", allows_fractional_quantities: false });
                 }}
               >
                 Cancel
@@ -265,6 +286,11 @@ export function CategoryManagement() {
                         <Badge variant={category.is_active ? "default" : "secondary"}>
                           {category.is_active ? "Active" : "Inactive"}
                         </Badge>
+                        {category.allows_fractional_quantities && (
+                          <Badge variant="outline" className="text-blue-600 bg-blue-50">
+                            Fractional Qty
+                          </Badge>
+                        )}
                       </div>
                       {category.description && (
                         <p className="text-sm text-gray-600 mt-1">{category.description}</p>

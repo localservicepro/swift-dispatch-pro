@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Minus, Edit3, Trash2 } from "lucide-react";
 import { CartItem, SplitConfig } from "./types";
 import { useToast } from "@/hooks/use-toast";
+import { getQuantityIncrement, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
 
 interface CompactProductTableProps {
   cart: CartItem[];
@@ -90,7 +91,21 @@ export function CompactProductTable({
     }
 
     // Set minimum quantity to 0.25 if user enters 0
-    const finalQuantity = newQuantity === 0 ? 0.25 : newQuantity;
+    const cartItem = cart.find(item => item.product.id === productId);
+    if (!cartItem) return;
+    
+    const minQuantity = getMinimumQuantity(cartItem.product);
+    
+    if (!validateQuantity(newQuantity, cartItem.product)) {
+      toast({
+        title: "Invalid quantity",
+        description: getQuantityErrorMessage(cartItem.product),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const finalQuantity = newQuantity === 0 ? minQuantity : newQuantity;
     onQuantityChange?.(productId, finalQuantity);
     setEditingQuantity(null);
     setInputValue("");
@@ -222,7 +237,7 @@ export function CompactProductTable({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, -0.25)}
+                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, -getQuantityIncrement(cartItem.product))}
                           disabled={splitQuantity <= 0}
                           className="h-5 w-5 p-0"
                         >
@@ -232,7 +247,7 @@ export function CompactProductTable({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, 0.25)}
+                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, getQuantityIncrement(cartItem.product))}
                           disabled={remainingQuantity <= 0}
                           className="h-5 w-5 p-0"
                         >

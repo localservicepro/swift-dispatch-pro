@@ -42,6 +42,7 @@ export interface Product {
   images: string[];
   category?: {
     name: string;
+    allows_fractional_quantities?: boolean;
   };
 }
 

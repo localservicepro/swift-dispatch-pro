@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Package, Plus, Minus, X } from "lucide-react";
+import { getQuantityIncrement, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
 
 interface Product {
   id: string;
@@ -19,6 +20,7 @@ interface Product {
   images: string[];
   category?: {
     name: string;
+    allows_fractional_quantities?: boolean;
   };
 }
 
@@ -71,7 +73,7 @@ export function ProductEditSection({
       .from('products')
       .select(`
         *,
-        category:product_categories(name)
+        category:product_categories(name, allows_fractional_quantities)
       `)
       .eq('is_active', true)
       .gt('stock_quantity', 0)
@@ -106,13 +108,15 @@ export function ProductEditSection({
 
   const addToCart = useCallback((product: Product) => {
     const existingItemIndex = currentProducts.findIndex(item => item.id === product.id);
+    const increment = getQuantityIncrement(product);
+    const minQuantity = getMinimumQuantity(product);
     
     if (existingItemIndex >= 0) {
       const updatedProducts = [...currentProducts];
       const currentQty = parseFloat(updatedProducts[existingItemIndex].quantity);
       updatedProducts[existingItemIndex] = {
         ...updatedProducts[existingItemIndex],
-        quantity: currentQty + 1
+        quantity: currentQty + increment
       };
       onProductsChange(updatedProducts);
     } else {
@@ -120,7 +124,7 @@ export function ProductEditSection({
         id: product.id,
         name: product.name,
         price: product.price,
-        quantity: 1
+        quantity: minQuantity
       };
       onProductsChange([...currentProducts, newItem]);
     }
@@ -160,19 +164,31 @@ export function ProductEditSection({
   };
 
   const handleQuantitySubmit = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
     const newQuantity = parseQuantityInput(inputValue);
+    const minQuantity = getMinimumQuantity(product);
     
     if (isNaN(newQuantity) || newQuantity < 0) {
       toast({
         title: "Invalid quantity",
-        description: "Please enter a valid quantity (minimum 0)",
+        description: getQuantityErrorMessage(product),
         variant: "destructive",
       });
       return;
     }
 
-    // Set minimum quantity to 0.25 if user enters 0
-    const finalQuantity = newQuantity === 0 ? 0.25 : newQuantity;
+    if (!validateQuantity(newQuantity, product)) {
+      toast({
+        title: "Invalid quantity",
+        description: getQuantityErrorMessage(product),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const finalQuantity = newQuantity === 0 ? minQuantity : newQuantity;
     
     const updatedProducts = currentProducts.map(item => 
       item.id === productId 
@@ -190,13 +206,17 @@ export function ProductEditSection({
   };
 
   const updateQuantity = useCallback((productId: string, change: number) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    
+    const minQuantity = getMinimumQuantity(product);
     const updatedProducts = currentProducts.map(item => 
       item.id === productId 
-        ? { ...item, quantity: Math.max(0.25, parseFloat(item.quantity) + change) }
+        ? { ...item, quantity: Math.max(minQuantity, parseFloat(item.quantity) + change) }
         : item
     );
     onProductsChange(updatedProducts);
-  }, [currentProducts, onProductsChange]);
+  }, [currentProducts, onProductsChange, products]);
 
   const removeFromCart = useCallback((productId: string) => {
     const updatedProducts = currentProducts.filter(item => item.id !== productId);
@@ -250,7 +270,10 @@ export function ProductEditSection({
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
-                          onClick={() => updateQuantity(item.id, -0.25)}
+                          onClick={() => {
+                            const product = products.find(p => p.id === item.id);
+                            if (product) updateQuantity(item.id, -getQuantityIncrement(product));
+                          }}
                         >
                           <Minus className="w-3 h-3" />
                         </Button>
@@ -283,7 +306,10 @@ export function ProductEditSection({
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
-                          onClick={() => updateQuantity(item.id, 0.25)}
+                          onClick={() => {
+                            const product = products.find(p => p.id === item.id);
+                            if (product) updateQuantity(item.id, getQuantityIncrement(product));
+                          }}
                         >
                           <Plus className="w-3 h-3" />
                         </Button>
@@ -375,7 +401,7 @@ export function ProductEditSection({
                             type="button"
                             size="sm"
                             variant="outline"
-                            onClick={() => updateQuantity(product.id, -0.25)}
+                            onClick={() => updateQuantity(product.id, -getQuantityIncrement(product))}
                           >
                             <Minus className="w-3 h-3" />
                           </Button>
@@ -384,7 +410,7 @@ export function ProductEditSection({
                             type="button"
                             size="sm"
                             variant="outline"
-                            onClick={() => updateQuantity(product.id, 0.25)}
+                            onClick={() => updateQuantity(product.id, getQuantityIncrement(product))}
                           >
                             <Plus className="w-3 h-3" />
                           </Button>

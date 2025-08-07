@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit3, Trash2 } from "lucide-react";
 import { CartItem, SplitConfig } from "./types";
 import { useToast } from "@/hooks/use-toast";
+import { getQuantityIncrement, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
 
 interface SimpleProductAllocationProps {
   cart: CartItem[];
@@ -83,7 +84,21 @@ export function SimpleProductAllocation({
     }
 
     // Set minimum quantity to 0.25 if user enters 0
-    const finalQuantity = newQuantity === 0 ? 0.25 : newQuantity;
+    const cartItem = cart.find(item => item.product.id === productId);
+    if (!cartItem) return;
+    
+    const minQuantity = getMinimumQuantity(cartItem.product);
+    
+    if (!validateQuantity(newQuantity, cartItem.product)) {
+      toast({
+        title: "Invalid quantity",
+        description: getQuantityErrorMessage(cartItem.product),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const finalQuantity = newQuantity === 0 ? minQuantity : newQuantity;
     onQuantityChange?.(productId, finalQuantity);
     setEditingQuantity(null);
     setInputValue("");
