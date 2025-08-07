@@ -36,24 +36,24 @@ export function ProgressIndicator({
   const stepLabels = getStepLabels(deliveryMethod);
 
   return (
-    <div className="mb-8">
+    <div className="mb-6">
       {/* Progress bar */}
-      <div className="flex items-center justify-center space-x-4 mb-4">
+      <div className="flex items-center justify-center space-x-3 mb-3">
         {Array.from({ length: steps }, (_, i) => i + 1).map((step) => (
           <div key={step} className="flex items-center">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
                 step <= currentStep
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-600'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground'
               }`}
             >
               {step}
             </div>
             {step < steps && (
               <div
-                className={`w-16 h-1 mx-2 ${
-                  step < currentStep ? 'bg-blue-600' : 'bg-gray-200'
+                className={`w-12 h-1 mx-2 ${
+                  step < currentStep ? 'bg-primary' : 'bg-muted'
                 }`}
               />
             )}
@@ -62,17 +62,17 @@ export function ProgressIndicator({
       </div>
       
       {/* Step labels */}
-      <div className="flex items-center justify-center space-x-4">
+      <div className="flex items-center justify-center space-x-3">
         {Array.from({ length: steps }, (_, i) => i + 1).map((step) => (
           <div key={step} className="flex items-center">
-            <div className="w-20 text-center">
+            <div className="w-16 text-center">
               <span className={`text-xs font-medium ${
-                step <= currentStep ? 'text-blue-600' : 'text-gray-500'
+                step <= currentStep ? 'text-primary' : 'text-muted-foreground'
               }`}>
                 {stepLabels[step as keyof typeof stepLabels]}
               </span>
             </div>
-            {step < steps && <div className="w-16" />}
+            {step < steps && <div className="w-12" />}
           </div>
         ))}
       </div>

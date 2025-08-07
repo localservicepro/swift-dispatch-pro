@@ -11,6 +11,7 @@ import { PaymentMethodStep } from "./PaymentMethodStep";
 import { OrderReviewStep } from "./OrderReviewStep";
 import { SplitOrderConfigurationStep } from "./SplitOrderConfigurationStep";
 import { ProgressIndicator } from "./ProgressIndicator";
+import { OrderCustomerHeader } from "./OrderCustomerHeader";
 import { createSingleOrder, createSplitOrder } from "./services/orderCreationService";
 import { useOrderFormState } from "./hooks/useOrderFormState";
 
@@ -362,12 +363,17 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {selectedCustomer && (
+        <OrderCustomerHeader 
+          customer={selectedCustomer}
+          contact={selectedContact}
+          onChangeCustomer={() => setCurrentStep(1)}
+        />
+      )}
+      
       <Card>
-        <CardHeader>
-          <CardTitle>Create New Order</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <ProgressIndicator
             currentStep={currentStep}
             totalSteps={getTotalSteps()}
