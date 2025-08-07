@@ -62,6 +62,26 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
     // Serialize cart items for database storage - the trigger will automatically create products_formatted
     const serializedProducts = serializeCartItemsWithFormatting(params.cart);
 
+    // Determine order status based on delivery method and stock availability
+    let orderStatus: 'back_order' | 'requested' = 'requested';
+    
+    if (params.deliveryMethod === 'pickup') {
+      // Pickup orders always go to back_order (On Hold)
+      orderStatus = 'back_order';
+    } else {
+      // For delivery orders, check stock availability
+      const { data: statusResult, error: statusError } = await supabase
+        .rpc('determine_order_status', { order_items: serializedProducts });
+      
+      if (statusError) {
+        console.warn('Error determining order status, defaulting to requested:', statusError);
+        orderStatus = 'requested';
+      } else {
+        // Map the database function result to our allowed statuses
+        orderStatus = (statusResult === 'back_order') ? 'back_order' : 'requested';
+      }
+    }
+
     const orderData = {
       order_number: orderNumber,
       customer_id: params.customer.id,
@@ -91,7 +111,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       delivery_notes: params.deliveryNotes,
       purchase_order: params.purchaseOrder,
       payment_method: params.paymentMethod,
-      status: (params.deliveryMethod === 'pickup' ? 'back_order' : 'requested') as 'back_order' | 'requested',
+      status: orderStatus,
       is_split_order: false,
       payment_status: 'pending'
       // Note: driver_name, truck_registration, truck_type_display will be automatically populated by the database trigger
@@ -146,6 +166,26 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
     // Serialize cart items for database storage
     const serializedProducts = serializeCartItemsWithFormatting(params.cart);
 
+    // Determine master order status based on delivery method and stock availability
+    let masterOrderStatus: 'back_order' | 'requested' = 'requested';
+    
+    if (params.deliveryMethod === 'pickup') {
+      // Pickup orders always go to back_order (On Hold)
+      masterOrderStatus = 'back_order';
+    } else {
+      // For delivery orders, check stock availability
+      const { data: statusResult, error: statusError } = await supabase
+        .rpc('determine_order_status', { order_items: serializedProducts });
+      
+      if (statusError) {
+        console.warn('Error determining master order status, defaulting to requested:', statusError);
+        masterOrderStatus = 'requested';
+      } else {
+        // Map the database function result to our allowed statuses
+        masterOrderStatus = (statusResult === 'back_order') ? 'back_order' : 'requested';
+      }
+    }
+
     // Create master order entry - this is a summary record
     const masterOrderData = {
       order_number: masterOrderNumber,
@@ -169,7 +209,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       order_notes: params.orderNotes,
       delivery_notes: params.deliveryNotes,
       purchase_order: params.purchaseOrder,
-      status: (params.deliveryMethod === 'pickup' ? 'back_order' : 'requested') as 'back_order' | 'requested',
+      status: masterOrderStatus,
       is_split_order: false, // Master order is not a split order itself
       master_order_id: null,
       split_number: null,
@@ -223,6 +263,26 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         };
       }).filter(Boolean);
 
+      // Determine split order status based on delivery method and stock availability
+      let splitOrderStatus: 'back_order' | 'requested' = 'requested';
+      
+      if (params.deliveryMethod === 'pickup') {
+        // Pickup orders always go to back_order (On Hold)
+        splitOrderStatus = 'back_order';
+      } else {
+        // For delivery orders, check stock availability of this split's products
+        const { data: statusResult, error: statusError } = await supabase
+          .rpc('determine_order_status', { order_items: splitProducts });
+        
+        if (statusError) {
+          console.warn(`Error determining split order ${i + 1} status, defaulting to requested:`, statusError);
+          splitOrderStatus = 'requested';
+        } else {
+          // Map the database function result to our allowed statuses
+          splitOrderStatus = (statusResult === 'back_order') ? 'back_order' : 'requested';
+        }
+      }
+
       const splitOrderData = {
         order_number: splitOrderNumber,
         customer_id: params.customer.id,
@@ -251,7 +311,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         delivery_notes: params.deliveryNotes,
         purchase_order: params.purchaseOrder,
         payment_method: params.paymentMethod,
-        status: (params.deliveryMethod === 'pickup' ? 'back_order' : 'requested') as 'back_order' | 'requested',
+        status: splitOrderStatus,
         is_split_order: true,
         master_order_id: masterOrder.id,
         split_number: i + 1,
