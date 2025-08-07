@@ -14,6 +14,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { CartItem, SplitConfig, Customer, Product } from "./types";
 import { ProductReplacementDialog } from "./ProductReplacementDialog";
+import { isDateBeforeToday } from "@/utils/dateTimeUtils";
 
 interface SplitSummaryCardProps {
   split: SplitConfig;
@@ -63,9 +64,6 @@ export function SplitSummaryCard({
   });
   
   const timeSlots = generateTimeSlots();
-  
-  // Get today's date for minimum date selection - allow same-day delivery
-  const today = new Date();
 
   // Convert string date to Date object for calendar
   const selectedDate = split.deliveryDate ? new Date(split.deliveryDate) : undefined;
@@ -276,7 +274,7 @@ export function SplitSummaryCard({
                             mode="single"
                             selected={selectedDate}
                             onSelect={handleDateSelect}
-                            disabled={(date) => date < today}
+                            disabled={isDateBeforeToday}
                             initialFocus
                             className="rounded-md border pointer-events-auto"
                           />

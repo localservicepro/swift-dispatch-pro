@@ -13,6 +13,7 @@ import { Calendar as CalendarIcon, Clock, MapPin, FileText, CheckCircle } from "
 import { cn } from "@/lib/utils";
 import { CartItem, SplitConfig, Customer } from "./types";
 import { generateTimeSlots } from "@/utils/timeSlotUtils";
+import { isDateBeforeToday } from "@/utils/dateTimeUtils";
 
 interface CompactSplitConfigProps {
   splits: SplitConfig[];
@@ -30,7 +31,6 @@ export function CompactSplitConfig({
   isCommonDateMode = false
 }: CompactSplitConfigProps) {
   const timeSlots = generateTimeSlots();
-  const today = new Date();
 
   const getSplitTotal = (split: SplitConfig) => {
     return split.products.reduce((sum, splitProduct) => {
@@ -125,7 +125,7 @@ export function CompactSplitConfig({
                             mode="single"
                             selected={split.deliveryDate ? new Date(split.deliveryDate) : undefined}
                             onSelect={(date) => handleDateSelect(index, date)}
-                            disabled={(date) => date < today}
+                            disabled={isDateBeforeToday}
                             initialFocus
                             className="rounded-md border"
                           />

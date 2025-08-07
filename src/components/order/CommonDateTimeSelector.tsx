@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar as CalendarIcon, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateTimeSlots } from "@/utils/timeSlotUtils";
+import { isDateBeforeToday } from "@/utils/dateTimeUtils";
 
 interface CommonDateTimeSelectorProps {
   commonDeliveryDate: string;
@@ -23,7 +24,6 @@ export function CommonDateTimeSelector({
   onTimeChange
 }: CommonDateTimeSelectorProps) {
   const timeSlots = generateTimeSlots();
-  const today = new Date();
   const selectedCommonDate = commonDeliveryDate ? new Date(commonDeliveryDate) : undefined;
 
   return (
@@ -49,7 +49,7 @@ export function CommonDateTimeSelector({
                 mode="single"
                 selected={selectedCommonDate}
                 onSelect={onDateSelect}
-                disabled={(date) => date < today}
+                disabled={isDateBeforeToday}
                 initialFocus
                 className="rounded-md border"
               />
