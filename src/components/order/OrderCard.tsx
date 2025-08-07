@@ -6,6 +6,7 @@ import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { PaymentStatusDropdown } from "../opportunity/PaymentStatusDropdown";
 import { MapPin, Truck, Edit3, Trash2, Building, User } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
+import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -47,6 +48,7 @@ interface Order {
   company_name?: string;
   business_name?: string;
   customer_type?: string;
+  stop_credit?: boolean;
 }
 
 interface OrderCardProps {
@@ -179,7 +181,12 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
     <div className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <h3 className="font-semibold text-slate-800">{order.order_number}</h3>
+          <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+            {order.order_number}
+            {order.stop_credit && (
+              <StopCreditIndicator />
+            )}
+          </h3>
           <Badge className={getStatusColor(order.status)}>
             {getStatusLabel(order.status)}
           </Badge>

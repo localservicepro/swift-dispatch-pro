@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, User, Phone, Mail, MapPin, Building2 } from "lucide-react";
 import { GoogleAddressAutocomplete } from "@/components/ui/google-address-autocomplete";
 import { ContactSelector } from "@/components/customer/ContactSelector";
+import { StopCreditWarningDialog } from "@/components/customer/StopCreditWarningDialog";
+import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
 
 interface Customer {
   id: string;
@@ -25,6 +27,7 @@ interface Customer {
   business_name: string | null;
   contact_role: string | null;
   entity_type: string | null;
+  stop_credit?: boolean;
   suburb?: {
     name: string;
     state: string;
@@ -76,6 +79,8 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
     business_name: "",
     contact_role: "Owner"
   });
+  const [showStopCreditWarning, setShowStopCreditWarning] = useState(false);
+  const [pendingCustomer, setPendingCustomer] = useState<Customer | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -167,6 +172,7 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
       entity_type: newCustomer.entity_type,
       is_active: true,
       sms_notifications_enabled: true,
+      stop_credit: false,
       company_name: newCustomer.entity_type === 'business' ? newCustomer.company_name : null,
       business_name: newCustomer.entity_type === 'business' ? newCustomer.business_name : null,
       contact_role: getDefaultContactRole(newCustomer.customer_type, newCustomer.entity_type),
@@ -243,6 +249,29 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
     return customer.email || 'No email provided';
   };
 
+  const handleCustomerSelect = (customer: Customer) => {
+    // Check if customer has stop credit flag
+    if (customer.stop_credit) {
+      setPendingCustomer(customer);
+      setShowStopCreditWarning(true);
+    } else {
+      onCustomerSelect(customer);
+    }
+  };
+
+  const handleStopCreditContinue = () => {
+    if (pendingCustomer) {
+      onCustomerSelect(pendingCustomer);
+    }
+    setShowStopCreditWarning(false);
+    setPendingCustomer(null);
+  };
+
+  const handleStopCreditCancel = () => {
+    setShowStopCreditWarning(false);
+    setPendingCustomer(null);
+  };
+
   // Check if this is an Account Business entity for form rendering
   const isAccountBusiness = newCustomer.customer_type === 'account' && newCustomer.entity_type === 'business';
 
@@ -268,6 +297,9 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
                   <h3 className="font-semibold text-green-800">
                     {getCustomerDisplayName(selectedCustomer)}
                   </h3>
+                  {selectedCustomer.stop_credit && (
+                    <StopCreditIndicator />
+                  )}
                 </div>
                 <Badge variant={selectedCustomer.customer_type === 'trade' ? 'default' : 'secondary'}>
                   {selectedCustomer.customer_type.toUpperCase()}
@@ -351,7 +383,7 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
                   <div
                     key={customer.id}
                     className="border rounded-lg p-3 cursor-pointer hover:bg-gray-50"
-                    onClick={() => onCustomerSelect(customer)}
+                    onClick={() => handleCustomerSelect(customer)}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -363,6 +395,9 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
                         <h4 className="font-medium">
                           {getCustomerDisplayName(customer)}
                         </h4>
+                        {customer.stop_credit && (
+                          <StopCreditIndicator />
+                        )}
                       </div>
                       <Badge variant={customer.customer_type === 'trade' ? 'default' : 'secondary'}>
                         {customer.customer_type.toUpperCase()}
@@ -541,6 +576,14 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
             )}
           </div>
         )}
+
+        {/* Stop Credit Warning Dialog */}
+        <StopCreditWarningDialog
+          isOpen={showStopCreditWarning}
+          onClose={handleStopCreditCancel}
+          onContinue={handleStopCreditContinue}
+          customerName={pendingCustomer ? getCustomerDisplayName(pendingCustomer) : ''}
+        />
       </CardContent>
     </Card>
   );

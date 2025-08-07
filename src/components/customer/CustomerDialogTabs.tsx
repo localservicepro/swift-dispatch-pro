@@ -26,6 +26,7 @@ interface CustomerDialogTabsProps {
     entity_type: "individual" | "business";
     is_active: boolean;
     sms_notifications_enabled: boolean;
+    stop_credit: boolean;
     company_name: string;
     business_name: string;
     contact_role: string;
@@ -36,7 +37,7 @@ interface CustomerDialogTabsProps {
   onCompanyChange: (updates: Partial<{ company_name: string; business_name: string; customer_type: "residential" | "trade" | "account"; entity_type: "individual" | "business" }>) => void;
   onContactChange: (updates: Partial<{ first_name: string; last_name: string; email: string; phone: string; contact_role: string }>) => void;
   onAddressFormChange: (updates: Partial<{ full_address: string; delivery_address: string; suburb_id: string }>) => void;
-  onPreferencesChange: (updates: Partial<{ customer_type: "residential" | "trade" | "account"; entity_type: "individual" | "business"; is_active: boolean; sms_notifications_enabled: boolean }>) => void;
+  onPreferencesChange: (updates: Partial<{ customer_type: "residential" | "trade" | "account"; entity_type: "individual" | "business"; is_active: boolean; sms_notifications_enabled: boolean; stop_credit: boolean }>) => void;
   onSuburbChange: (suburbId: string) => void;
 }
 
@@ -118,6 +119,7 @@ export function CustomerDialogTabs({
             entity_type: formData.entity_type,
             is_active: formData.is_active,
             sms_notifications_enabled: formData.sms_notifications_enabled,
+            stop_credit: formData.stop_credit,
           }}
           onFormDataChange={onPreferencesChange}
         />

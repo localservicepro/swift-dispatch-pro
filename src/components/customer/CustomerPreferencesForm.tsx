@@ -9,6 +9,7 @@ interface CustomerPreferencesFormProps {
     entity_type: "individual" | "business";
     is_active: boolean;
     sms_notifications_enabled: boolean;
+    stop_credit: boolean;
   };
   onFormDataChange: (updates: Partial<CustomerPreferencesFormProps['formData']>) => void;
 }
@@ -78,6 +79,26 @@ export function CustomerPreferencesForm({ formData, onFormDataChange }: Customer
           </Label>
           <p className="text-xs text-gray-500 mt-1">
             Receive notifications when order status changes. Invoice notifications will still be sent regardless of this setting.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-start space-x-2">
+        <div className="mt-1">
+          <Switch
+            id="stop_credit"
+            checked={formData.stop_credit}
+            onCheckedChange={(checked) => 
+              onFormDataChange({ stop_credit: checked })
+            }
+          />
+        </div>
+        <div>
+          <Label htmlFor="stop_credit" className="block text-red-700">
+            Stop Credit
+          </Label>
+          <p className="text-xs text-red-600 mt-1">
+            Flag this customer for credit issues. A warning will appear when creating orders and a red warning icon will be shown in order management.
           </p>
         </div>
       </div>

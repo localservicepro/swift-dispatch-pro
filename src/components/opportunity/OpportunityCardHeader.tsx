@@ -4,6 +4,7 @@ import { Eye, Edit3, Camera } from "lucide-react";
 import { PaymentStatusDropdown } from "./PaymentStatusDropdown";
 import { NotesIndicator } from "../notes/NotesIndicator";
 import { PurchaseOrderDisplay } from "../order/PurchaseOrderDisplay";
+import { StopCreditIndicator } from "../customer/StopCreditIndicator";
 
 interface OpportunityCardHeaderProps {
   order: any;
@@ -38,6 +39,9 @@ export function OpportunityCardHeader({
           specialInstructions={order.special_instructions}
           size="sm"
         />
+        {order.customers?.stop_credit && (
+          <StopCreditIndicator />
+        )}
       </div>
       <div className="flex items-center gap-2">
         <PaymentStatusDropdown order={order} onStatusUpdate={onOrderMove} />

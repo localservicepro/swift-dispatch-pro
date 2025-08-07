@@ -16,6 +16,7 @@ interface FormData {
   entity_type: 'individual' | 'business';
   is_active: boolean;
   sms_notifications_enabled: boolean;
+  stop_credit: boolean;
   company_name: string;
   business_name: string;
   contact_role: string;
@@ -77,6 +78,7 @@ export function useCustomerDialogActions(
         entity_type: formData.entity_type,
         is_active: formData.is_active,
         sms_notifications_enabled: formData.sms_notifications_enabled,
+        stop_credit: formData.stop_credit,
         company_name: formData.entity_type === 'business' ? formData.company_name : null,
         business_name: formData.entity_type === 'business' ? formData.business_name : null,
         contact_role: formData.contact_role,

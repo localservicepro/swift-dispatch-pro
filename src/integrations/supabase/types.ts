@@ -232,6 +232,7 @@ export type Database = {
           phone: string | null
           sms_notifications_enabled: boolean
           sms_opt_out_date: string | null
+          stop_credit: boolean
           stripe_customer_id: string | null
           suburb_id: string | null
           updated_at: string
@@ -255,6 +256,7 @@ export type Database = {
           phone?: string | null
           sms_notifications_enabled?: boolean
           sms_opt_out_date?: string | null
+          stop_credit?: boolean
           stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
@@ -278,6 +280,7 @@ export type Database = {
           phone?: string | null
           sms_notifications_enabled?: boolean
           sms_opt_out_date?: string | null
+          stop_credit?: boolean
           stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string

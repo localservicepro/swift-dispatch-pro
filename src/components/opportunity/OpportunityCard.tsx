@@ -11,6 +11,7 @@ import { OpportunityCardActionButton } from "./OpportunityCardActionButton";
 import { OpportunityCardCompleted } from "./OpportunityCardCompleted";
 import { getCustomerTypeColors } from "@/utils/customerTypeColors";
 import { cn } from "@/lib/utils";
+import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
 
 interface OpportunityCardProps {
   order: any;
