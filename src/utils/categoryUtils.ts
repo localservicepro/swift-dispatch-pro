@@ -25,7 +25,7 @@ export const getQuantityInputStep = (product: Product): number => {
  * Get the minimum quantity allowed for a product
  */
 export const getMinimumQuantity = (product: Product): number => {
-  return 1.0; // Always start with 1 for better UX
+  return isBulkCategory(product) ? 0.001 : 1.0;
 };
 
 /**
