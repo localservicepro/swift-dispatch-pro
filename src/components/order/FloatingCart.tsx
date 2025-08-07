@@ -7,7 +7,7 @@ import { ShoppingCart, Plus, Minus, Trash2, Edit3 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getQuantityIncrement, getMinimumQuantity, validateQuantity, roundToValidQuantity } from "@/utils/categoryUtils";
+import { getQuantityIncrement, getQuantityInputStep, getMinimumQuantity, validateQuantity, roundToValidQuantity } from "@/utils/categoryUtils";
 
 interface Product {
   id: string;
@@ -185,8 +185,8 @@ export function FloatingCart({
                                                  handleQuantityCancel();
                                                }
                                              }}
-                                             step={getQuantityIncrement(item.product)}
-                                             min={getMinimumQuantity(item.product)}
+                                              step={getQuantityInputStep(item.product)}
+                                              min="0.001"
                                              autoFocus
                                            />
                                           <Button size="sm" variant="ghost" onClick={() => handleQuantitySubmit(item.product.id)} className="h-8 px-2">
@@ -201,7 +201,7 @@ export function FloatingCart({
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => updateQuantity(item.product.id, item.quantity - getQuantityIncrement(item.product))}
+                            onClick={() => updateQuantity(item.product.id, Math.max(1, item.quantity - 1))}
                             className="h-8 w-8 p-0"
                           >
                             <Minus className="w-3 h-3" />
@@ -217,7 +217,7 @@ export function FloatingCart({
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => updateQuantity(item.product.id, item.quantity + getQuantityIncrement(item.product))}
+                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
                             className="h-8 w-8 p-0"
                           >
                             <Plus className="w-3 h-3" />

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit3, Trash2 } from "lucide-react";
 import { CartItem, SplitConfig } from "./types";
 import { useToast } from "@/hooks/use-toast";
-import { getQuantityIncrement, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
+import { getQuantityIncrement, getQuantityInputStep, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
 
 interface SimpleProductAllocationProps {
   cart: CartItem[];
@@ -151,8 +151,8 @@ export function SimpleProductAllocation({
                            }}
                            onBlur={() => handleQuantitySubmit(cartItem.product.id)}
                            placeholder="1.25"
-                           step={getQuantityIncrement(cartItem.product)}
-                           min={getMinimumQuantity(cartItem.product)}
+                            step={getQuantityInputStep(cartItem.product)}
+                            min="0.001"
                            autoFocus
                          />
                         <Button

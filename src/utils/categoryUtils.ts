@@ -8,9 +8,16 @@ export const isBulkCategory = (product: Product): boolean => {
 };
 
 /**
- * Get the appropriate quantity increment for a product
+ * Get the appropriate quantity increment for + and - buttons (always whole numbers)
  */
 export const getQuantityIncrement = (product: Product): number => {
+  return 1.0; // Always use whole number increments for buttons
+};
+
+/**
+ * Get the step value for quantity input fields
+ */
+export const getQuantityInputStep = (product: Product): number => {
   return isBulkCategory(product) ? 0.001 : 1.0;
 };
 
@@ -18,7 +25,7 @@ export const getQuantityIncrement = (product: Product): number => {
  * Get the minimum quantity allowed for a product
  */
 export const getMinimumQuantity = (product: Product): number => {
-  return isBulkCategory(product) ? 0.001 : 1.0;
+  return 1.0; // Always start with 1 for better UX
 };
 
 /**

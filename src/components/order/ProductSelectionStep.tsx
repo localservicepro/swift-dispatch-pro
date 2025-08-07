@@ -13,7 +13,7 @@ import { useSpecialPricing } from "@/hooks/useSpecialPricing";
 import { useDebounce } from "@/hooks/useDebounce";
 import { format } from "date-fns";
 import { FloatingCart } from "./FloatingCart";
-import { getQuantityIncrement, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
+import { getQuantityIncrement, getQuantityInputStep, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
 
 interface Product {
   id: string;
@@ -445,19 +445,57 @@ export function ProductSelectionStep({
                     )}
                     
                     {getCartQuantity(product.id) > 0 ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => updateQuantity(product.id, getCartQuantity(product.id) - getQuantityIncrement(product))}
+                          onClick={() => updateQuantity(product.id, Math.max(1, getCartQuantity(product.id) - 1))}
+                          className="h-8 w-8 p-0"
                         >
                           <Minus className="w-3 h-3" />
                         </Button>
-                        <span className="font-medium">{formatQuantity(getCartQuantity(product.id))}</span>
+                        
+                        {editingQuantity === product.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              value={inputValue}
+                              onChange={(e) => setInputValue(e.target.value)}
+                              className="w-16 h-8 text-center text-xs"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleQuantitySubmit(product.id);
+                                } else if (e.key === 'Escape') {
+                                  handleQuantityCancel();
+                                }
+                              }}
+                              step={getQuantityInputStep(product)}
+                              min="0.001"
+                              autoFocus
+                            />
+                            <Button size="sm" variant="ghost" onClick={() => handleQuantitySubmit(product.id)} className="h-8 px-1">
+                              ✓
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={handleQuantityCancel} className="h-8 px-1">
+                              ✕
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            onClick={() => handleQuantityEdit(product.id, getCartQuantity(product.id))}
+                            className="h-8 px-2 text-xs font-medium hover:bg-accent min-w-12"
+                          >
+                            {formatQuantity(getCartQuantity(product.id))}
+                            <Edit3 className="w-3 h-3 ml-1 opacity-50" />
+                          </Button>
+                        )}
+                        
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + getQuantityIncrement(product))}
+                          onClick={() => updateQuantity(product.id, getCartQuantity(product.id) + 1)}
+                          className="h-8 w-8 p-0"
                         >
                           <Plus className="w-3 h-3" />
                         </Button>
