@@ -70,7 +70,6 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       customer_address: params.sameAsBilling ? params.customer.full_address : params.deliveryAddress,
       delivery_address: params.sameAsBilling ? params.customer.full_address : params.deliveryAddress,
       same_as_billing: params.sameAsBilling,
-      suburb_id: params.customer.suburb_id,
       delivery_suburb_id: params.suburbId,
       contact_id: params.selectedContact?.id || null,
       contact_name: params.selectedContact?.name || null,
