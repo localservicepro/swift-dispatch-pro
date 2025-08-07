@@ -5,6 +5,7 @@ import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals } from "../utils/paymentCalculations";
 import { useDeliveryFeeCalculation } from "@/hooks/useDeliveryFeeCalculation";
 import { supabase } from "@/integrations/supabase/client";
+import { convertTimeToFormFormat } from "@/utils/timeFormatUtils";
 
 export interface OrderFormData {
   customer_name: string;
@@ -49,7 +50,7 @@ export function useOrderFormData(order: Order) {
     delivery_fee: Number(order.delivery_fee) || 0,
     status: order.status || 'preparing',
     delivery_date: order.delivery_date || '',
-    delivery_time: order.delivery_time || '',
+    delivery_time: convertTimeToFormFormat(order.delivery_time),
     special_instructions: order.special_instructions || '',
     driver_id: order.driver_id || 'unassigned',
     suburb_id: order.suburb_id || '',
