@@ -4,10 +4,12 @@ import { PurchaseOrderDisplay } from "./PurchaseOrderDisplay";
 import { NotesIndicator } from "../notes/NotesIndicator";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { PaymentStatusDropdown } from "../opportunity/PaymentStatusDropdown";
-import { MapPin, Truck, Edit3, Trash2, Building, User, Calendar } from "lucide-react";
+import { MapPin, Truck, Edit3, Trash2, Building, User, Calendar, ShoppingBag } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
 import { formatDeliveredDate } from "@/utils/dateTimeUtils";
+import { getOrderTypeColors, getOrderTypeLabel, getOrderTypeIcon } from "@/utils/orderTypeColors";
+import { cn } from "@/lib/utils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -51,6 +53,7 @@ interface Order {
   customer_type?: string;
   stop_credit?: boolean;
   delivered_at?: string;
+  delivery_method?: string;
 }
 
 interface OrderCardProps {
@@ -140,6 +143,12 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
   };
 
   const { displayName, contactInfo, isCompany } = getDisplayInfo();
+  
+  // Get order type styling
+  const orderTypeColors = getOrderTypeColors(order.delivery_method);
+  const orderTypeLabel = getOrderTypeLabel(order.delivery_method);
+  const orderTypeIconName = getOrderTypeIcon(order.delivery_method);
+  const OrderTypeIcon = orderTypeIconName === 'Truck' ? Truck : ShoppingBag;
 
   const formatProducts = (products: any, productsFormatted?: string) => {
     if (productsFormatted && productsFormatted.trim() !== '') {
@@ -180,7 +189,13 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
   };
 
   return (
-    <div className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
+    <div className={cn(
+      "border rounded-lg p-4 transition-colors",
+      orderTypeColors.card,
+      orderTypeColors.border,
+      orderTypeColors.leftBorder,
+      orderTypeColors.hoverBorder
+    )}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <h3 className="font-semibold text-slate-800 flex items-center gap-2">
@@ -189,6 +204,10 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
               <StopCreditIndicator />
             )}
           </h3>
+          <Badge className={orderTypeColors.badge}>
+            <OrderTypeIcon className="w-3 h-3 mr-1" />
+            {orderTypeLabel}
+          </Badge>
           <Badge className={getStatusColor(order.status)}>
             {getStatusLabel(order.status)}
           </Badge>

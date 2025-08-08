@@ -9,10 +9,13 @@ import {
   Clock,
   CalendarDays,
   Building,
-  Package
+  Package,
+  ShoppingBag
 } from "lucide-react";
 import { getTruckInfo } from "@/utils/truckUtils";
 import { formatDeliveryDate, formatDeliveryTime, formatCreatedDate, formatCreatedTime } from "@/utils/dateTimeUtils";
+import { getOrderTypeColors, getOrderTypeLabel, getOrderTypeIcon } from "@/utils/orderTypeColors";
+import { Badge } from "@/components/ui/badge";
 
 interface OpportunityCardInfoProps {
   order: any;
@@ -69,6 +72,12 @@ export function OpportunityCardInfo({ order, onOrderClick }: OpportunityCardInfo
   };
 
   const { displayName, contactInfo, isCompany } = getDisplayInfo();
+
+  // Get order type styling
+  const orderTypeColors = getOrderTypeColors(order.delivery_method);
+  const orderTypeLabel = getOrderTypeLabel(order.delivery_method);
+  const orderTypeIconName = getOrderTypeIcon(order.delivery_method);
+  const OrderTypeIcon = orderTypeIconName === 'Truck' ? Truck : ShoppingBag;
 
   // Format products for display
   const formatProductsForCard = () => {
@@ -127,6 +136,14 @@ export function OpportunityCardInfo({ order, onOrderClick }: OpportunityCardInfo
             <span>{order.customer_phone}</span>
           </div>
         )}
+      </div>
+
+      {/* Order Type Badge */}
+      <div className="mb-3">
+        <Badge className={orderTypeColors.badge} variant="secondary">
+          <OrderTypeIcon className="w-3 h-3 mr-1" />
+          {orderTypeLabel}
+        </Badge>
       </div>
 
       {/* Amount */}
