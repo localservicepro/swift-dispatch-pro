@@ -13,6 +13,7 @@ import { useOpportunityData } from "./opportunity/useOpportunityData";
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { OpportunityCard } from "./opportunity/OpportunityCard";
 import { useAuth } from "./auth/AuthProvider";
+import { updateOrderStatus as updateOrderStatusService } from '@/utils/orderStatusService';
 import { activityLogger } from "@/utils/activityLogger";
 import { OrderEditDialog } from "./order/OrderEditDialog";
 import { TruckDriverAssignmentDialog } from "./order/TruckDriverAssignmentDialog";
