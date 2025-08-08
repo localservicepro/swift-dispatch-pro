@@ -7,15 +7,22 @@ interface NotesIndicatorProps {
   deliveryNotes?: string;
   specialInstructions?: string;
   size?: "sm" | "default";
+  userRole?: 'admin' | 'driver' | 'customer';
 }
 
 export function NotesIndicator({ 
   orderNotes, 
   deliveryNotes, 
   specialInstructions,
-  size = "default"
+  size = "default",
+  userRole = "admin"
 }: NotesIndicatorProps) {
-  const hasNotes = Boolean(orderNotes?.trim() || deliveryNotes?.trim() || specialInstructions?.trim());
+  // Filter notes based on user role
+  const visibleOrderNotes = userRole === 'admin' ? orderNotes : '';
+  const visibleDeliveryNotes = (userRole === 'admin' || userRole === 'driver') ? deliveryNotes : '';
+  const visibleSpecialInstructions = specialInstructions; // Always visible
+  
+  const hasNotes = Boolean(visibleOrderNotes?.trim() || visibleDeliveryNotes?.trim() || visibleSpecialInstructions?.trim());
   
   if (!hasNotes) return null;
 
@@ -24,17 +31,17 @@ export function NotesIndicator({
 
   return (
     <div className="flex items-center gap-1">
-      {orderNotes?.trim() && (
+      {visibleOrderNotes?.trim() && (
         <Badge variant="outline" className={`${badgeSize} bg-blue-50 text-blue-700 border-blue-200`}>
           <FileText className={iconSize} />
         </Badge>
       )}
-      {deliveryNotes?.trim() && (
+      {visibleDeliveryNotes?.trim() && (
         <Badge variant="outline" className={`${badgeSize} bg-green-50 text-green-700 border-green-200`}>
           <MessageSquare className={iconSize} />
         </Badge>
       )}
-      {specialInstructions?.trim() && (
+      {visibleSpecialInstructions?.trim() && (
         <Badge variant="outline" className={`${badgeSize} bg-orange-50 text-orange-700 border-orange-200`}>
           <AlertCircle className={iconSize} />
         </Badge>

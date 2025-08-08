@@ -8,7 +8,7 @@ import { DeliveryCardHeader } from "./DeliveryCardHeader";
 import { DeliveryCardCustomerInfo } from "./DeliveryCardCustomerInfo";
 import { DeliveryCardTruckAssignment } from "./DeliveryCardTruckAssignment";
 import { DeliveryCardActions } from "./DeliveryCardActions";
-import { Navigation } from "lucide-react";
+import { NotesDisplaySection } from "@/components/notes/NotesDisplaySection";
 
 interface DeliveryCardProps {
   order: any;
@@ -58,17 +58,15 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
           {/* Order Details */}
           <OrderDetailsCard order={order} />
 
-          {/* Delivery Notes (For Driver) */}
-          {order.delivery_notes && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Navigation className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-800">Delivery Notes (For Driver):</span>
-              </div>
-              <div className="text-sm text-blue-700">
-                {order.delivery_notes}
-              </div>
-            </div>
+          {/* Notes Section for Driver */}
+          {(order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
+            <NotesDisplaySection
+              orderNotes={order.order_notes}
+              deliveryNotes={order.delivery_notes}
+              specialInstructions={order.special_instructions}
+              compact={false}
+              userRole="driver"
+            />
           )}
 
           {/* Action Buttons */}

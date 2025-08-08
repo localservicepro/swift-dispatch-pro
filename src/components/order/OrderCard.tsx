@@ -291,6 +291,7 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
             specialInstructions={order.special_instructions}
             compact={false}
             onEditClick={() => onNotesEdit(order)}
+            userRole="admin"
           />
         </div>
       )}
