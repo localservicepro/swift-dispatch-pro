@@ -60,6 +60,7 @@ export function useOrderActions(refetch: () => void) {
         if (error) throw error;
 
         if (profile?.full_name) {
+          const { activityLogger } = await import("@/utils/activityLogger");
           await activityLogger.orderSoftDelete(
             orderId,
             deletingOrder.order_number,

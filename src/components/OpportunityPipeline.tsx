@@ -363,13 +363,6 @@ export function OpportunityPipeline() {
         newStatus: updateData.status || newStage,
         updatedBy: profile?.full_name || 'Admin'
       });
-          order.order_number,
-          order.customer_name,
-          currentStage,
-          newStage,
-          profile.full_name
-        );
-      }
 
       toast({
         title: "Order Moved",
