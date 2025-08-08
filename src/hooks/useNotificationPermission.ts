@@ -25,11 +25,6 @@ export function useNotificationPermission(): NotificationPermissionState {
 
   const requestPermission = async (): Promise<boolean> => {
     if (!isSupported) {
-      toast({
-        title: "Notifications Not Supported",
-        description: "Your browser doesn't support notifications",
-        variant: "destructive",
-      });
       return false;
     }
 
@@ -41,29 +36,9 @@ export function useNotificationPermission(): NotificationPermissionState {
       const result = await Notification.requestPermission();
       setPermission(result);
       
-      if (result === 'granted') {
-        toast({
-          title: "Notifications Enabled",
-          description: "You'll receive notifications for new order assignments",
-        });
-        return true;
-      } else if (result === 'denied') {
-        toast({
-          title: "Notifications Blocked",
-          description: "Please enable notifications in your browser settings to receive order alerts",
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      return false;
+      return result === 'granted';
     } catch (error) {
       console.error('Error requesting notification permission:', error);
-      toast({
-        title: "Permission Error",
-        description: "Failed to request notification permission",
-        variant: "destructive",
-      });
       return false;
     }
   };

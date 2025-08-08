@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { DeliveryCard } from "./DeliveryCard";
-import { Truck, Package, Clock, CheckCircle, LogOut, User, Loader2 } from "lucide-react";
+import { NotificationSettings } from "./NotificationSettings";
+import { Truck, Package, Clock, CheckCircle, LogOut, User, Loader2, Settings } from "lucide-react";
 import { emailService } from "@/utils/emailService";
 import { useNotificationPermission } from "@/hooks/useNotificationPermission";
 import { browserNotificationService } from "@/utils/browserNotificationService";
@@ -20,15 +21,13 @@ interface DriverDashboardProps {
 export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProps) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const { toast } = useToast();
   const { signOut, signingOut } = useAuth();
-  const { requestPermission, canNotify } = useNotificationPermission();
+  const { canNotify } = useNotificationPermission();
 
   useEffect(() => {
     fetchOrders();
-    
-    // Request notification permission when dashboard loads
-    requestPermission();
     
     // Subscribe to real-time updates for driver-specific orders
     console.log('Setting up real-time subscription for driver orders...');
@@ -196,23 +195,38 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
               <p className="text-sm text-slate-600">Active Deliveries • Real-time</p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleSignOut}
-            disabled={signingOut}
-            className="text-slate-600"
-          >
-            {signingOut ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <LogOut className="w-5 h-5" />
-            )}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowSettings(!showSettings)}
+              className="text-slate-600"
+            >
+              <Settings className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="text-slate-600"
+            >
+              {signingOut ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <LogOut className="w-5 h-5" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className="max-w-md mx-auto p-4 space-y-6">
+        {/* Notification Settings */}
+        {showSettings && (
+          <NotificationSettings />
+        )}
+        
         {/* Stats Cards */}
         <div className="grid grid-cols-4 gap-2">
           <Card className="text-center p-3">

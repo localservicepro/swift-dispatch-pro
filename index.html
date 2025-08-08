@@ -17,11 +17,33 @@
     <meta name="twitter:site" content="@swiftdispatch_pro" />
     <meta name="twitter:image" content="https://storage.googleapis.com/msgsndr/2dyrUPBICRWsvHz4nv9Q/media/685f7b83ff0653b9ccbe3e8f.png" />
     
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="SwiftDispatch Pro" />
+    
     <link rel="icon" href="/lovable-uploads/56190747-34f7-448d-a6a5-d2c04fa17aaf.png" type="image/png">
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
