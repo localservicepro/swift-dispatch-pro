@@ -343,7 +343,7 @@ export function OrderReviewStep({
           </h3>
           <div className="space-y-2">
             <Label htmlFor="order-notes" className="text-sm font-medium">
-              Notes for admin and customer (will appear on invoice)
+              Internal notes for admins only
             </Label>
             <Textarea
               id="order-notes"
