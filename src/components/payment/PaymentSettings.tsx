@@ -19,6 +19,7 @@ interface PaymentSettingsData {
   include_gst_in_prices: boolean;
   currency: string;
   default_delivery_fee: number;
+  gst_enabled: boolean;
 }
 
 interface PaymentSettingsProps {
@@ -51,7 +52,8 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
         gst_label: 'GST',
         include_gst_in_prices: true,
         currency: 'AUD',
-        default_delivery_fee: 0.00
+        default_delivery_fee: 0.00,
+        gst_enabled: true
       };
     }
   });
@@ -62,7 +64,8 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
     gst_label: 'GST',
     include_gst_in_prices: true,
     currency: 'AUD',
-    default_delivery_fee: 0.00
+    default_delivery_fee: 0.00,
+    gst_enabled: true
   });
 
   // Update form data when settings are loaded
@@ -74,7 +77,8 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
         gst_label: settings.gst_label,
         include_gst_in_prices: settings.include_gst_in_prices,
         currency: settings.currency,
-        default_delivery_fee: settings.default_delivery_fee
+        default_delivery_fee: settings.default_delivery_fee,
+        gst_enabled: settings.gst_enabled
       });
     }
   }, [settings]);
@@ -147,47 +151,64 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Tax Settings</h3>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="gst_rate">GST Rate (%)</Label>
-                    <Input
-                      id="gst_rate"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={formData.gst_rate}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        gst_rate: parseFloat(e.target.value) || 0
-                      })}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="gst_label">GST Label</Label>
-                    <Input
-                      id="gst_label"
-                      value={formData.gst_label}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        gst_label: e.target.value
-                      })}
-                    />
-                  </div>
-                </div>
-
                 <div className="flex items-center space-x-2">
                   <Switch
-                    id="include_gst"
-                    checked={formData.include_gst_in_prices}
+                    id="gst_enabled"
+                    checked={formData.gst_enabled}
                     onCheckedChange={(checked) => setFormData({
                       ...formData,
-                      include_gst_in_prices: checked
+                      gst_enabled: checked
                     })}
                   />
-                  <Label htmlFor="include_gst">Include GST in displayed prices</Label>
+                  <Label htmlFor="gst_enabled">Enable GST/Tax Calculation</Label>
                 </div>
+                
+                {formData.gst_enabled && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="gst_rate">GST Rate (%)</Label>
+                        <Input
+                          id="gst_rate"
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={formData.gst_rate}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            gst_rate: parseFloat(e.target.value) || 0
+                          })}
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="gst_label">GST Label</Label>
+                        <Input
+                          id="gst_label"
+                          value={formData.gst_label}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            gst_label: e.target.value
+                          })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="include_gst"
+                        checked={formData.include_gst_in_prices}
+                        onCheckedChange={(checked) => setFormData({
+                          ...formData,
+                          include_gst_in_prices: checked
+                        })}
+                      />
+                      <Label htmlFor="include_gst">Include GST in displayed prices</Label>
+                    </div>
+                  </>
+                )}
+
               </div>
 
               {/* Credit Card Surcharge */}

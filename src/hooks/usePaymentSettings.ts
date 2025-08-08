@@ -10,6 +10,7 @@ interface PaymentSettings {
   gst_label: string;
   include_gst_in_prices: boolean;
   default_delivery_fee: number;
+  gst_enabled: boolean;
 }
 
 export function usePaymentSettings() {
@@ -36,7 +37,8 @@ export function usePaymentSettings() {
         currency: 'AUD',
         gst_label: 'GST',
         include_gst_in_prices: false,
-        default_delivery_fee: 0.00
+        default_delivery_fee: 0.00,
+        gst_enabled: true
       };
 
       return data || defaultSettings;

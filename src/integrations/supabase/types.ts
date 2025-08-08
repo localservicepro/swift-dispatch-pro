@@ -934,6 +934,7 @@ export type Database = {
           created_at: string
           currency: string
           default_delivery_fee: number
+          gst_enabled: boolean
           gst_label: string
           gst_rate: number
           id: string
@@ -954,6 +955,7 @@ export type Database = {
           created_at?: string
           currency?: string
           default_delivery_fee?: number
+          gst_enabled?: boolean
           gst_label?: string
           gst_rate?: number
           id?: string
@@ -974,6 +976,7 @@ export type Database = {
           created_at?: string
           currency?: string
           default_delivery_fee?: number
+          gst_enabled?: boolean
           gst_label?: string
           gst_rate?: number
           id?: string

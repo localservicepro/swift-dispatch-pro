@@ -5,6 +5,7 @@ interface PaymentSettings {
   currency: string;
   gst_label: string;
   include_gst_in_prices: boolean;
+  gst_enabled: boolean;
 }
 
 export function calculateGST(amount: number, gstRate: number): number {
@@ -51,8 +52,8 @@ export function calculateOrderTotals(
   // Amount after surcharge, before GST
   const amountAfterSurcharge = baseAmount + surchargeAmount;
   
-  // Calculate GST on the total amount including surcharge
-  const gstAmount = calculateGST(amountAfterSurcharge, settings.gst_rate);
+  // Calculate GST on the total amount including surcharge (only if GST is enabled)
+  const gstAmount = settings.gst_enabled ? calculateGST(amountAfterSurcharge, settings.gst_rate) : 0;
   
   // Final total
   const totalAmount = amountAfterSurcharge + gstAmount;
