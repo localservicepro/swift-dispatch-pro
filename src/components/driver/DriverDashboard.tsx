@@ -8,6 +8,8 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { DeliveryCard } from "./DeliveryCard";
 import { Truck, Package, Clock, CheckCircle, LogOut, User, Loader2 } from "lucide-react";
 import { emailService } from "@/utils/emailService";
+import { useNotificationPermission } from "@/hooks/useNotificationPermission";
+import { browserNotificationService } from "@/utils/browserNotificationService";
 
 interface DriverDashboardProps {
   user: any;
@@ -20,9 +22,13 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { signOut, signingOut } = useAuth();
+  const { requestPermission, canNotify } = useNotificationPermission();
 
   useEffect(() => {
     fetchOrders();
+    
+    // Request notification permission when dashboard loads
+    requestPermission();
     
     // Subscribe to real-time updates for driver-specific orders
     console.log('Setting up real-time subscription for driver orders...');
@@ -49,11 +55,32 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
                 title: "New Order Assigned",
                 description: `Order ${payload.new.order_number} has been assigned to you`,
               });
+              
+              // Send browser notification for new assignment
+              if (canNotify) {
+                browserNotificationService.sendOrderAssignmentNotification({
+                  orderId: payload.new.id,
+                  orderNumber: payload.new.order_number,
+                  customerName: payload.new.customer_name,
+                  deliveryDate: payload.new.delivery_date,
+                  deliveryTime: payload.new.delivery_time,
+                });
+              }
             } else if (statusChanged) {
               toast({
                 title: "Order Status Updated",
                 description: `Order ${payload.new.order_number} status changed to ${payload.new.status}`,
               });
+              
+              // Send browser notification for status update
+              if (canNotify) {
+                browserNotificationService.sendStatusUpdateNotification({
+                  orderId: payload.new.id,
+                  orderNumber: payload.new.order_number,
+                  customerName: payload.new.customer_name,
+                  status: payload.new.status,
+                });
+              }
 
               // Send email notification to customer when driver updates status
               try {
