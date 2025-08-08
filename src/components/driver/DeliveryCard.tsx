@@ -59,7 +59,7 @@ export function DeliveryCard({ order, onStatusUpdate }: DeliveryCardProps) {
           <OrderDetailsCard order={order} />
 
           {/* Notes Section for Driver */}
-          {(order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
+          {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
             <NotesDisplaySection
               orderNotes={order.order_notes}
               deliveryNotes={order.delivery_notes}

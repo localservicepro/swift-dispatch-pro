@@ -20,6 +20,8 @@ export interface OrderFormData {
   delivery_date: string;
   delivery_time: string;
   special_instructions: string;
+  order_notes: string;
+  delivery_notes: string;
   driver_id: string;
   suburb_id: string;
   delivery_suburb_id: string;
@@ -52,6 +54,8 @@ export function useOrderFormData(order: Order) {
     delivery_date: order.delivery_date || '',
     delivery_time: convertTimeToFormFormat(order.delivery_time),
     special_instructions: order.special_instructions || '',
+    order_notes: order.order_notes || '',
+    delivery_notes: order.delivery_notes || '',
     driver_id: order.driver_id || 'unassigned',
     suburb_id: order.suburb_id || '',
     delivery_suburb_id: order.delivery_suburb_id || '',

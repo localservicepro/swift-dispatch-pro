@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { Calendar, Settings, User2, FileText } from 'lucide-react';
+import { Calendar, Settings, User2, FileText, MessageSquare, AlertCircle } from 'lucide-react';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DriverSelector } from "./DriverSelector";
 import { OrderBasicInfoForm } from "./OrderBasicInfoForm";
@@ -202,6 +203,64 @@ export function OrderEditSections({
           </div>
         </>
       )}
+
+      {/* Notes Section */}
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+        <div className="flex items-center gap-2 mb-3">
+          <FileText className="w-5 h-5 text-slate-600" />
+          <h3 className="font-semibold text-slate-900">Notes</h3>
+        </div>
+        
+        {/* Order Notes - Always visible for admins */}
+        <div>
+          <Label htmlFor="order_notes" className="text-sm font-medium flex items-center gap-2">
+            <FileText className="w-3 h-3 text-blue-600" />
+            Internal notes for admins only
+          </Label>
+          <Textarea
+            id="order_notes"
+            placeholder="Internal notes for admins (not visible to customers or on invoices)"
+            value={formData.order_notes || ''}
+            onChange={(e) => onInputChange('order_notes', e.target.value)}
+            className="border-slate-200 focus:border-slate-400 focus:ring-slate-200 min-h-[80px]"
+          />
+          <p className="text-xs text-slate-500 mt-1">These notes are only visible to administrators</p>
+        </div>
+
+        {/* Delivery Notes - Only for delivery orders */}
+        {formData.delivery_method === 'delivery' && (
+          <div>
+            <Label htmlFor="delivery_notes" className="text-sm font-medium flex items-center gap-2">
+              <MessageSquare className="w-3 h-3 text-green-600" />
+              Delivery notes for drivers
+            </Label>
+            <Textarea
+              id="delivery_notes"
+              placeholder="Notes for the delivery driver (instructions, special requirements, etc.)"
+              value={formData.delivery_notes || ''}
+              onChange={(e) => onInputChange('delivery_notes', e.target.value)}
+              className="border-slate-200 focus:border-slate-400 focus:ring-slate-200 min-h-[80px]"
+            />
+            <p className="text-xs text-slate-500 mt-1">These notes are visible to drivers assigned to this delivery</p>
+          </div>
+        )}
+
+        {/* Special Instructions - Always visible */}
+        <div>
+          <Label htmlFor="special_instructions" className="text-sm font-medium flex items-center gap-2">
+            <AlertCircle className="w-3 h-3 text-orange-600" />
+            Special instructions
+          </Label>
+          <Textarea
+            id="special_instructions"
+            placeholder="Special instructions visible to everyone (customers, drivers, staff)"
+            value={formData.special_instructions || ''}
+            onChange={(e) => onInputChange('special_instructions', e.target.value)}
+            className="border-slate-200 focus:border-slate-400 focus:ring-slate-200 min-h-[80px]"
+          />
+          <p className="text-xs text-slate-500 mt-1">These instructions are visible to all users</p>
+        </div>
+      </div>
     </div>
   );
 }
