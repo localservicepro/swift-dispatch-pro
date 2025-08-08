@@ -80,12 +80,11 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
           <OpportunityCardInfo order={order} onOrderClick={onOrderClick} />
 
           {/* Notes Section */}
-          {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
+          {(order.order_notes?.trim() || order.delivery_notes?.trim()) && (
             <div className="mb-3" data-notes-edit>
               <NotesDisplaySection
                 orderNotes={order.order_notes}
                 deliveryNotes={order.delivery_notes}
-                specialInstructions={order.special_instructions}
                 compact={true}
                 onEditClick={() => setShowNotesEdit(true)}
               />
@@ -123,8 +122,7 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
         orderNumber={order.order_number}
         currentNotes={{
           orderNotes: order.order_notes,
-          deliveryNotes: order.delivery_notes,
-          specialInstructions: order.special_instructions
+          deliveryNotes: order.delivery_notes
         }}
         onNotesUpdated={onOrderMove}
       />

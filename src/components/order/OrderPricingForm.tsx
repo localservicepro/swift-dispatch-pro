@@ -174,19 +174,6 @@ export function OrderPricingForm({
         <p className="text-xs text-amber-600 mt-1">This amount is calculated automatically based on the above values</p>
       </div>
 
-      <div>
-        <Label htmlFor="special_instructions" className="text-gray-700 font-medium">
-          <FileText className="w-4 h-4 inline mr-1" />
-          Special Instructions
-        </Label>
-        <Textarea
-          id="special_instructions"
-          value={formData.special_instructions || ''}
-          onChange={(e) => onInputChange('special_instructions', e.target.value)}
-          placeholder="Any special delivery instructions..."
-          className="border-amber-200 focus:border-amber-400 focus:ring-amber-200"
-        />
-      </div>
     </div>
   );
 }

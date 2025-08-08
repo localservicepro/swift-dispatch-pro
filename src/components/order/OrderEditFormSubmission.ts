@@ -68,7 +68,6 @@ export function useOrderFormSubmission() {
         status: submissionData.status as OrderStatus,
         delivery_date: submissionData.delivery_date || null,
         delivery_time: submissionData.delivery_time || null,
-        special_instructions: submissionData.special_instructions || null,
         order_notes: submissionData.order_notes || null,
         delivery_notes: submissionData.delivery_notes || null,
         driver_id: submissionData.driver_id === 'unassigned' ? null : submissionData.driver_id,

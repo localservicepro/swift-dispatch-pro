@@ -36,7 +36,6 @@ export function OpportunityCardHeader({
         <NotesIndicator 
           orderNotes={order.order_notes}
           deliveryNotes={order.delivery_notes}
-          specialInstructions={order.special_instructions}
           size="sm"
         />
         {order.customers?.stop_credit && (
@@ -57,7 +56,7 @@ export function OpportunityCardHeader({
             <Camera className="w-3 h-3 text-green-600" />
           </Button>
         )}
-        {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
+        {(order.order_notes?.trim() || order.delivery_notes?.trim()) && (
           <Button
             variant="ghost"
             size="sm"

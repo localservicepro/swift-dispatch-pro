@@ -19,7 +19,6 @@ export interface Order {
   created_at: string;
   delivery_date?: string;
   delivery_time?: string;
-  special_instructions?: string;
   customer_id?: string;
   suburb_id?: string;
   delivery_suburb_id?: string;

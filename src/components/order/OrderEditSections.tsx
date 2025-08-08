@@ -245,21 +245,6 @@ export function OrderEditSections({
           </div>
         )}
 
-        {/* Special Instructions - Always visible */}
-        <div>
-          <Label htmlFor="special_instructions" className="text-sm font-medium flex items-center gap-2">
-            <AlertCircle className="w-3 h-3 text-orange-600" />
-            Special instructions
-          </Label>
-          <Textarea
-            id="special_instructions"
-            placeholder="Special instructions visible to everyone (customers, drivers, staff)"
-            value={formData.special_instructions || ''}
-            onChange={(e) => onInputChange('special_instructions', e.target.value)}
-            className="border-slate-200 focus:border-slate-400 focus:ring-slate-200 min-h-[80px]"
-          />
-          <p className="text-xs text-slate-500 mt-1">These instructions are visible to all users</p>
-        </div>
       </div>
     </div>
   );

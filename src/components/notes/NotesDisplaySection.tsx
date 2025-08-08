@@ -1,13 +1,12 @@
 
 import { useState } from "react";
-import { FileText, MessageSquare, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { FileText, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface NotesDisplaySectionProps {
   orderNotes?: string;
   deliveryNotes?: string;
-  specialInstructions?: string;
   compact?: boolean;
   onEditClick?: () => void;
   userRole?: 'admin' | 'driver' | 'customer';
@@ -16,7 +15,6 @@ interface NotesDisplaySectionProps {
 export function NotesDisplaySection({
   orderNotes,
   deliveryNotes,
-  specialInstructions,
   compact = false,
   onEditClick,
   userRole = 'admin'
@@ -26,9 +24,8 @@ export function NotesDisplaySection({
   // Filter notes based on user role
   const visibleOrderNotes = userRole === 'admin' ? orderNotes : '';
   const visibleDeliveryNotes = (userRole === 'admin' || userRole === 'driver') ? deliveryNotes : '';
-  const visibleSpecialInstructions = specialInstructions; // Always visible
   
-  const hasNotes = Boolean(visibleOrderNotes?.trim() || visibleDeliveryNotes?.trim() || visibleSpecialInstructions?.trim());
+  const hasNotes = Boolean(visibleOrderNotes?.trim() || visibleDeliveryNotes?.trim());
   
   if (!hasNotes) return null;
 
@@ -61,16 +58,6 @@ export function NotesDisplaySection({
         </div>
       )}
       
-      {/* Special Instructions - Visible to all */}
-      {specialInstructions?.trim() && (
-        <div className="flex items-start gap-2 text-xs">
-          <AlertCircle className="w-3 h-3 text-orange-600 mt-0.5 flex-shrink-0" />
-          <div>
-            <span className="font-medium text-orange-700">Special Instructions:</span>
-            <p className="text-slate-600 mt-1">{compact && !isExpanded ? truncateText(specialInstructions) : specialInstructions}</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 

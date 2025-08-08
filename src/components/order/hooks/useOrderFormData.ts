@@ -19,7 +19,6 @@ export interface OrderFormData {
   status: string;
   delivery_date: string;
   delivery_time: string;
-  special_instructions: string;
   order_notes: string;
   delivery_notes: string;
   driver_id: string;
@@ -53,7 +52,6 @@ export function useOrderFormData(order: Order) {
     status: order.status || 'preparing',
     delivery_date: order.delivery_date || '',
     delivery_time: convertTimeToFormFormat(order.delivery_time),
-    special_instructions: order.special_instructions || '',
     order_notes: order.order_notes || '',
     delivery_notes: order.delivery_notes || '',
     driver_id: order.driver_id || 'unassigned',

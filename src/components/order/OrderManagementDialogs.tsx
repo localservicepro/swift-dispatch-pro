@@ -89,8 +89,7 @@ export function OrderManagementDialogs() {
           orderNumber={editingNotes.order_number}
           currentNotes={{
             orderNotes: editingNotes.order_notes,
-            deliveryNotes: editingNotes.delivery_notes,
-            specialInstructions: editingNotes.special_instructions
+            deliveryNotes: editingNotes.delivery_notes
           }}
           onNotesUpdated={handleNotesUpdated}
         />

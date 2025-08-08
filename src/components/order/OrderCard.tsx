@@ -219,14 +219,13 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           <NotesIndicator 
             orderNotes={order.order_notes} 
             deliveryNotes={order.delivery_notes} 
-            specialInstructions={order.special_instructions} 
           />
         </div>
         <div className="flex items-center gap-2">
           <span className="text-lg font-bold text-green-600">
             ${order.total_amount.toFixed(2)}
           </span>
-          {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
+          {(order.order_notes?.trim() || order.delivery_notes?.trim()) && (
             <Button
               variant="ghost"
               size="sm"
@@ -283,12 +282,11 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
       )}
 
       {/* Notes Section */}
-      {(order.order_notes?.trim() || order.delivery_notes?.trim() || order.special_instructions?.trim()) && (
+      {(order.order_notes?.trim() || order.delivery_notes?.trim()) && (
         <div className="mb-3">
           <NotesDisplaySection
             orderNotes={order.order_notes}
             deliveryNotes={order.delivery_notes}
-            specialInstructions={order.special_instructions}
             compact={false}
             onEditClick={() => onNotesEdit(order)}
             userRole="admin"

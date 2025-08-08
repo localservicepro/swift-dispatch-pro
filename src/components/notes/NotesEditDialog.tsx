@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, MessageSquare, AlertCircle } from "lucide-react";
+import { FileText, MessageSquare } from "lucide-react";
 
 interface NotesEditDialogProps {
   isOpen: boolean;
@@ -16,7 +16,6 @@ interface NotesEditDialogProps {
   currentNotes: {
     orderNotes?: string;
     deliveryNotes?: string;
-    specialInstructions?: string;
   };
   onNotesUpdated: () => void;
 }
@@ -31,7 +30,6 @@ export function NotesEditDialog({
 }: NotesEditDialogProps) {
   const [orderNotes, setOrderNotes] = useState(currentNotes.orderNotes || "");
   const [deliveryNotes, setDeliveryNotes] = useState(currentNotes.deliveryNotes || "");
-  const [specialInstructions, setSpecialInstructions] = useState(currentNotes.specialInstructions || "");
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
@@ -40,7 +38,6 @@ export function NotesEditDialog({
     if (isOpen) {
       setOrderNotes(currentNotes.orderNotes || "");
       setDeliveryNotes(currentNotes.deliveryNotes || "");
-      setSpecialInstructions(currentNotes.specialInstructions || "");
     }
   }, [isOpen, currentNotes]);
 
@@ -52,7 +49,6 @@ export function NotesEditDialog({
         .update({
           order_notes: orderNotes.trim() || null,
           delivery_notes: deliveryNotes.trim() || null,
-          special_instructions: specialInstructions.trim() || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
@@ -123,19 +119,6 @@ export function NotesEditDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="special-instructions" className="flex items-center gap-2 text-sm font-medium">
-              <AlertCircle className="w-3 h-3 text-orange-600" />
-              Special Instructions (Customer)
-            </Label>
-            <Textarea
-              id="special-instructions"
-              value={specialInstructions}
-              onChange={(e) => setSpecialInstructions(e.target.value)}
-              placeholder="Special instructions from customer..."
-              className="min-h-[80px] text-sm"
-            />
-          </div>
         </div>
 
         <DialogFooter>
