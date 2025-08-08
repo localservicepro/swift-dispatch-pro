@@ -354,20 +354,15 @@ export function OpportunityPipeline() {
 
       console.log('Updating order status:', order.order_number, currentStage, '->', newStage);
 
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          ...updateData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', order.id);
-
-      if (error) throw error;
-
-      // Log the activity
-      if (profile?.full_name) {
-        await activityLogger.orderStatusUpdate(
-          order.id,
+      // Use centralized order status service for proper delivery tracking
+      await updateOrderStatusService({
+        orderId: order.id,
+        orderNumber: order.order_number,
+        customerName: order.customer_name,
+        oldStatus: currentStage,
+        newStatus: updateData.status || newStage,
+        updatedBy: profile?.full_name || 'Admin'
+      });
           order.order_number,
           order.customer_name,
           currentStage,

@@ -1,7 +1,7 @@
 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { activityLogger } from "@/utils/activityLogger";
+import { updateOrderStatus as updateOrderStatusService } from "@/utils/orderStatusService";
 import { useAuth } from "../../auth/AuthProvider";
 import { useSplitOrderGroups } from "@/hooks/useSplitOrderGroups";
 import { Database } from "@/integrations/supabase/types";
@@ -22,25 +22,15 @@ export function useOrderActions(refetch: () => void) {
 
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, currentOrder: Order) => {
     try {
-      const oldStatus = currentOrder.status;
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      // Log the activity
-      if (profile?.full_name) {
-        if (newStatus === 'cancelled') {
-          await activityLogger.orderCancel(orderId, currentOrder.order_number, currentOrder.customer_name, profile.full_name);
-        } else {
-          await activityLogger.orderStatusUpdate(orderId, currentOrder.order_number, currentOrder.customer_name, oldStatus, newStatus, profile.full_name);
-        }
-      }
+      // Use centralized order status service for proper delivery tracking
+      await updateOrderStatusService({
+        orderId,
+        orderNumber: currentOrder.order_number,
+        customerName: currentOrder.customer_name,
+        oldStatus: currentOrder.status,
+        newStatus,
+        updatedBy: profile?.full_name || 'Admin'
+      });
 
       toast({
         title: "Status Updated",
