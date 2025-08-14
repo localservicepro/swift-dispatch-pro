@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Package, Plus, Minus, X } from "lucide-react";
+import { ProductStockFilter } from "./ProductStockFilter";
 import { getQuantityIncrement, getQuantityInputStep, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
 
 interface Product {
@@ -39,6 +40,7 @@ export function ProductEditSection({
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [stockFilter, setStockFilter] = useState<string>("all");
   const [loading, setLoading] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
@@ -76,7 +78,7 @@ export function ProductEditSection({
         category:product_categories(name, allows_fractional_quantities)
       `)
       .eq('is_active', true)
-      .gt('stock_quantity', 0)
+      .order('stock_quantity', { ascending: false })
       .order('name');
 
     if (searchQuery) {
@@ -87,7 +89,25 @@ export function ProductEditSection({
       query = query.eq('category_id', selectedCategory);
     }
 
-    const { data, error } = await query.limit(200);
+    // Apply stock filter
+    if (stockFilter !== "all") {
+      switch (stockFilter) {
+        case "in_stock":
+          query = query.gt('stock_quantity', 0);
+          break;
+        case "low_stock":
+          query = query.gte('stock_quantity', 1).lte('stock_quantity', 10);
+          break;
+        case "out_of_stock":
+          query = query.eq('stock_quantity', 0);
+          break;
+        case "backorder":
+          query = query.lt('stock_quantity', 0);
+          break;
+      }
+    }
+
+    const { data, error } = await query.limit(500);
 
     if (!error && data) {
       const productsWithImages = data.map(product => ({
@@ -97,7 +117,7 @@ export function ProductEditSection({
       setProducts(productsWithImages);
     }
     setLoading(false);
-  }, [searchQuery, selectedCategory]);
+  }, [searchQuery, selectedCategory, stockFilter]);
 
   useEffect(() => {
     if (showSearch) {
@@ -370,6 +390,7 @@ export function ProductEditSection({
                     ))}
                   </SelectContent>
                 </Select>
+                <ProductStockFilter value={stockFilter} onChange={setStockFilter} />
               </div>
 
               {loading && <div className="text-center py-4">Loading products...</div>}
@@ -394,7 +415,22 @@ export function ProductEditSection({
                       </div>
                       <div className="text-right">
                         <div className="font-semibold text-green-600">${(product.price || 0).toFixed(2)}</div>
-                        <div className="text-xs text-gray-500">Stock: {formatQuantity(product.stock_quantity || 0)}</div>
+                        <div className={`text-xs font-medium ${
+                          product.stock_quantity > 10 
+                            ? 'text-green-600' 
+                            : product.stock_quantity > 0 
+                            ? 'text-yellow-600' 
+                            : product.stock_quantity === 0 
+                            ? 'text-red-600' 
+                            : 'text-orange-600'
+                        }`}>
+                          {product.stock_quantity > 0 
+                            ? `Stock: ${formatQuantity(product.stock_quantity)}` 
+                            : product.stock_quantity === 0 
+                            ? 'Out of Stock' 
+                            : `Backorder (${Math.abs(product.stock_quantity)})`
+                          }
+                        </div>
                       </div>
                     </div>
                     

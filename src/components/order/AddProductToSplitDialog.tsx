@@ -44,7 +44,10 @@ export function AddProductToSplitDialog({
         query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%`);
       }
 
-      const { data, error } = await query.limit(50);
+      const { data, error } = await query
+        .order('stock_quantity', { ascending: false })
+        .order('name')
+        .limit(500);
       
       if (error) throw error;
       setProducts(data || []);
@@ -156,9 +159,24 @@ export function AddProductToSplitDialog({
                             <p className="text-sm font-medium text-green-600">
                               ${product.price.toFixed(2)}
                             </p>
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                              {product.sku && <span>SKU: {product.sku}</span>}
-                              <span>Stock: {product.stock_quantity}</span>
+                            <div className="flex items-center gap-2 text-xs">
+                              {product.sku && <span className="text-gray-500">SKU: {product.sku}</span>}
+                              <span className={`font-medium ${
+                                product.stock_quantity > 10 
+                                  ? 'text-green-600' 
+                                  : product.stock_quantity > 0 
+                                  ? 'text-yellow-600' 
+                                  : product.stock_quantity === 0 
+                                  ? 'text-red-600' 
+                                  : 'text-orange-600'
+                              }`}>
+                                {product.stock_quantity > 0 
+                                  ? `Stock: ${product.stock_quantity}` 
+                                  : product.stock_quantity === 0 
+                                  ? 'Out of Stock' 
+                                  : `Backorder (${Math.abs(product.stock_quantity)})`
+                                }
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -192,7 +210,7 @@ export function AddProductToSplitDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    {Array.from({ length: Math.min(selectedProduct.stock_quantity, 10) }, (_, i) => i + 1).map((num) => (
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map((num) => (
                       <SelectItem key={num} value={num.toString()}>
                         {num}
                       </SelectItem>

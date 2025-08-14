@@ -13,6 +13,7 @@ import { useSpecialPricing } from "@/hooks/useSpecialPricing";
 import { useDebounce } from "@/hooks/useDebounce";
 import { format } from "date-fns";
 import { FloatingCart } from "./FloatingCart";
+import { ProductStockFilter } from "./ProductStockFilter";
 import { getQuantityIncrement, getQuantityInputStep, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
 
 interface Product {
@@ -59,6 +60,7 @@ export function ProductSelectionStep({
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [stockFilter, setStockFilter] = useState<string>("all");
   const [loading, setLoading] = useState(false);
   const [adjustmentType, setAdjustmentType] = useState<"percentage" | "fixed">("percentage");
   const [adjustmentValue, setAdjustmentValue] = useState<string>("");
@@ -122,7 +124,7 @@ export function ProductSelectionStep({
         category:product_categories(name, allows_fractional_quantities)
       `)
       .eq('is_active', true)
-      .gt('stock_quantity', 0)
+      .order('stock_quantity', { ascending: false })
       .order('name');
 
     if (debouncedSearchQuery) {
@@ -133,7 +135,25 @@ export function ProductSelectionStep({
       query = query.eq('category_id', selectedCategory);
     }
 
-    const { data, error } = await query.limit(200);
+    // Apply stock filter
+    if (stockFilter !== "all") {
+      switch (stockFilter) {
+        case "in_stock":
+          query = query.gt('stock_quantity', 0);
+          break;
+        case "low_stock":
+          query = query.gte('stock_quantity', 1).lte('stock_quantity', 10);
+          break;
+        case "out_of_stock":
+          query = query.eq('stock_quantity', 0);
+          break;
+        case "backorder":
+          query = query.lt('stock_quantity', 0);
+          break;
+      }
+    }
+
+    const { data, error } = await query.limit(500);
 
     if (!error && data) {
       // Ensure images array exists for each product
@@ -144,7 +164,7 @@ export function ProductSelectionStep({
       setProducts(productsWithImages);
     }
     setLoading(false);
-  }, [debouncedSearchQuery, selectedCategory]);
+  }, [debouncedSearchQuery, selectedCategory, stockFilter]);
 
   const loadSpecialsForProductsBatched = useCallback(async (productIds: string[]) => {
     if (productIds.length === 0 || specialsLoading) return;
@@ -352,6 +372,7 @@ export function ProductSelectionStep({
                 ))}
               </SelectContent>
             </Select>
+            <ProductStockFilter value={stockFilter} onChange={setStockFilter} />
           </div>
 
           {loading && <div className="text-center py-4">Loading products...</div>}
@@ -412,7 +433,22 @@ export function ProductSelectionStep({
                           AU${currentPrice.toFixed(2)}
                         </div>
                       )}
-                      <div className="text-xs text-gray-500">Stock: {product.stock_quantity}</div>
+                      <div className={`text-xs font-medium ${
+                        product.stock_quantity > 10 
+                          ? 'text-green-600' 
+                          : product.stock_quantity > 0 
+                          ? 'text-yellow-600' 
+                          : product.stock_quantity === 0 
+                          ? 'text-red-600' 
+                          : 'text-orange-600'
+                      }`}>
+                        {product.stock_quantity > 0 
+                          ? `Stock: ${product.stock_quantity}` 
+                          : product.stock_quantity === 0 
+                          ? 'Out of Stock' 
+                          : `Backorder (${Math.abs(product.stock_quantity)})`
+                        }
+                      </div>
                     </div>
                   </div>
 
