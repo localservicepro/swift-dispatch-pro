@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, Download, AlertCircle, CheckCircle } from 'lucide-react';
@@ -22,6 +23,12 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
   const [isProcessing, setIsProcessing] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [suburbs, setSuburbs] = useState<any[]>([]);
+  
+  // Progress tracking state
+  const [importProgress, setImportProgress] = useState(0);
+  const [totalToImport, setTotalToImport] = useState(0);
+  const [currentlyImporting, setCurrentlyImporting] = useState('');
+  
   const { toast } = useToast();
 
   // Load suburbs for matching
@@ -87,6 +94,11 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
     }
 
     setIsProcessing(true);
+    const total = previewData.consolidatedCompanies.length + previewData.individualCustomers.length;
+    setTotalToImport(total);
+    setImportProgress(0);
+    setCurrentlyImporting('');
+    
     let successCount = 0;
     let errorCount = 0;
     const importErrors: string[] = [];
@@ -94,6 +106,11 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
     try {
       // Import consolidated companies
       for (const company of previewData.consolidatedCompanies) {
+        const customerName = company.customerData.company_name || 
+                            `${company.customerData.first_name || ''} ${company.customerData.last_name || ''}`.trim() ||
+                            'Unknown Customer';
+        setCurrentlyImporting(customerName);
+        
         try {
           // Insert main customer record
           const { data: customerData, error: customerError } = await supabase
@@ -125,16 +142,20 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
           successCount++;
         } catch (error: any) {
           errorCount++;
-          const customerName = company.customerData.company_name || 
-                              `${company.customerData.first_name || ''} ${company.customerData.last_name || ''}`.trim() ||
-                              'Unknown Customer';
           importErrors.push(`${customerName}: ${error.message}`);
           console.error('Import error for company:', company.customerData, error);
         }
+        
+        setImportProgress(successCount + errorCount);
       }
 
       // Import individual customers
       for (const individual of previewData.individualCustomers) {
+        const customerName = individual.customerData.company_name || 
+                            `${individual.customerData.first_name || ''} ${individual.customerData.last_name || ''}`.trim() ||
+                            'Unknown Customer';
+        setCurrentlyImporting(customerName);
+        
         try {
           const { error } = await supabase
             .from('customers')
@@ -147,12 +168,11 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
           successCount++;
         } catch (error: any) {
           errorCount++;
-          const customerName = individual.customerData.company_name || 
-                              `${individual.customerData.first_name || ''} ${individual.customerData.last_name || ''}`.trim() ||
-                              'Unknown Customer';
           importErrors.push(`${customerName}: ${error.message}`);
           console.error('Import error for customer:', individual.customerData, error);
         }
+        
+        setImportProgress(successCount + errorCount);
       }
 
       toast({
@@ -181,6 +201,9 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
       });
     } finally {
       setIsProcessing(false);
+      setCurrentlyImporting('');
+      setImportProgress(0);
+      setTotalToImport(0);
     }
   };
 
@@ -293,8 +316,26 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
              </div>
            </div>
 
+          {/* Progress Tracking */}
+          {isProcessing && (
+            <div className="bg-blue-50 p-4 rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Import Progress</h4>
+                <span className="text-sm text-gray-600">
+                  {Math.round((importProgress / totalToImport) * 100)}% ({importProgress}/{totalToImport})
+                </span>
+              </div>
+              <Progress value={(importProgress / totalToImport) * 100} className="w-full" />
+              {currentlyImporting && (
+                <p className="text-sm text-gray-600">
+                  Currently importing: <span className="font-medium">{currentlyImporting}</span>
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Import Statistics */}
-          {importData.length > 0 && (
+          {importData.length > 0 && !isProcessing && (
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="font-medium mb-2">Import Summary</h4>
               <div className="grid grid-cols-4 gap-4 text-sm">
@@ -472,16 +513,14 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={onClose} disabled={isProcessing}>
               Cancel
             </Button>
-            <Button
-              onClick={handleImport}
-              disabled={!previewData || (previewData.consolidatedCompanies.length === 0 && previewData.individualCustomers.length === 0) || isProcessing}
+            <Button 
+              onClick={handleImport} 
+              disabled={!previewData || isProcessing || (previewData.consolidatedCompanies.length === 0 && previewData.individualCustomers.length === 0)}
             >
-              {isProcessing ? 'Importing...' : 
-                previewData ? `Import ${previewData.consolidatedCompanies.length + previewData.individualCustomers.length} Customers` : 'Import Customers'
-              }
+              {isProcessing ? `Importing... (${importProgress}/${totalToImport})` : "Import Customers"}
             </Button>
           </div>
         </div>
