@@ -101,6 +101,7 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
     
     let successCount = 0;
     let errorCount = 0;
+    let skippedCount = 0;
     const importErrors: string[] = [];
 
     try {
@@ -112,37 +113,96 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
         setCurrentlyImporting(customerName);
         
         try {
-          // Insert main customer record
-          const { data: customerData, error: customerError } = await supabase
-            .from('customers')
-            .insert([company.customerData])
-            .select()
-            .single();
+          let customerData;
+          
+          // Check if customer already exists by email
+          if (company.customerData.email) {
+            const { data: existingCustomer } = await supabase
+              .from('customers')
+              .select('id, email')
+              .eq('email', company.customerData.email)
+              .maybeSingle();
 
-          if (customerError) {
-            throw customerError;
+            if (existingCustomer) {
+              // Update existing customer
+              const { data: updatedCustomer, error: updateError } = await supabase
+                .from('customers')
+                .update(company.customerData)
+                .eq('id', existingCustomer.id)
+                .select()
+                .single();
+
+              if (updateError) throw updateError;
+              customerData = updatedCustomer;
+            } else {
+              // Insert new customer
+              const { data: newCustomer, error: insertError } = await supabase
+                .from('customers')
+                .insert([company.customerData])
+                .select()
+                .single();
+
+              if (insertError) throw insertError;
+              customerData = newCustomer;
+            }
+          } else {
+            // No email provided, try direct insert
+            const { data: newCustomer, error: insertError } = await supabase
+              .from('customers')
+              .insert([company.customerData])
+              .select()
+              .single();
+
+            if (insertError) throw insertError;
+            customerData = newCustomer;
           }
 
           // Insert additional contacts if any
           if (company.additionalContacts.length > 0) {
-            const contactsWithCustomerId = company.additionalContacts.map(contact => ({
-              ...contact,
-              customer_id: customerData.id
-            }));
+            for (const contact of company.additionalContacts) {
+              const contactWithCustomerId = {
+                ...contact,
+                customer_id: customerData.id
+              };
 
-            const { error: contactsError } = await supabase
-              .from('customer_contacts')
-              .insert(contactsWithCustomerId);
+              // Check if contact already exists
+              if (contact.email) {
+                const { data: existingContact } = await supabase
+                  .from('customer_contacts')
+                  .select('id')
+                  .eq('customer_id', customerData.id)
+                  .eq('email', contact.email)
+                  .maybeSingle();
 
-            if (contactsError) {
-              console.warn('Failed to insert some contacts:', contactsError);
+                if (!existingContact) {
+                  const { error: contactError } = await supabase
+                    .from('customer_contacts')
+                    .insert([contactWithCustomerId]);
+
+                  if (contactError && !contactError.message.includes('duplicate key')) {
+                    console.warn('Failed to insert contact:', contactError);
+                  }
+                }
+              } else {
+                // Insert contact without email check
+                const { error: contactError } = await supabase
+                  .from('customer_contacts')
+                  .insert([contactWithCustomerId]);
+
+                if (contactError && !contactError.message.includes('duplicate key')) {
+                  console.warn('Failed to insert contact:', contactError);
+                }
+              }
             }
           }
 
           successCount++;
         } catch (error: any) {
           errorCount++;
-          importErrors.push(`${customerName}: ${error.message}`);
+          const errorMsg = error.message.includes('duplicate key') 
+            ? 'Customer with this email already exists'
+            : error.message;
+          importErrors.push(`${customerName}: ${errorMsg}`);
           console.error('Import error for company:', company.customerData, error);
         }
         
@@ -157,18 +217,46 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
         setCurrentlyImporting(customerName);
         
         try {
-          const { error } = await supabase
-            .from('customers')
-            .insert([individual.customerData]);
+          // Check if customer already exists by email
+          if (individual.customerData.email) {
+            const { data: existingCustomer } = await supabase
+              .from('customers')
+              .select('id, email')
+              .eq('email', individual.customerData.email)
+              .maybeSingle();
 
-          if (error) {
-            throw error;
+            if (existingCustomer) {
+              // Update existing customer
+              const { error: updateError } = await supabase
+                .from('customers')
+                .update(individual.customerData)
+                .eq('id', existingCustomer.id);
+
+              if (updateError) throw updateError;
+            } else {
+              // Insert new customer
+              const { error: insertError } = await supabase
+                .from('customers')
+                .insert([individual.customerData]);
+
+              if (insertError) throw insertError;
+            }
+          } else {
+            // No email provided, try direct insert
+            const { error: insertError } = await supabase
+              .from('customers')
+              .insert([individual.customerData]);
+
+            if (insertError) throw insertError;
           }
 
           successCount++;
         } catch (error: any) {
           errorCount++;
-          importErrors.push(`${customerName}: ${error.message}`);
+          const errorMsg = error.message.includes('duplicate key') 
+            ? 'Customer with this email already exists'
+            : error.message;
+          importErrors.push(`${customerName}: ${errorMsg}`);
           console.error('Import error for customer:', individual.customerData, error);
         }
         
