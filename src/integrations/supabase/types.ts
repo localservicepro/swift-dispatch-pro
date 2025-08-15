@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -2054,29 +2054,29 @@ export type Database = {
     }
     Functions: {
       bulk_update_suburb_status: {
-        Args: { suburb_ids: string[]; new_status: boolean }
+        Args: { new_status: boolean; suburb_ids: string[] }
         Returns: number
       }
       calculate_special_price: {
         Args: {
           base_price: number
-          product_id_param: string
           customer_tier_param?: string
+          product_id_param: string
         }
         Returns: number
       }
       check_stock_availability: {
         Args: { order_items: Json }
         Returns: {
+          available_stock: number
+          is_sufficient: boolean
           product_id: string
           product_name: string
           requested_quantity: number
-          available_stock: number
-          is_sufficient: boolean
         }[]
       }
       create_driver: {
-        Args: { driver_id: string; driver_name: string; driver_license: string }
+        Args: { driver_id: string; driver_license: string; driver_name: string }
         Returns: undefined
       }
       create_single_order: {
@@ -2104,39 +2104,39 @@ export type Database = {
         Returns: string
       }
       get_active_specials_for_product: {
-        Args: { product_id_param: string; customer_tier_param?: string }
+        Args: { customer_tier_param?: string; product_id_param: string }
         Returns: {
-          special_id: string
-          special_name: string
           discount_type: Database["public"]["Enums"]["discount_type"]
           discount_value: number
           end_date: string
+          special_id: string
+          special_name: string
         }[]
       }
       get_back_order_summary: {
         Args: Record<PropertyKey, never>
         Returns: {
+          current_stock: number
+          orders_count: number
           product_id: string
           product_name: string
           total_back_ordered: number
-          current_stock: number
-          orders_count: number
         }[]
       }
       get_low_stock_products: {
         Args: { threshold?: number }
         Returns: {
+          category_name: string
+          current_stock: number
           product_id: string
           product_name: string
-          current_stock: number
-          category_name: string
         }[]
       }
       get_product_price: {
         Args: {
+          customer_type_param?: string
           product_id_param: string
           variant_id_param?: string
-          customer_type_param?: string
         }
         Returns: number
       }
@@ -2155,12 +2155,12 @@ export type Database = {
       log_admin_activity: {
         Args: {
           p_action_type: string
-          p_target_type: string
-          p_target_id?: string
-          p_target_details?: Json
-          p_old_values?: Json
-          p_new_values?: Json
           p_description?: string
+          p_new_values?: Json
+          p_old_values?: Json
+          p_target_details?: Json
+          p_target_id?: string
+          p_target_type: string
         }
         Returns: string
       }
@@ -2186,17 +2186,17 @@ export type Database = {
       }
       update_order_status: {
         Args: {
-          order_id: string
+          location?: Json
           new_status: Database["public"]["Enums"]["order_status"]
           notes?: string
-          location?: Json
+          order_id: string
         }
         Returns: undefined
       }
       update_payment_status: {
         Args: {
-          p_order_id: string
           p_new_status: string
+          p_order_id: string
           p_payment_date?: string
         }
         Returns: undefined
