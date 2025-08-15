@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { Package, Clock, Truck, CheckCircle, DollarSign, AlertTriangle, ShoppingCart, RefreshCw } from "lucide-react";
+import { ProductEditDialog } from "./product/ProductEditDialog";
 
 interface DashboardMetrics {
   totalOrders: number;
@@ -34,6 +35,27 @@ interface StockAlert {
   name: string;
   stock_quantity: number;
   sku: string;
+  description: string | null;
+  price: number;
+  barcode: string | null;
+  weight: number | null;
+  dimensions: string | null;
+  is_active: boolean;
+  category_id: string | null;
+  images: string[];
+  created_at: string;
+  updated_at: string;
+  product_type?: string;
+  category?: {
+    name: string;
+  };
+}
+
+interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
 }
 
 export function DashboardOverview() {
@@ -52,6 +74,8 @@ export function DashboardOverview() {
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingProduct, setEditingProduct] = useState<StockAlert | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -97,7 +121,7 @@ export function DashboardOverview() {
 
   const loadDashboardData = async () => {
     setLoading(true);
-    await Promise.all([loadMetrics(), loadRecentOrders(), loadStockAlerts(), loadChartData()]);
+    await Promise.all([loadMetrics(), loadRecentOrders(), loadStockAlerts(), loadChartData(), loadCategories()]);
     setLoading(false);
   };
 
@@ -187,11 +211,47 @@ export function DashboardOverview() {
 
   const loadStockAlerts = async () => {
     try {
-      const { data } = await supabase.from('products').select('id, name, stock_quantity, sku').eq('is_active', true).lte('stock_quantity', 10).order('stock_quantity', { ascending: true });
+      const { data } = await supabase
+        .from('products')
+        .select(`
+          id, name, stock_quantity, sku, description, price, barcode, weight, 
+          dimensions, is_active, category_id, images, created_at, updated_at, 
+          product_type,
+          category:product_categories(name)
+        `)
+        .eq('is_active', true)
+        .lte('stock_quantity', 10)
+        .order('stock_quantity', { ascending: true });
       setStockAlerts(data || []);
     } catch (error) {
       console.error('Error loading stock alerts:', error);
     }
+  };
+
+  const loadCategories = async () => {
+    try {
+      const { data } = await supabase
+        .from('product_categories')
+        .select('id, name, description, is_active')
+        .eq('is_active', true)
+        .order('name');
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  };
+
+  const handleProductClick = (product: StockAlert) => {
+    setEditingProduct(product);
+  };
+
+  const handleProductEditSuccess = () => {
+    setEditingProduct(null);
+    loadStockAlerts();
+    toast({
+      title: "Product Updated",
+      description: "Product has been successfully updated."
+    });
   };
 
   const loadChartData = async () => {
@@ -414,17 +474,22 @@ export function DashboardOverview() {
                 <p className="text-green-600 text-center py-4">All products well stocked</p>
               ) : (
                 stockAlerts.map(product => (
-                  <div key={product.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <button
+                    key={product.id}
+                    onClick={() => handleProductClick(product)}
+                    className="w-full flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors cursor-pointer text-left"
+                  >
                     <div>
                       <div className="font-medium">{product.name}</div>
                       {product.sku && <div className="text-sm text-gray-600">SKU: {product.sku}</div>}
+                      <div className="text-xs text-gray-500 mt-1">Click to edit</div>
                     </div>
                     <div className="text-right">
                       <Badge variant={product.stock_quantity === 0 ? "destructive" : "secondary"} className="text-xs">
                         {product.stock_quantity === 0 ? 'Out of Stock' : `${product.stock_quantity} left`}
                       </Badge>
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
             </div>
@@ -497,6 +562,16 @@ export function DashboardOverview() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+
+      {/* Product Edit Dialog */}
+      {editingProduct && (
+        <ProductEditDialog
+          product={editingProduct}
+          categories={categories}
+          onClose={() => setEditingProduct(null)}
+          onSuccess={handleProductEditSuccess}
+        />
+      )}
     </div>
   );
 }
