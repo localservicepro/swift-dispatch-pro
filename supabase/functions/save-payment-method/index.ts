@@ -26,7 +26,27 @@ serve(async (req) => {
       }
     )
 
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+    // Get Stripe secret key from database first, fallback to env
+    const { data: settings } = await supabaseClient
+      .from('payment_settings')
+      .select('stripe_test_secret_key, stripe_live_secret_key, stripe_mode')
+      .single()
+
+    let stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || ''
+    
+    if (settings) {
+      const isLive = settings.stripe_mode === 'live'
+      const dbKey = isLive ? settings.stripe_live_secret_key : settings.stripe_test_secret_key
+      if (dbKey) {
+        stripeSecretKey = dbKey
+      }
+    }
+
+    if (!stripeSecretKey) {
+      throw new Error('Stripe secret key not configured')
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
       apiVersion: '2023-10-16',
     })
 

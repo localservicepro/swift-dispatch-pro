@@ -2140,6 +2140,10 @@ export type Database = {
         }
         Returns: number
       }
+      get_stripe_settings: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_truck_display_info: {
         Args: { truck_type_param: Database["public"]["Enums"]["truck_type"] }
         Returns: string
@@ -2190,6 +2194,10 @@ export type Database = {
       }
       soft_delete_split_order_group: {
         Args: { p_order_id: string; p_reason?: string }
+        Returns: Json
+      }
+      test_stripe_connection: {
+        Args: { api_key: string; is_live?: boolean }
         Returns: Json
       }
       update_order_status: {

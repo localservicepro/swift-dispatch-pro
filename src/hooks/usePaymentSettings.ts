@@ -11,6 +11,14 @@ interface PaymentSettings {
   include_gst_in_prices: boolean;
   default_delivery_fee: number;
   gst_enabled: boolean;
+  stripe_test_publishable_key?: string;
+  stripe_test_secret_key?: string;
+  stripe_live_publishable_key?: string;
+  stripe_live_secret_key?: string;
+  stripe_webhook_secret?: string;
+  stripe_mode: string;
+  stripe_connection_status: string;
+  stripe_last_tested_at?: string;
 }
 
 export function usePaymentSettings() {
@@ -38,7 +46,9 @@ export function usePaymentSettings() {
         gst_label: 'GST',
         include_gst_in_prices: false,
         default_delivery_fee: 0.00,
-        gst_enabled: true
+        gst_enabled: true,
+        stripe_mode: 'test',
+        stripe_connection_status: 'not_configured'
       };
 
       return data || defaultSettings;
