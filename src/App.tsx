@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import { AuthPage } from "@/components/auth/AuthPage";
 import Index from "./pages/Index";
 import DriverPortal from "./pages/DriverPortal";
+import Knowledgebase from "./pages/Knowledgebase";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
@@ -53,6 +54,10 @@ function AuthenticatedApp() {
             <Navigate to="/" replace />
           )
         } 
+      />
+      <Route 
+        path="/knowledgebase" 
+        element={<Knowledgebase />} 
       />
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -20,12 +20,14 @@ import { LogOut, Loader2 } from "lucide-react";
 import { TeamManagement } from "@/components/TeamManagement";
 import { PersonalizedGreeting } from "@/components/PersonalizedGreeting";
 import { SuburbManagement } from "@/components/SuburbManagement";
+import { useNavigate } from "react-router-dom";
 
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const { signOut, profile, signingOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -66,6 +68,9 @@ const Index = () => {
         return <SuburbManagement />;
       case "emails":
         return <EmailManagement />;
+      case "knowledgebase":
+        navigate("/knowledgebase");
+        return <DashboardOverview />;
       case "settings":
         return <Settings />;
       default:

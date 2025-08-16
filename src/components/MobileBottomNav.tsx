@@ -11,6 +11,7 @@ import {
   Users2,
   Target,
   Truck,
+  BookOpen,
 } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
@@ -23,7 +24,7 @@ const menuItems = [
   { title: "Payments", icon: CreditCard, id: "payments" },
   { title: "Fleet", icon: Truck, id: "trucks" },
   { title: "Team", icon: Users2, id: "drivers" },
-  { title: "Emails", icon: Mail, id: "emails" },
+  { title: "Help", icon: BookOpen, id: "knowledgebase" },
 ];
 
 interface MobileBottomNavProps {

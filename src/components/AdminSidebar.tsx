@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { BarChart3, Package, ShoppingCart, Users, CreditCard, Mail, Settings, Users2, Target, Trash2, Truck, ShoppingBag, MapPin } from "lucide-react";
+import { BarChart3, Package, ShoppingCart, Users, CreditCard, Mail, Settings, Users2, Target, Trash2, Truck, ShoppingBag, MapPin, BookOpen } from "lucide-react";
 import { useState } from "react";
 
 const menuItems = [{
@@ -46,6 +46,10 @@ const menuItems = [{
   title: "Email Management",
   icon: Mail,
   id: "emails"
+}, {
+  title: "Help & Guides",
+  icon: BookOpen,
+  id: "knowledgebase"
 }, {
   title: "Settings",
   icon: Settings,
