@@ -171,10 +171,71 @@ export function useSplitOrderGroups() {
     }
   };
 
+  // Hard delete entire split order group permanently
+  const hardDeleteSplitOrderGroup = async (orderId: string) => {
+    try {
+      console.log('Permanently deleting split order group for order:', orderId);
+      
+      // Get group info first for optimistic updates
+      const groupInfo = await getSplitOrderGroupInfo(orderId);
+      
+      if (groupInfo?.allOrderIds) {
+        // Optimistically remove all orders in the group from deleted orders cache
+        queryClient.setQueryData(['deleted-orders'], (oldData: any[]) => {
+          if (!oldData) return [];
+          const filtered = oldData.filter(order => !groupInfo.allOrderIds.includes(order.id));
+          console.log('Optimistically removed split order group from deleted cache:', groupInfo.orderNumbers);
+          return filtered;
+        });
+      }
+
+      // Use the raw SQL call since the function isn't in the generated types yet
+      const { data, error } = await supabase
+        .rpc('hard_delete_split_order_group' as any, {
+          p_order_id: orderId
+        });
+
+      if (error) throw error;
+
+      // Type the result manually since it's not in generated types
+      const result = data as {
+        deleted_order_ids: string[];
+        order_numbers: string[];
+        customer_name: string;
+        total_deleted: number;
+      };
+
+      console.log('Split order group permanent deletion result:', result);
+
+      toast({
+        title: "Split Order Group Permanently Deleted",
+        description: `Permanently removed ${result.total_deleted} orders for ${result.customer_name}: ${result.order_numbers.join(', ')}`,
+      });
+
+      // Enhanced cache invalidation
+      await invalidateAllOrdersCache('hard delete split order group');
+
+      return result;
+    } catch (error: any) {
+      console.error('Error permanently deleting split order group:', error);
+      
+      // Revert optimistic updates on error
+      await queryClient.refetchQueries({ queryKey: ['deleted-orders'] });
+      
+      toast({
+        title: "Error",
+        description: "Failed to permanently delete split order group. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   return {
     getSplitOrderGroupInfo,
     deleteSplitOrderGroup,
     restoreSplitOrderGroup,
+    hardDeleteSplitOrderGroup,
     invalidateAllOrdersCache
   };
 }

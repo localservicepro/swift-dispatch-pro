@@ -2144,6 +2144,14 @@ export type Database = {
         Args: { truck_type_param: Database["public"]["Enums"]["truck_type"] }
         Returns: string
       }
+      hard_delete_order: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
+      hard_delete_split_order_group: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
       has_mixed_stock_availability: {
         Args: { order_id_param: string }
         Returns: boolean

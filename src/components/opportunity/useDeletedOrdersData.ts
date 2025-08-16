@@ -163,6 +163,49 @@ export function useDeletedOrdersData() {
     }
   };
 
+  // Hard delete an order permanently
+  const hardDeleteOrder = async (orderId: string, orderNumber: string) => {
+    try {
+      console.log('Permanently deleting order:', orderId);
+      
+      // Optimistically remove from cache
+      queryClient.setQueryData(['deleted-orders'], (oldData: any[]) => {
+        if (!oldData) return [];
+        const filtered = oldData.filter(order => order.id !== orderId);
+        console.log('Optimistically removed order from deleted orders cache:', orderNumber);
+        return filtered;
+      });
+
+      const { error } = await supabase
+        .rpc('hard_delete_order' as any, {
+          p_order_id: orderId
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Order Permanently Deleted",
+        description: `Order ${orderNumber} has been permanently removed from the system.`,
+      });
+
+      // Enhanced cache invalidation
+      await invalidateAllOrdersCache('hard delete order');
+
+    } catch (error: any) {
+      console.error('Error permanently deleting order:', error);
+      
+      // Revert optimistic updates on error
+      await queryClient.refetchQueries({ queryKey: ['deleted-orders'] });
+      
+      toast({
+        title: "Error",
+        description: "Failed to permanently delete order. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   return {
     deletedOrders,
     isLoading,
@@ -170,6 +213,7 @@ export function useDeletedOrdersData() {
     refetch,
     restoreOrder,
     softDeleteOrder,
+    hardDeleteOrder,
     invalidateAllOrdersCache
   };
 }

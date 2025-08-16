@@ -32,8 +32,8 @@ import {
 
 export function DeletedOrdersList() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { deletedOrders, isLoading, restoreOrder } = useDeletedOrdersData();
-  const { restoreSplitOrderGroup } = useSplitOrderGroups();
+  const { deletedOrders, isLoading, restoreOrder, hardDeleteOrder } = useDeletedOrdersData();
+  const { restoreSplitOrderGroup, hardDeleteSplitOrderGroup } = useSplitOrderGroups();
 
   // Group deleted orders by split relationships - safely access properties
   const groupedOrders = useMemo(() => {
@@ -132,6 +132,22 @@ export function DeletedOrdersList() {
       await restoreSplitOrderGroup(masterOrder.id);
     } catch (error) {
       console.error('Failed to restore split order group:', error);
+    }
+  };
+
+  const handleHardDeleteGroup = async (masterOrder: any) => {
+    try {
+      await hardDeleteSplitOrderGroup(masterOrder.id);
+    } catch (error) {
+      console.error('Failed to permanently delete split order group:', error);
+    }
+  };
+
+  const handleHardDeleteOrder = async (order: any) => {
+    try {
+      await hardDeleteOrder(order.id, order.order_number);
+    } catch (error) {
+      console.error('Failed to permanently delete order:', error);
     }
   };
 
@@ -287,6 +303,34 @@ export function DeletedOrdersList() {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete Permanently
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Permanently Delete Split Order Group</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action is irreversible and will permanently remove all {group.length} orders 
+                              for {masterOrder.customer_name} ({group.map((o: any) => o.order_number).join(', ')}) 
+                              and all related data from the system.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleHardDeleteGroup(masterOrder)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete Permanently
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </CardContent>
                 </Card>
@@ -364,6 +408,33 @@ export function DeletedOrdersList() {
                             >
                               <RotateCcw className="w-4 h-4 mr-2" />
                               Restore Order
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete Permanently
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Permanently Delete Order</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action is irreversible and will permanently remove order {order.order_number} 
+                              for {order.customer_name} and all related data from the system.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleHardDeleteOrder(order)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete Permanently
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
