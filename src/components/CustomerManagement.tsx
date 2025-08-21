@@ -39,8 +39,7 @@ export function CustomerManagement() {
             is_primary_contact,
             is_active
           )
-        `)
-        .order("created_at", { ascending: false });
+        `);
       
       if (error) throw error;
       return data;

@@ -9,7 +9,7 @@ export function useCustomerFilters(customers: any[] = []) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const filteredCustomers = useMemo(() => {
-    return customers?.filter(customer => {
+    const filtered = customers?.filter(customer => {
       const searchText = searchTerm.toLowerCase();
       const customerName = getCustomerDisplayName(customer);
       const matchesSearch = 
@@ -26,6 +26,13 @@ export function useCustomerFilters(customers: any[] = []) {
         (statusFilter === "inactive" && !customer.is_active);
       
       return matchesSearch && matchesCustomerType && matchesEntityType && matchesStatus;
+    });
+
+    // Sort alphabetically by display name (case-insensitive)
+    return filtered?.sort((a, b) => {
+      const nameA = getCustomerDisplayName(a).toLowerCase();
+      const nameB = getCustomerDisplayName(b).toLowerCase();
+      return nameA.localeCompare(nameB);
     });
   }, [customers, searchTerm, customerTypeFilter, entityTypeFilter, statusFilter]);
 
