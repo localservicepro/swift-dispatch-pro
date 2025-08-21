@@ -15,6 +15,7 @@ import { ImportData, ParsedCustomerData, ImportDialogProps, ImportPreviewData } 
 import { ImportDataParser } from './utils/ImportDataParser';
 import { ImportDataValidator } from './utils/ImportDataValidator';
 import { ImportTemplateGenerator } from './utils/ImportTemplateGenerator';
+import { debugLogger } from '@/utils/debugLogger';
 
 export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialogProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -103,6 +104,11 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
     let errorCount = 0;
     let skippedCount = 0;
     const importErrors: string[] = [];
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    debugLogger.log('Customer import started', { total, companies: previewData.consolidatedCompanies.length, individuals: previewData.individualCustomers.length, userId: user?.id });
+    if (userError) {
+      debugLogger.error('Failed to get current user', userError);
+    }
 
     try {
       // Import consolidated companies
@@ -136,24 +142,41 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
               customerData = updatedCustomer;
             } else {
               // Insert new customer
+              const newCustomerPayload = {
+                ...company.customerData,
+                auth_user_id: (company.customerData as any).auth_user_id ?? user?.id ?? null
+              };
+              debugLogger.apiCall('customers', 'INSERT', 'start', newCustomerPayload);
               const { data: newCustomer, error: insertError } = await supabase
                 .from('customers')
-                .insert([company.customerData])
+                .insert([newCustomerPayload])
                 .select()
                 .single();
 
-              if (insertError) throw insertError;
+              if (insertError) {
+                debugLogger.error('Insert customer failed', insertError, { payload: newCustomerPayload });
+                throw insertError;
+              }
               customerData = newCustomer;
+
             }
           } else {
             // No email provided, try direct insert
+            const newCustomerPayload = {
+              ...company.customerData,
+              auth_user_id: (company.customerData as any).auth_user_id ?? user?.id ?? null
+            };
+            debugLogger.apiCall('customers', 'INSERT', 'start', newCustomerPayload);
             const { data: newCustomer, error: insertError } = await supabase
               .from('customers')
-              .insert([company.customerData])
+              .insert([newCustomerPayload])
               .select()
               .single();
 
-            if (insertError) throw insertError;
+            if (insertError) {
+              debugLogger.error('Insert customer failed', insertError, { payload: newCustomerPayload });
+              throw insertError;
+            }
             customerData = newCustomer;
           }
 
@@ -175,12 +198,19 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
                   .maybeSingle();
 
                 if (!existingContact) {
+                  const contactPayload = {
+                    ...contactWithCustomerId,
+                    first_name: contactWithCustomerId.first_name || 'Contact',
+                    last_name: contactWithCustomerId.last_name || 'Contact',
+                  };
+                  debugLogger.apiCall('customer_contacts', 'INSERT', 'start', { email: contactPayload.email, customer_id: contactPayload.customer_id });
                   const { error: contactError } = await supabase
                     .from('customer_contacts')
-                    .insert([contactWithCustomerId]);
+                    .insert([contactPayload]);
 
-                  if (contactError && !contactError.message.includes('duplicate key')) {
-                    console.warn('Failed to insert contact:', contactError);
+                  if (contactError) {
+                    debugLogger.error('Failed to insert contact', contactError, { payload: contactPayload });
+                    importErrors.push(`${customerName} contact (${contactPayload.email || contactPayload.first_name}): ${contactError.message}`);
                   }
                 }
               } else {
@@ -231,21 +261,32 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
                 .from('customers')
                 .update(individual.customerData)
                 .eq('id', existingCustomer.id);
+              debugLogger.apiCall('customers', 'UPDATE', 'success', { id: existingCustomer.id });
 
               if (updateError) throw updateError;
             } else {
               // Insert new customer
-              const { error: insertError } = await supabase
-                .from('customers')
-                .insert([individual.customerData]);
+                const newCustomerPayload = {
+                  ...individual.customerData,
+                  auth_user_id: (individual.customerData as any).auth_user_id ?? user?.id ?? null
+                };
+                debugLogger.apiCall('customers', 'INSERT', 'start', newCustomerPayload);
+                const { error: insertError } = await supabase
+                  .from('customers')
+                  .insert([newCustomerPayload]);
 
               if (insertError) throw insertError;
             }
           } else {
             // No email provided, try direct insert
+            const newCustomerPayload = {
+              ...individual.customerData,
+              auth_user_id: (individual.customerData as any).auth_user_id ?? user?.id ?? null
+            };
+            debugLogger.apiCall('customers', 'INSERT', 'start', newCustomerPayload);
             const { error: insertError } = await supabase
               .from('customers')
-              .insert([individual.customerData]);
+              .insert([newCustomerPayload]);
 
             if (insertError) throw insertError;
           }
