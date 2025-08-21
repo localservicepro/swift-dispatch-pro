@@ -28,13 +28,16 @@ export function useCustomerDialogData(customer: Customer | null) {
 
   useEffect(() => {
     if (customer) {
+      const deliveryAddress = (customer as any).delivery_address || '';
+      const fullAddress = customer.full_address || '';
+      
       setFormData({
         first_name: customer.first_name || '',
         last_name: customer.last_name || '',
         email: customer.email || '',
         phone: customer.phone || '',
-        full_address: customer.full_address || '',
-        delivery_address: (customer as any).delivery_address || '', // Handle potential missing field
+        full_address: fullAddress,
+        delivery_address: deliveryAddress || fullAddress, // Auto-populate if empty
         suburb_id: customer.suburb_id || '',
         customer_type: (customer.customer_type as 'residential' | 'trade' | 'account') || 'residential',
         entity_type: (customer.entity_type as 'individual' | 'business') || 'individual',
@@ -118,7 +121,18 @@ export function useCustomerDialogData(customer: Customer | null) {
   };
 
   const handleAddressFormChange = (updates: Partial<{ full_address: string; delivery_address: string; suburb_id: string }>) => {
-    setFormData(prev => ({ ...prev, ...updates }));
+    setFormData(prev => {
+      const newData = { ...prev, ...updates };
+      
+      // Auto-populate delivery address when office address changes (for new customers or when they match)
+      if (updates.full_address !== undefined) {
+        if (!prev.delivery_address || prev.delivery_address === prev.full_address) {
+          newData.delivery_address = updates.full_address;
+        }
+      }
+      
+      return newData;
+    });
     
     if (updates.suburb_id) {
       loadDeliveryRate(updates.suburb_id);

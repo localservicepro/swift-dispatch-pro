@@ -24,6 +24,18 @@ export function CustomerAddressForm({
 }: CustomerAddressFormProps) {
   const { handleAutoSuburbSelection } = useSuburbManagement();
 
+  // Handler for office address change with auto-population logic
+  const handleOfficeAddressChange = (value: string) => {
+    const updates: any = { full_address: value };
+    
+    // Auto-populate delivery address if it's empty or same as previous office address
+    if (!formData.delivery_address || formData.delivery_address === formData.full_address) {
+      updates.delivery_address = value;
+    }
+    
+    onFormDataChange(updates);
+  };
+
   // Specific handler for delivery address that only updates delivery_address
   const handleDeliveryAddressSelect = (addressData: any) => {
     console.log('Delivery address selected:', addressData);
@@ -35,6 +47,9 @@ export function CustomerAddressForm({
     }
   };
 
+  // Check if delivery address matches office address
+  const isDeliveryAddressSynced = formData.delivery_address === formData.full_address;
+
   return (
     <>
       <div>
@@ -42,7 +57,7 @@ export function CustomerAddressForm({
         <Input
           id="full_address"
           value={formData.full_address}
-          onChange={(e) => onFormDataChange({ full_address: e.target.value })}
+          onChange={(e) => handleOfficeAddressChange(e.target.value)}
           placeholder="Enter office or business address..."
           required
         />
@@ -52,19 +67,37 @@ export function CustomerAddressForm({
       </div>
 
       <div>
+        <div className="flex items-center justify-between mb-2">
+          <Label>Delivery Address</Label>
+          {!isDeliveryAddressSynced && formData.full_address && (
+            <button
+              type="button"
+              onClick={() => onFormDataChange({ delivery_address: formData.full_address })}
+              className="text-xs text-primary hover:text-primary/80 underline"
+            >
+              Use office address
+            </button>
+          )}
+        </div>
         <EnhancedAddressInput
-          label="Delivery Address"
           value={formData.delivery_address}
           onChange={(value) => onFormDataChange({ delivery_address: value })}
           onAddressSelect={handleDeliveryAddressSelect}
-          placeholder="Start typing delivery address..."
+          placeholder={formData.full_address ? "Same as office address" : "Start typing delivery address..."}
           required
           showMapButton={true}
           showValidation={true}
         />
-        <p className="text-xs text-gray-500 mt-1">
-          This is the primary delivery address for your orders.
-        </p>
+        {isDeliveryAddressSynced && formData.full_address && (
+          <p className="text-xs text-primary mt-1 flex items-center gap-1">
+            📍 Using office address for delivery
+          </p>
+        )}
+        {!isDeliveryAddressSynced && (
+          <p className="text-xs text-gray-500 mt-1">
+            This is the primary delivery address for your orders.
+          </p>
+        )}
       </div>
 
       <SuburbSelector
