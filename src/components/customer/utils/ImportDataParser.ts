@@ -20,17 +20,69 @@ export class ImportDataParser {
           const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
           console.log('CSV Headers:', headers);
           
-          // Parse data rows
+          // Detect "wide" format contacts (contact1_first_name, contact2_email, etc.)
+          const extractContactIndices = (hdrs: string[]): number[] => {
+            const nums = new Set<number>();
+            const norm = (s: string) => s.toLowerCase().trim().replace(/['"]/g, '').replace(/\s+/g, '_');
+            hdrs.forEach(h => {
+              const n = norm(h);
+              const m = n.match(/^contact[_]?(\d+)_/);
+              if (m && m[1]) nums.add(parseInt(m[1], 10));
+            });
+            // Include base contact fields if present (first_name or contact_first_name without number)
+            const hasBase =
+              hdrs.some(h => this.matchesHeader(h, ['first_name','firstname','first name','fname','contact_first_name'])) ||
+              hdrs.some(h => this.matchesHeader(h, ['last_name','lastname','last name','lname','surname','contact_last_name'])) ||
+              hdrs.some(h => this.matchesHeader(h, ['email','email_address','contact_email'])) ||
+              hdrs.some(h => this.matchesHeader(h, ['phone','phone_number','mobile','contact_phone','telephone']));
+            return Array.from(nums).sort((a,b)=>a-b).concat(hasBase ? [0] : []);
+          };
+
+          const remapHeadersForContact = (hdrs: string[], idx: number): string[] => {
+            if (idx === 0) return hdrs;
+            const norm = (s: string) => s.toLowerCase().trim().replace(/['"]/g, '').replace(/\s+/g, '_');
+            const target = (field: string) => {
+              if (['first_name','firstname','first','first-name','first name','contact_first_name','contact-first-name'].includes(field)) return 'first_name';
+              if (['last_name','lastname','last','last-name','last name','surname','contact_last_name','contact-last-name'].includes(field)) return 'last_name';
+              if (['email','email_address','contact_email'].includes(field)) return 'email';
+              if (['phone','phone_number','mobile','contact_phone','telephone'].includes(field)) return 'phone';
+              if (['contact_role','position','title','job_title','role'].includes(field)) return 'contact_role';
+              return '';
+            };
+            return hdrs.map(h => {
+              const n = norm(h);
+              const m = n.match(new RegExp(`^contact[_]?${idx}_(.+)$`));
+              if (m && m[1]) {
+                const mapped = target(m[1]);
+                if (mapped) return mapped;
+              }
+              return h;
+            });
+          };
+
+          // Parse data rows (supports both long and wide formats)
           const data: ImportData[] = [];
+          const contactIndices = extractContactIndices(headers);
 
           for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',').map(v => v.trim().replace(/['"]/g, ''));
             
             if (values.length === 0 || values.every(v => !v)) continue;
 
-            const row = this.mapRowToImportData(headers, values);
-            if (row) {
-              data.push(row);
+            if (contactIndices.length > 0) {
+              // For each detected contact index, create a normalized row
+              for (const idx of contactIndices) {
+                const remapped = remapHeadersForContact(headers, idx);
+                const row = this.mapRowToImportData(remapped, values);
+                if (row) {
+                  data.push(row);
+                }
+              }
+            } else {
+              const row = this.mapRowToImportData(headers, values);
+              if (row) {
+                data.push(row);
+              }
             }
           }
 
@@ -133,7 +185,8 @@ export class ImportDataParser {
       row.full_address = row.delivery_address;
     }
 
-    return row.full_address ? row : null;
+    const hasAnyData = !!(row.full_address || row.company_name || row.business_name || row.first_name || row.last_name || row.email || row.phone);
+    return hasAnyData ? row : null;
   }
 
   private static matchesHeader(header: string, patterns: string[]): boolean {

@@ -97,6 +97,12 @@ export class ImportDataValidator {
     
     // Validate primary company data
     const primaryValidation = this.validateRow(primaryRow, suburbs, primaryIndex + 2);
+
+    // Determine the best available company address from any row
+    const chosenAddress = rows.find(r => r.full_address)?.full_address || primaryRow.full_address || null;
+    if (primaryValidation.customerData && !primaryValidation.customerData.full_address && chosenAddress) {
+      primaryValidation.customerData.full_address = chosenAddress;
+    }
     
     if (!primaryValidation.customerData) {
       return {
@@ -119,8 +125,8 @@ export class ImportDataValidator {
         return;
       }
 
-      // Check for address consistency
-      if (row.full_address && row.full_address !== primaryRow.full_address) {
+      // Check for address consistency (use chosenAddress if available)
+      if (row.full_address && chosenAddress && row.full_address !== chosenAddress) {
         warnings.push(`Row ${contactIndex + 2}: Different address for same company (will use company address)`);
       }
 
