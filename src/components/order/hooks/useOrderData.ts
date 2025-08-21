@@ -45,6 +45,10 @@ interface Order {
   customer_type?: string;
   delivery_method?: string;
   delivered_at?: string;
+  contact_id?: string;
+  contact_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
 }
 
 export function useOrderData() {
@@ -87,6 +91,10 @@ export function useOrderData() {
           delivery_suburb_id,
           delivery_method,
           deleted_at,
+          contact_id,
+          contact_name,
+          contact_email,
+          contact_phone,
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
