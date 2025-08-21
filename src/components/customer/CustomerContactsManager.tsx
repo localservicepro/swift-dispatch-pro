@@ -198,7 +198,28 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
       loadContacts();
     }
   };
-
+  
+  const handleSetPrimaryContact = async (contactId: string) => {
+    if (!confirm("Set this contact as the primary contact for this account?")) return;
+    const { error } = await supabase.rpc('set_primary_contact', {
+      p_customer_id: customerId,
+      p_contact_id: contactId,
+    });
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to set primary contact",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({
+      title: "Primary contact updated",
+      description: "This contact is now the primary for the account.",
+    });
+    await loadContacts();
+  };
+  
   if (customerType !== 'account') {
     return null;
   }
@@ -250,6 +271,13 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
                   </div>
                   {!contact.is_primary_contact && (
                     <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleSetPrimaryContact(contact.id)}
+                        title="Set as Primary"
+                      >
+                        <Star className="w-4 h-4" />
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"

@@ -2188,6 +2188,10 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
+      set_primary_contact: {
+        Args: { p_contact_id: string; p_customer_id: string }
+        Returns: undefined
+      }
       soft_delete_order: {
         Args: { p_order_id: string; p_reason?: string }
         Returns: undefined
