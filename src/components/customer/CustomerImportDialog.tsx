@@ -180,6 +180,13 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
             customerData = newCustomer;
           }
 
+          // Track primary contact details for duplicate detection
+          const primaryContactData = {
+            email: company.customerData.email?.trim().toLowerCase(),
+            first_name: company.customerData.first_name?.trim(),
+            last_name: company.customerData.last_name?.trim()
+          };
+
           // Always insert primary contact first
           const primaryContactPayload = {
             customer_id: customerData.id,
@@ -209,21 +216,48 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
                 customer_id: customerData.id
               };
 
-              // Check for duplicate based on email AND name combination
+              // Enhanced duplicate detection
               let skipContact = false;
-              if (contact.email) {
-                const { data: existingContact } = await supabase
-                  .from('customer_contacts')
-                  .select('id, first_name, last_name')
-                  .eq('customer_id', customerData.id)
-                  .eq('email', contact.email)
-                  .maybeSingle();
+              const normalizedContactEmail = contact.email?.trim().toLowerCase();
+              const normalizedContactFirstName = contact.first_name?.trim();
+              const normalizedContactLastName = contact.last_name?.trim();
 
-                // Only skip if email AND name match
-                if (existingContact && 
-                    existingContact.first_name === contact.first_name && 
-                    existingContact.last_name === contact.last_name) {
-                  skipContact = true;
+              // Check if this matches the primary contact we just created
+              if (primaryContactData.email && normalizedContactEmail === primaryContactData.email &&
+                  normalizedContactFirstName === primaryContactData.first_name &&
+                  normalizedContactLastName === primaryContactData.last_name) {
+                skipContact = true;
+                debugLogger.log('Skipping contact - matches primary contact', { 
+                  customer_id: customerData.id,
+                  name: `${normalizedContactFirstName} ${normalizedContactLastName}`,
+                  email: normalizedContactEmail
+                });
+              }
+
+              // Check for existing contacts in database
+              if (!skipContact && contact.email) {
+                const { data: existingContacts } = await supabase
+                  .from('customer_contacts')
+                  .select('id, first_name, last_name, email')
+                  .eq('customer_id', customerData.id)
+                  .eq('email', contact.email);
+
+                // Check if any existing contact matches this one
+                if (existingContacts && existingContacts.length > 0) {
+                  const matchingContact = existingContacts.find(existing => 
+                    existing.first_name?.trim() === normalizedContactFirstName && 
+                    existing.last_name?.trim() === normalizedContactLastName
+                  );
+                  
+                  if (matchingContact) {
+                    skipContact = true;
+                    debugLogger.log('Skipping contact - already exists in database', { 
+                      customer_id: customerData.id,
+                      name: `${normalizedContactFirstName} ${normalizedContactLastName}`,
+                      email: normalizedContactEmail,
+                      existing_id: matchingContact.id
+                    });
+                  }
                 }
               }
 
@@ -252,12 +286,6 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
                     email: contactPayload.email
                   });
                 }
-              } else {
-                debugLogger.log('Skipping duplicate contact', { 
-                  customer_id: customerData.id,
-                  name: `${contact.first_name} ${contact.last_name}`,
-                  email: contact.email
-                });
               }
             }
           }
