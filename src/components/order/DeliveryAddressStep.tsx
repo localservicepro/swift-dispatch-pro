@@ -86,34 +86,47 @@ export function DeliveryAddressStep({
 
         {/* Address status and quick actions */}
         {selectedCustomer && (
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            {isUsingCustomerAddress ? (
-              <div className="flex items-center gap-2">
-                <span>📍 Using registered customer address</span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onClearAddress}
-                  className="h-7 px-2 text-xs"
-                >
-                  <X className="w-3 h-3 mr-1" />
-                  Use different address
-                </Button>
+          <div className="flex flex-col gap-2">
+            {!selectedCustomer.full_address ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                <div className="flex items-center gap-2 text-amber-700 text-sm">
+                  <span>⚠️ Customer address is incomplete</span>
+                </div>
+                <p className="text-xs text-amber-600 mt-1">
+                  This customer doesn't have a registered address. You'll need to enter the delivery address below.
+                </p>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <span>📝 Using custom delivery address</span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onResetToCustomerAddress}
-                  className="h-7 px-2 text-xs"
-                >
-                  <RotateCcw className="w-3 h-3 mr-1" />
-                  Reset to customer address
-                </Button>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                {isUsingCustomerAddress ? (
+                  <div className="flex items-center gap-2">
+                    <span>📍 Using registered customer address</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onClearAddress}
+                      className="h-7 px-2 text-xs"
+                    >
+                      <X className="w-3 h-3 mr-1" />
+                      Use different address
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span>📝 Using custom delivery address</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onResetToCustomerAddress}
+                      className="h-7 px-2 text-xs"
+                    >
+                      <RotateCcw className="w-3 h-3 mr-1" />
+                      Reset to customer address
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>

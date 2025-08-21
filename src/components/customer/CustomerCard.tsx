@@ -94,7 +94,11 @@ export function CustomerCard({
             {customer.entity_type === 'business' && customer.business_name && <p>Trading as: {customer.business_name}</p>}
             {customer.phone && <p>Phone: {customer.phone}</p>}
             {customer.contact_role && <p>Role: {customer.contact_role}</p>}
-            <p>Address: {customer.full_address}</p>
+            <p>Address: {customer.full_address ? customer.full_address : (
+              <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded text-xs ml-1">
+                Address incomplete
+              </span>
+            )}</p>
             {customer.suburbs && <div className="flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
                 <span>
