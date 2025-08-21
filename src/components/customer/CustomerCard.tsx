@@ -90,7 +90,7 @@ export function CustomerCard({
               </Badge>}
           </div>
           <div className="text-sm text-slate-600 space-y-1">
-            <p>{getCustomerSubtitle(customer)}</p>
+            
             {customer.entity_type === 'business' && customer.business_name && <p>Trading as: {customer.business_name}</p>}
             {customer.phone && <p>Phone: {customer.phone}</p>}
             {customer.contact_role && <p>Role: {customer.contact_role}</p>}
