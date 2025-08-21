@@ -180,6 +180,27 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
             customerData = newCustomer;
           }
 
+          // Always insert primary contact first
+          const primaryContactPayload = {
+            customer_id: customerData.id,
+            first_name: company.customerData.first_name || 'Primary',
+            last_name: company.customerData.last_name || 'Contact',
+            email: company.customerData.email,
+            phone: company.customerData.phone,
+            contact_role: company.customerData.contact_role || 'Primary Contact',
+            is_primary_contact: true
+          };
+          
+          debugLogger.apiCall('customer_contacts', 'INSERT', 'start', { email: primaryContactPayload.email, customer_id: primaryContactPayload.customer_id, role: 'primary' });
+          const { error: primaryContactError } = await supabase
+            .from('customer_contacts')
+            .insert([primaryContactPayload]);
+
+          if (primaryContactError) {
+            debugLogger.error('Failed to insert primary contact', primaryContactError, { payload: primaryContactPayload });
+            importErrors.push(`${customerName} primary contact: ${primaryContactError.message}`);
+          }
+
           // Insert additional contacts if any
           if (company.additionalContacts.length > 0) {
             for (const contact of company.additionalContacts) {
@@ -188,40 +209,55 @@ export function CustomerImportDialog({ isOpen, onClose, onSuccess }: ImportDialo
                 customer_id: customerData.id
               };
 
-              // Check if contact already exists
+              // Check for duplicate based on email AND name combination
+              let skipContact = false;
               if (contact.email) {
                 const { data: existingContact } = await supabase
                   .from('customer_contacts')
-                  .select('id')
+                  .select('id, first_name, last_name')
                   .eq('customer_id', customerData.id)
                   .eq('email', contact.email)
                   .maybeSingle();
 
-                if (!existingContact) {
-                  const contactPayload = {
-                    ...contactWithCustomerId,
-                    first_name: contactWithCustomerId.first_name || 'Contact',
-                    last_name: contactWithCustomerId.last_name || 'Contact',
-                  };
-                  debugLogger.apiCall('customer_contacts', 'INSERT', 'start', { email: contactPayload.email, customer_id: contactPayload.customer_id });
-                  const { error: contactError } = await supabase
-                    .from('customer_contacts')
-                    .insert([contactPayload]);
-
-                  if (contactError) {
-                    debugLogger.error('Failed to insert contact', contactError, { payload: contactPayload });
-                    importErrors.push(`${customerName} contact (${contactPayload.email || contactPayload.first_name}): ${contactError.message}`);
-                  }
+                // Only skip if email AND name match
+                if (existingContact && 
+                    existingContact.first_name === contact.first_name && 
+                    existingContact.last_name === contact.last_name) {
+                  skipContact = true;
                 }
-              } else {
-                // Insert contact without email check
+              }
+
+              if (!skipContact) {
+                const contactPayload = {
+                  ...contactWithCustomerId,
+                  first_name: contactWithCustomerId.first_name || 'Contact',
+                  last_name: contactWithCustomerId.last_name || 'Contact',
+                };
+                debugLogger.apiCall('customer_contacts', 'INSERT', 'start', { 
+                  email: contactPayload.email, 
+                  customer_id: contactPayload.customer_id,
+                  name: `${contactPayload.first_name} ${contactPayload.last_name}`
+                });
                 const { error: contactError } = await supabase
                   .from('customer_contacts')
-                  .insert([contactWithCustomerId]);
+                  .insert([contactPayload]);
 
-                if (contactError && !contactError.message.includes('duplicate key')) {
-                  console.warn('Failed to insert contact:', contactError);
+                if (contactError) {
+                  debugLogger.error('Failed to insert contact', contactError, { payload: contactPayload });
+                  importErrors.push(`${customerName} contact (${contactPayload.email || contactPayload.first_name}): ${contactError.message}`);
+                } else {
+                  debugLogger.log('Contact inserted successfully', { 
+                    customer_id: contactPayload.customer_id,
+                    name: `${contactPayload.first_name} ${contactPayload.last_name}`,
+                    email: contactPayload.email
+                  });
                 }
+              } else {
+                debugLogger.log('Skipping duplicate contact', { 
+                  customer_id: customerData.id,
+                  name: `${contact.first_name} ${contact.last_name}`,
+                  email: contact.email
+                });
               }
             }
           }
