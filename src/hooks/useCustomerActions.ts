@@ -58,6 +58,7 @@ export function useCustomerActions() {
 
   const handleDialogSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ["customers"] });
+    queryClient.invalidateQueries({ queryKey: ["customer_contacts"] });
     setIsDialogOpen(false);
   };
 

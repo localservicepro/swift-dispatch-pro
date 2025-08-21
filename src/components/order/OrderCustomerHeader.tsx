@@ -29,10 +29,11 @@ export function OrderCustomerHeader({ customer, contact, onChangeCustomer }: Ord
         phone: contact.phone
       };
     }
+    // No fallback to customer details - only show contact if explicitly provided
     return {
       name: null,
-      email: customer.email,
-      phone: customer.phone
+      email: null,
+      phone: null
     };
   };
 
@@ -63,22 +64,28 @@ export function OrderCustomerHeader({ customer, contact, onChangeCustomer }: Ord
             
             {/* Contact Information */}
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-              {contactInfo.name && contactInfo.name !== getDisplayName() && (
-                <div className="flex items-center space-x-1">
-                  <span className="font-medium">Contact:</span>
-                  <span>{contactInfo.name}</span>
-                </div>
-              )}
-              {contactInfo.email && (
-                <div className="flex items-center space-x-1">
-                  <Mail className="h-4 w-4" />
-                  <span>{contactInfo.email}</span>
-                </div>
-              )}
-              {contactInfo.phone && (
-                <div className="flex items-center space-x-1">
-                  <Phone className="h-4 w-4" />
-                  <span>{contactInfo.phone}</span>
+              {contactInfo.name ? (
+                <>
+                  <div className="flex items-center space-x-1">
+                    <span className="font-medium">Contact:</span>
+                    <span>{contactInfo.name}</span>
+                  </div>
+                  {contactInfo.email && (
+                    <div className="flex items-center space-x-1">
+                      <Mail className="h-4 w-4" />
+                      <span>{contactInfo.email}</span>
+                    </div>
+                  )}
+                  {contactInfo.phone && (
+                    <div className="flex items-center space-x-1">
+                      <Phone className="h-4 w-4" />
+                      <span>{contactInfo.phone}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-xs text-gray-500">
+                  No contact on file
                 </div>
               )}
             </div>
