@@ -330,13 +330,7 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
                 )}
                 <div className="flex items-center gap-2 md:col-span-2">
                   <MapPin className="w-4 h-4 text-gray-500" />
-                  {selectedCustomer.full_address ? (
-                    <span>{selectedCustomer.full_address}</span>
-                  ) : (
-                    <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded text-xs">
-                      ⚠️ Address incomplete - will need to be entered during order
-                    </span>
-                  )}
+                  {selectedCustomer.full_address}
                 </div>
               </div>
             </div>
@@ -409,17 +403,9 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
                         {customer.customer_type.toUpperCase()}
                       </Badge>
                     </div>
-                     <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600">
                       <div>{getCustomerSubtitle(customer)}</div>
-                      <div className="flex items-center gap-1">
-                        {customer.full_address ? (
-                          <span>{customer.full_address}</span>
-                        ) : (
-                          <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded text-xs">
-                            ⚠️ Address incomplete - will need to be entered during order
-                          </span>
-                        )}
-                      </div>
+                      <div>{customer.full_address}</div>
                     </div>
                   </div>
                 ))}
@@ -550,9 +536,6 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
                       placeholder="Start typing the address..."
                       required
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      This address will be used as the default delivery address for orders
-                    </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
