@@ -87,6 +87,7 @@ export function useOrderFormState() {
       setOrderType("single"); // Auto-set to single for pickup orders
       setManualDeliveryFee(0); // Clear delivery fee for pickup
       setSelectedSuburbId(""); // Clear suburb for pickup
+      setSameAsBilling(true); // Force same as billing for pickup
     }
   };
 

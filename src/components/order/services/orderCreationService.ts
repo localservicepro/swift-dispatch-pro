@@ -82,15 +82,26 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       }
     }
 
+    const pickupAddress = import.meta.env.VITE_PICKUP_ADDRESS || 'Pickup from yard';
+    const isPickup = params.deliveryMethod === 'pickup';
+    const customerAddress = isPickup
+      ? pickupAddress
+      : (params.sameAsBilling ? params.customer.full_address : params.deliveryAddress);
+    const deliveryAddress = isPickup
+      ? pickupAddress
+      : (params.sameAsBilling ? params.customer.full_address : params.deliveryAddress);
+    const sameAsBilling = isPickup ? true : params.sameAsBilling;
+    const deliverySuburbId = isPickup ? null : (params.suburbId || null);
+
     const orderData = {
       order_number: orderNumber,
       customer_id: params.customer.id,
       customer_name: `${params.customer.first_name} ${params.customer.last_name}`,
       customer_phone: params.customer.phone,
-      customer_address: params.sameAsBilling ? params.customer.full_address : params.deliveryAddress,
-      delivery_address: params.sameAsBilling ? params.customer.full_address : params.deliveryAddress,
-      same_as_billing: params.sameAsBilling,
-      delivery_suburb_id: params.suburbId || null,
+      customer_address: customerAddress,
+      delivery_address: deliveryAddress,
+      same_as_billing: sameAsBilling,
+      delivery_suburb_id: deliverySuburbId,
       contact_id: params.selectedContact?.id || null,
       contact_name: params.selectedContact?.name || null,
       contact_email: params.selectedContact?.email || null,
@@ -187,14 +198,19 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
     }
 
     // Create master order entry - this is a summary record
+    const pickupAddress = import.meta.env.VITE_PICKUP_ADDRESS || 'Pickup from yard';
+    const isPickup = params.deliveryMethod === 'pickup';
+    const masterCustomerAddress = isPickup ? pickupAddress : params.customer.full_address;
+    const masterDeliveryAddress = isPickup ? pickupAddress : params.customer.full_address;
+    const masterSameAsBilling = true;
     const masterOrderData = {
       order_number: masterOrderNumber,
       customer_id: params.customer.id,
       customer_name: `${params.customer.first_name} ${params.customer.last_name}`,
       customer_phone: params.customer.phone,
-      customer_address: params.customer.full_address,
-      delivery_address: params.customer.full_address,
-      same_as_billing: true,
+      customer_address: masterCustomerAddress,
+      delivery_address: masterDeliveryAddress,
+      same_as_billing: masterSameAsBilling,
       contact_id: params.selectedContact?.id || null,
       contact_name: params.selectedContact?.name || null,
       contact_email: params.selectedContact?.email || null,
@@ -283,14 +299,18 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         }
       }
 
+      const splitCustomerAddress = isPickup ? pickupAddress : split.deliveryAddress;
+      const splitDeliveryAddress = isPickup ? pickupAddress : split.deliveryAddress;
+      const splitSameAsBilling = isPickup ? true : false;
+
       const splitOrderData = {
         order_number: splitOrderNumber,
         customer_id: params.customer.id,
         customer_name: `${params.customer.first_name} ${params.customer.last_name}`,
         customer_phone: params.customer.phone,
-        customer_address: split.deliveryAddress,
-        delivery_address: split.deliveryAddress,
-        same_as_billing: false,
+        customer_address: splitCustomerAddress,
+        delivery_address: splitDeliveryAddress,
+        same_as_billing: splitSameAsBilling,
         contact_id: params.selectedContact?.id || null,
         contact_name: params.selectedContact?.name || null,
         contact_email: params.selectedContact?.email || null,

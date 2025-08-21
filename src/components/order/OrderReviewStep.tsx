@@ -298,11 +298,18 @@ export function OrderReviewStep({
             <Badge variant={deliveryMethod === "delivery" ? "default" : "secondary"}>
               {deliveryMethod === "delivery" ? "Delivery" : "Yard Sale / Pickup"}
             </Badge>
-            {deliveryMethod === "pickup" && (
-              <p className="text-sm text-muted-foreground mt-2">
-                Customer will pick up from our yard
-              </p>  
-            )}
+              {deliveryMethod === "pickup" && (
+                <>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Customer will pick up from our yard
+                  </p>
+                  {import.meta.env.VITE_PICKUP_ADDRESS && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pickup location: {import.meta.env.VITE_PICKUP_ADDRESS}
+                    </p>
+                  )}
+                </>
+              )}
           </div>
         </div>
 
