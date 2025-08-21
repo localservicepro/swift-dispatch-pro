@@ -45,7 +45,20 @@ export function OrderBasicInfoForm({ formData, businessInfo, onInputChange }: Or
             {businessName}
           </div>
           <div className="text-sm text-gray-600">
-            Contact: {formData.customer_name}
+            <span className="font-medium">Contact:</span>{" "}
+            {formData.contact_name ? (
+              <span>
+                {formData.contact_name}
+                {formData.contact_email && (
+                  <span className="text-gray-500 ml-1">({formData.contact_email})</span>
+                )}
+                {formData.contact_phone && (
+                  <span className="text-gray-500 block">{formData.contact_phone}</span>
+                )}
+              </span>
+            ) : (
+              <span className="text-gray-500">No specific contact assigned</span>
+            )}
           </div>
         </div>
       )}
