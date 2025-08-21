@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, User, Star } from 'lucide-react';
 
 interface Contact {
@@ -23,9 +24,10 @@ interface Contact {
 interface CustomerContactsManagerProps {
   customerId: string;
   customerType: "trade" | "account";
+  onContactChange?: () => void;
 }
 
-export function CustomerContactsManager({ customerId, customerType }: CustomerContactsManagerProps) {
+export function CustomerContactsManager({ customerId, customerType, onContactChange }: CustomerContactsManagerProps) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
@@ -44,6 +46,7 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
     contact_role: ''
   });
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (customerType === 'account') {
@@ -104,6 +107,7 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
       });
       setIsAddingContact(false);
       loadContacts();
+      onContactChange?.();
     }
   };
 
@@ -162,6 +166,7 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
         contact_role: ''
       });
       loadContacts();
+      onContactChange?.();
     }
   };
 
@@ -196,6 +201,7 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
         description: "Contact removed successfully",
       });
       loadContacts();
+      onContactChange?.();
     }
   };
   
@@ -217,7 +223,14 @@ export function CustomerContactsManager({ customerId, customerType }: CustomerCo
       title: "Primary contact updated",
       description: "This contact is now the primary for the account.",
     });
+    
+    // Invalidate queries to refresh all customer data across components
+    await queryClient.invalidateQueries({ queryKey: ["customers"] });
+    await queryClient.invalidateQueries({ queryKey: ["customer_contacts"] });
+    
+    // Reload local contacts and notify parent
     await loadContacts();
+    onContactChange?.();
   };
   
   if (customerType !== 'account') {

@@ -39,6 +39,7 @@ interface CustomerDialogTabsProps {
   onAddressFormChange: (updates: Partial<{ full_address: string; delivery_address: string; suburb_id: string }>) => void;
   onPreferencesChange: (updates: Partial<{ customer_type: "residential" | "trade" | "account"; entity_type: "individual" | "business"; is_active: boolean; sms_notifications_enabled: boolean; stop_credit: boolean }>) => void;
   onSuburbChange: (suburbId: string) => void;
+  onContactsChange?: () => void;
 }
 
 export function CustomerDialogTabs({
@@ -52,7 +53,8 @@ export function CustomerDialogTabs({
   onContactChange,
   onAddressFormChange,
   onPreferencesChange,
-  onSuburbChange
+  onSuburbChange,
+  onContactsChange
 }: CustomerDialogTabsProps) {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -130,6 +132,7 @@ export function CustomerDialogTabs({
           <CustomerContactsManager 
             customerId={customer.id}
             customerType={formData.customer_type}
+            onContactChange={onContactsChange}
           />
         </TabsContent>
       )}

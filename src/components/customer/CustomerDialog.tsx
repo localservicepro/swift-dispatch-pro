@@ -5,6 +5,7 @@ import { CustomerDialogTabs } from './CustomerDialogTabs';
 import { CustomerDialogActions } from './CustomerDialogActions';
 import { useCustomerDialogData } from '@/hooks/useCustomerDialogData';
 import { useCustomerDialogActions } from '@/hooks/useCustomerDialogActions';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Database } from '@/integrations/supabase/types';
 
 type Customer = Database['public']['Tables']['customers']['Row'];
@@ -19,6 +20,7 @@ interface CustomerDialogProps {
 
 export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = false }: CustomerDialogProps) {
   const [activeTab, setActiveTab] = useState("company");
+  const queryClient = useQueryClient();
   
   const {
     formData,
@@ -34,6 +36,11 @@ export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = 
     handleSave,
     handleCancel
   } = useCustomerDialogActions(formData, customer, isEdit, onSuccess, onClose);
+
+  const handleContactsChange = () => {
+    // Refresh customer data when contacts change
+    queryClient.invalidateQueries({ queryKey: ["customers"] });
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -54,6 +61,7 @@ export function CustomerDialog({ customer, isOpen, onClose, onSuccess, isEdit = 
           onAddressFormChange={handleAddressFormChange}
           onPreferencesChange={handlePreferencesChange}
           onSuburbChange={handleSuburbChange}
+          onContactsChange={handleContactsChange}
         />
 
         <CustomerDialogActions
