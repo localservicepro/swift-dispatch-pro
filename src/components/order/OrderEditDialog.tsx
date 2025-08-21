@@ -28,6 +28,8 @@ interface Order {
   subtotal?: number;
   truck_type?: TruckType;
   truck_id?: string;
+  customer_type?: string;
+  company_name?: string;
 }
 
 interface OrderEditDialogProps {
@@ -44,6 +46,8 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
           orderNumber={order.order_number}
           purchaseOrder={order.purchase_order}
           customerName={order.customer_name}
+          customerType={order.customer_type}
+          companyName={order.company_name}
         />
         <OrderEditForm 
           order={order}

@@ -7,9 +7,12 @@ interface OrderEditHeaderProps {
   orderNumber: string;
   purchaseOrder?: string;
   customerName: string;
+  customerType?: string;
+  companyName?: string;
 }
 
-export function OrderEditHeader({ orderNumber, purchaseOrder, customerName }: OrderEditHeaderProps) {
+export function OrderEditHeader({ orderNumber, purchaseOrder, customerName, customerType, companyName }: OrderEditHeaderProps) {
+  const displayName = customerType === 'account' && companyName ? companyName : customerName;
   return (
     <div className="space-y-2 pb-4 border-b">
       <div className="flex items-center gap-3">
@@ -22,7 +25,7 @@ export function OrderEditHeader({ orderNumber, purchaseOrder, customerName }: Or
           variant="outline"
         />
       </div>
-      <p className="text-slate-600">Customer: <span className="font-medium">{customerName}</span></p>
+      <p className="text-slate-600">Customer: <span className="font-medium">{displayName}</span></p>
     </div>
   );
 }
