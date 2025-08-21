@@ -62,33 +62,6 @@ export function OrderBasicInfoForm({ formData, businessInfo, onInputChange }: Or
           </div>
         </div>
       )}
-      
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="customer_name" className="text-gray-700 font-medium">
-            {showBusinessInfo ? "Contact Name" : "Customer Name"}
-          </Label>
-          <Input
-            id="customer_name"
-            value={formData.customer_name}
-            onChange={(e) => onInputChange('customer_name', e.target.value)}
-            required
-            className="border-blue-200 focus:border-blue-400 focus:ring-blue-200"
-          />
-        </div>
-        <div>
-          <Label htmlFor="customer_phone" className="text-gray-700 font-medium">
-            <Phone className="w-4 h-4 inline mr-1" />
-            Customer Phone
-          </Label>
-          <Input
-            id="customer_phone"
-            value={formData.customer_phone}
-            onChange={(e) => onInputChange('customer_phone', e.target.value)}
-            className="border-blue-200 focus:border-blue-400 focus:ring-blue-200"
-          />
-        </div>
-      </div>
     </div>
   );
 }
