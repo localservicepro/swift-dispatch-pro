@@ -132,29 +132,28 @@ export function OpportunityCardInfo({ order, onOrderClick }: OpportunityCardInfo
             <span>Contact: {contactInfo}</span>
           </div>
         )}
-        {/* Phone Numbers - Prioritize contact phone */}
-        {(order.contact_phone || order.customer_phone) && (
-          <div className="space-y-1">
-            {order.contact_phone && (
+        {/* Phone Numbers - Simplified logic */}
+        <div className="space-y-1">
+          {order.contact_phone ? (
+            <>
               <div className="flex items-center gap-2 text-xs text-slate-600">
                 <Phone className="w-3 h-3" />
                 <span>Contact: {order.contact_phone}</span>
               </div>
-            )}
-            {order.customer_phone && order.customer_phone !== order.contact_phone && (
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <Phone className="w-3 h-3" />
-                <span>Customer: {order.customer_phone}</span>
-              </div>
-            )}
-            {!order.contact_phone && order.customer_phone && (
-              <div className="flex items-center gap-2 text-xs text-slate-600">
-                <Phone className="w-3 h-3" />
-                <span>{order.customer_phone}</span>
-              </div>
-            )}
-          </div>
-        )}
+              {order.customer_phone && order.customer_phone !== order.contact_phone && (
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <Phone className="w-3 h-3" />
+                  <span>Customer: {order.customer_phone}</span>
+                </div>
+              )}
+            </>
+          ) : order.customer_phone ? (
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <Phone className="w-3 h-3" />
+              <span>{order.customer_phone}</span>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {/* Order Type Badge */}

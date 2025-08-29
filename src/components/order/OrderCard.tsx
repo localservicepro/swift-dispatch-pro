@@ -251,14 +251,17 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           </p>
           <p className="font-bold">{displayName}</p>
           {contactInfo && <p className="text-xs text-slate-400">Contact: {contactInfo}</p>}
-          {/* Phone Numbers - Prioritize contact phone */}
-          {order.contact_phone && <p className="text-xs text-slate-400">Contact: {order.contact_phone}</p>}
-          {order.customer_phone && order.customer_phone !== order.contact_phone && (
-            <p className="text-xs text-slate-400">Customer: {order.customer_phone}</p>
-          )}
-          {!order.contact_phone && order.customer_phone && (
+          {/* Phone Numbers - Simplified logic */}
+          {order.contact_phone ? (
+            <>
+              <p className="text-xs text-slate-400">Contact: {order.contact_phone}</p>
+              {order.customer_phone && order.customer_phone !== order.contact_phone && (
+                <p className="text-xs text-slate-400">Customer: {order.customer_phone}</p>
+              )}
+            </>
+          ) : order.customer_phone ? (
             <p className="text-xs text-slate-400">{order.customer_phone}</p>
-          )}
+          ) : null}
         </div>
         <div>
           <p className="text-slate-500">Products</p>
