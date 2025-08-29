@@ -57,6 +57,8 @@ export function useOpportunityData() {
           is_split_order,
           delivery_suburb_id,
           delivery_method,
+          order_notes,
+          delivery_notes,
           contact_id,
           contact_name,
           contact_email,
