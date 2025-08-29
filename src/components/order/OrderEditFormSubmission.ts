@@ -65,6 +65,7 @@ export function useOrderFormSubmission() {
         products: submissionData.products,
         total_amount: parseFloat(submissionData.total_amount),
         subtotal: submissionData.subtotal,
+        adjustments: parseFloat(submissionData.adjustments) || 0,
         status: submissionData.status as OrderStatus,
         delivery_date: submissionData.delivery_date || null,
         delivery_time: submissionData.delivery_time || null,
