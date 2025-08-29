@@ -26,6 +26,7 @@ interface Order {
   suburb_id?: string;
   delivery_fee?: number;
   subtotal?: number;
+  adjustments?: number;
   truck_type?: TruckType;
   truck_id?: string;
   customer_type?: string;

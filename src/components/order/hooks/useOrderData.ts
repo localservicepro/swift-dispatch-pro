@@ -29,6 +29,7 @@ interface Order {
   delivery_suburb_id?: string;
   delivery_fee?: number;
   subtotal?: number;
+  adjustments?: number;
   order_notes?: string;
   delivery_notes?: string;
   driver_name?: string;
@@ -81,6 +82,7 @@ export function useOrderData() {
           customer_id,
           delivery_fee,
           subtotal,
+          adjustments,
           truck_type,
           truck_id,
           order_notes,
