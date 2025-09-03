@@ -12,6 +12,7 @@ interface CreateSingleOrderParams {
   deliveryMethod: "delivery" | "pickup";
   deliveryDate: string;
   deliveryTime: string;
+  pickupTiming?: "now" | "scheduled";
   specialInstructions: string;
   paymentMethod: string;
   orderNotes: string;
@@ -30,6 +31,7 @@ interface CreateSplitOrderParams {
   cart: CartItem[];
   adjustments: number;
   deliveryMethod: "delivery" | "pickup";
+  pickupTiming?: "now" | "scheduled";
   splits: any[];
   paymentMethod: string;
   specialInstructions: string;
@@ -62,12 +64,17 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
     // Serialize cart items for database storage - the trigger will automatically create products_formatted
     const serializedProducts = serializeCartItemsWithFormatting(params.cart);
 
-    // Determine order status based on delivery method and stock availability
-    let orderStatus: 'back_order' | 'requested' = 'requested';
+    // Determine order status based on delivery method and pickup timing
+    let orderStatus: 'back_order' | 'requested' | 'delivered' = 'requested';
     
     if (params.deliveryMethod === 'pickup') {
-      // Pickup orders always go to back_order (On Hold)
-      orderStatus = 'back_order';
+      if (params.pickupTiming === 'now') {
+        // Immediate pickup orders go straight to delivered
+        orderStatus = 'delivered';
+      } else {
+        // Scheduled pickup orders go to back_order (On Hold)
+        orderStatus = 'back_order';
+      }
     } else {
       // For delivery orders, check stock availability
       const { data: statusResult, error: statusError } = await supabase
@@ -177,12 +184,17 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
     // Serialize cart items for database storage
     const serializedProducts = serializeCartItemsWithFormatting(params.cart);
 
-    // Determine master order status based on delivery method and stock availability
-    let masterOrderStatus: 'back_order' | 'requested' = 'requested';
+    // Determine master order status based on delivery method and pickup timing
+    let masterOrderStatus: 'back_order' | 'requested' | 'delivered' = 'requested';
     
     if (params.deliveryMethod === 'pickup') {
-      // Pickup orders always go to back_order (On Hold)
-      masterOrderStatus = 'back_order';
+      if (params.pickupTiming === 'now') {
+        // Immediate pickup orders go straight to delivered
+        masterOrderStatus = 'delivered';
+      } else {
+        // Scheduled pickup orders go to back_order (On Hold)
+        masterOrderStatus = 'back_order';
+      }
     } else {
       // For delivery orders, check stock availability
       const { data: statusResult, error: statusError } = await supabase
@@ -279,12 +291,17 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         };
       }).filter(Boolean);
 
-      // Determine split order status based on delivery method and stock availability
-      let splitOrderStatus: 'back_order' | 'requested' = 'requested';
+      // Determine split order status based on delivery method and pickup timing
+      let splitOrderStatus: 'back_order' | 'requested' | 'delivered' = 'requested';
       
       if (params.deliveryMethod === 'pickup') {
-        // Pickup orders always go to back_order (On Hold)
-        splitOrderStatus = 'back_order';
+        if (params.pickupTiming === 'now') {
+          // Immediate pickup orders go straight to delivered
+          splitOrderStatus = 'delivered';
+        } else {
+          // Scheduled pickup orders go to back_order (On Hold)
+          splitOrderStatus = 'back_order';
+        }
       } else {
         // For delivery orders, check stock availability of this split's products
         const { data: statusResult, error: statusError } = await supabase

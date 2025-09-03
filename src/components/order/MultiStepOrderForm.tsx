@@ -36,6 +36,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     splits,
     deliveryDate,
     deliveryTime,
+    pickupTiming,
     specialInstructions,
     paymentMethod,
     orderNotes,
@@ -63,6 +64,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setSplits,
     setDeliveryDate,
     setDeliveryTime,
+    setPickupTiming,
     setSpecialInstructions,
     setPaymentMethod,
     setOrderNotes,
@@ -117,6 +119,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           deliveryMethod: deliveryMethod as "delivery" | "pickup",
           deliveryDate,
           deliveryTime,
+          pickupTiming,
           specialInstructions,
           paymentMethod,
           orderNotes,
@@ -134,6 +137,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           cart,
           adjustments,
           deliveryMethod: deliveryMethod as "delivery" | "pickup",
+          pickupTiming,
           splits,
           paymentMethod,
           specialInstructions,
@@ -165,6 +169,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       setSplits([]);
       setDeliveryDate("");
       setDeliveryTime("");
+      setPickupTiming("scheduled");
       setSpecialInstructions("");
       setPaymentMethod("");
       setOrderNotes("");
@@ -230,8 +235,10 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             <PickupSchedulingStep
               pickupDate={deliveryDate}
               pickupTime={deliveryTime}
+              pickupTiming={pickupTiming}
               onPickupDateChange={setDeliveryDate}
               onPickupTimeChange={setDeliveryTime}
+              onPickupTimingChange={setPickupTiming}
               onBack={prevStep}
               onNext={nextStep}
             />

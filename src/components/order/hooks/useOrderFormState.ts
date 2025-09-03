@@ -22,6 +22,7 @@ export function useOrderFormState() {
   // Single order delivery state
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
+  const [pickupTiming, setPickupTiming] = useState<"now" | "scheduled">("scheduled");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   
@@ -88,6 +89,7 @@ export function useOrderFormState() {
       setManualDeliveryFee(0); // Clear delivery fee for pickup
       setSelectedSuburbId(""); // Clear suburb for pickup
       setSameAsBilling(true); // Force same as billing for pickup
+      setPickupTiming("scheduled"); // Reset to scheduled pickup
     }
   };
 
@@ -210,6 +212,7 @@ export function useOrderFormState() {
     splits,
     deliveryDate,
     deliveryTime,
+    pickupTiming,
     specialInstructions,
     paymentMethod,
     orderNotes,
@@ -240,6 +243,7 @@ export function useOrderFormState() {
     setSplits,
     setDeliveryDate,
     setDeliveryTime,
+    setPickupTiming,
     setSpecialInstructions,
     setPaymentMethod,
     setOrderNotes,
