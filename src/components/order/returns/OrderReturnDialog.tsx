@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,7 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ReturnItemSelector } from "./ReturnItemSelector";
 import { ReturnSummary } from "./ReturnSummary";
-import { Package, ArrowLeft, ArrowRight } from "lucide-react";
+import { useOrderReturns } from "@/hooks/useOrderReturns";
+import { Package, ArrowLeft, ArrowRight, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Product {
   id: string;
@@ -49,6 +51,7 @@ export function OrderReturnDialog({
   const [returnNotes, setReturnNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const { returns, isLoading, getReturnableQuantities } = useOrderReturns(order.id);
 
   // Transform order products to the format expected by ReturnItemSelector
   const products: Product[] = order.products.map(product => ({
@@ -57,6 +60,16 @@ export function OrderReturnDialog({
     quantity: product.quantity || 1,
     price: product.price || product.unit_price || 0
   }));
+
+  // Calculate returnable quantities based on existing returns
+  const returnableQuantities = useMemo(() => {
+    return getReturnableQuantities(order.products);
+  }, [returns, order.products, getReturnableQuantities]);
+
+  // Check if any items are available for return
+  const hasReturnableItems = useMemo(() => {
+    return Object.values(returnableQuantities).some(data => data.returnableQty > 0);
+  }, [returnableQuantities]);
 
   const handleNext = () => {
     if (returnItems.length === 0) {
@@ -67,6 +80,22 @@ export function OrderReturnDialog({
       });
       return;
     }
+
+    // Validate return quantities against available quantities
+    const invalidItems = returnItems.filter(item => {
+      const returnableData = returnableQuantities[item.product_id];
+      return !returnableData || item.quantity_returned > returnableData.returnableQty;
+    });
+
+    if (invalidItems.length > 0) {
+      toast({
+        title: "Invalid Return Quantities",
+        description: "Some items exceed the available return quantity. Please adjust the quantities.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setStep('summary');
   };
 
@@ -149,12 +178,26 @@ export function OrderReturnDialog({
         </DialogHeader>
 
         <div className="space-y-6">
-          {step === 'selection' && (
+          {isLoading && (
+            <div className="text-center py-4">Loading return history...</div>
+          )}
+
+          {!isLoading && !hasReturnableItems && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                All items from this order have already been returned. No additional returns can be processed.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {!isLoading && hasReturnableItems && step === 'selection' && (
             <>
               <ReturnItemSelector
                 products={products}
                 returnItems={returnItems}
                 onReturnItemsChange={setReturnItems}
+                returnableQuantities={returnableQuantities}
               />
 
               <div className="space-y-4">
@@ -188,7 +231,7 @@ export function OrderReturnDialog({
             </>
           )}
 
-          {step === 'summary' && (
+          {!isLoading && step === 'summary' && (
             <ReturnSummary
               returnItems={returnItems}
               returnReason={returnReason}
@@ -202,7 +245,7 @@ export function OrderReturnDialog({
             Cancel
           </Button>
           
-          {step === 'selection' && (
+          {!isLoading && hasReturnableItems && step === 'selection' && (
             <Button 
               onClick={handleNext}
               disabled={returnItems.length === 0}

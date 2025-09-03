@@ -75,6 +75,40 @@ export function useOrderReturns(orderId?: string) {
     queryClient.invalidateQueries({ queryKey: ['order-returns'] });
   };
 
+  // Calculate returnable quantities for products
+  const getReturnableQuantities = (orderProducts: any[]) => {
+    const returnableQuantities: Record<string, { originalQty: number; returnedQty: number; returnableQty: number }> = {};
+    
+    // Initialize with original order quantities
+    orderProducts.forEach(product => {
+      returnableQuantities[product.id] = {
+        originalQty: product.quantity || 1,
+        returnedQty: 0,
+        returnableQty: product.quantity || 1
+      };
+    });
+    
+    // Calculate total returned quantities from all returns (pending and processed)
+    returns.forEach(returnRecord => {
+      if (returnRecord.returned_items && Array.isArray(returnRecord.returned_items)) {
+        returnRecord.returned_items.forEach((item: any) => {
+          const productId = item.product_id;
+          if (returnableQuantities[productId]) {
+            returnableQuantities[productId].returnedQty += item.quantity_returned || 0;
+          }
+        });
+      }
+    });
+    
+    // Calculate remaining returnable quantities
+    Object.keys(returnableQuantities).forEach(productId => {
+      const data = returnableQuantities[productId];
+      data.returnableQty = Math.max(0, data.originalQty - data.returnedQty);
+    });
+    
+    return returnableQuantities;
+  };
+
   // Calculate return statistics for an order
   const getReturnStats = (orderId: string) => {
     const orderReturns = returns.filter(r => r.order_id === orderId);
@@ -97,6 +131,7 @@ export function useOrderReturns(orderId?: string) {
     isLoading,
     processReturn,
     invalidateReturns,
-    getReturnStats
+    getReturnStats,
+    getReturnableQuantities
   };
 }
