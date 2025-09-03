@@ -24,7 +24,7 @@ export function OrderCustomerHeader({ customer, contact, onChangeCustomer }: Ord
   const getContactInfo = () => {
     if (contact) {
       return {
-        name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim(),
+        name: contact.name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim(),
         email: contact.email,
         phone: contact.phone
       };
