@@ -34,6 +34,13 @@ interface Customer {
     state: string;
     delivery_rate: string;
   };
+  customer_contacts?: Array<{
+    id: string;
+    phone: string | null;
+    first_name: string;
+    last_name: string;
+    is_active: boolean;
+  }>;
 }
 
 interface SelectedContact {
@@ -114,21 +121,33 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
     
     // Check if the search query looks like a phone number
     if (isPhoneNumber(searchQuery)) {
-      // For phone number searches, fetch all customers with phone numbers and filter client-side
+      // For phone number searches, fetch all customers and their contacts
       const { data, error } = await supabase
         .from('customers')
         .select(`
           *,
-          suburb:suburbs(name, state, delivery_rate)
+          suburb:suburbs(name, state, delivery_rate),
+          customer_contacts(id, phone, first_name, last_name, is_active)
         `)
-        .not('phone', 'is', null)
         .eq('is_active', true);
 
       if (!error && data) {
-        // Filter results using phone number matching
-        const phoneMatches = data.filter(customer => 
-          phoneSearchMatch(customer.phone, searchQuery)
-        );
+        // Filter results using phone number matching on both customer phone and contact phones
+        const phoneMatches = data.filter(customer => {
+          // Check customer's main phone
+          if (customer.phone && phoneSearchMatch(customer.phone, searchQuery)) {
+            return true;
+          }
+          
+          // Check all active contact phones
+          if (customer.customer_contacts) {
+            return customer.customer_contacts.some(contact => 
+              contact.is_active && contact.phone && phoneSearchMatch(contact.phone, searchQuery)
+            );
+          }
+          
+          return false;
+        });
         setCustomers(phoneMatches.slice(0, 10)); // Limit to 10 results
       }
     } else {
