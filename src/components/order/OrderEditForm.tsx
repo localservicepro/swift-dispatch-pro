@@ -4,11 +4,13 @@ import { OrderEditFooter } from "./OrderEditFooter";
 import { OrderEditSections } from "./OrderEditSections";
 import { OrderEditConflictSection } from "./OrderEditConflictSection";
 import { OrderEditFormProps } from "./OrderEditFormTypes";
+import { OrderReturnDialog } from "./returns/OrderReturnDialog";
 import { useOrderEditFormLogic, convertToConflictInfo } from "./OrderEditFormLogic";
 import { useOrderFormSubmission } from "./OrderEditFormSubmission";
 
 export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormProps) {
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showReturnDialog, setShowReturnDialog] = useState(false);
   const { handleOrderSubmission } = useOrderFormSubmission();
   
   const {
@@ -90,6 +92,16 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
         driverConflict={driverConflictInfo}
         truckConflict={truckConflictInfo}
         hasAnyConflict={hasAnyConflict}
+        order={order}
+        onReturnClick={() => setShowReturnDialog(true)}
+      />
+
+      {/* Return Dialog */}
+      <OrderReturnDialog
+        open={showReturnDialog}
+        onOpenChange={setShowReturnDialog}
+        order={order}
+        onReturnCreated={onOrderUpdated}
       />
     </form>
   );

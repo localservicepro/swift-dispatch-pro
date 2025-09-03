@@ -4,11 +4,15 @@ import { PurchaseOrderDisplay } from "./PurchaseOrderDisplay";
 import { NotesIndicator } from "../notes/NotesIndicator";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { PaymentStatusDropdown } from "../opportunity/PaymentStatusDropdown";
-import { MapPin, Truck, Edit3, Trash2, Building, User, Calendar, ShoppingBag } from "lucide-react";
+import { ReturnStatusBadge } from "./returns/ReturnStatusBadge";
+import { OrderReturnDialog } from "./returns/OrderReturnDialog";
+import { MapPin, Truck, Edit3, Trash2, Building, User, Calendar, ShoppingBag, RotateCcw } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
 import { formatDeliveredDate } from "@/utils/dateTimeUtils";
 import { getOrderTypeColors, getOrderTypeLabel, getOrderTypeIcon } from "@/utils/orderTypeColors";
+import { useOrderReturns } from "@/hooks/useOrderReturns";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -68,6 +72,8 @@ interface OrderCardProps {
 }
 
 export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit, onPaymentStatusUpdate }: OrderCardProps) {
+  const [showReturnDialog, setShowReturnDialog] = useState(false);
+  const { getReturnStats, invalidateReturns } = useOrderReturns();
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
       case "delivered":
@@ -148,6 +154,9 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
 
   const { displayName, contactInfo, isCompany } = getDisplayInfo();
   
+  // Get return stats for this order
+  const returnStats = getReturnStats(order.id);
+  
   // Get order type styling
   const orderTypeColors = getOrderTypeColors(order.delivery_method);
   const orderTypeLabel = getOrderTypeLabel(order.delivery_method);
@@ -223,6 +232,11 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           <NotesIndicator 
             orderNotes={order.order_notes} 
             deliveryNotes={order.delivery_notes} 
+          />
+          <ReturnStatusBadge
+            hasReturns={returnStats.hasReturns}
+            returnStatus={returnStats.latestReturnStatus}
+            totalItemsReturned={returnStats.totalItemsReturned}
           />
         </div>
         <div className="flex items-center gap-2">
@@ -363,6 +377,18 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           </Button>
         )}
         
+        {order.status === 'delivered' && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+            onClick={() => setShowReturnDialog(true)}
+          >
+            <RotateCcw className="w-4 h-4 mr-1" />
+            Return Items
+          </Button>
+        )}
+        
         <Button
           size="sm"
           variant="outline"
@@ -382,6 +408,14 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           Delete
         </Button>
       </div>
+
+      {/* Return Dialog */}
+      <OrderReturnDialog
+        open={showReturnDialog}
+        onOpenChange={setShowReturnDialog}
+        order={order}
+        onReturnCreated={invalidateReturns}
+      />
     </div>
   );
 }

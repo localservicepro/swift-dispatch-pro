@@ -1,5 +1,6 @@
 
 import { Button } from "@/components/ui/button";
+import { RotateCcw } from "lucide-react";
 
 interface ConflictInfo {
   hasConflict: boolean;
@@ -12,6 +13,10 @@ interface OrderEditFooterProps {
   driverConflict?: ConflictInfo;
   truckConflict?: ConflictInfo;
   hasAnyConflict: boolean;
+  order?: {
+    status: string;
+  };
+  onReturnClick?: () => void;
 }
 
 export function OrderEditFooter({ 
@@ -19,7 +24,9 @@ export function OrderEditFooter({
   onClose, 
   driverConflict, 
   truckConflict, 
-  hasAnyConflict 
+  hasAnyConflict,
+  order,
+  onReturnClick
 }: OrderEditFooterProps) {
   const getButtonText = () => {
     if (isUpdating) return "Updating...";
@@ -50,17 +57,34 @@ export function OrderEditFooter({
   };
 
   return (
-    <div className="flex gap-2 justify-end">
-      <Button type="button" variant="outline" onClick={onClose}>
-        Cancel
-      </Button>
-      <Button 
-        type="submit" 
-        disabled={isUpdating}
-        className={getButtonStyle()}
-      >
-        {getButtonText()}
-      </Button>
+    <div className="flex gap-2 justify-between">
+      <div>
+        {/* Return Button for delivered orders */}
+        {order?.status === 'delivered' && onReturnClick && (
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={onReturnClick}
+            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+          >
+            <RotateCcw className="w-4 h-4 mr-1" />
+            Return Items
+          </Button>
+        )}
+      </div>
+      
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button 
+          type="submit" 
+          disabled={isUpdating}
+          className={getButtonStyle()}
+        >
+          {getButtonText()}
+        </Button>
+      </div>
     </div>
   );
 }

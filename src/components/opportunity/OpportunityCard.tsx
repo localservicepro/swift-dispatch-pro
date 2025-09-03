@@ -1,10 +1,14 @@
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { NotesEditDialog } from "../notes/NotesEditDialog";
 import { ProofOfDeliveryDialog } from "../order/ProofOfDeliveryDialog";
+import { OrderReturnDialog } from "../order/returns/OrderReturnDialog";
+import { ReturnStatusBadge } from "../order/returns/ReturnStatusBadge";
 import { useDeliveryPhotos } from "@/hooks/useDeliveryPhotos";
+import { useOrderReturns } from "@/hooks/useOrderReturns";
 import { OpportunityCardHeader } from "./OpportunityCardHeader";
 import { OpportunityCardInfo } from "./OpportunityCardInfo";
 import { OpportunityCardActionButton } from "./OpportunityCardActionButton";
@@ -12,6 +16,7 @@ import { OpportunityCardCompleted } from "./OpportunityCardCompleted";
 import { getCustomerTypeColors } from "@/utils/customerTypeColors";
 import { cn } from "@/lib/utils";
 import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
+import { RotateCcw } from "lucide-react";
 
 interface OpportunityCardProps {
   order: any;
@@ -23,12 +28,17 @@ interface OpportunityCardProps {
 export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick }: OpportunityCardProps) {
   const [showNotesEdit, setShowNotesEdit] = useState(false);
   const [showProofDialog, setShowProofDialog] = useState(false);
+  const [showReturnDialog, setShowReturnDialog] = useState(false);
 
   // Fetch delivery photos for delivered orders
   const { data: deliveryPhotos } = useDeliveryPhotos(
     currentStage === 'delivered' ? order.id : null
   );
   const hasDeliveryPhotos = deliveryPhotos && deliveryPhotos.length > 0;
+
+  // Get return stats for this order
+  const { getReturnStats, invalidateReturns } = useOrderReturns();
+  const returnStats = getReturnStats(order.id);
 
   // Get customer type colors
   const colors = getCustomerTypeColors(order.customer_type);
@@ -79,6 +89,17 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
           {/* Order Information */}
           <OpportunityCardInfo order={order} onOrderClick={onOrderClick} />
 
+          {/* Return Status Badge */}
+          {returnStats.hasReturns && (
+            <div className="mb-3">
+              <ReturnStatusBadge
+                hasReturns={returnStats.hasReturns}
+                returnStatus={returnStats.latestReturnStatus}
+                totalItemsReturned={returnStats.totalItemsReturned}
+              />
+            </div>
+          )}
+
           {/* Notes Section */}
           {(order.order_notes?.trim() || order.delivery_notes?.trim()) && (
             <div className="mb-3" data-notes-edit>
@@ -100,11 +121,29 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
 
           {/* Completed Orders Section */}
           {currentStage === 'delivered' && (
-            <OpportunityCardCompleted
-              hasDeliveryPhotos={hasDeliveryPhotos}
-              onViewProof={handleViewProof}
-              deliveredAt={order.delivered_at}
-            />
+            <>
+              <OpportunityCardCompleted
+                hasDeliveryPhotos={hasDeliveryPhotos}
+                onViewProof={handleViewProof}
+                deliveredAt={order.delivered_at}
+              />
+              
+              {/* Return Items Button for delivered orders */}
+              <div className="mt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full text-blue-600 border-blue-200 hover:bg-blue-50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowReturnDialog(true);
+                  }}
+                >
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  Return Items
+                </Button>
+              </div>
+            </>
           )}
 
           {/* Click hint */}
@@ -133,6 +172,17 @@ export function OpportunityCard({ order, currentStage, onOrderMove, onOrderClick
         onClose={() => setShowProofDialog(false)}
         orderId={order.id}
         orderNumber={order.order_number}
+      />
+
+      {/* Return Dialog */}
+      <OrderReturnDialog
+        open={showReturnDialog}
+        onOpenChange={setShowReturnDialog}
+        order={order}
+        onReturnCreated={() => {
+          invalidateReturns();
+          onOrderMove(); // Refresh the opportunity data
+        }}
       />
     </>
   );

@@ -700,6 +700,76 @@ export type Database = {
           },
         ]
       }
+      order_returns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          order_id: string
+          processed_at: string | null
+          processed_by: string | null
+          return_date: string
+          return_notes: string | null
+          return_reason: string | null
+          returned_items: Json
+          status: string
+          total_items_returned: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          order_id: string
+          processed_at?: string | null
+          processed_by?: string | null
+          return_date?: string
+          return_notes?: string | null
+          return_reason?: string | null
+          returned_items?: Json
+          status?: string
+          total_items_returned?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          order_id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          return_date?: string
+          return_notes?: string | null
+          return_reason?: string | null
+          returned_items?: Json
+          status?: string
+          total_items_returned?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_returns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_returns_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_returns_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           adjustments: number | null
@@ -2175,6 +2245,10 @@ export type Database = {
           p_target_type: string
         }
         Returns: string
+      }
+      process_return: {
+        Args: { return_id_param: string }
+        Returns: undefined
       }
       restore_inventory: {
         Args: { order_id_param: string }
