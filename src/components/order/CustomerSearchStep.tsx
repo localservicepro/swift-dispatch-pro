@@ -116,7 +116,7 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
         *,
         suburb:suburbs(name, state, delivery_rate)
       `)
-      .or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%,business_name.ilike.%${searchQuery}%`)
+      .or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%,business_name.ilike.%${searchQuery}%`)
       .eq('is_active', true)
       .limit(10);
 

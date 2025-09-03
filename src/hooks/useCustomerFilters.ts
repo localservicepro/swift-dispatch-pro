@@ -1,6 +1,7 @@
 
 import { useState, useMemo } from "react";
 import { getCustomerDisplayName } from "@/components/order/services/orderFormattingService";
+import { isPhoneNumber, phoneSearchMatch } from "@/utils/phoneUtils";
 
 export function useCustomerFilters(customers: any[] = []) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -12,12 +13,23 @@ export function useCustomerFilters(customers: any[] = []) {
     const filtered = customers?.filter(customer => {
       const searchText = searchTerm.toLowerCase();
       const customerName = getCustomerDisplayName(customer);
-      const matchesSearch = 
-        customerName.toLowerCase().includes(searchText) ||
-        customer.email?.toLowerCase().includes(searchText) ||
-        customer.suburbs?.name?.toLowerCase().includes(searchText) ||
-        customer.company_name?.toLowerCase().includes(searchText) ||
-        customer.business_name?.toLowerCase().includes(searchText);
+      
+      // Check if search term is a phone number
+      const isPhoneSearch = isPhoneNumber(searchTerm);
+      
+      let matchesSearch;
+      if (isPhoneSearch) {
+        // Enhanced phone number search
+        matchesSearch = phoneSearchMatch(customer.phone, searchTerm);
+      } else {
+        // Regular text search
+        matchesSearch = 
+          customerName.toLowerCase().includes(searchText) ||
+          customer.email?.toLowerCase().includes(searchText) ||
+          customer.suburbs?.name?.toLowerCase().includes(searchText) ||
+          customer.company_name?.toLowerCase().includes(searchText) ||
+          customer.business_name?.toLowerCase().includes(searchText);
+      }
       
       const matchesCustomerType = customerTypeFilter === "all" || customer.customer_type === customerTypeFilter;
       const matchesEntityType = entityTypeFilter === "all" || customer.entity_type === entityTypeFilter;

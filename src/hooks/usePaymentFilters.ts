@@ -1,5 +1,6 @@
 
 import { useState, useMemo } from "react";
+import { isPhoneNumber, phoneSearchMatch } from "@/utils/phoneUtils";
 
 interface PaymentOrder {
   id: string;
@@ -43,16 +44,26 @@ export function usePaymentFilters(payments: PaymentOrder[]) {
     // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(payment => 
-        payment.order_number.toLowerCase().includes(searchLower) ||
-        payment.customer_name.toLowerCase().includes(searchLower) ||
-        payment.customer_email?.toLowerCase().includes(searchLower) ||
-        payment.customer_phone?.includes(searchTerm) ||
-        payment.payment_method?.toLowerCase().includes(searchLower) ||
-        payment.purchase_order?.toLowerCase().includes(searchLower) ||
-        (payment.company_name && payment.company_name.toLowerCase().includes(searchLower)) ||
-        (payment.business_name && payment.business_name.toLowerCase().includes(searchLower))
-      );
+      
+      // Check if search term is a phone number
+      const isPhoneSearch = isPhoneNumber(searchTerm);
+      
+      filtered = filtered.filter(payment => {
+        if (isPhoneSearch) {
+          // Enhanced phone number search
+          return phoneSearchMatch(payment.customer_phone, searchTerm);
+        } else {
+          // Regular text search
+          return payment.order_number.toLowerCase().includes(searchLower) ||
+                 payment.customer_name.toLowerCase().includes(searchLower) ||
+                 payment.customer_email?.toLowerCase().includes(searchLower) ||
+                 payment.customer_phone?.includes(searchTerm) ||
+                 payment.payment_method?.toLowerCase().includes(searchLower) ||
+                 payment.purchase_order?.toLowerCase().includes(searchLower) ||
+                 (payment.company_name && payment.company_name.toLowerCase().includes(searchLower)) ||
+                 (payment.business_name && payment.business_name.toLowerCase().includes(searchLower));
+        }
+      });
     }
 
     // Apply status filter

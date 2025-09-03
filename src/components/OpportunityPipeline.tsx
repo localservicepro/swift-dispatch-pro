@@ -19,6 +19,7 @@ import { OrderEditDialog } from "./order/OrderEditDialog";
 import { TruckDriverAssignmentDialog } from "./order/TruckDriverAssignmentDialog";
 import { Database } from "@/integrations/supabase/types";
 import { OpportunityCardColorLegend } from "./opportunity/OpportunityCardColorLegend";
+import { isPhoneNumber, phoneSearchMatch } from "@/utils/phoneUtils";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
 
@@ -103,13 +104,24 @@ export function OpportunityPipeline() {
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(order => 
-        order.order_number.toLowerCase().includes(query) || 
-        order.customer_name.toLowerCase().includes(query) ||
-        (order.purchase_order && order.purchase_order.toLowerCase().includes(query)) ||
-        (order.company_name && order.company_name.toLowerCase().includes(query)) ||
-        (order.business_name && order.business_name.toLowerCase().includes(query))
-      );
+      
+      // Check if search term is a phone number
+      const isPhoneSearch = isPhoneNumber(searchQuery);
+      
+      filtered = filtered.filter(order => {
+        if (isPhoneSearch) {
+          // Enhanced phone number search
+          return phoneSearchMatch(order.customer_phone, searchQuery) ||
+                 phoneSearchMatch(order.contact_phone, searchQuery);
+        } else {
+          // Regular text search
+          return order.order_number.toLowerCase().includes(query) || 
+                 order.customer_name.toLowerCase().includes(query) ||
+                 (order.purchase_order && order.purchase_order.toLowerCase().includes(query)) ||
+                 (order.company_name && order.company_name.toLowerCase().includes(query)) ||
+                 (order.business_name && order.business_name.toLowerCase().includes(query));
+        }
+      });
     }
 
     // Apply date filter
