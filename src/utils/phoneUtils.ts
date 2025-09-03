@@ -40,14 +40,16 @@ export function isPhoneNumber(searchTerm: string): boolean {
   // Remove all non-digit characters and check length
   const digitsOnly = searchTerm.replace(/\D/g, '');
   
-  // Must have at least 6 digits to be considered a phone search
-  if (digitsOnly.length < 6) return false;
+  // Must have at least 3 digits to be considered a phone search
+  if (digitsOnly.length < 3) return false;
   
-  // Check for common Australian phone patterns
-  const hasPhonePattern = /^(\+?61|0)[0-9]/.test(searchTerm.replace(/\s/g, ''));
-  const hasMultipleDigits = digitsOnly.length >= 8;
+  // Check for Australian phone patterns (mobile and landline)
+  const australianMobilePattern = /^(\+?614|04|4)/.test(searchTerm.replace(/\s/g, ''));
+  const australianLandlinePattern = /^(\+?61[2378]|0[2378])/.test(searchTerm.replace(/\s/g, ''));
+  const internationalPattern = /^(\+?61)/.test(searchTerm.replace(/\s/g, ''));
   
-  return hasPhonePattern || hasMultipleDigits;
+  // Consider it a phone number if it matches Australian patterns or has many digits
+  return australianMobilePattern || australianLandlinePattern || internationalPattern || digitsOnly.length >= 6;
 }
 
 /**
