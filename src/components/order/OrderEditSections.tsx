@@ -14,6 +14,7 @@ import { DeliveryScheduler } from "./DeliveryScheduler";
 import { PickupScheduler } from "./PickupScheduler";
 import { ProductEditSection } from "./ProductEditSection";
 import { ContactSelectionSection } from "./ContactSelectionSection";
+import { OrderReturnsSection } from "./returns/OrderReturnsSection";
 import { OrderFormData } from "./hooks/useOrderFormData";
 
 interface OrderEditSectionsProps {
@@ -64,6 +65,15 @@ export function OrderEditSections({
         currentProducts={formData.products}
         onProductsChange={onProductsChange}
         onSubtotalChange={onSubtotalChange}
+      />
+
+      {/* Returns Section */}
+      <OrderReturnsSection 
+        orderId={orderId}
+        onProcessReturn={() => {
+          // Refresh the form when returns are processed
+          window.location.reload();
+        }}
       />
 
       {/* Purchase Order Section */}
@@ -156,6 +166,8 @@ export function OrderEditSections({
         onInputChange={onInputChange}
         calculationBreakdown={calculationBreakdown}
         paymentSettings={paymentSettings}
+        orderId={orderId}
+        customerId={customerId}
       />
 
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">

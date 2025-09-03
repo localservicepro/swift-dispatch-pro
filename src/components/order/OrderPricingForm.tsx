@@ -6,20 +6,39 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, FileText, Calculator } from "lucide-react";
 import { OrderFormData } from "./hooks/useOrderFormData";
+import { useOrderReturns } from "@/hooks/useOrderReturns";
+import { useCustomerCredits } from "@/hooks/useCustomerCredits";
+import { formatCurrency } from "./utils/paymentCalculations";
 
 interface OrderPricingFormProps {
   formData: OrderFormData;
   onInputChange: (field: string, value: string) => void;
   calculationBreakdown?: any;
   paymentSettings?: any;
+  orderId?: string;
+  customerId?: string;
 }
 
 export function OrderPricingForm({ 
   formData, 
   onInputChange, 
   calculationBreakdown,
-  paymentSettings 
+  paymentSettings,
+  orderId,
+  customerId
 }: OrderPricingFormProps) {
+  // Get returns and credits data
+  const { returns } = useOrderReturns(orderId);
+  const { availableCredits, totalAvailableCredit } = useCustomerCredits(customerId);
+
+  // Calculate total return value
+  const totalReturnValue = returns.reduce((sum, returnRecord) => {
+    const returnValue = returnRecord.returned_items.reduce((itemSum: number, item: any) => {
+      return itemSum + (item.unit_price * item.quantity_returned);
+    }, 0);
+    return sum + returnValue;
+  }, 0);
+
   // Helper function to safely format currency values
   const safeToFixed = (value: any, decimals: number = 2): string => {
     const num = Number(value) || 0;
@@ -130,6 +149,20 @@ export function OrderPricingForm({
             <span>Delivery Fee:</span>
             <span>AU${safeToFixed(breakdown.deliveryFee)}</span>
           </div>
+
+          {totalReturnValue > 0 && (
+            <div className="flex justify-between text-red-600">
+              <span>Returns Credit:</span>
+              <span>-AU${safeToFixed(totalReturnValue)}</span>
+            </div>
+          )}
+
+          {totalAvailableCredit > 0 && (
+            <div className="flex justify-between text-green-600">
+              <span>Available Credits:</span>
+              <span>AU${safeToFixed(totalAvailableCredit)}</span>
+            </div>
+          )}
           
           {breakdown.hasSurcharge && breakdown.surchargeAmount > 0 && (
             <div className="flex justify-between text-orange-600">
@@ -146,9 +179,16 @@ export function OrderPricingForm({
           <Separator className="my-2" />
           
           <div className="flex justify-between font-semibold text-lg">
-            <span>Total:</span>
-            <span>AU${safeToFixed(breakdown.totalAmount)}</span>
+            <span>Net Total:</span>
+            <span>AU${safeToFixed(breakdown.totalAmount - totalReturnValue)}</span>
           </div>
+
+          {totalReturnValue > 0 && (
+            <div className="text-xs text-muted-foreground mt-1">
+              Original Total: AU${safeToFixed(breakdown.totalAmount)} 
+              {totalReturnValue > breakdown.totalAmount ? " - Credit Balance Available" : ""}
+            </div>
+          )}
         </div>
 
         {breakdown.hasSurcharge && (

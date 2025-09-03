@@ -117,6 +117,48 @@ export type Database = {
           },
         ]
       }
+      customer_credits: {
+        Row: {
+          amount: number
+          created_at: string
+          created_from_return_id: string | null
+          customer_id: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          source_order_id: string | null
+          status: string
+          updated_at: string
+          used_in_order_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_from_return_id?: string | null
+          customer_id: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          source_order_id?: string | null
+          status?: string
+          updated_at?: string
+          used_in_order_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_from_return_id?: string | null
+          customer_id?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          source_order_id?: string | null
+          status?: string
+          updated_at?: string
+          used_in_order_id?: string | null
+        }
+        Relationships: []
+      }
       customer_payment_methods: {
         Row: {
           card_brand: string
@@ -2123,6 +2165,14 @@ export type Database = {
       }
     }
     Functions: {
+      apply_credit_to_order: {
+        Args: {
+          amount_used_param: number
+          credit_id_param: string
+          order_id_param: string
+        }
+        Returns: undefined
+      }
       bulk_update_suburb_status: {
         Args: { new_status: boolean; suburb_ids: string[] }
         Returns: number
@@ -2144,6 +2194,16 @@ export type Database = {
           product_name: string
           requested_quantity: number
         }[]
+      }
+      create_credit_from_return: {
+        Args: {
+          amount_param: number
+          customer_id_param: string
+          description_param?: string
+          return_id_param: string
+          source_order_id_param: string
+        }
+        Returns: string
       }
       create_driver: {
         Args: { driver_id: string; driver_license: string; driver_name: string }
