@@ -13,6 +13,7 @@ import { GoogleAddressAutocomplete } from "@/components/ui/google-address-autoco
 import { ContactSelector } from "@/components/customer/ContactSelector";
 import { StopCreditWarningDialog } from "@/components/customer/StopCreditWarningDialog";
 import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
+import { isPhoneNumber, phoneSearchMatch } from "@/utils/phoneUtils";
 
 interface Customer {
   id: string;
@@ -110,19 +111,43 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
 
   const searchCustomers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('customers')
-      .select(`
-        *,
-        suburb:suburbs(name, state, delivery_rate)
-      `)
-      .or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%,business_name.ilike.%${searchQuery}%`)
-      .eq('is_active', true)
-      .limit(10);
+    
+    // Check if the search query looks like a phone number
+    if (isPhoneNumber(searchQuery)) {
+      // For phone number searches, fetch all customers with phone numbers and filter client-side
+      const { data, error } = await supabase
+        .from('customers')
+        .select(`
+          *,
+          suburb:suburbs(name, state, delivery_rate)
+        `)
+        .not('phone', 'is', null)
+        .eq('is_active', true);
 
-    if (!error && data) {
-      setCustomers(data);
+      if (!error && data) {
+        // Filter results using phone number matching
+        const phoneMatches = data.filter(customer => 
+          phoneSearchMatch(customer.phone, searchQuery)
+        );
+        setCustomers(phoneMatches.slice(0, 10)); // Limit to 10 results
+      }
+    } else {
+      // For regular text searches, use the existing Supabase query
+      const { data, error } = await supabase
+        .from('customers')
+        .select(`
+          *,
+          suburb:suburbs(name, state, delivery_rate)
+        `)
+        .or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%,business_name.ilike.%${searchQuery}%`)
+        .eq('is_active', true)
+        .limit(10);
+
+      if (!error && data) {
+        setCustomers(data);
+      }
     }
+    
     setLoading(false);
   };
 
@@ -359,7 +384,7 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search customers by name, email, or company..."
+                  placeholder="Search customers by name, email, phone, or company..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
