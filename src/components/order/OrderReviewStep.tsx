@@ -468,10 +468,12 @@ export function OrderReviewStep({
                 <span>AU${orderTotals.surchargeAmount.toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between text-blue-600">
-              <span>{paymentSettings?.gst_label || 'GST'} ({paymentSettings?.gst_rate || 10}%):</span>
-              <span>AU${orderTotals.gstAmount.toFixed(2)}</span>
-            </div>
+            {orderTotals.gstAmount > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>{paymentSettings?.gst_label || 'GST'} Included ({paymentSettings?.gst_rate || 10}%):</span>
+                <span>AU${orderTotals.gstAmount.toFixed(2)}</span>
+              </div>
+            )}
             <Separator />
             <div className="flex justify-between font-semibold text-lg">
               <span>Total:</span>

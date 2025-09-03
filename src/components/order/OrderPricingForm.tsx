@@ -171,10 +171,12 @@ export function OrderPricingForm({
             </div>
           )}
           
-          <div className="flex justify-between text-blue-600">
-            <span>{paymentSettings?.gst_label || 'GST'} ({paymentSettings?.gst_rate || 10}%):</span>
-            <span>AU${safeToFixed(breakdown.gstAmount)}</span>
-          </div>
+          {breakdown.gstAmount > 0 && (
+            <div className="flex justify-between text-gray-600">
+              <span>{paymentSettings?.gst_label || 'GST'} Included ({paymentSettings?.gst_rate || 10}%):</span>
+              <span>AU${safeToFixed(breakdown.gstAmount)}</span>
+            </div>
+          )}
           
           <Separator className="my-2" />
           
