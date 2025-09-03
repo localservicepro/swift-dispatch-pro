@@ -299,13 +299,49 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
       setPendingCustomer(customer);
       setShowStopCreditWarning(true);
     } else {
-      onCustomerSelect(customer);
+      selectCustomerAndLoadContacts(customer);
+    }
+  };
+
+  const selectCustomerAndLoadContacts = async (customer: Customer) => {
+    onCustomerSelect(customer);
+    
+    // Auto-select primary contact if available for customers that could have contacts
+    if (shouldShowContactSelector(customer)) {
+      await loadAndSelectPrimaryContact(customer.id);
+    }
+  };
+
+  const shouldShowContactSelector = (customer: Customer) => {
+    return customer.customer_type === 'account' || 
+           customer.customer_type === 'trade' || 
+           customer.entity_type === 'business';
+  };
+
+  const loadAndSelectPrimaryContact = async (customerId: string) => {
+    const { data: contacts, error } = await supabase
+      .from('customer_contacts')
+      .select('*')
+      .eq('customer_id', customerId)
+      .eq('is_active', true)
+      .order('is_primary_contact', { ascending: false })
+      .order('first_name', { ascending: true });
+
+    if (!error && contacts && contacts.length > 0) {
+      const primaryContact = contacts[0];
+      onContactSelect({
+        id: primaryContact.id,
+        name: `${primaryContact.first_name} ${primaryContact.last_name}`,
+        email: primaryContact.email,
+        phone: primaryContact.phone,
+        role: primaryContact.contact_role
+      });
     }
   };
 
   const handleStopCreditContinue = () => {
     if (pendingCustomer) {
-      onCustomerSelect(pendingCustomer);
+      selectCustomerAndLoadContacts(pendingCustomer);
     }
     setShowStopCreditWarning(false);
     setPendingCustomer(null);
@@ -379,8 +415,8 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
               </div>
             </div>
 
-            {/* Contact Selection for Business Customers */}
-            {selectedCustomer.entity_type === 'business' && (
+            {/* Contact Selection for Account, Trade, and Business Customers */}
+            {shouldShowContactSelector(selectedCustomer) && (
               <ContactSelector
                 customerId={selectedCustomer.id}
                 selectedContact={selectedContact}
