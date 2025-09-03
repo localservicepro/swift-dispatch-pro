@@ -7,6 +7,7 @@ import { CustomerPreferencesForm } from './CustomerPreferencesForm';
 import { CustomerContactsManager } from './CustomerContactsManager';
 import { CustomerOrders } from './CustomerOrders';
 import { CustomerStats } from './CustomerStats';
+import { CustomerCreditsManagement } from './CustomerCreditsManagement';
 import type { Database } from '@/integrations/supabase/types';
 
 type Customer = Database['public']['Tables']['customers']['Row'];
@@ -69,6 +70,7 @@ export function CustomerDialogTabs({
         {isEdit && customer && (
           <>
             <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="credits">Credits</TabsTrigger>
             <TabsTrigger value="stats">Stats</TabsTrigger>
           </>
         )}
@@ -141,6 +143,10 @@ export function CustomerDialogTabs({
         <>
           <TabsContent value="orders">
             <CustomerOrders customer={customer} onBack={() => setActiveTab("company")} />
+          </TabsContent>
+
+          <TabsContent value="credits">
+            <CustomerCreditsManagement customerId={customer.id} />
           </TabsContent>
 
           <TabsContent value="stats">

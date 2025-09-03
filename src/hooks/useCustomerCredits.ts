@@ -82,6 +82,135 @@ export function useCustomerCredits(customerId?: string) {
   // Calculate total available credit amount
   const totalAvailableCredit = availableCredits.reduce((sum, credit) => sum + credit.amount, 0);
 
+  const updateCredit = useMutation({
+    mutationFn: async ({ creditId, amount, description, expires_at, status }: {
+      creditId: string;
+      amount: number;
+      description: string;
+      expires_at: string | null;
+      status: string;
+    }) => {
+      const { error } = await supabase
+        .from('customer_credits')
+        .update({
+          amount,
+          description,
+          expires_at,
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', creditId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Credit Updated",
+        description: "Customer credit has been successfully updated.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['customer-credits'] });
+    },
+    onError: (error) => {
+      console.error('Error updating credit:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update credit. Please try again.",
+        variant: "destructive"
+      });
+    },
+  });
+
+  const createManualCredit = useMutation({
+    mutationFn: async ({ customerId, amount, description, expires_at }: {
+      customerId: string;
+      amount: number;
+      description: string;
+      expires_at: string | null;
+    }) => {
+      const { error } = await supabase
+        .from('customer_credits')
+        .insert({
+          customer_id: customerId,
+          amount,
+          description,
+          expires_at,
+          status: 'available'
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Credit Created",
+        description: "Manual credit has been successfully created.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['customer-credits'] });
+    },
+    onError: (error) => {
+      console.error('Error creating manual credit:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create credit. Please try again.",
+        variant: "destructive"
+      });
+    },
+  });
+
+  const expireCredit = useMutation({
+    mutationFn: async (creditId: string) => {
+      const { error } = await supabase
+        .from('customer_credits')
+        .update({
+          status: 'expired',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', creditId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Credit Expired",
+        description: "Customer credit has been marked as expired.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['customer-credits'] });
+    },
+    onError: (error) => {
+      console.error('Error expiring credit:', error);
+      toast({
+        title: "Error",
+        description: "Failed to expire credit. Please try again.",
+        variant: "destructive"
+      });
+    },
+  });
+
+  const deleteCredit = useMutation({
+    mutationFn: async (creditId: string) => {
+      const { error } = await supabase
+        .from('customer_credits')
+        .delete()
+        .eq('id', creditId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Credit Deleted",
+        description: "Customer credit has been permanently deleted.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['customer-credits'] });
+    },
+    onError: (error) => {
+      console.error('Error deleting credit:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete credit. Please try again.",
+        variant: "destructive"
+      });
+    },
+  });
+
   return {
     credits,
     availableCredits,
@@ -89,5 +218,11 @@ export function useCustomerCredits(customerId?: string) {
     isLoading,
     applyCredit: applyCredit.mutate,
     isApplyingCredit: applyCredit.isPending,
+    updateCredit: updateCredit.mutate,
+    createManualCredit: createManualCredit.mutate,
+    expireCredit: expireCredit.mutate,
+    deleteCredit: deleteCredit.mutate,
+    isUpdating: updateCredit.isPending,
+    isCreating: createManualCredit.isPending,
   };
 }
