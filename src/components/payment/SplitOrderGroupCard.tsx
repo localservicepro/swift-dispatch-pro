@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Loader2, Receipt, Truck, MapPin } from "lucide-react";
 import { SplitOrderGroup, createBatchInvoiceForSplitOrder } from "@/components/order/utils/splitOrderUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 
 interface SplitOrderGroupCardProps {
   group: SplitOrderGroup;
@@ -37,9 +38,9 @@ export function SplitOrderGroupCard({ group, onInvoiceCreated }: SplitOrderGroup
               orderNumber: order.order_number,
               deliveryAddress: order.delivery_address,
               orderItems: Array.isArray(order.products) ? order.products : [order.products],
-              subtotal: order.subtotal || order.total_amount - (order.delivery_fee || 0),
+              subtotal: order.subtotal || calculateDisplayTotal(order) - (order.delivery_fee || 0),
               deliveryFee: order.delivery_fee || 0,
-              totalAmount: order.total_amount,
+              totalAmount: calculateDisplayTotal(order),
               deliveryDate: order.delivery_date,
               deliveryTime: order.delivery_time
             })),
@@ -129,7 +130,7 @@ export function SplitOrderGroupCard({ group, onInvoiceCreated }: SplitOrderGroup
             <div key={order.id} className="bg-white rounded p-3 border text-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-medium">{order.order_number}</span>
-                <span className="text-slate-600">${order.total_amount.toFixed(2)}</span>
+                <span className="text-slate-600">${calculateDisplayTotal(order).toFixed(2)}</span>
               </div>
               <div className="flex items-center gap-2 text-slate-600">
                 <MapPin className="w-3 h-3" />

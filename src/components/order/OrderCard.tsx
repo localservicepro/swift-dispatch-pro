@@ -14,6 +14,7 @@ import { getOrderTypeColors, getOrderTypeLabel, getOrderTypeIcon } from "@/utils
 import { useOrderReturns } from "@/hooks/useOrderReturns";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -241,7 +242,7 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
         </div>
         <div className="flex items-center gap-2">
           <span className="text-lg font-bold text-green-600">
-            ${order.total_amount.toFixed(2)}
+            ${calculateDisplayTotal(order).toFixed(2)}
           </span>
           {(order.order_notes?.trim() || order.delivery_notes?.trim()) && (
             <Button

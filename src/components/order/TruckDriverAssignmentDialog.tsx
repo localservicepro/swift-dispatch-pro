@@ -9,6 +9,7 @@ import { TruckTypeSelector } from "./TruckTypeSelector";
 import { SpecificTruckSelector } from "./SpecificTruckSelector";
 import { DriverSelector } from "./DriverSelector";
 import { Database } from "@/integrations/supabase/types";
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 import { Truck, User, Calendar, Clock, MapPin } from "lucide-react";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -172,7 +173,7 @@ export function TruckDriverAssignmentDialog({
               </div>
               <div className="flex justify-between items-center pt-2 border-t">
                 <span className="font-semibold">Total Amount:</span>
-                <Badge variant="outline">${order.total_amount.toFixed(2)}</Badge>
+                <Badge variant="outline">${calculateDisplayTotal(order).toFixed(2)}</Badge>
               </div>
             </CardContent>
           </Card>

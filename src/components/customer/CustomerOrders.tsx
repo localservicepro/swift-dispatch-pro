@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Package, Calendar, DollarSign } from "lucide-react";
 import { format } from "date-fns";
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 
 interface CustomerOrdersProps {
   customer: any;
@@ -39,7 +40,7 @@ export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
   };
 
   const totalOrders = orders?.length || 0;
-  const totalRevenue = orders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+  const totalRevenue = orders?.reduce((sum, order) => sum + calculateDisplayTotal(order), 0) || 0;
   const recentOrders = orders?.slice(0, 5) || [];
 
   return (
@@ -124,7 +125,7 @@ export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
                       </div>
                       <div className="text-sm text-slate-600 space-y-1">
                         <p>Date: {format(new Date(order.created_at), "MMM dd, yyyy")}</p>
-                        <p>Total: ${order.total_amount?.toFixed(2)}</p>
+                        <p>Total: ${calculateDisplayTotal(order).toFixed(2)}</p>
                         {order.delivery_date && (
                           <p>Delivery: {format(new Date(order.delivery_date), "MMM dd, yyyy")}</p>
                         )}

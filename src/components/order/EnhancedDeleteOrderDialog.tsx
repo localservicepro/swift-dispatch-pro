@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Trash2, Split, Link2 } from "lucide-react";
 import { useSplitOrderGroups, SplitOrderGroupInfo } from "@/hooks/useSplitOrderGroups";
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 
 interface EnhancedDeleteOrderDialogProps {
   order: any;
@@ -71,7 +72,7 @@ export function EnhancedDeleteOrderDialog({
             <div className="p-3 bg-slate-50 rounded-lg">
               <p><strong>Order:</strong> {order.order_number}</p>
               <p><strong>Customer:</strong> {order.customer_name}</p>
-              <p><strong>Amount:</strong> ${order.total_amount.toFixed(2)}</p>
+              <p><strong>Amount:</strong> ${calculateDisplayTotal(order).toFixed(2)}</p>
             </div>
 
             {isPartOfGroup && (

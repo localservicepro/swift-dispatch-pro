@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useDeletedOrdersData } from "./useDeletedOrdersData";
 import { useSplitOrderGroups } from "@/hooks/useSplitOrderGroups";
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -209,7 +210,7 @@ export function DeletedOrdersList() {
             {filteredResults.groups.map((group, groupIndex) => {
               const masterOrder = group.find(o => !(o as any).master_order_id) || group[0];
               const splitOrders = group.filter(o => (o as any).master_order_id);
-              const totalAmount = group.reduce((sum, order) => sum + order.total_amount, 0);
+              const totalAmount = group.reduce((sum, order) => sum + calculateDisplayTotal(order), 0);
 
               return (
                 <Card key={`group-${groupIndex}`} className="border-2 border-blue-200 bg-blue-50">
@@ -259,7 +260,7 @@ export function DeletedOrdersList() {
                                 <Badge variant="secondary" className="text-xs">Master</Badge>
                               )}
                             </div>
-                            <span className="text-slate-600">${order.total_amount.toFixed(2)}</span>
+                            <span className="text-slate-600">${calculateDisplayTotal(order).toFixed(2)}</span>
                           </div>
                         </div>
                       ))}
@@ -286,7 +287,7 @@ export function DeletedOrdersList() {
                               This will restore <strong>{group.length} orders</strong> for <strong>{masterOrder.customer_name}</strong>:
                               <ul className="list-disc list-inside mt-2 space-y-1">
                                 {group.map(order => (
-                                  <li key={order.id}>{order.order_number} - ${order.total_amount.toFixed(2)}</li>
+                                  <li key={order.id}>{order.order_number} - ${calculateDisplayTotal(order).toFixed(2)}</li>
                                 ))}
                               </ul>
                             </AlertDialogDescription>
@@ -358,7 +359,7 @@ export function DeletedOrdersList() {
                         </div>
                         <div className="flex items-center gap-2">
                           <DollarSign className="w-4 h-4 text-green-600" />
-                          <span className="font-medium text-green-600">${order.total_amount.toFixed(2)}</span>
+                          <span className="font-medium text-green-600">${calculateDisplayTotal(order).toFixed(2)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4" />

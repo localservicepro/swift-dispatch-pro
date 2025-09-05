@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Package, DollarSign, Calendar, Clock, ChevronDown, CreditCard } from "lucide-react";
 import { useState } from "react";
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 
 interface OrderDetailsCardProps {
   order: any;
@@ -61,7 +62,7 @@ export function OrderDetailsCard({
         </div>
         <div className="text-right">
           <div className="font-semibold text-green-600">
-            ${order.total_amount.toFixed(2)}
+            ${calculateDisplayTotal(order).toFixed(2)}
           </div>
         </div>
       </div>
@@ -132,7 +133,7 @@ export function OrderDetailsCard({
               )}
               <div className="border-t pt-1 flex justify-between font-semibold">
                 <span>Total:</span>
-                <span>${order.total_amount.toFixed(2)}</span>
+                <span>${calculateDisplayTotal(order).toFixed(2)}</span>
               </div>
             </div>
           </div>

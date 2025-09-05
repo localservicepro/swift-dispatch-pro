@@ -16,6 +16,7 @@ import { getTruckInfo } from "@/utils/truckUtils";
 import { formatDeliveryDate, formatDeliveryTime, formatCreatedDate, formatCreatedTime } from "@/utils/dateTimeUtils";
 import { getOrderTypeColors, getOrderTypeLabel, getOrderTypeIcon } from "@/utils/orderTypeColors";
 import { Badge } from "@/components/ui/badge";
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 
 interface OpportunityCardInfoProps {
   order: any;
@@ -167,7 +168,7 @@ export function OpportunityCardInfo({ order, onOrderClick }: OpportunityCardInfo
       {/* Amount */}
       <div className="flex items-center gap-2 mb-3">
         <DollarSign className="w-4 h-4 text-green-600" />
-        <span className="font-bold text-green-600">${order.total_amount.toFixed(2)}</span>
+        <span className="font-bold text-green-600">${calculateDisplayTotal(order).toFixed(2)}</span>
       </div>
 
       {/* Date and Time Information */}

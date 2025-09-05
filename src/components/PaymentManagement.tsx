@@ -12,6 +12,7 @@ import { PaymentSearchFilters } from "@/components/payment/PaymentSearchFilters"
 import { PaymentSettings } from "@/components/payment/PaymentSettings";
 import { usePaymentFilters } from "@/hooks/usePaymentFilters";
 import { PurchaseOrderDisplay } from "@/components/order/PurchaseOrderDisplay";
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 
 interface PaymentOrder {
   id: string;
@@ -159,7 +160,8 @@ export function PaymentManagement() {
       const invoiceNumber = `INV-${order.order_number}-${Date.now()}`;
       const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      // Create invoice record
+      // Create invoice record using calculated total
+      const calculatedTotal = calculateDisplayTotal(order);
       const {
         data: invoice,
         error: invoiceError
@@ -167,7 +169,7 @@ export function PaymentManagement() {
         invoice_number: invoiceNumber,
         order_id: orderId,
         customer_email: order.customer_email || `${getCustomerDisplayName(order).toLowerCase().replace(' ', '.')}@example.com`,
-        amount: order.total_amount,
+        amount: calculatedTotal,
         currency: 'USD',
         status: 'pending',
         due_date: dueDate
@@ -235,9 +237,9 @@ export function PaymentManagement() {
             orderNumber: order.order_number,
             invoiceNumber: invoiceNumber,
             orderItems: orderItems,
-            subtotal: order.subtotal || order.total_amount - (order.delivery_fee || 0),
+            subtotal: order.subtotal || calculatedTotal - (order.delivery_fee || 0),
             deliveryFee: order.delivery_fee || 0,
-            totalAmount: order.total_amount,
+            totalAmount: calculatedTotal,
             dueDate: new Date(dueDate).toLocaleDateString(),
             paymentStatus: 'Pending',
             paymentUrl: paymentData.paymentUrl
@@ -319,9 +321,9 @@ export function PaymentManagement() {
             orderNumber: order.order_number,
             invoiceNumber: `INV-${order.order_number}`,
             orderItems: orderItems,
-            subtotal: order.subtotal || order.total_amount - (order.delivery_fee || 0),
+            subtotal: order.subtotal || calculateDisplayTotal(order) - (order.delivery_fee || 0),
             deliveryFee: order.delivery_fee || 0,
-            totalAmount: order.total_amount,
+            totalAmount: calculateDisplayTotal(order),
             dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
             paymentStatus: order.payment_status
           }
@@ -422,11 +424,11 @@ export function PaymentManagement() {
     setSelectedPayments(prev => prev.includes(paymentId) ? prev.filter(id => id !== paymentId) : [...prev, paymentId]);
   };
 
-  // Calculate statistics from filtered data
-  const totalReceived = filteredPayments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total_amount, 0);
-  const pendingPayments = filteredPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total_amount, 0);
-  const invoicedPayments = filteredPayments.filter(p => p.payment_status === 'invoiced').reduce((sum, p) => sum + p.total_amount, 0);
-  const overduePayments = filteredPayments.filter(p => p.payment_status === 'overdue').reduce((sum, p) => sum + p.total_amount, 0);
+  // Calculate statistics from filtered data using calculated totals
+  const totalReceived = filteredPayments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + calculateDisplayTotal(p), 0);
+  const pendingPayments = filteredPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + calculateDisplayTotal(p), 0);
+  const invoicedPayments = filteredPayments.filter(p => p.payment_status === 'invoiced').reduce((sum, p) => sum + calculateDisplayTotal(p), 0);
+  const overduePayments = filteredPayments.filter(p => p.payment_status === 'overdue').reduce((sum, p) => sum + calculateDisplayTotal(p), 0);
 
   if (error) {
     return <div className="space-y-6">
@@ -563,7 +565,7 @@ export function PaymentManagement() {
                         {payment.payment_status}
                       </Badge>
                     </div>
-                    <span className="text-lg font-bold text-green-600">${payment.total_amount.toFixed(2)}</span>
+                    <span className="text-lg font-bold text-green-600">${calculateDisplayTotal(payment).toFixed(2)}</span>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
