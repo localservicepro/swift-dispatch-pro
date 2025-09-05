@@ -80,11 +80,12 @@ export function OrderReviewStep({
       adjustments,
       deliveryFee,
       surchargeAmount: 0,
-      gstAmount: (subtotal + adjustments + deliveryFee) * 0.1,
-      totalAmount: (subtotal + adjustments + deliveryFee) * 1.1,
+      gstAmount: (subtotal + adjustments + deliveryFee) / 11, // GST included calculation (10% of total)
+      totalAmount: subtotal + adjustments + deliveryFee, // No extra GST - already included
       hasSurcharge: false,
       surchargeRate: 0,
-      gstRate: 10
+      gstRate: 10,
+      gstIncluded: true
     };
 
   const getPaymentMethodLabel = (method: string) => {

@@ -154,7 +154,7 @@ export function useOrderFormData(order: Order) {
     const currentData = { ...formData, ...updatedData };
     
     if (!paymentSettings) {
-      // Fallback calculation without payment settings
+      // Fallback calculation without payment settings - GST is included in prices
       const total = currentData.subtotal + currentData.delivery_fee + currentData.adjustments;
       return total.toFixed(2);
     }
@@ -167,7 +167,6 @@ export function useOrderFormData(order: Order) {
       paymentSettings
     );
 
-    console.log('Order totals calculated:', orderTotals);
     return orderTotals.totalAmount.toFixed(2);
   };
 
@@ -327,9 +326,10 @@ export function useOrderFormData(order: Order) {
         adjustments: formData.adjustments,
         deliveryFee: formData.delivery_fee,
         surchargeAmount: 0,
-        gstAmount: (formData.subtotal + formData.adjustments + formData.delivery_fee) * 0.1,
+        gstAmount: (formData.subtotal + formData.adjustments + formData.delivery_fee) / 11, // GST included calculation
         totalAmount: parseFloat(formData.total_amount),
-        hasSurcharge: false
+        hasSurcharge: false,
+        gstIncluded: true
       };
     }
 
