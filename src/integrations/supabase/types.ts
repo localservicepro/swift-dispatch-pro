@@ -2233,6 +2233,10 @@ export type Database = {
         Args: { products_json: Json }
         Returns: string
       }
+      generate_short_order_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_active_specials_for_product: {
         Args: { customer_tier_param?: string; product_id_param: string }
         Returns: {

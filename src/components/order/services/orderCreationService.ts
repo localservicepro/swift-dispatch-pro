@@ -376,7 +376,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
 
     return {
       type: 'split' as const,
-      orderNumber: masterOrderNumber,
+      orderNumber: masterOrder.order_number,
       splitCount: params.splits.length,
       orders
     };
