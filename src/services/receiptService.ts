@@ -23,6 +23,13 @@ export interface ReceiptData {
   invoiceNumber?: string;
   receiptType: 'order' | 'payment' | 'invoice';
   adjustments?: number;
+  businessInfo?: {
+    name: string;
+    email: string;
+    phone: string;
+    website?: string;
+    address?: string;
+  };
 }
 
 export class ReceiptService {
@@ -52,6 +59,13 @@ export class ReceiptService {
       throw new Error('Failed to fetch order data');
     }
 
+    // Get business settings
+    const { data: businessData } = await supabase
+      .from('business_settings')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+
     // Prepare receipt data
     const receiptData: ReceiptData = {
       orderNumber: orderData.order_number,
@@ -70,7 +84,18 @@ export class ReceiptService {
       specialInstructions: orderData.special_instructions || '',
       invoiceNumber: invoiceData?.invoice_number || '',
       receiptType: invoiceData ? 'invoice' : (orderData.payment_status === 'paid' ? 'payment' : 'order'),
-      adjustments: orderData.adjustments || 0
+      adjustments: orderData.adjustments || 0,
+      businessInfo: businessData ? {
+        name: businessData.business_name,
+        email: businessData.business_email,
+        phone: businessData.business_phone,
+        website: businessData.business_website,
+        address: businessData.business_address,
+      } : {
+        name: 'SwiftDispatch Pro',
+        email: 'info@swiftdispatch.com.au',
+        phone: '+61 2 9876 5432',
+      }
     };
 
     // Generate receipt using PDF function
@@ -116,6 +141,13 @@ export class ReceiptService {
 
     const orderData = invoiceData.orders;
 
+    // Get business settings
+    const { data: businessData } = await supabase
+      .from('business_settings')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+
     // Prepare receipt data
     const receiptData: ReceiptData = {
       orderNumber: orderData.order_number,
@@ -134,7 +166,18 @@ export class ReceiptService {
       specialInstructions: orderData.special_instructions || '',
       invoiceNumber: invoiceData.invoice_number,
       receiptType: 'invoice',
-      adjustments: orderData.adjustments || 0
+      adjustments: orderData.adjustments || 0,
+      businessInfo: businessData ? {
+        name: businessData.business_name,
+        email: businessData.business_email,
+        phone: businessData.business_phone,
+        website: businessData.business_website,
+        address: businessData.business_address,
+      } : {
+        name: 'SwiftDispatch Pro',
+        email: 'info@swiftdispatch.com.au',
+        phone: '+61 2 9876 5432',
+      }
     };
 
     // Generate receipt using PDF function

@@ -5,17 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { ActivityLog } from "./settings/ActivityLog";
 import { EmailSettingsDialog } from "./EmailSettingsDialog";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 export function Settings() {
-  const [businessInfo, setBusinessInfo] = useState({
-    name: "Premium Delivery Co.",
-    address: "123 Business St, City, State 12345",
-    phone: "+1 (555) 123-4567",
-    email: "contact@premiumdelivery.com",
-    website: "www.premiumdelivery.com"
-  });
+  const { settings, loading, saving, saveSettings } = useBusinessSettings();
   const [notifications, setNotifications] = useState({
     orderConfirmation: true,
     paymentReceived: true,
@@ -27,9 +23,12 @@ export function Settings() {
   const {
     toast
   } = useToast();
-  const handleSaveBusinessInfo = () => {
+  
+  const handleSaveBusinessInfo = async () => {
+    if (!settings) return;
+    
     toast({
-      title: "Business Information Updated",
+      title: "Business Information Updated", 
       description: "Your business profile has been saved successfully"
     });
   };
@@ -51,52 +50,98 @@ export function Settings() {
           <CardTitle className="text-lg font-semibold text-slate-800">Business Profile</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-6">
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="businessName">Business Name</Label>
-              <Input id="businessName" value={businessInfo.name} onChange={e => setBusinessInfo({
-              ...businessInfo,
-              name: e.target.value
-            })} />
+          {loading ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-20 w-full" />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="businessEmail">Business Email</Label>
-              <Input id="businessEmail" type="email" value={businessInfo.email} onChange={e => setBusinessInfo({
-              ...businessInfo,
-              email: e.target.value
-            })} />
-            </div>
-          </div>
+          ) : settings ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="businessName">Business Name</Label>
+                  <Input 
+                    id="businessName" 
+                    value={settings.business_name} 
+                    onChange={e => saveSettings({ business_name: e.target.value })}
+                    disabled={saving}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="businessEmail">Business Email</Label>
+                  <Input 
+                    id="businessEmail" 
+                    type="email" 
+                    value={settings.business_email} 
+                    onChange={e => saveSettings({ business_email: e.target.value })}
+                    disabled={saving}
+                  />
+                </div>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="businessPhone">Phone Number</Label>
-              <Input id="businessPhone" value={businessInfo.phone} onChange={e => setBusinessInfo({
-              ...businessInfo,
-              phone: e.target.value
-            })} />
-            </div>
-            <div>
-              <Label htmlFor="businessWebsite">Website</Label>
-              <Input id="businessWebsite" value={businessInfo.website} onChange={e => setBusinessInfo({
-              ...businessInfo,
-              website: e.target.value
-            })} />
-            </div>
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="businessPhone">Phone Number</Label>
+                  <Input 
+                    id="businessPhone" 
+                    value={settings.business_phone} 
+                    onChange={e => saveSettings({ business_phone: e.target.value })}
+                    disabled={saving}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="businessWebsite">Website</Label>
+                  <Input 
+                    id="businessWebsite" 
+                    value={settings.business_website || ''} 
+                    onChange={e => saveSettings({ business_website: e.target.value })}
+                    disabled={saving}
+                  />
+                </div>
+              </div>
 
-          <div>
-            <Label htmlFor="businessAddress">Business Address</Label>
-            <Textarea id="businessAddress" value={businessInfo.address} onChange={e => setBusinessInfo({
-            ...businessInfo,
-            address: e.target.value
-          })} rows={3} />
-          </div>
+              <div>
+                <Label htmlFor="businessAddress">Business Address</Label>
+                <Textarea 
+                  id="businessAddress" 
+                  value={settings.business_address || ''} 
+                  onChange={e => saveSettings({ business_address: e.target.value })}
+                  rows={3} 
+                  disabled={saving}
+                />
+              </div>
 
-          <Button onClick={handleSaveBusinessInfo} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
-            Save Business Information
-          </Button>
+              <Button 
+                onClick={handleSaveBusinessInfo} 
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save Business Information'}
+              </Button>
+            </>
+          ) : null}
         </CardContent>
       </Card>
 
