@@ -81,13 +81,11 @@ function AppRoutes() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <AppRoutes />
-      </AuthProvider>
-    </TooltipProvider>
+    <AuthProvider>
+      <Toaster />
+      <Sonner />
+      <AppRoutes />
+    </AuthProvider>
   </QueryClientProvider>
 );
 
