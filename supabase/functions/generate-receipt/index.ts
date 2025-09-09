@@ -88,7 +88,8 @@ const handler = async (req: Request): Promise<Response> => {
             payment_status,
             payment_method,
             subtotal,
-            delivery_fee
+            delivery_fee,
+            adjustments
           )
         `)
         .eq('id', invoiceId)
@@ -125,6 +126,7 @@ const handler = async (req: Request): Promise<Response> => {
           payment_method,
           subtotal,
           delivery_fee,
+          adjustments,
           created_at
         `)
         .eq('id', orderId)
@@ -277,7 +279,7 @@ function generateReceiptHTML(data: any): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Payment Receipt - ${invoice.invoice_number}</title>
+  <title>Payment Receipt - ${invoice?.invoice_number || order.order_number}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -507,22 +509,34 @@ function generateReceiptHTML(data: any): string {
     ` : ''}
     
     <div class="total-section">
+      ${order.subtotal || order.delivery_fee || order.adjustments ? `
+        <div style="font-size: 14px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.3);">
+          ${order.subtotal ? `
+            <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+              <span>Subtotal:</span>
+              <span>$${order.subtotal.toFixed(2)}</span>
+            </div>
+          ` : ''}
+          ${order.delivery_fee ? `
+            <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+              <span>Delivery Fee:</span>
+              <span>$${order.delivery_fee.toFixed(2)}</span>
+            </div>
+          ` : ''}
+          ${order.adjustments && order.adjustments !== 0 ? `
+            <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+              <span>Adjustments:</span>
+              <span style="color: ${order.adjustments > 0 ? '#4ade80' : '#f87171'};">
+                ${order.adjustments > 0 ? '+' : ''}$${order.adjustments.toFixed(2)}
+              </span>
+            </div>
+          ` : ''}
+        </div>
+      ` : ''}
       <div class="total-row">
         <span>${isPaidOrder ? 'Total Amount Paid:' : 'Total Amount:'}</span>
         <span>$${(invoice?.amount || order.total_amount || 0).toFixed(2)}</span>
       </div>
-      ${order.subtotal && order.delivery_fee ? `
-        <div style="font-size: 14px; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.3);">
-          <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-            <span>Subtotal:</span>
-            <span>$${order.subtotal.toFixed(2)}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-            <span>Delivery Fee:</span>
-            <span>$${order.delivery_fee.toFixed(2)}</span>
-          </div>
-        </div>
-      ` : ''}
     </div>
     
     <div class="footer">

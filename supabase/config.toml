@@ -1,6 +1,9 @@
 
 project_id = "wntcxbxitsanbyrtfhwv"
 
+[functions.generate-thermal-receipt]
+verify_jwt = false
+
 [functions.order-export-webhook]
 verify_jwt = false
 

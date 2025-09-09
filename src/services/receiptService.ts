@@ -22,10 +22,11 @@ export interface ReceiptData {
   specialInstructions?: string;
   invoiceNumber?: string;
   receiptType: 'order' | 'payment' | 'invoice';
+  adjustments?: number;
 }
 
 export class ReceiptService {
-  static async generateReceiptFromOrder(orderId: string): Promise<{ receiptUrl: string; receiptData: ReceiptData }> {
+  static async generateReceiptFromOrder(orderId: string, isThermal: boolean = false): Promise<{ receiptUrl: string; receiptData: ReceiptData }> {
     // First, try to get invoice data if it exists
     const { data: invoiceData } = await supabase
       .from('invoices')
@@ -68,11 +69,13 @@ export class ReceiptService {
       deliveryAddress: orderData.delivery_address || orderData.customer_address,
       specialInstructions: orderData.special_instructions || '',
       invoiceNumber: invoiceData?.invoice_number || '',
-      receiptType: invoiceData ? 'invoice' : (orderData.payment_status === 'paid' ? 'payment' : 'order')
+      receiptType: invoiceData ? 'invoice' : (orderData.payment_status === 'paid' ? 'payment' : 'order'),
+      adjustments: orderData.adjustments || 0
     };
 
-    // Generate receipt using edge function
-    const { data: receiptResponse, error: receiptError } = await supabase.functions.invoke('generate-receipt', {
+    // Generate receipt using appropriate edge function
+    const functionName = isThermal ? 'generate-thermal-receipt' : 'generate-receipt';
+    const { data: receiptResponse, error: receiptError } = await supabase.functions.invoke(functionName, {
       body: {
         orderId,
         invoiceId: invoiceData?.id || null,
@@ -90,7 +93,7 @@ export class ReceiptService {
     };
   }
 
-  static async generateReceiptFromInvoice(invoiceId: string): Promise<{ receiptUrl: string; receiptData: ReceiptData }> {
+  static async generateReceiptFromInvoice(invoiceId: string, isThermal: boolean = false): Promise<{ receiptUrl: string; receiptData: ReceiptData }> {
     // Get invoice and order data
     const { data: invoiceData, error: invoiceError } = await supabase
       .from('invoices')
@@ -131,11 +134,13 @@ export class ReceiptService {
       deliveryAddress: orderData.delivery_address || orderData.customer_address,
       specialInstructions: orderData.special_instructions || '',
       invoiceNumber: invoiceData.invoice_number,
-      receiptType: 'invoice'
+      receiptType: 'invoice',
+      adjustments: orderData.adjustments || 0
     };
 
-    // Generate receipt using edge function
-    const { data: receiptResponse, error: receiptError } = await supabase.functions.invoke('generate-receipt', {
+    // Generate receipt using appropriate edge function  
+    const functionName = isThermal ? 'generate-thermal-receipt' : 'generate-receipt';
+    const { data: receiptResponse, error: receiptError } = await supabase.functions.invoke(functionName, {
       body: {
         orderId: orderData.id,
         invoiceId,

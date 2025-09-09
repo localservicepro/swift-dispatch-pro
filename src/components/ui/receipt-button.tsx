@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Receipt, Download, Printer, Mail, Eye, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+// import { useToast } from "@/hooks/use-toast";
 import { ReceiptService } from "@/services/receiptService";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,7 @@ interface ReceiptButtonProps {
   className?: string;
   showLabel?: boolean;
   icon?: boolean;
+  thermalPrint?: boolean;
 }
 
 export function ReceiptButton({ 
@@ -33,13 +34,14 @@ export function ReceiptButton({
   size = "sm", 
   className,
   showLabel = false,
-  icon = true
+  icon = true,
+  thermalPrint = false
 }: ReceiptButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const { toast } = useToast();
+  // const { toast } = useToast();
 
-  const handleAction = async (action: 'view' | 'download' | 'print' | 'email', e?: React.MouseEvent) => {
+  const handleAction = async (action: 'view' | 'download' | 'print' | 'email' | 'thermal', e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
     }
@@ -49,29 +51,23 @@ export function ReceiptButton({
     try {
       if (action === 'email') {
         if (!customerEmail) {
-          toast({
-            title: "No Email Address",
-            description: "Customer email is not available for this order.",
-            variant: "destructive"
-          });
+          console.error("No email address available for customer");
           return;
         }
         
         setIsSending(true);
         await ReceiptService.emailReceipt(orderId, customerEmail);
-        toast({
-          title: "Receipt Sent",
-          description: `Receipt for ${orderNumber} has been sent to ${customerEmail}`
-        });
+        console.log(`Receipt sent to ${customerEmail} for order ${orderNumber}`);
         return;
       }
 
       setIsGenerating(true);
       
-      // Generate receipt
+      // Generate receipt (thermal for thermal action)
+      const isThermalReceipt = action === 'thermal';
       const { receiptUrl } = invoiceId 
-        ? await ReceiptService.generateReceiptFromInvoice(invoiceId)
-        : await ReceiptService.generateReceiptFromOrder(orderId);
+        ? await ReceiptService.generateReceiptFromInvoice(invoiceId, isThermalReceipt)
+        : await ReceiptService.generateReceiptFromOrder(orderId, isThermalReceipt);
 
       switch (action) {
         case 'view':
@@ -79,22 +75,21 @@ export function ReceiptButton({
           break;
         case 'download':
           await ReceiptService.downloadReceipt(receiptUrl, orderNumber);
-          toast({
-            title: "Receipt Downloaded",
-            description: `Receipt for ${orderNumber} has been downloaded`
-          });
+          console.log(`Receipt downloaded for order ${orderNumber}`);
           break;
         case 'print':
+        case 'thermal':
           await ReceiptService.printReceipt(receiptUrl);
+          console.log(`${action === 'thermal' ? 'Thermal' : 'Regular'} receipt printed for order ${orderNumber}`);
           break;
       }
     } catch (error: any) {
       console.error('Receipt action error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to process receipt. Please try again.",
-        variant: "destructive"
-      });
+      // toast({
+      //   title: "Error",
+      //   description: error.message || "Failed to process receipt. Please try again.",
+      //   variant: "destructive"
+      // });
     } finally {
       setIsGenerating(false);
       setIsSending(false);
@@ -150,6 +145,10 @@ export function ReceiptButton({
         <DropdownMenuItem onClick={(e) => handleAction('print', e)} className="flex items-center gap-2">
           <Printer className="w-4 h-4" />
           Print Receipt
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => handleAction('thermal', e)} className="flex items-center gap-2">
+          <Printer className="w-4 h-4" />
+          Thermal Print
         </DropdownMenuItem>
         <DropdownMenuItem onClick={(e) => handleAction('download', e)} className="flex items-center gap-2">
           <Download className="w-4 h-4" />

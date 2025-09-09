@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, Download, Printer, Mail } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+// import { useToast } from "@/hooks/use-toast";
 import { ReceiptService, ReceiptData } from "@/services/receiptService";
 
 interface ReceiptPreviewDialogProps {
@@ -31,7 +31,7 @@ export function ReceiptPreviewDialog({
   const [receiptUrl, setReceiptUrl] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const { toast } = useToast();
+  // const { toast } = useToast();
 
   useEffect(() => {
     if (open && !receiptData) {
@@ -50,11 +50,11 @@ export function ReceiptPreviewDialog({
       setReceiptUrl(result.receiptUrl);
     } catch (error: any) {
       console.error('Failed to load receipt:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to load receipt preview",
-        variant: "destructive"
-      });
+      // toast({
+      //   title: "Error", 
+      //   description: error.message || "Failed to load receipt preview",
+      //   variant: "destructive"
+      // });
       onOpenChange(false);
     } finally {
       setIsLoading(false);
@@ -69,31 +69,26 @@ export function ReceiptPreviewDialog({
       switch (action) {
         case 'download':
           await ReceiptService.downloadReceipt(receiptUrl, orderNumber);
-          toast({
-            title: "Receipt Downloaded",
-            description: `Receipt for ${orderNumber} has been downloaded`
-          });
+          console.log(`Receipt downloaded for order ${orderNumber}`);
           break;
         case 'print':
           await ReceiptService.printReceipt(receiptUrl);
+          console.log(`Receipt printed for order ${orderNumber}`);
           break;
         case 'email':
           if (customerEmail) {
             await ReceiptService.emailReceipt(orderId, customerEmail);
-            toast({
-              title: "Receipt Sent",
-              description: `Receipt for ${orderNumber} has been sent to ${customerEmail}`
-            });
+            console.log(`Receipt sent to ${customerEmail} for order ${orderNumber}`);
           }
           break;
       }
     } catch (error: any) {
       console.error('Receipt action error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to process receipt action",
-        variant: "destructive"
-      });
+      // toast({
+      //   title: "Error",
+      //   description: error.message || "Failed to process receipt action",
+      //   variant: "destructive"
+      // });
     } finally {
       setIsProcessing(false);
     }
