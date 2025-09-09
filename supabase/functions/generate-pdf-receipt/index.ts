@@ -41,6 +41,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     logStep('Processing PDF receipt request', { invoiceId, orderId, requestId });
 
+    // Fetch business settings
+    const { data: businessSettings } = await supabase
+      .from('business_settings')
+      .select('business_name, business_email, business_phone, business_address')
+      .single()
+
     let invoice = null;
     let order = null;
 
@@ -125,6 +131,7 @@ const handler = async (req: Request): Promise<Response> => {
     const receiptHtml = generateSimpleReceiptHTML({
       invoice,
       order,
+      businessSettings,
       requestId
     })
 
@@ -199,8 +206,21 @@ const handler = async (req: Request): Promise<Response> => {
 }
 
 function generateSimpleReceiptHTML(data: any): string {
-  const { invoice, order, requestId } = data
-  const orderItems = order.products || []
+  const { invoice, order, businessSettings, requestId } = data
+  
+  // Handle different product data structures
+  let orderItems = []
+  if (order.products) {
+    if (Array.isArray(order.products)) {
+      orderItems = order.products
+    } else {
+      // If it's a single object, wrap it in an array
+      orderItems = [order.products]
+    }
+  }
+  
+  // Use business name from settings or fallback
+  const businessName = businessSettings?.business_name || 'Business Name'
   const isOrderReceipt = !invoice
   const isPaidOrder = order.payment_status === 'paid' || invoice?.status === 'paid'
   
@@ -352,34 +372,29 @@ function generateSimpleReceiptHTML(data: any): string {
   <div class="receipt">
     <!-- Header -->
     <div class="header">
-      <div class="company-name">SWIFTDISPATCH PRO</div>
+      <div class="company-name">${businessName.toUpperCase()}</div>
       <div class="decorative-border">* * * * * * * * * * * * * *</div>
       <div class="receipt-title">${isOrderReceipt ? (isPaidOrder ? 'PAYMENT RECEIPT' : 'ORDER RECEIPT') : 'INVOICE RECEIPT'}</div>
       <div class="decorative-border">* * * * * * * * * * * * * *</div>
-    </div>
-    
-    <!-- Status -->
-    <div class="status">
-      ${isPaidOrder ? 'PAYMENT CONFIRMED' : `${order.payment_status?.toUpperCase() || 'PENDING'}`}
     </div>
     
     <!-- Receipt Information -->
     <div class="info-section">
       <div class="info-line">
         <span>Receipt No:</span>
-        <span class="bold">${invoice?.invoice_number || order.order_number}</span>
+        <span class="bold">${invoice?.invoice_number || order.order_number || 'N/A'}</span>
       </div>
       <div class="info-line">
         <span>Order No:</span>
-        <span class="bold">${order.order_number}</span>
+        <span class="bold">${order.order_number || 'N/A'}</span>
       </div>
       <div class="info-line">
         <span>Date:</span>
-        <span>${new Date(order.created_at).toLocaleDateString()}</span>
+        <span>${order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}</span>
       </div>
       <div class="info-line">
         <span>Time:</span>
-        <span>${new Date(order.created_at).toLocaleTimeString()}</span>
+        <span>${order.created_at ? new Date(order.created_at).toLocaleTimeString() : 'N/A'}</span>
       </div>
       ${order.payment_method ? `
       <div class="info-line">
@@ -392,7 +407,7 @@ function generateSimpleReceiptHTML(data: any): string {
     <!-- Customer -->
     <div class="customer-section">
       <div class="bold">CUSTOMER</div>
-      <div>${order.customer_name}</div>
+      <div>${order.customer_name || 'N/A'}</div>
       ${order.customer_address ? `<div class="small">${order.customer_address}</div>` : ''}
     </div>
     
@@ -400,18 +415,23 @@ function generateSimpleReceiptHTML(data: any): string {
     ${orderItems.length > 0 ? `
       <div class="items-section">
         <div class="items-header">ORDER ITEMS</div>
-        ${orderItems.map((item: any) => `
+        ${orderItems.map((item: any) => {
+          const itemName = item.name || item.product_name || 'Product'
+          const itemPrice = item.price || item.unit_price || 0
+          const itemQuantity = item.quantity || 1
+          return `
           <div class="item">
-            <div class="item-name">${item.name || 'Product'}</div>
+            <div class="item-name">${itemName}</div>
             <div class="item-details">
-              <span>Qty: ${item.quantity || 1}</span>
-              <span>@ $${(item.price || 0).toFixed(2)}</span>
-              <span>$${((item.price || 0) * (item.quantity || 1)).toFixed(2)}</span>
+              <span>Qty: ${itemQuantity}</span>
+              <span>@ $${Number(itemPrice).toFixed(2)}</span>
+              <span>$${(Number(itemPrice) * Number(itemQuantity)).toFixed(2)}</span>
             </div>
           </div>
-        `).join('')}
+          `
+        }).join('')}
       </div>
-    ` : ''}
+    ` : '<div class="items-section"><div class="items-header">NO ITEMS</div></div>'}
     
     <!-- Totals -->
     <div class="totals">
