@@ -5,9 +5,9 @@ import {
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  
 } from "@/components/ui/dropdown-menu";
-import { Receipt, Download, Printer, Mail, Eye, Loader2 } from "lucide-react";
+import { Receipt, Download, Printer, Loader2 } from "lucide-react";
 // import { useToast } from "@/hooks/use-toast";
 import { ReceiptService } from "@/services/receiptService";
 import { cn } from "@/lib/utils";
@@ -38,65 +38,37 @@ export function ReceiptButton({
   thermalPrint = false
 }: ReceiptButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  // const { toast } = useToast();
 
-  const handleAction = async (action: 'view' | 'download' | 'print' | 'email' | 'thermal', e?: React.MouseEvent) => {
+  const handleAction = async (action: 'download' | 'print', e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
     }
     
-    if (isGenerating || isSending) return;
+    if (isGenerating) return;
 
     try {
-      if (action === 'email') {
-        if (!customerEmail) {
-          console.error("No email address available for customer");
-          return;
-        }
-        
-        setIsSending(true);
-        await ReceiptService.emailReceipt(orderId, customerEmail);
-        console.log(`Receipt sent to ${customerEmail} for order ${orderNumber}`);
-        return;
-      }
-
       setIsGenerating(true);
       
-      // Generate receipt (thermal for thermal action)
-      const isThermalReceipt = action === 'thermal';
+      // Generate PDF receipt
       const { receiptUrl } = invoiceId 
-        ? await ReceiptService.generateReceiptFromInvoice(invoiceId, isThermalReceipt)
-        : await ReceiptService.generateReceiptFromOrder(orderId, isThermalReceipt);
+        ? await ReceiptService.generateReceiptFromInvoice(invoiceId, false)
+        : await ReceiptService.generateReceiptFromOrder(orderId, false);
 
-      switch (action) {
-        case 'view':
-          window.open(receiptUrl, '_blank');
-          break;
-        case 'download':
-          await ReceiptService.downloadReceipt(receiptUrl, orderNumber);
-          console.log(`Receipt downloaded for order ${orderNumber}`);
-          break;
-        case 'print':
-        case 'thermal':
-          await ReceiptService.printReceipt(receiptUrl);
-          console.log(`${action === 'thermal' ? 'Thermal' : 'Regular'} receipt printed for order ${orderNumber}`);
-          break;
+      if (action === 'download') {
+        await ReceiptService.downloadReceipt(receiptUrl, orderNumber);
+        console.log(`Receipt downloaded for order ${orderNumber}`);
+      } else if (action === 'print') {
+        await ReceiptService.printReceipt(receiptUrl);
+        console.log(`Receipt printed for order ${orderNumber}`);
       }
     } catch (error: any) {
       console.error('Receipt action error:', error);
-      // toast({
-      //   title: "Error",
-      //   description: error.message || "Failed to process receipt. Please try again.",
-      //   variant: "destructive"
-      // });
     } finally {
       setIsGenerating(false);
-      setIsSending(false);
     }
   };
 
-  const isLoading = isGenerating || isSending;
+  
 
   // Single action button (for quick access)
   if (!showLabel && variant === "ghost") {
@@ -105,11 +77,11 @@ export function ReceiptButton({
         variant="ghost"
         size={size}
         className={cn("h-6 w-6 p-0", className)}
-        onClick={(e) => handleAction('view', e)}
-        disabled={isLoading}
-        title="View Receipt"
+        onClick={(e) => handleAction('print', e)}
+        disabled={isGenerating}
+        title="Print Receipt"
       >
-        {isLoading ? (
+        {isGenerating ? (
           <Loader2 className="w-3 h-3 animate-spin" />
         ) : icon ? (
           <Receipt className="w-3 h-3" />
@@ -118,7 +90,7 @@ export function ReceiptButton({
     );
   }
 
-  // Dropdown menu with multiple options
+  // Simplified dropdown with only Print and Download
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -126,47 +98,26 @@ export function ReceiptButton({
           variant={variant} 
           size={size} 
           className={cn("flex items-center gap-2", className)}
-          disabled={isLoading}
+          disabled={isGenerating}
           onClick={(e) => e.stopPropagation()}
         >
-          {isLoading ? (
+          {isGenerating ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : icon ? (
             <Receipt className="w-4 h-4" />
           ) : null}
-          {showLabel && (isLoading ? 'Processing...' : 'Receipt')}
+          {showLabel && (isGenerating ? 'Generating...' : 'Receipt')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem onClick={(e) => handleAction('view', e)} className="flex items-center gap-2">
-          <Eye className="w-4 h-4" />
-          View Receipt
-        </DropdownMenuItem>
         <DropdownMenuItem onClick={(e) => handleAction('print', e)} className="flex items-center gap-2">
           <Printer className="w-4 h-4" />
           Print Receipt
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={(e) => handleAction('thermal', e)} className="flex items-center gap-2">
-          <Printer className="w-4 h-4" />
-          Thermal Print
         </DropdownMenuItem>
         <DropdownMenuItem onClick={(e) => handleAction('download', e)} className="flex items-center gap-2">
           <Download className="w-4 h-4" />
           Download Receipt
         </DropdownMenuItem>
-        {customerEmail && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={(e) => handleAction('email', e)} 
-              className="flex items-center gap-2"
-              disabled={isSending}
-            >
-              <Mail className="w-4 h-4" />
-              {isSending ? 'Sending...' : 'Email Receipt'}
-            </DropdownMenuItem>
-          </>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

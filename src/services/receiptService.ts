@@ -73,9 +73,8 @@ export class ReceiptService {
       adjustments: orderData.adjustments || 0
     };
 
-    // Generate receipt using appropriate edge function
-    const functionName = isThermal ? 'generate-thermal-receipt' : 'generate-receipt';
-    const { data: receiptResponse, error: receiptError } = await supabase.functions.invoke(functionName, {
+    // Generate receipt using PDF function
+    const { data: receiptResponse, error: receiptError } = await supabase.functions.invoke('generate-pdf-receipt', {
       body: {
         orderId,
         invoiceId: invoiceData?.id || null,
@@ -138,9 +137,8 @@ export class ReceiptService {
       adjustments: orderData.adjustments || 0
     };
 
-    // Generate receipt using appropriate edge function  
-    const functionName = isThermal ? 'generate-thermal-receipt' : 'generate-receipt';
-    const { data: receiptResponse, error: receiptError } = await supabase.functions.invoke(functionName, {
+    // Generate receipt using PDF function
+    const { data: receiptResponse, error: receiptError } = await supabase.functions.invoke('generate-pdf-receipt', {
       body: {
         orderId: orderData.id,
         invoiceId,
@@ -210,7 +208,7 @@ export class ReceiptService {
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      a.download = `receipt-${orderNumber}.html`;
+      a.download = `receipt-${orderNumber}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
