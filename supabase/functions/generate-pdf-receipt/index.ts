@@ -153,10 +153,10 @@ const handler = async (req: Request): Promise<Response> => {
     
     const responseReceiptData = {
       html: receiptHtml,
-      invoiceNumber: invoice?.invoice_number || null,
-      orderNumber: order.order_number,
-      customerName: order.customer_name,
-      amount: invoice?.amount || order.total_amount,
+      invoiceNumber: invoice?.invoice_number || order?.invoiceNumber || null,
+      orderNumber: order.order_number || order.orderNumber,
+      customerName: order.customer_name || order.customerName,
+      amount: invoice?.amount || order.total_amount || order.totalAmount,
       generatedAt: new Date().toISOString(),
       requestId,
       isPDF: true
@@ -208,28 +208,31 @@ const handler = async (req: Request): Promise<Response> => {
 function generateSimpleReceiptHTML(data: any): string {
   const { invoice, order, businessSettings, requestId } = data
   
-  // Handle different product data structures
-  let orderItems = []
-  if (order.products) {
-    if (Array.isArray(order.products)) {
-      orderItems = order.products
+  // Handle different product data structures (supports snake_case and camelCase)
+  let orderItems = [] as any[]
+  const products = order?.products ?? null
+  const items = order?.items ?? null
+  if (products) {
+    if (Array.isArray(products)) {
+      orderItems = products
     } else {
-      // If it's a single object, wrap it in an array
-      orderItems = [order.products]
+      orderItems = [products]
     }
+  } else if (Array.isArray(items)) {
+    orderItems = items
   }
   
   // Use business name from settings or fallback
   const businessName = businessSettings?.business_name || 'Business Name'
   const isOrderReceipt = !invoice
-  const isPaidOrder = order.payment_status === 'paid' || invoice?.status === 'paid'
+  const isPaidOrder = (order.payment_status === 'paid' || order.paymentStatus === 'paid' || invoice?.status === 'paid')
   
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Receipt - ${invoice?.invoice_number || order.order_number}</title>
+  <title>Receipt - ${invoice?.invoice_number || order.invoiceNumber || order.order_number || order.orderNumber || 'N/A'}</title>
   <style>
     * { 
       margin: 0; 
@@ -382,24 +385,24 @@ function generateSimpleReceiptHTML(data: any): string {
     <div class="info-section">
       <div class="info-line">
         <span>Receipt No:</span>
-        <span class="bold">${invoice?.invoice_number || order.order_number || 'N/A'}</span>
+        <span class="bold">${invoice?.invoice_number || order.invoiceNumber || order.order_number || order.orderNumber || 'N/A'}</span>
       </div>
       <div class="info-line">
         <span>Order No:</span>
-        <span class="bold">${order.order_number || 'N/A'}</span>
+        <span class="bold">${order.order_number || order.orderNumber || 'N/A'}</span>
       </div>
       <div class="info-line">
         <span>Date:</span>
-        <span>${order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}</span>
+        <span>${order.created_at ? new Date(order.created_at).toLocaleDateString() : (order.orderDate || 'N/A')}</span>
       </div>
       <div class="info-line">
         <span>Time:</span>
-        <span>${order.created_at ? new Date(order.created_at).toLocaleTimeString() : 'N/A'}</span>
+        <span>${order.created_at ? new Date(order.created_at).toLocaleTimeString() : (order.orderTime || 'N/A')}</span>
       </div>
-      ${order.payment_method ? `
+      ${(order.payment_method || order.paymentMethod) ? `
       <div class="info-line">
         <span>Payment:</span>
-        <span>${order.payment_method}</span>
+        <span>${order.payment_method || order.paymentMethod}</span>
       </div>
       ` : ''}
     </div>
@@ -407,8 +410,8 @@ function generateSimpleReceiptHTML(data: any): string {
     <!-- Customer -->
     <div class="customer-section">
       <div class="bold">CUSTOMER</div>
-      <div>${order.customer_name || 'N/A'}</div>
-      ${order.customer_address ? `<div class="small">${order.customer_address}</div>` : ''}
+      <div>${(order.customer_name || order.customerName) || 'N/A'}</div>
+      ${(order.customer_address || order.deliveryAddress) ? `<div class="small">${order.customer_address || order.deliveryAddress}</div>` : ''}
     </div>
     
     <!-- Items -->
@@ -417,7 +420,7 @@ function generateSimpleReceiptHTML(data: any): string {
         <div class="items-header">ORDER ITEMS</div>
         ${orderItems.map((item: any) => {
           const itemName = item.name || item.product_name || 'Product'
-          const itemPrice = item.price || item.unit_price || 0
+          const itemPrice = (item.price ?? item.unit_price ?? item.unitPrice ?? 0)
           const itemQuantity = item.quantity || 1
           return `
           <div class="item">
@@ -435,28 +438,28 @@ function generateSimpleReceiptHTML(data: any): string {
     
     <!-- Totals -->
     <div class="totals">
-      ${order.subtotal ? `
+      ${(order.subtotal ?? order.subTotal) ? `
         <div class="subtotal-line">
           <span>Subtotal:</span>
-          <span>$${order.subtotal.toFixed(2)}</span>
+          <span>$${Number(order.subtotal ?? order.subTotal).toFixed(2)}</span>
         </div>
       ` : ''}
-      ${order.delivery_fee && order.delivery_fee > 0 ? `
+      ${((order.delivery_fee ?? order.deliveryFee) && Number(order.delivery_fee ?? order.deliveryFee) > 0) ? `
         <div class="subtotal-line">
           <span>Delivery Fee:</span>
-          <span>$${order.delivery_fee.toFixed(2)}</span>
+          <span>$${Number(order.delivery_fee ?? order.deliveryFee).toFixed(2)}</span>
         </div>
       ` : ''}
-      ${order.adjustments && order.adjustments !== 0 ? `
+      ${(order.adjustments && order.adjustments !== 0) ? `
         <div class="subtotal-line">
           <span>Adjustments:</span>
-          <span>${order.adjustments > 0 ? '+' : ''}$${order.adjustments.toFixed(2)}</span>
+          <span>${order.adjustments > 0 ? '+' : ''}$${Number(order.adjustments).toFixed(2)}</span>
         </div>
       ` : ''}
       
       <div class="total-line">
         <span>TOTAL:</span>
-        <span>$${(invoice?.amount || order.total_amount || 0).toFixed(2)}</span>
+        <span>$${Number(invoice?.amount ?? order.total_amount ?? order.totalAmount ?? 0).toFixed(2)}</span>
       </div>
     </div>
     
