@@ -8,8 +8,10 @@ const corsHeaders = {
 }
 
 interface GenerateReceiptRequest {
-  invoiceId: string
-  sessionId: string
+  invoiceId?: string;
+  sessionId?: string;
+  orderId?: string;
+  receiptData?: any; // For direct receipt data
 }
 
 const logStep = (step: string, details?: any) => {
@@ -57,44 +59,108 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    const { invoiceId, sessionId }: GenerateReceiptRequest = await req.json()
+    const { invoiceId, sessionId, orderId, receiptData }: GenerateReceiptRequest = await req.json()
 
-    logStep('Processing receipt request', { invoiceId, sessionId, requestId });
+    logStep('Processing receipt request', { invoiceId, sessionId, orderId, requestId });
 
-    // Get invoice and order details
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .select(`
-        *,
-        orders!inner(
+    let invoice = null;
+    let order = null;
+
+    if (receiptData) {
+      // Use provided receipt data directly
+      logStep('Using provided receipt data', { requestId });
+      order = receiptData;
+    } else if (invoiceId) {
+      // Get invoice and order details
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          orders!inner(
+            id,
+            order_number,
+            customer_name,
+            customer_address,
+            products,
+            total_amount,
+            delivery_date,
+            delivery_time,
+            payment_status,
+            payment_method,
+            subtotal,
+            delivery_fee
+          )
+        `)
+        .eq('id', invoiceId)
+        .single()
+
+      if (invoiceError || !invoiceData) {
+        logStep('Invoice fetch error', { error: invoiceError, requestId });
+        throw new Error('Invoice not found')
+      }
+
+      invoice = invoiceData;
+      order = invoiceData.orders;
+      
+      logStep('Invoice data retrieved', { 
+        invoiceNumber: invoice.invoice_number,
+        orderNumber: order.order_number,
+        requestId 
+      });
+    } else if (orderId) {
+      // Get order details only
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select(`
           id,
           order_number,
           customer_name,
           customer_address,
+          delivery_address,
           products,
           total_amount,
           delivery_date,
-          delivery_time
-        )
-      `)
-      .eq('id', invoiceId)
-      .single()
+          delivery_time,
+          payment_status,
+          payment_method,
+          subtotal,
+          delivery_fee,
+          created_at
+        `)
+        .eq('id', orderId)
+        .single()
 
-    if (invoiceError || !invoice) {
-      logStep('Invoice fetch error', { error: invoiceError, requestId });
-      throw new Error('Invoice not found')
+      if (orderError || !orderData) {
+        logStep('Order fetch error', { error: orderError, requestId });
+        throw new Error('Order not found')
+      }
+
+      order = orderData;
+      
+      // Check if invoice exists for this order
+      const { data: existingInvoice } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('order_id', orderId)
+        .maybeSingle()
+
+      if (existingInvoice) {
+        invoice = existingInvoice;
+      }
+      
+      logStep('Order data retrieved', { 
+        orderNumber: order.order_number,
+        hasInvoice: !!invoice,
+        requestId 
+      });
+    } else {
+      throw new Error('Either invoiceId, orderId, or receiptData must be provided')
     }
-
-    logStep('Invoice data retrieved', { 
-      invoiceNumber: invoice.invoice_number,
-      orderNumber: invoice.orders.order_number,
-      requestId 
-    });
 
     // Generate comprehensive HTML receipt
     const receiptHtml = generateReceiptHTML({
       invoice,
-      order: invoice.orders,
+      order,
       sessionId,
       requestId
     })
@@ -116,12 +182,12 @@ const handler = async (req: Request): Promise<Response> => {
       });
 
       // Create response with receipt data
-      const receiptData = {
+      const responseReceiptData = {
         html: receiptHtml,
-        invoiceNumber: invoice.invoice_number,
-        orderNumber: invoice.orders.order_number,
-        customerName: invoice.orders.customer_name,
-        amount: invoice.amount,
+        invoiceNumber: invoice?.invoice_number || null,
+        orderNumber: order.order_number,
+        customerName: order.customer_name,
+        amount: invoice?.amount || order.total_amount,
         generatedAt: new Date().toISOString(),
         sessionId,
         requestId
@@ -135,9 +201,9 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ 
           success: true,
-          receiptData,
+          receiptData: responseReceiptData,
           downloadUrl,
-          filename: `receipt-${invoice.invoice_number}-${invoice.orders.order_number}.html`,
+          filename: `receipt-${invoice?.invoice_number || order.order_number}.html`,
           contentType: 'text/html',
           size: receiptHtml.length
         }),
@@ -161,11 +227,11 @@ const handler = async (req: Request): Promise<Response> => {
           success: true,
           receiptData: {
             html: receiptHtml,
-            invoiceNumber: invoice.invoice_number,
-            orderNumber: invoice.orders.order_number
+            invoiceNumber: invoice?.invoice_number || null,
+            orderNumber: order.order_number
           },
           downloadUrl: null,
-          filename: `receipt-${invoice.invoice_number}-${invoice.orders.order_number}.html`,
+          filename: `receipt-${invoice?.invoice_number || order.order_number}.html`,
           contentType: 'text/html',
           fallbackMode: true,
           message: 'Download generated in fallback mode'
@@ -203,6 +269,8 @@ const handler = async (req: Request): Promise<Response> => {
 function generateReceiptHTML(data: any): string {
   const { invoice, order, sessionId, requestId } = data
   const orderItems = order.products || []
+  const isOrderReceipt = !invoice
+  const isPaidOrder = order.payment_status === 'paid' || invoice?.status === 'paid'
   
   return `<!DOCTYPE html>
 <html lang="en">
@@ -362,32 +430,40 @@ function generateReceiptHTML(data: any): string {
   <div class="receipt-container">
     <div class="header">
       <div class="company-name">SwiftDispatch Pro</div>
-      <div class="receipt-title">PAYMENT RECEIPT</div>
+      <div class="receipt-title">${isOrderReceipt ? (isPaidOrder ? 'PAYMENT RECEIPT' : 'ORDER RECEIPT') : 'INVOICE RECEIPT'}</div>
     </div>
     
+    ${isPaidOrder ? `
     <div class="payment-confirmed">
-      ✓ PAYMENT CONFIRMED - Thank you for your payment!
+      ✓ ${isOrderReceipt ? 'PAYMENT CONFIRMED' : 'INVOICE PAID'} - Thank you for your payment!
     </div>
+    ` : `
+    <div class="payment-pending" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 20px; border-radius: 8px; text-align: center; font-weight: bold; margin: 30px 0; font-size: 18px;">
+      ⏳ PAYMENT ${order.payment_status?.toUpperCase() || 'PENDING'} - ${isOrderReceipt ? 'Order confirmed, payment processing' : 'Please complete payment'}
+    </div>
+    `}
     
     <div class="details-grid">
       <div class="detail-section">
         <h3>Receipt Information</h3>
         <div class="detail-row">
-          <span class="label">Receipt Number:</span>
-          <span class="value">${invoice.invoice_number}</span>
+          <span class="label">${invoice ? 'Invoice Number:' : 'Receipt Number:'}</span>
+          <span class="value">${invoice?.invoice_number || order.order_number}</span>
         </div>
         <div class="detail-row">
           <span class="label">Order Number:</span>
           <span class="value">${order.order_number}</span>
         </div>
         <div class="detail-row">
-          <span class="label">Payment Date:</span>
-          <span class="value">${invoice.paid_at ? new Date(invoice.paid_at).toLocaleDateString() : new Date().toLocaleDateString()}</span>
+          <span class="label">${isOrderReceipt ? 'Order Date:' : 'Payment Date:'}</span>
+          <span class="value">${isPaidOrder ? (invoice?.paid_at ? new Date(invoice.paid_at).toLocaleDateString() : new Date().toLocaleDateString()) : new Date(order.created_at).toLocaleDateString()}</span>
         </div>
+        ${sessionId ? `
         <div class="detail-row">
           <span class="label">Transaction ID:</span>
           <span class="value">${sessionId}</span>
         </div>
+        ` : ''}
       </div>
       
       <div class="detail-section">
@@ -398,11 +474,11 @@ function generateReceiptHTML(data: any): string {
         </div>
         <div class="detail-row">
           <span class="label">Payment Status:</span>
-          <span class="value">PAID</span>
+          <span class="value">${isPaidOrder ? 'PAID' : (order.payment_status?.toUpperCase() || 'PENDING')}</span>
         </div>
         <div class="detail-row">
           <span class="label">Payment Method:</span>
-          <span class="value">Credit Card</span>
+          <span class="value">${order.payment_method || 'Not specified'}</span>
         </div>
         ${order.delivery_date ? `
         <div class="detail-row">
@@ -432,9 +508,21 @@ function generateReceiptHTML(data: any): string {
     
     <div class="total-section">
       <div class="total-row">
-        <span>Total Amount Paid:</span>
-        <span>$${invoice.amount.toFixed(2)}</span>
+        <span>${isPaidOrder ? 'Total Amount Paid:' : 'Total Amount:'}</span>
+        <span>$${(invoice?.amount || order.total_amount || 0).toFixed(2)}</span>
       </div>
+      ${order.subtotal && order.delivery_fee ? `
+        <div style="font-size: 14px; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.3);">
+          <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+            <span>Subtotal:</span>
+            <span>$${order.subtotal.toFixed(2)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+            <span>Delivery Fee:</span>
+            <span>$${order.delivery_fee.toFixed(2)}</span>
+          </div>
+        </div>
+      ` : ''}
     </div>
     
     <div class="footer">

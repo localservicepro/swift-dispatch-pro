@@ -6,6 +6,7 @@ import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { PaymentStatusDropdown } from "../opportunity/PaymentStatusDropdown";
 import { ReturnStatusBadge } from "./returns/ReturnStatusBadge";
 import { OrderReturnDialog } from "./returns/OrderReturnDialog";
+import { ReceiptButton } from "@/components/ui/receipt-button";
 import { MapPin, Truck, Edit3, Trash2, Building, User, Calendar, ShoppingBag, RotateCcw } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
@@ -57,11 +58,16 @@ interface Order {
   delivery_suburb_postcode?: string;
   company_name?: string;
   business_name?: string;
-  customer_type?: string;
-  stop_credit?: boolean;
-  delivered_at?: string;
-  delivery_method?: string;
-}
+      customer_type?: string;
+      stop_credit?: boolean;
+      delivered_at?: string;
+      delivery_method?: string;
+      customers?: {
+        email?: string;
+        company_name?: string;
+        business_name?: string;
+      };
+    }
 
 interface OrderCardProps {
   order: Order;
@@ -244,6 +250,13 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           <span className="text-lg font-bold text-green-600">
             ${calculateDisplayTotal(order).toFixed(2)}
           </span>
+          <ReceiptButton
+            orderId={order.id}
+            orderNumber={order.order_number}
+            customerEmail={order.customers?.email}
+            variant="ghost"
+            size="sm"
+          />
           {(order.order_notes?.trim() || order.delivery_notes?.trim()) && (
             <Button
               variant="ghost"
@@ -339,10 +352,19 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
       </div>
       
       {/* Action Buttons */}
-      <div className="flex gap-2 mt-4">
+      <div className="flex gap-2 mt-4 flex-wrap">
         <Button size="sm" variant="outline" onClick={() => onEdit(order)}>
           Edit
         </Button>
+
+        <ReceiptButton
+          orderId={order.id}
+          orderNumber={order.order_number}
+          customerEmail={order.customers?.email}
+          variant="outline"
+          size="sm"
+          showLabel={true}
+        />
         
         {/* Quick status update buttons for admin */}
         {order.status === 'preparing' && (
