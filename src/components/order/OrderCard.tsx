@@ -6,7 +6,7 @@ import { NotesDisplaySection } from "../notes/NotesDisplaySection";
 import { PaymentStatusDropdown } from "../opportunity/PaymentStatusDropdown";
 import { ReturnStatusBadge } from "./returns/ReturnStatusBadge";
 import { OrderReturnDialog } from "./returns/OrderReturnDialog";
-import { ReceiptButton } from "@/components/ui/receipt-button";
+// import { ReceiptButton } from "@/components/ui/receipt-button";
 import { MapPin, Truck, Edit3, Trash2, Building, User, Calendar, ShoppingBag, RotateCcw } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
@@ -250,13 +250,13 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           <span className="text-lg font-bold text-green-600">
             ${calculateDisplayTotal(order).toFixed(2)}
           </span>
-          <ReceiptButton
+          {/* <ReceiptButton
             orderId={order.id}
             orderNumber={order.order_number}
             customerEmail={order.customers?.email}
             variant="ghost"
             size="sm"
-          />
+          /> */}
           {(order.order_notes?.trim() || order.delivery_notes?.trim()) && (
             <Button
               variant="ghost"
@@ -357,14 +357,14 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           Edit
         </Button>
 
-        <ReceiptButton
+        {/* <ReceiptButton
           orderId={order.id}
           orderNumber={order.order_number}
           customerEmail={order.customers?.email}
           variant="outline"
           size="sm"
           showLabel={true}
-        />
+        /> */}
         
         {/* Quick status update buttons for admin */}
         {order.status === 'preparing' && (
