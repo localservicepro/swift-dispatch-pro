@@ -395,10 +395,6 @@ function generateSimpleReceiptHTML(data: any): string {
         <span>Date:</span>
         <span>${order.created_at ? new Date(order.created_at).toLocaleDateString() : (order.orderDate || 'N/A')}</span>
       </div>
-      <div class="info-line">
-        <span>Time:</span>
-        <span>${order.created_at ? new Date(order.created_at).toLocaleTimeString() : (order.orderTime || 'N/A')}</span>
-      </div>
       ${(order.payment_method || order.paymentMethod) ? `
       <div class="info-line">
         <span>Payment:</span>
