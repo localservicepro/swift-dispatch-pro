@@ -26,7 +26,7 @@ export interface ReceiptData {
 }
 
 export class ReceiptService {
-  static async generateReceiptFromOrder(orderId: string, isThermal: boolean = false): Promise<{ receiptUrl: string; receiptData: ReceiptData }> {
+  static async generateReceiptFromOrder(orderId: string): Promise<{ receiptUrl: string; receiptData: ReceiptData }> {
     // First, try to get invoice data if it exists
     const { data: invoiceData } = await supabase
       .from('invoices')
@@ -92,7 +92,7 @@ export class ReceiptService {
     };
   }
 
-  static async generateReceiptFromInvoice(invoiceId: string, isThermal: boolean = false): Promise<{ receiptUrl: string; receiptData: ReceiptData }> {
+  static async generateReceiptFromInvoice(invoiceId: string): Promise<{ receiptUrl: string; receiptData: ReceiptData }> {
     // Get invoice and order data
     const { data: invoiceData, error: invoiceError } = await supabase
       .from('invoices')
@@ -200,56 +200,31 @@ export class ReceiptService {
     return [];
   }
 
-  static async downloadReceipt(receiptUrl: string, orderNumber: string): Promise<void> {
-    try {
-      const response = await fetch(receiptUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = `receipt-${orderNumber}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      throw new Error('Failed to download receipt');
-    }
-  }
-
   static async printReceipt(receiptUrl: string): Promise<void> {
     try {
-      const printWindow = window.open(receiptUrl, '_blank');
+      // Open receipt in new window and trigger print
+      const printWindow = window.open('', '_blank');
       if (printWindow) {
+        // Fetch the HTML content
+        const response = await fetch(receiptUrl);
+        const htmlContent = await response.text();
+        
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        // Wait for content to load, then print
         printWindow.onload = () => {
-          printWindow.print();
+          setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+          }, 500);
         };
       } else {
-        throw new Error('Popup blocked');
+        throw new Error('Popup blocked - please allow popups to print receipts');
       }
     } catch (error) {
+      console.error('Print error:', error);
       throw new Error('Failed to print receipt');
-    }
-  }
-
-  static async emailReceipt(orderId: string, customerEmail: string): Promise<void> {
-    try {
-      const { error } = await supabase.functions.invoke('send-emails', {
-        body: {
-          type: 'receipt',
-          data: {
-            orderId,
-            customerEmail
-          }
-        }
-      });
-
-      if (error) {
-        throw new Error('Failed to send receipt email');
-      }
-    } catch (error) {
-      throw new Error('Failed to email receipt');
     }
   }
 }

@@ -48,7 +48,6 @@ export function OpportunityCardHeader({
         <ReceiptButton
           orderId={order.id}
           orderNumber={order.order_number}
-          customerEmail={order.customers?.email}
           variant="ghost"
           size="sm"
           className="opacity-0 group-hover:opacity-100 transition-opacity"

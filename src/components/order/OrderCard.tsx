@@ -253,7 +253,6 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           <ReceiptButton
             orderId={order.id}
             orderNumber={order.order_number}
-            customerEmail={order.customers?.email}
             variant="ghost"
             size="sm"
           />
@@ -360,7 +359,6 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
         <ReceiptButton
           orderId={order.id}
           orderNumber={order.order_number}
-          customerEmail={order.customers?.email}
           variant="outline"
           size="sm"
           showLabel={true}

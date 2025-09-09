@@ -1,6 +1,9 @@
 
 project_id = "wntcxbxitsanbyrtfhwv"
 
+[functions.generate-pdf-receipt]
+verify_jwt = false
+
 [functions.generate-thermal-receipt]
 verify_jwt = false
 

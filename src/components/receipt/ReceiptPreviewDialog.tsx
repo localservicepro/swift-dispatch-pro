@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Download, Printer, Mail } from "lucide-react";
+import { Loader2, Printer } from "lucide-react";
 // import { useToast } from "@/hooks/use-toast";
 import { ReceiptService, ReceiptData } from "@/services/receiptService";
 
@@ -61,26 +61,14 @@ export function ReceiptPreviewDialog({
     }
   };
 
-  const handleAction = async (action: 'download' | 'print' | 'email') => {
+  const handleAction = async (action: 'print') => {
     if (!receiptUrl || !receiptData) return;
     
     setIsProcessing(true);
     try {
-      switch (action) {
-        case 'download':
-          await ReceiptService.downloadReceipt(receiptUrl, orderNumber);
-          console.log(`Receipt downloaded for order ${orderNumber}`);
-          break;
-        case 'print':
-          await ReceiptService.printReceipt(receiptUrl);
-          console.log(`Receipt printed for order ${orderNumber}`);
-          break;
-        case 'email':
-          if (customerEmail) {
-            await ReceiptService.emailReceipt(orderId, customerEmail);
-            console.log(`Receipt sent to ${customerEmail} for order ${orderNumber}`);
-          }
-          break;
+      if (action === 'print') {
+        await ReceiptService.printReceipt(receiptUrl);
+        console.log(`Receipt printed for order ${orderNumber}`);
       }
     } catch (error: any) {
       console.error('Receipt action error:', error);
@@ -112,40 +100,16 @@ export function ReceiptPreviewDialog({
             </span>
             <div className="flex items-center gap-2">
               {receiptUrl && !isLoading && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleAction('download')}
-                    disabled={isProcessing}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleAction('print')}
-                    disabled={isProcessing}
-                    className="flex items-center gap-2"
-                  >
-                    <Printer className="w-4 h-4" />
-                    Print
-                  </Button>
-                  {customerEmail && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAction('email')}
-                      disabled={isProcessing}
-                      className="flex items-center gap-2"
-                    >
-                      <Mail className="w-4 h-4" />
-                      Email
-                    </Button>
-                  )}
-                </>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAction('print')}
+                  disabled={isProcessing}
+                  className="flex items-center gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  Print Receipt
+                </Button>
               )}
             </div>
           </DialogTitle>

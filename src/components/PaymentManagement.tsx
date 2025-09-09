@@ -593,7 +593,6 @@ export function PaymentManagement() {
                     <ReceiptButton
                       orderId={payment.id}
                       orderNumber={payment.order_number}
-                      customerEmail={payment.customer_email}
                       variant="outline"
                       size="sm"
                       showLabel={true}
