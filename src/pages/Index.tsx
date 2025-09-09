@@ -15,7 +15,6 @@ import { Settings } from "@/components/Settings";
 import { TruckManagement } from "@/components/TruckManagement";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { useToast } from "@/hooks/use-toast";
 import { LogOut, Loader2 } from "lucide-react";
 import { TeamManagement } from "@/components/TeamManagement";
 import { PersonalizedGreeting } from "@/components/PersonalizedGreeting";
@@ -26,23 +25,15 @@ import { useNavigate } from "react-router-dom";
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const { signOut, profile, signingOut } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     const { error } = await signOut();
     
     if (error) {
-      toast({
-        title: "Sign Out Failed",
-        description: "There was an error signing out. Please try again.",
-        variant: "destructive",
-      });
+      console.error("Sign out failed:", error);
     } else {
-      toast({
-        title: "Signed Out",
-        description: "You have been successfully signed out.",
-      });
+      console.log("Successfully signed out");
     }
   };
 
