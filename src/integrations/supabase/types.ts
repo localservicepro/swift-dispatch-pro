@@ -67,6 +67,62 @@ export type Database = {
           },
         ]
       }
+      business_settings: {
+        Row: {
+          abn: string | null
+          business_address: string | null
+          business_email: string
+          business_name: string
+          business_phone: string
+          business_website: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          registration_number: string | null
+          tax_number: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          abn?: string | null
+          business_address?: string | null
+          business_email?: string
+          business_name?: string
+          business_phone?: string
+          business_website?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          registration_number?: string | null
+          tax_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          abn?: string | null
+          business_address?: string | null
+          business_email?: string
+          business_name?: string
+          business_phone?: string
+          business_website?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          registration_number?: string | null
+          tax_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_contacts: {
         Row: {
           contact_role: string | null
