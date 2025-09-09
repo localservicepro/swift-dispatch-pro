@@ -13,7 +13,7 @@ import { PaymentSettings } from "@/components/payment/PaymentSettings";
 import { usePaymentFilters } from "@/hooks/usePaymentFilters";
 import { PurchaseOrderDisplay } from "@/components/order/PurchaseOrderDisplay";
 import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
-// import { ReceiptButton } from "@/components/ui/receipt-button";
+import { ReceiptButton } from "@/components/ui/receipt-button";
 
 interface PaymentOrder {
   id: string;
@@ -590,14 +590,14 @@ export function PaymentManagement() {
                   </div>
                   
                   <div className="flex gap-2 mt-4 flex-wrap">
-                    {/* <ReceiptButton
+                    <ReceiptButton
                       orderId={payment.id}
                       orderNumber={payment.order_number}
                       customerEmail={payment.customer_email}
                       variant="outline"
                       size="sm"
                       showLabel={true}
-                    /> */}
+                    />
                     <Button size="sm" variant="outline" onClick={() => generateAndSendInvoice(payment.id)} disabled={generatingInvoices.includes(payment.id)} className="flex items-center gap-2">
                       {generatingInvoices.includes(payment.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
                       {generatingInvoices.includes(payment.id) ? "Generating..." : "Generate Invoice"}

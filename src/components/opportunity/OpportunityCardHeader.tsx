@@ -5,7 +5,7 @@ import { PaymentStatusDropdown } from "./PaymentStatusDropdown";
 import { NotesIndicator } from "../notes/NotesIndicator";
 import { PurchaseOrderDisplay } from "../order/PurchaseOrderDisplay";
 import { StopCreditIndicator } from "../customer/StopCreditIndicator";
-// import { ReceiptButton } from "@/components/ui/receipt-button";
+import { ReceiptButton } from "@/components/ui/receipt-button";
 
 interface OpportunityCardHeaderProps {
   order: any;
@@ -45,14 +45,14 @@ export function OpportunityCardHeader({
       </div>
       <div className="flex items-center gap-2">
         <PaymentStatusDropdown order={order} onStatusUpdate={onOrderMove} />
-        {/* <ReceiptButton
+        <ReceiptButton
           orderId={order.id}
           orderNumber={order.order_number}
           customerEmail={order.customers?.email}
           variant="ghost"
           size="sm"
           className="opacity-0 group-hover:opacity-100 transition-opacity"
-        /> */}
+        />
         {/* View Proof Button for Delivered Orders */}
         {currentStage === 'delivered' && hasDeliveryPhotos && (
           <Button
