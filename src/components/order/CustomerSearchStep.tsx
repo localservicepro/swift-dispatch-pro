@@ -119,55 +119,131 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
   const searchCustomers = async () => {
     setLoading(true);
     
-    // Check if the search query looks like a phone number
-    if (isPhoneNumber(searchQuery)) {
-      // For phone number searches, fetch all customers and their contacts
-      const { data, error } = await supabase
-        .from('customers')
-        .select(`
-          *,
-          suburb:suburbs(name, state, delivery_rate),
-          customer_contacts(id, phone, first_name, last_name, is_active)
-        `)
-        .eq('is_active', true);
+    try {
+      console.log(`🔍 Searching customers with query: "${searchQuery}"`);
+      
+      // Check if the search query looks like a phone number
+      if (isPhoneNumber(searchQuery)) {
+        console.log('📞 Performing phone number search');
+        
+        // For phone number searches, fetch all customers and their contacts
+        const { data, error } = await supabase
+          .from('customers')
+          .select(`
+            *,
+            suburb:suburbs(name, state, delivery_rate),
+            customer_contacts(id, phone, first_name, last_name, is_active)
+          `)
+          .eq('is_active', true);
 
-      if (!error && data) {
-        // Filter results using phone number matching on both customer phone and contact phones
-        const phoneMatches = data.filter(customer => {
-          // Check customer's main phone
-          if (customer.phone && phoneSearchMatch(customer.phone, searchQuery)) {
+        if (error) {
+          console.error('❌ Phone search error:', error);
+          throw error;
+        }
+
+        if (data && Array.isArray(data)) {
+          console.log(`📊 Phone search returned ${data.length} customers to filter`);
+          
+          // Filter results using phone number matching on both customer phone and contact phones
+          const phoneMatches = data.filter(customer => {
+            try {
+              // Validate customer object structure
+              if (!customer || typeof customer !== 'object') {
+                console.warn('⚠️ Invalid customer object:', customer);
+                return false;
+              }
+
+              // Check customer's main phone
+              if (customer.phone && phoneSearchMatch(customer.phone, searchQuery)) {
+                return true;
+              }
+              
+              // Check all active contact phones
+              if (customer.customer_contacts && Array.isArray(customer.customer_contacts)) {
+                return customer.customer_contacts.some(contact => {
+                  if (!contact || typeof contact !== 'object') {
+                    return false;
+                  }
+                  return contact.is_active && contact.phone && phoneSearchMatch(contact.phone, searchQuery);
+                });
+              }
+              
+              return false;
+            } catch (filterError) {
+              console.error('❌ Error filtering customer:', customer?.id, filterError);
+              return false;
+            }
+          });
+          
+          console.log(`✅ Phone search found ${phoneMatches.length} matches`);
+          setCustomers(phoneMatches.slice(0, 10)); // Limit to 10 results
+        } else {
+          console.log('📊 Phone search returned no data');
+          setCustomers([]);
+        }
+      } else {
+        console.log('🔤 Performing text search');
+        
+        // Build safer query conditions for nullable fields
+        const searchPattern = `%${searchQuery}%`;
+        const conditions = [];
+        
+        // Only add conditions for fields that might have values
+        conditions.push(`first_name.ilike.${searchPattern}`);
+        conditions.push(`last_name.ilike.${searchPattern}`);
+        conditions.push(`email.ilike.${searchPattern}`);
+        conditions.push(`phone.ilike.${searchPattern}`);
+        conditions.push(`company_name.ilike.${searchPattern}`);
+        conditions.push(`business_name.ilike.${searchPattern}`);
+        
+        const { data, error } = await supabase
+          .from('customers')
+          .select(`
+            *,
+            suburb:suburbs(name, state, delivery_rate)
+          `)
+          .or(conditions.join(','))
+          .eq('is_active', true)
+          .limit(10);
+
+        if (error) {
+          console.error('❌ Text search error:', error);
+          throw error;
+        }
+
+        if (data && Array.isArray(data)) {
+          console.log(`✅ Text search found ${data.length} customers`);
+          
+          // Validate each customer object before setting state
+          const validCustomers = data.filter(customer => {
+            if (!customer || typeof customer !== 'object' || !customer.id) {
+              console.warn('⚠️ Invalid customer object:', customer);
+              return false;
+            }
             return true;
-          }
+          });
           
-          // Check all active contact phones
-          if (customer.customer_contacts) {
-            return customer.customer_contacts.some(contact => 
-              contact.is_active && contact.phone && phoneSearchMatch(contact.phone, searchQuery)
-            );
-          }
-          
-          return false;
-        });
-        setCustomers(phoneMatches.slice(0, 10)); // Limit to 10 results
+          setCustomers(validCustomers);
+        } else {
+          console.log('📊 Text search returned no data');
+          setCustomers([]);
+        }
       }
-    } else {
-      // For regular text searches, use the existing Supabase query
-      const { data, error } = await supabase
-        .from('customers')
-        .select(`
-          *,
-          suburb:suburbs(name, state, delivery_rate)
-        `)
-        .or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%,business_name.ilike.%${searchQuery}%`)
-        .eq('is_active', true)
-        .limit(10);
-
-      if (!error && data) {
-        setCustomers(data);
-      }
+    } catch (error) {
+      console.error('❌ Customer search failed:', error);
+      
+      // Show user-friendly error message
+      toast({
+        title: "Search Error",
+        description: "Failed to search customers. Please try again.",
+        variant: "destructive",
+      });
+      
+      // Reset customers on error
+      setCustomers([]);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const createCustomer = async () => {
