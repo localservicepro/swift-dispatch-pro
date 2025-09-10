@@ -3,6 +3,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Order, OrderStatus, TruckType } from "./OrderEditFormTypes";
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
+import { activityLogger } from "@/utils/activityLogger";
 
 export function useOrderFormSubmission() {
   const { toast } = useToast();
@@ -32,9 +34,22 @@ export function useOrderFormSubmission() {
     onClose: () => void
   ) => {
     try {
-      // Check if delivery address has changed for enhanced logging
+      // Enhanced order change detection for comprehensive logging
       const deliveryAddressChanged = submissionData.customer_address !== (order.delivery_address || order.customer_address);
-      console.log('Order update - delivery address changed:', deliveryAddressChanged);
+      const totalAmountChanged = parseFloat(submissionData.total_amount) !== order.total_amount;
+      const productsChanged = JSON.stringify(submissionData.products) !== JSON.stringify(order.products);
+      const statusChanged = submissionData.status !== order.status;
+      
+      console.log('Order update analysis:', {
+        deliveryAddressChanged,
+        totalAmountChanged,
+        productsChanged,
+        statusChanged,
+        oldTotal: order.total_amount,
+        newTotal: parseFloat(submissionData.total_amount),
+        oldStatus: order.status,
+        newStatus: submissionData.status
+      });
       
       // If truck assignment changed, update the old truck status and new truck status
       if (submissionData.truck_id !== order.truck_id) {
@@ -55,7 +70,8 @@ export function useOrderFormSubmission() {
         }
       }
 
-      // Update the order with delivery_address and delivery_suburb_id
+      // Enhanced order update with comprehensive data and payment adjustments
+      const finalTotalAmount = parseFloat(submissionData.total_amount);
       const updateData = {
         customer_name: submissionData.customer_name,
         purchase_order: submissionData.purchase_order || null,
@@ -63,7 +79,7 @@ export function useOrderFormSubmission() {
         customer_address: submissionData.customer_address,
         delivery_address: submissionData.customer_address, // Ensure delivery_address is updated
         products: submissionData.products,
-        total_amount: parseFloat(submissionData.total_amount),
+        total_amount: finalTotalAmount,
         subtotal: submissionData.subtotal,
         adjustments: parseFloat(submissionData.adjustments) || 0,
         status: submissionData.status as OrderStatus,
@@ -83,6 +99,17 @@ export function useOrderFormSubmission() {
         contact_phone: submissionData.contact_phone || null,
         updated_at: new Date().toISOString(),
       };
+
+      // Handle payment status adjustments when total changes
+      if (totalAmountChanged && order.payment_status === 'paid') {
+        if (finalTotalAmount > order.total_amount) {
+          // Amount increased - mark as pending adjustment
+          (updateData as any).payment_status = 'pending_adjustment';
+        } else if (finalTotalAmount < order.total_amount) {
+          // Amount decreased - keep as paid but log the credit
+          console.log(`Order ${order.order_number}: Total decreased from ${order.total_amount} to ${finalTotalAmount}. Credit difference: ${order.total_amount - finalTotalAmount}`);
+        }
+      }
 
       console.log('Updating order with data:', updateData);
 
@@ -137,12 +164,67 @@ export function useOrderFormSubmission() {
         }
       }
 
+      // Update invoices if they exist and amount changed
+      if (totalAmountChanged) {
+        const { data: existingInvoices } = await supabase
+          .from('invoices')
+          .select('id, amount')
+          .eq('order_id', order.id)
+          .eq('status', 'pending');
+
+        if (existingInvoices && existingInvoices.length > 0) {
+          // Update pending invoices with new amount
+          await supabase
+            .from('invoices')
+            .update({ 
+              amount: finalTotalAmount,
+              updated_at: new Date().toISOString()
+            })
+            .eq('order_id', order.id)
+            .eq('status', 'pending');
+        }
+      }
+
+      // Enhanced activity logging - create a simple log entry
+      if (totalAmountChanged || productsChanged || statusChanged) {
+        const logDescription = `Order ${order.order_number} edited by admin - ${[
+          totalAmountChanged && `total: ${order.total_amount} → ${finalTotalAmount}`,
+          productsChanged && 'products modified', 
+          statusChanged && `status: ${order.status} → ${submissionData.status}`
+        ].filter(Boolean).join(', ')}`;
+
+        console.log('Order edit activity:', logDescription);
+
+        // Insert activity log directly - get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from('activity_logs')
+            .insert({
+              action_type: 'order_edit',
+              target_type: 'order',
+              target_id: order.id,
+              admin_id: user.id,
+              description: logDescription,
+              target_details: {
+                oldTotal: order.total_amount,
+                newTotal: finalTotalAmount,
+                oldStatus: order.status,
+                newStatus: submissionData.status,
+                productsChanged,
+                totalAmountChanged,
+                statusChanged
+              }
+            });
+        }
+      }
+
       // ENHANCED: Manual cache invalidation after successful order update
-      await invalidateOrderCaches(deliveryAddressChanged ? 'delivery address changed' : 'order data changed');
+      await invalidateOrderCaches(deliveryAddressChanged ? 'delivery address changed' : 'comprehensive order update');
 
       toast({
         title: "Success",
-        description: "Order updated successfully!",
+        description: `Order updated successfully! ${totalAmountChanged ? 'Total amount and payments have been adjusted.' : ''}`,
       });
 
       onOrderUpdated();

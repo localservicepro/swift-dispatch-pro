@@ -1,8 +1,9 @@
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { OrderEditFooter } from "./OrderEditFooter";
 import { OrderEditSections } from "./OrderEditSections";
 import { OrderEditConflictSection } from "./OrderEditConflictSection";
+import { OrderEditStatusWarning } from "./OrderEditStatusWarning";
 import { OrderEditFormProps } from "./OrderEditFormTypes";
 import { OrderReturnDialog } from "./returns/OrderReturnDialog";
 import { useOrderEditFormLogic, convertToConflictInfo } from "./OrderEditFormLogic";
@@ -59,8 +60,26 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
   const driverConflictInfo = convertToConflictInfo(driverConflict);
   const truckConflictInfo = convertToConflictInfo(truckConflict);
 
+  // Detect changes for warning display
+  const hasProductChanges = useMemo(() => {
+    return JSON.stringify(formData.products) !== JSON.stringify(order.products);
+  }, [formData.products, order.products]);
+
+  const hasTotalChanges = useMemo(() => {
+    return parseFloat(formData.total_amount) !== order.total_amount;
+  }, [formData.total_amount, order.total_amount]);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <OrderEditStatusWarning
+        currentStatus={order.status}
+        hasProductChanges={hasProductChanges}
+        hasTotalChanges={hasTotalChanges}
+        oldTotal={order.total_amount}
+        newTotal={parseFloat(formData.total_amount)}
+        paymentStatus={order.payment_status}
+      />
+      
       <OrderEditSections
         formData={formData}
         deliveryRate={deliveryRate}
