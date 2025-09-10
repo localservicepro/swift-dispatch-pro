@@ -5,6 +5,7 @@ import { EnhancedDeleteOrderDialog } from "./EnhancedDeleteOrderDialog";
 import { NotesEditDialog } from "../notes/NotesEditDialog";
 import { useOrderManagement } from "./OrderManagementProvider";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function OrderManagementDialogs() {
   const {
@@ -47,20 +48,15 @@ export function OrderManagementDialogs() {
 
   return (
     <>
-      {/* Create Order Modal */}
-      {isCreating && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Create New Order</h2>
-                <button onClick={() => setIsCreating(false)}>Close</button>
-              </div>
-              <MultiStepOrderForm onOrderCreated={handleOrderCreated} onClose={() => setIsCreating(false)} />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Create Order Dialog */}
+      <Dialog open={isCreating} onOpenChange={setIsCreating}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Order</DialogTitle>
+          </DialogHeader>
+          <MultiStepOrderForm onOrderCreated={handleOrderCreated} onClose={() => setIsCreating(false)} />
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Order Dialog */}
       {editingOrder && (
