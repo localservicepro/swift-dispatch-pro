@@ -38,6 +38,7 @@ export function ProductEditSection({
 }: ProductEditSectionProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
+  const [currentProductDetails, setCurrentProductDetails] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [stockFilter, setStockFilter] = useState<string>("all");
@@ -68,6 +69,31 @@ export function ProductEditSection({
       setCategories(data);
     }
   }, []);
+
+  // Load product details for current products in the order
+  const loadCurrentProductDetails = useCallback(async () => {
+    if (currentProducts.length === 0) {
+      setCurrentProductDetails([]);
+      return;
+    }
+
+    const productIds = currentProducts.map(item => item.id);
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
+        *,
+        category:product_categories(name, allows_fractional_quantities)
+      `)
+      .in('id', productIds);
+
+    if (!error && data) {
+      const productsWithImages = data.map(product => ({
+        ...product,
+        images: Array.isArray(product.images) ? product.images : []
+      }));
+      setCurrentProductDetails(productsWithImages);
+    }
+  }, [currentProducts]);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -118,6 +144,11 @@ export function ProductEditSection({
     }
     setLoading(false);
   }, [searchQuery, selectedCategory, stockFilter]);
+
+  // Load current product details when currentProducts changes
+  useEffect(() => {
+    loadCurrentProductDetails();
+  }, [loadCurrentProductDetails]);
 
   useEffect(() => {
     if (showSearch) {
@@ -184,7 +215,7 @@ export function ProductEditSection({
   };
 
   const handleQuantitySubmit = (productId: string) => {
-    const product = products.find(p => p.id === productId);
+    const product = currentProductDetails.find(p => p.id === productId) || products.find(p => p.id === productId);
     if (!product) return;
 
     const newQuantity = parseQuantityInput(inputValue);
@@ -226,7 +257,7 @@ export function ProductEditSection({
   };
 
   const updateQuantity = useCallback((productId: string, change: number) => {
-    const product = products.find(p => p.id === productId);
+    const product = currentProductDetails.find(p => p.id === productId) || products.find(p => p.id === productId);
     if (!product) return;
     
     const minQuantity = getMinimumQuantity(product);
@@ -236,7 +267,7 @@ export function ProductEditSection({
         : item
     );
     onProductsChange(updatedProducts);
-  }, [currentProducts, onProductsChange, products]);
+  }, [currentProducts, onProductsChange, currentProductDetails, products]);
 
   const removeFromCart = useCallback((productId: string) => {
     const updatedProducts = currentProducts.filter(item => item.id !== productId);
@@ -291,7 +322,7 @@ export function ProductEditSection({
                           variant="ghost"
                           className="h-6 w-6 p-0"
                           onClick={() => {
-                            const product = products.find(p => p.id === item.id);
+                            const product = currentProductDetails.find(p => p.id === item.id) || products.find(p => p.id === item.id);
                             if (product) updateQuantity(item.id, -getQuantityIncrement(product));
                           }}
                         >
@@ -311,13 +342,13 @@ export function ProductEditSection({
                                onBlur={() => handleQuantitySubmit(item.id)}
                                placeholder="1.25"
                                step={(() => {
-                                 const product = products.find(p => p.id === item.id);
-                                 return product ? getQuantityIncrement(product) : 0.001;
-                               })()}
-                               min={(() => {
-                                 const product = products.find(p => p.id === item.id);
-                                 return product ? getMinimumQuantity(product) : 0.001;
-                               })()}
+                                  const product = currentProductDetails.find(p => p.id === item.id) || products.find(p => p.id === item.id);
+                                  return product ? getQuantityIncrement(product) : 0.001;
+                                })()}
+                                min={(() => {
+                                  const product = currentProductDetails.find(p => p.id === item.id) || products.find(p => p.id === item.id);
+                                  return product ? getMinimumQuantity(product) : 0.001;
+                                })()}
                                autoFocus
                              />
                           </div>
@@ -335,7 +366,7 @@ export function ProductEditSection({
                           variant="ghost"
                           className="h-6 w-6 p-0"
                           onClick={() => {
-                            const product = products.find(p => p.id === item.id);
+                            const product = currentProductDetails.find(p => p.id === item.id) || products.find(p => p.id === item.id);
                             if (product) updateQuantity(item.id, getQuantityIncrement(product));
                           }}
                         >
