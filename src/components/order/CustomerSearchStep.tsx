@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,34 +89,61 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
   });
   const [showStopCreditWarning, setShowStopCreditWarning] = useState(false);
   const [pendingCustomer, setPendingCustomer] = useState<Customer | null>(null);
+  const [searchAbortController, setSearchAbortController] = useState<AbortController | null>(null);
+  const isMountedRef = useRef(true);
   const { toast } = useToast();
 
   useEffect(() => {
     loadSuburbs();
+    
+    // Cleanup function
+    return () => {
+      isMountedRef.current = false;
+      if (searchAbortController) {
+        searchAbortController.abort();
+      }
+    };
   }, []);
 
   useEffect(() => {
     if (searchQuery.length > 2) {
       searchCustomers();
     } else {
-      setCustomers([]);
+      if (isMountedRef.current) {
+        setCustomers([]);
+      }
     }
   }, [searchQuery]);
 
   const loadSuburbs = async () => {
-    const { data, error } = await supabase
-      .from('suburbs')
-      .select('*')
-      .eq('is_active', true)
-      .order('state', { ascending: true })
-      .order('name', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('suburbs')
+        .select('*')
+        .eq('is_active', true)
+        .order('state', { ascending: true })
+        .order('name', { ascending: true });
 
-    if (!error && data) {
-      setSuburbs(data);
+      if (!error && data && isMountedRef.current) {
+        setSuburbs(data);
+      }
+    } catch (error) {
+      console.error('Error loading suburbs:', error);
     }
   };
 
   const searchCustomers = async () => {
+    // Cancel previous search if still running
+    if (searchAbortController) {
+      searchAbortController.abort();
+    }
+
+    // Create new abort controller for this search
+    const newAbortController = new AbortController();
+    setSearchAbortController(newAbortController);
+
+    if (!isMountedRef.current) return;
+    
     setLoading(true);
     
     try {
@@ -176,10 +203,14 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
           });
           
           console.log(`✅ Phone search found ${phoneMatches.length} matches`);
-          setCustomers(phoneMatches.slice(0, 10)); // Limit to 10 results
+          if (isMountedRef.current && !newAbortController.signal.aborted) {
+            setCustomers(phoneMatches.slice(0, 10)); // Limit to 10 results
+          }
         } else {
           console.log('📊 Phone search returned no data');
-          setCustomers([]);
+          if (isMountedRef.current && !newAbortController.signal.aborted) {
+            setCustomers([]);
+          }
         }
       } else {
         console.log('🔤 Performing text search');
@@ -223,26 +254,39 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
             return true;
           });
           
-          setCustomers(validCustomers);
+          if (isMountedRef.current && !newAbortController.signal.aborted) {
+            setCustomers(validCustomers);
+          }
         } else {
           console.log('📊 Text search returned no data');
-          setCustomers([]);
+          if (isMountedRef.current && !newAbortController.signal.aborted) {
+            setCustomers([]);
+          }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Customer search failed:', error);
       
-      // Show user-friendly error message
-      toast({
-        title: "Search Error",
-        description: "Failed to search customers. Please try again.",
-        variant: "destructive",
-      });
-      
-      // Reset customers on error
-      setCustomers([]);
+      // Don't show error if request was aborted (user typed another character)
+      if (!newAbortController.signal.aborted && isMountedRef.current) {
+        // Show user-friendly error message
+        toast({
+          title: "Search Error",
+          description: "Failed to search customers. Please try again.",
+          variant: "destructive",
+        });
+        
+        // Reset customers on error
+        setCustomers([]);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current && !newAbortController.signal.aborted) {
+        setLoading(false);
+      }
+      // Clear the abort controller if this was the current search
+      if (searchAbortController === newAbortController) {
+        setSearchAbortController(null);
+      }
     }
   };
 

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CustomerSearchStep } from "./CustomerSearchStep";
 import { ProductSelectionStep } from "./ProductSelectionStep";
 import { DeliveryMethodSelectionStep } from "./DeliveryMethodSelectionStep";
@@ -197,13 +198,15 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     switch (currentStep) {
       case 1:
         return (
-          <CustomerSearchStep
-            selectedCustomer={selectedCustomer}
-            selectedContact={selectedContact}
-            onCustomerSelect={setSelectedCustomer}
-            onContactSelect={setSelectedContact}
-            onNext={nextStep}
-          />
+          <ErrorBoundary fallbackTitle="Customer Search Error" showRefresh={false}>
+            <CustomerSearchStep
+              selectedCustomer={selectedCustomer}
+              selectedContact={selectedContact}
+              onCustomerSelect={setSelectedCustomer}
+              onContactSelect={setSelectedContact}
+              onNext={nextStep}
+            />
+          </ErrorBoundary>
         );
 
       case 2:
