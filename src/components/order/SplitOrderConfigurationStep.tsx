@@ -61,6 +61,19 @@ export function SplitOrderConfigurationStep({
       split.deliveryDate && split.deliveryTime
     );
 
+    console.log('Split validation check:', {
+      fullyAllocated,
+      allSplitsHaveProducts,
+      allSplitsHaveDeliveryDetails,
+      splits: splits.map(s => ({
+        name: s.name,
+        hasProducts: s.products.length > 0,
+        hasDeliveryDate: !!s.deliveryDate,
+        hasDeliveryTime: !!s.deliveryTime,
+        productsCount: s.products.length
+      }))
+    });
+
     return fullyAllocated && allSplitsHaveProducts && allSplitsHaveDeliveryDetails;
   };
 
