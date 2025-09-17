@@ -14,6 +14,10 @@ import { cn } from "@/lib/utils";
 import { CartItem, SplitConfig, Customer } from "./types";
 import { generateTimeSlots } from "@/utils/timeSlotUtils";
 import { isDateBeforeToday } from "@/utils/dateTimeUtils";
+import { EnhancedAddressInput } from "@/components/ui/enhanced-address-input";
+import { SuburbSelector } from "../order/SuburbSelector";
+import { useSuburbManagement } from "@/hooks/useSuburbManagement";
+import { createAddressSelectHandler } from "@/utils/addressUtils";
 
 interface CompactSplitConfigProps {
   splits: SplitConfig[];
@@ -31,6 +35,7 @@ export function CompactSplitConfig({
   isCommonDateMode = false
 }: CompactSplitConfigProps) {
   const timeSlots = generateTimeSlots();
+  const { handleAutoSuburbSelection } = useSuburbManagement();
 
   const getSplitTotal = (split: SplitConfig) => {
     return split.products.reduce((sum, splitProduct) => {
@@ -44,13 +49,30 @@ export function CompactSplitConfig({
   };
 
   const isSplitConfigComplete = (split: SplitConfig) => {
-    return split.deliveryDate && split.deliveryTime && split.products.length > 0;
+    const hasDeliveryInfo = split.deliveryDate && split.deliveryTime && split.products.length > 0;
+    const hasAddressInfo = split.sameAsBilling || (split.deliveryAddress && (split.suburbId || split.deliverySuburbId));
+    return hasDeliveryInfo && hasAddressInfo;
   };
 
   const handleDateSelect = (splitIndex: number, date: Date | undefined) => {
     if (date) {
       onUpdateSplit(splitIndex, { deliveryDate: format(date, 'yyyy-MM-dd') });
     }
+  };
+
+  const handleAddressSelect = (splitIndex: number, addressData: any) => {
+    onUpdateSplit(splitIndex, { deliveryAddress: addressData.fullAddress });
+    
+    // Auto-select suburb based on postcode if available
+    if (addressData.postcode) {
+      handleAutoSuburbSelection(addressData.postcode, (suburbId: string) => {
+        onUpdateSplit(splitIndex, { deliverySuburbId: suburbId });
+      });
+    }
+  };
+
+  const handleSuburbChange = (splitIndex: number, suburbId: string) => {
+    onUpdateSplit(splitIndex, { deliverySuburbId: suburbId });
   };
 
   return (
@@ -172,7 +194,8 @@ export function CompactSplitConfig({
                         checked={split.sameAsBilling}
                         onCheckedChange={(checked) => onUpdateSplit(index, { 
                           sameAsBilling: checked as boolean,
-                          deliveryAddress: checked ? customer.full_address : split.deliveryAddress
+                          deliveryAddress: checked ? customer.full_address : split.deliveryAddress,
+                          deliverySuburbId: checked ? customer.suburb_id : split.deliverySuburbId
                         })}
                       />
                       <Label htmlFor={`same-billing-${index}`} className="text-xs">
@@ -183,14 +206,26 @@ export function CompactSplitConfig({
                     {split.sameAsBilling ? (
                       <div className="text-xs bg-gray-50 p-2 rounded border">
                         {customer.full_address}
+                        {customer.suburb && (
+                          <div className="text-gray-500 mt-1">
+                            {customer.suburb.name}, {customer.suburb.state}
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <Textarea
-                        value={split.deliveryAddress || ""}
-                        onChange={(e) => onUpdateSplit(index, { deliveryAddress: e.target.value })}
-                        placeholder="Enter delivery address..."
-                        className="h-16 text-xs resize-none"
-                      />
+                      <div className="space-y-2">
+                        <EnhancedAddressInput
+                          value={split.deliveryAddress || ""}
+                          onChange={(value) => onUpdateSplit(index, { deliveryAddress: value })}
+                          onAddressSelect={(addressData) => handleAddressSelect(index, addressData)}
+                          placeholder="Enter delivery address..."
+                          className="text-xs"
+                        />
+                        <SuburbSelector
+                          selectedSuburbId={split.deliverySuburbId || ""}
+                          onSuburbChange={(suburbId) => handleSuburbChange(index, suburbId)}
+                        />
+                      </div>
                     )}
                   </div>
                 )}

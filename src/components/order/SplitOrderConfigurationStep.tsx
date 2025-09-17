@@ -60,10 +60,14 @@ export function SplitOrderConfigurationStep({
     // Check if all splits have at least one product
     const allSplitsHaveProducts = splits.every(split => split.products.length > 0);
     
-    // Check if all splits have delivery details
-    const allSplitsHaveDeliveryDetails = splits.every(split => 
-      split.deliveryDate && split.deliveryTime
-    );
+    // Check if all splits have delivery details including address and suburb
+    const allSplitsHaveDeliveryDetails = splits.every(split => {
+      const hasDateAndTime = split.deliveryDate && split.deliveryTime;
+      const hasAddressInfo = split.sameAsBilling || 
+        (split.deliveryAddress && split.deliveryAddress.trim() !== "" && 
+         (split.suburbId || split.deliverySuburbId));
+      return hasDateAndTime && hasAddressInfo;
+    });
 
     console.log('Split validation check:', {
       fullyAllocated,
@@ -76,9 +80,14 @@ export function SplitOrderConfigurationStep({
         hasProducts: s.products.length > 0,
         hasDeliveryDate: !!s.deliveryDate,
         hasDeliveryTime: !!s.deliveryTime,
+        hasAddressInfo: s.sameAsBilling || (!!s.deliveryAddress && !!(s.suburbId || s.deliverySuburbId)),
         productsCount: s.products.length,
         deliveryDate: s.deliveryDate,
-        deliveryTime: s.deliveryTime
+        deliveryTime: s.deliveryTime,
+        deliveryAddress: s.deliveryAddress,
+        sameAsBilling: s.sameAsBilling,
+        suburbId: s.suburbId,
+        deliverySuburbId: s.deliverySuburbId
       })),
       cart: cart.map(c => ({
         productId: c.product.id,

@@ -16,6 +16,10 @@ import { CartItem, SplitConfig, Customer, Product } from "./types";
 import { ProductReplacementDialog } from "./ProductReplacementDialog";
 import { generateTimeSlots } from "@/utils/timeSlotUtils";
 import { isDateBeforeToday } from "@/utils/dateTimeUtils";
+import { EnhancedAddressInput } from "@/components/ui/enhanced-address-input";
+import { SuburbSelector } from "../order/SuburbSelector";
+import { useSuburbManagement } from "@/hooks/useSuburbManagement";
+import { createAddressSelectHandler } from "@/utils/addressUtils";
 
 interface SplitSummaryCardProps {
   split: SplitConfig;
@@ -53,6 +57,7 @@ export function SplitSummaryCard({
   });
   
   const timeSlots = generateTimeSlots();
+  const { handleAutoSuburbSelection } = useSuburbManagement();
 
   // Convert string date to Date object for calendar
   const selectedDate = split.deliveryDate ? new Date(split.deliveryDate) : undefined;
@@ -65,17 +70,34 @@ export function SplitSummaryCard({
   const totalItems = split.products.reduce((sum, p) => sum + p.quantity, 0);
 
   const isConfigurationComplete = split.deliveryDate && split.deliveryTime &&
-    (useGlobalDeliveryAddress || split.sameAsBilling || (split.deliveryAddress && split.deliveryAddress.trim() !== ""));
+    (useGlobalDeliveryAddress || split.sameAsBilling || 
+     (split.deliveryAddress && split.deliveryAddress.trim() !== "" && (split.suburbId || split.deliverySuburbId)));
 
   const handleSameAsBillingChange = (checked: boolean) => {
     onUpdateSplit(splitIndex, { 
       sameAsBilling: checked,
-      deliveryAddress: checked && customer ? customer.full_address : split.deliveryAddress
+      deliveryAddress: checked && customer ? customer.full_address : split.deliveryAddress,
+      deliverySuburbId: checked && customer ? customer.suburb_id : split.deliverySuburbId
     });
   };
 
   const handleDeliveryAddressChange = (address: string) => {
     onUpdateSplit(splitIndex, { deliveryAddress: address });
+  };
+
+  const handleAddressSelect = (addressData: any) => {
+    onUpdateSplit(splitIndex, { deliveryAddress: addressData.fullAddress });
+    
+    // Auto-select suburb based on postcode if available
+    if (addressData.postcode) {
+      handleAutoSuburbSelection(addressData.postcode, (suburbId: string) => {
+        onUpdateSplit(splitIndex, { deliverySuburbId: suburbId });
+      });
+    }
+  };
+
+  const handleSuburbChange = (suburbId: string) => {
+    onUpdateSplit(splitIndex, { deliverySuburbId: suburbId });
   };
 
   const handleSpecialInstructionsChange = (instructions: string) => {
@@ -220,17 +242,29 @@ export function SplitSummaryCard({
                     </div>
 
                     {!split.sameAsBilling && (
-                      <input
-                        value={split.deliveryAddress || ""}
-                        onChange={(e) => handleDeliveryAddressChange(e.target.value)}
-                        placeholder="Enter delivery address..."
-                        className="w-full h-7 text-xs px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                      <div className="space-y-2">
+                        <EnhancedAddressInput
+                          value={split.deliveryAddress || ""}
+                          onChange={handleDeliveryAddressChange}
+                          onAddressSelect={handleAddressSelect}
+                          placeholder="Enter delivery address..."
+                          className="h-7 text-xs"
+                        />
+                        <SuburbSelector
+                          selectedSuburbId={split.deliverySuburbId || ""}
+                          onSuburbChange={handleSuburbChange}
+                        />
+                      </div>
                     )}
 
                     {split.sameAsBilling && (
                       <div className="text-xs text-gray-600 bg-white p-2 rounded border">
                         {customer.full_address}
+                        {customer.suburb && (
+                          <div className="text-gray-500 mt-1">
+                            {customer.suburb.name}, {customer.suburb.state}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

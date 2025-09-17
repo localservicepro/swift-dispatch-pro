@@ -80,6 +80,8 @@ export interface SplitConfig {
   specialInstructions: string;
   deliveryAddress?: string;
   sameAsBilling: boolean;
+  suburbId?: string;
+  deliverySuburbId?: string;
 }
 
 export interface Order {
