@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { Label } from "@/components/ui/label";
 import { CreditCard, Calendar, Building2, MapPin, AlertCircle, Check, Wallet, HandCoins } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -190,83 +190,81 @@ export function PaymentMethodStep({
         {/* Payment Method Selection */}
         <div>
           <Label className="text-base font-medium mb-4 block">Select Payment Method</Label>
-          <RadioGroup 
-            value={paymentMethod} 
-            onValueChange={onPaymentMethodChange}
-            className="space-y-3"
-          >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {availablePaymentMethods.map((method) => {
               const IconComponent = method.icon;
+              const isSelected = paymentMethod === method.id;
               return (
                 <div
                   key={method.id}
-                  className={`flex items-start space-x-3 rounded-lg border p-4 ${
+                  onClick={() => method.available && onPaymentMethodChange(method.id)}
+                  className={`relative rounded-lg border p-4 transition-all duration-200 ${
                     method.available
-                      ? 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                      : 'border-gray-100 bg-gray-50 opacity-60'
-                  } ${paymentMethod === method.id ? 'border-blue-500 bg-blue-50' : ''}`}
+                      ? 'cursor-pointer hover:border-primary hover:bg-primary/5'
+                      : 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                  } ${isSelected ? 'border-primary bg-primary/10 ring-2 ring-primary/20' : 'border-gray-200'}`}
                 >
-                  <RadioGroupItem
-                    value={method.id}
-                    id={method.id}
-                    disabled={!method.available}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <IconComponent className="w-4 h-4 text-gray-600" />
-                      <Label
-                        htmlFor={method.id}
-                        className={`font-medium cursor-pointer ${
-                          method.available ? 'text-gray-900' : 'text-gray-500'
-                        }`}
-                      >
-                        {method.label}
-                      </Label>
-                      {method.hasSurcharge && paymentSettings && (
-                        <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded">
-                          +{paymentSettings.service_charge_rate}%
+                  {/* Selection indicator */}
+                  {isSelected && (
+                    <div className="absolute top-3 right-3">
+                      <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                        <Check className="w-3 h-3 text-primary-foreground" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-start gap-3">
+                    <IconComponent className={`w-5 h-5 mt-1 ${method.available ? 'text-primary' : 'text-gray-400'}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`font-medium ${method.available ? 'text-gray-900' : 'text-gray-500'}`}>
+                          {method.label}
                         </span>
-                      )}
-                      {!method.available && (method.id === 'account_cash' || method.id === 'account_card') && (
-                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">
-                          Account customers only
-                        </span>
-                      )}
-                      {!method.available && method.id === 'card_on_file' && (
-                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">
-                          No saved cards
-                        </span>
+                        {method.hasSurcharge && paymentSettings && (
+                          <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded">
+                            +{paymentSettings.service_charge_rate}%
+                          </span>
+                        )}
+                        {!method.available && (method.id === 'account_cash' || method.id === 'account_card') && (
+                          <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">
+                            Account only
+                          </span>
+                        )}
+                        {!method.available && method.id === 'card_on_file' && (
+                          <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">
+                            No saved cards
+                          </span>
+                        )}
+                      </div>
+                      <p className={`text-sm ${method.available ? 'text-gray-600' : 'text-gray-400'}`}>
+                        {method.description}
+                        {method.hasSurcharge && paymentSettings && (
+                          <span className="text-orange-600 ml-1">
+                            (includes {paymentSettings.service_charge_rate}% surcharge)
+                          </span>
+                        )}
+                      </p>
+                      
+                      {/* Show card details when Card on File is selected and available */}
+                      {method.id === 'card_on_file' && method.available && isSelected && defaultCard && (
+                        <div className="mt-3 p-2 bg-background border border-gray-200 rounded text-xs">
+                          <div className="flex items-center gap-2">
+                            <Check className="w-3 h-3 text-green-600" />
+                            <span className="font-medium">
+                              {formatCardBrand(defaultCard.card_brand)} •••• {defaultCard.card_last_four}
+                            </span>
+                            <span className="text-gray-500">
+                              {defaultCard.card_exp_month.toString().padStart(2, '0')}/{defaultCard.card_exp_year}
+                            </span>
+                          </div>
+                        </div>
                       )}
                     </div>
-                    <p className={`text-sm ${method.available ? 'text-gray-600' : 'text-gray-400'}`}>
-                      {method.description}
-                      {method.hasSurcharge && paymentSettings && (
-                        <span className="text-orange-600 ml-1">
-                          (includes {paymentSettings.service_charge_rate}% surcharge)
-                        </span>
-                      )}
-                    </p>
-                    
-                    {/* Show card details when Card on File is selected and available */}
-                    {method.id === 'card_on_file' && method.available && paymentMethod === method.id && defaultCard && (
-                      <div className="mt-2 p-2 bg-white border border-gray-200 rounded text-xs">
-                        <div className="flex items-center gap-2">
-                          <Check className="w-3 h-3 text-green-600" />
-                          <span className="font-medium">
-                            {formatCardBrand(defaultCard.card_brand)} •••• {defaultCard.card_last_four}
-                          </span>
-                          <span className="text-gray-500">
-                            {defaultCard.card_exp_month.toString().padStart(2, '0')}/{defaultCard.card_exp_year}
-                          </span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               );
             })}
-          </RadioGroup>
+          </div>
         </div>
 
         {/* Selected Payment Method Details */}
