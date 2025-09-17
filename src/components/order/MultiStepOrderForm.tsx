@@ -335,16 +335,27 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               onPurchaseOrderChange={setPurchaseOrder}
             />
           );
+        } else if (orderType === "split") {
+          return (
+            <PaymentMethodStep
+              customer={selectedCustomer!}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
+              onBack={prevStep}
+              onNext={nextStep}
+            />
+          );
+        } else {
+          return (
+            <PaymentMethodStep
+              customer={selectedCustomer!}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
+              onBack={prevStep}
+              onNext={nextStep}
+            />
+          );
         }
-        return (
-          <PaymentMethodStep
-            customer={selectedCustomer!}
-            paymentMethod={paymentMethod}
-            onPaymentMethodChange={setPaymentMethod}
-            onBack={prevStep}
-            onNext={nextStep}
-          />
-        );
 
       case 7:
         return (
@@ -352,6 +363,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             customer={selectedCustomer!}
             selectedContact={selectedContact}
             cart={cart}
+            splits={splits}
+            orderType={orderType}
             subtotal={subtotal}
             adjustments={adjustments}
             deliveryFee={deliveryFee}

@@ -15,6 +15,8 @@ interface OrderReviewStepProps {
   customer: Customer;
   selectedContact?: SelectedContact | null;
   cart: CartItem[];
+  splits?: any[];
+  orderType?: "single" | "split";
   subtotal: number;
   adjustments: number;
   deliveryFee: number;
@@ -46,6 +48,8 @@ export function OrderReviewStep({
   customer,
   selectedContact,
   cart,
+  splits = [],
+  orderType = "single",
   subtotal,
   adjustments,
   deliveryFee,
@@ -272,20 +276,49 @@ export function OrderReviewStep({
         <div className="space-y-3">
           <h3 className="flex items-center gap-2 font-semibold">
             <Package className="w-4 h-4" />
-            Products
+            {orderType === "split" ? "Split Products" : "Products"}
           </h3>
           <div className="space-y-2">
-            {cart.map((item, index) => (
-              <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">{item.product.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    AU${item.unit_price.toFixed(2)} × {item.quantity}
-                  </p>
+            {orderType === "split" ? (
+              splits.map((split, splitIndex) => (
+                <div key={splitIndex} className="bg-gray-50 p-4 rounded-lg space-y-2">
+                  <h4 className="font-medium text-sm text-gray-700">{split.name}</h4>
+                  <div className="space-y-1">
+                    {split.products.map((splitProduct: any, productIndex: number) => {
+                      const cartItem = cart.find(item => item.product.id === splitProduct.productId);
+                      if (!cartItem) return null;
+                      const splitTotal = cartItem.unit_price * splitProduct.quantity;
+                      return (
+                        <div key={productIndex} className="flex justify-between items-center p-2 bg-white rounded border">
+                          <div>
+                            <p className="text-sm font-medium">{cartItem.product.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              AU${cartItem.unit_price.toFixed(2)} × {splitProduct.quantity}
+                            </p>
+                          </div>
+                          <p className="text-sm font-semibold">AU${splitTotal.toFixed(2)}</p>
+                        </div>
+                      );
+                    })}
+                    <div className="text-xs text-muted-foreground pt-1">
+                      Delivery: {split.deliveryDate} at {split.deliveryTime}
+                    </div>
+                  </div>
                 </div>
-                <p className="font-semibold">AU${item.total_price.toFixed(2)}</p>
-              </div>
-            ))}
+              ))
+            ) : (
+              cart.map((item, index) => (
+                <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium">{item.product.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      AU${item.unit_price.toFixed(2)} × {item.quantity}
+                    </p>
+                  </div>
+                  <p className="font-semibold">AU${item.total_price.toFixed(2)}</p>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

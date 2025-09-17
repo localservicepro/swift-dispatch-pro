@@ -48,6 +48,7 @@ export function SplitOrderConfigurationStep({
   }, []);
 
   const canProceed = () => {
+    // Check if all cart items are fully allocated
     const fullyAllocated = cart.every(cartItem => {
       const allocatedQuantity = splits.reduce((total, split) => {
         const splitProduct = split.products.find(p => p.productId === cartItem.product.id);
@@ -56,7 +57,10 @@ export function SplitOrderConfigurationStep({
       return allocatedQuantity === cartItem.quantity;
     });
 
+    // Check if all splits have at least one product
     const allSplitsHaveProducts = splits.every(split => split.products.length > 0);
+    
+    // Check if all splits have delivery details
     const allSplitsHaveDeliveryDetails = splits.every(split => 
       split.deliveryDate && split.deliveryTime
     );
@@ -65,16 +69,32 @@ export function SplitOrderConfigurationStep({
       fullyAllocated,
       allSplitsHaveProducts,
       allSplitsHaveDeliveryDetails,
+      cartLength: cart.length,
+      splitsLength: splits.length,
       splits: splits.map(s => ({
         name: s.name,
         hasProducts: s.products.length > 0,
         hasDeliveryDate: !!s.deliveryDate,
         hasDeliveryTime: !!s.deliveryTime,
-        productsCount: s.products.length
+        productsCount: s.products.length,
+        deliveryDate: s.deliveryDate,
+        deliveryTime: s.deliveryTime
+      })),
+      cart: cart.map(c => ({
+        productId: c.product.id,
+        productName: c.product.name,
+        quantity: c.quantity,
+        allocated: splits.reduce((total, split) => {
+          const splitProduct = split.products.find(p => p.productId === c.product.id);
+          return total + (splitProduct?.quantity || 0);
+        }, 0)
       }))
     });
 
-    return fullyAllocated && allSplitsHaveProducts && allSplitsHaveDeliveryDetails;
+    // Must have cart items and splits to proceed
+    const hasRequiredData = cart.length > 0 && splits.length > 0;
+
+    return hasRequiredData && fullyAllocated && allSplitsHaveProducts && allSplitsHaveDeliveryDetails;
   };
 
   return (
