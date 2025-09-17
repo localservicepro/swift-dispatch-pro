@@ -2,13 +2,15 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Split } from "lucide-react";
-import { CartItem, SplitConfig } from "./types";
+import { Split, AlertCircle } from "lucide-react";
+import { CartItem, SplitConfig, Customer } from "./types";
 import { SplitConfigurationManager } from "./SplitConfigurationManager";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface SplitOrderConfigurationStepProps {
   cart: CartItem[];
   splits: SplitConfig[];
+  customer?: Customer;
   onSplitsChange: (splits: SplitConfig[]) => void;
   onCartChange?: (cart: CartItem[]) => void;
   onBack: () => void;
@@ -18,6 +20,7 @@ interface SplitOrderConfigurationStepProps {
 export function SplitOrderConfigurationStep({
   cart,
   splits,
+  customer,
   onSplitsChange,
   onCartChange,
   onBack,
@@ -63,9 +66,12 @@ export function SplitOrderConfigurationStep({
     // Check if all splits have delivery details including address and suburb
     const allSplitsHaveDeliveryDetails = splits.every(split => {
       const hasDateAndTime = split.deliveryDate && split.deliveryTime;
-      const hasAddressInfo = split.sameAsBilling || 
+      
+      // Address validation: either same as billing (and customer has address) OR custom address with suburb
+      const hasAddressInfo = (split.sameAsBilling && customer?.full_address) || 
         (split.deliveryAddress && split.deliveryAddress.trim() !== "" && 
          (split.suburbId || split.deliverySuburbId));
+      
       return hasDateAndTime && hasAddressInfo;
     });
 
@@ -75,12 +81,13 @@ export function SplitOrderConfigurationStep({
       allSplitsHaveDeliveryDetails,
       cartLength: cart.length,
       splitsLength: splits.length,
+      customerHasAddress: !!customer?.full_address,
       splits: splits.map(s => ({
         name: s.name,
         hasProducts: s.products.length > 0,
         hasDeliveryDate: !!s.deliveryDate,
         hasDeliveryTime: !!s.deliveryTime,
-        hasAddressInfo: s.sameAsBilling || (!!s.deliveryAddress && !!(s.suburbId || s.deliverySuburbId)),
+        hasAddressInfo: (s.sameAsBilling && !!customer?.full_address) || (!!s.deliveryAddress && !!(s.suburbId || s.deliverySuburbId)),
         productsCount: s.products.length,
         deliveryDate: s.deliveryDate,
         deliveryTime: s.deliveryTime,
@@ -114,11 +121,21 @@ export function SplitOrderConfigurationStep({
           Step 4: Configure Order Splits
         </CardTitle>
         <p className="text-xs text-gray-600">
-          Allocate products across splits and configure delivery details efficiently.
+          Split this order for different delivery addresses or dates. Each split can be delivered to a unique address.
         </p>
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {/* Address Configuration Alert */}
+        {(!customer?.full_address && splits.some(s => s.sameAsBilling)) && (
+          <Alert className="border-orange-200 bg-orange-50">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-700 text-xs">
+              Customer billing address is missing. Please provide delivery addresses for each split or update the customer's billing address.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <SplitConfigurationManager
           cart={cart}
           splits={splits}
