@@ -261,7 +261,7 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
         return;
       }
     } else {
-      // Standard validation for all other customer types
+    // Standard validation for all other customer types
       if (!newCustomer.first_name || !newCustomer.last_name || !newCustomer.email) {
         toast({
           title: "Error",
@@ -281,12 +281,22 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
       }
     }
 
+    // Address validation (required for all customers)
+    if (!newCustomer.full_address || newCustomer.full_address.trim() === '') {
+      toast({
+        title: "Error",
+        description: "Address is required for all customers",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const customerData = {
       first_name: newCustomer.first_name || null,
       last_name: newCustomer.last_name || null,
       email: newCustomer.email || null,
       phone: newCustomer.phone || null,
-      full_address: newCustomer.full_address,
+      full_address: newCustomer.full_address || '',
       suburb_id: newCustomer.suburb_id || null,
       customer_type: newCustomer.customer_type,
       entity_type: newCustomer.entity_type,
@@ -486,7 +496,9 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
                 )}
                 <div className="flex items-center gap-2 md:col-span-2">
                   <MapPin className="w-4 h-4 text-gray-500" />
-                  {selectedCustomer.full_address}
+                  {selectedCustomer.full_address || (
+                    <span className="text-red-600 font-medium">⚠️ Address missing - please edit customer</span>
+                  )}
                 </div>
               </div>
             </div>
