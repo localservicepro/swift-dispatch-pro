@@ -3,7 +3,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CartItem, SplitConfig, Product } from "./types";
-import { SimpleProductAllocation } from "./SimpleProductAllocation";
+import { CompactProductTable } from "./CompactProductTable";
 import { CompactSplitConfig } from "./CompactSplitConfig";
 import { SplitControlsHeader } from "./SplitControlsHeader";
 import { CommonDateTimeSelector } from "./CommonDateTimeSelector";
@@ -220,6 +220,39 @@ export function SplitConfigurationManager({
     onSplitsChange(updatedSplits);
   };
 
+  const handleUpdateSplitQuantity = (splitIndex: number, productId: string, quantity: number) => {
+    const updatedSplits = splits.map((split, index) => {
+      if (index === splitIndex) {
+        const existingProductIndex = split.products.findIndex(p => p.productId === productId);
+        
+        if (quantity <= 0) {
+          // Remove product from split if quantity is 0 or less
+          return {
+            ...split,
+            products: split.products.filter(p => p.productId !== productId)
+          };
+        } else if (existingProductIndex >= 0) {
+          // Update existing product quantity
+          return {
+            ...split,
+            products: split.products.map((p, pIndex) => 
+              pIndex === existingProductIndex ? { ...p, quantity } : p
+            )
+          };
+        } else {
+          // Add new product to split
+          return {
+            ...split,
+            products: [...split.products, { productId, quantity }]
+          };
+        }
+      }
+      return split;
+    });
+
+    onSplitsChange(updatedSplits);
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Controls Row */}
@@ -253,13 +286,13 @@ export function SplitConfigurationManager({
         </TabsList>
         
         <TabsContent value="allocation" className="space-y-4 mt-4">
-          {/* Simple Product Allocation */}
-          <SimpleProductAllocation
+          {/* Compact Product Table with Split Quantity Controls */}
+          <CompactProductTable
             cart={cart}
             splits={splits}
             onQuantityChange={handleCartQuantityChange}
             onRemoveFromCart={handleRemoveFromCart}
-            onAssignToSplit={handleAssignToSplit}
+            onUpdateSplitQuantity={handleUpdateSplitQuantity}
           />
         </TabsContent>
         
