@@ -10,6 +10,9 @@ verify_jwt = false
 [functions.order-export-webhook]
 verify_jwt = false
 
+[functions.sms-webhook]
+verify_jwt = false
+
 [functions.wc-sync]
 verify_jwt = false
 
