@@ -868,6 +868,69 @@ export type Database = {
           },
         ]
       }
+      order_sms_webhooks: {
+        Row: {
+          contact_person: string | null
+          contact_phone: string | null
+          created_at: string
+          customer_name: string
+          delivery_address: string
+          delivery_date: string | null
+          delivery_time: string | null
+          driver_name: string | null
+          id: string
+          order_id: string
+          order_number: string
+          products_formatted: string
+          status: Database["public"]["Enums"]["order_status"]
+          updated_at: string
+          webhook_response: string | null
+          webhook_sent: boolean
+          webhook_sent_at: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          contact_person?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          customer_name: string
+          delivery_address: string
+          delivery_date?: string | null
+          delivery_time?: string | null
+          driver_name?: string | null
+          id?: string
+          order_id: string
+          order_number: string
+          products_formatted: string
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+          webhook_response?: string | null
+          webhook_sent?: boolean
+          webhook_sent_at?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          contact_person?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          customer_name?: string
+          delivery_address?: string
+          delivery_date?: string | null
+          delivery_time?: string | null
+          driver_name?: string | null
+          id?: string
+          order_id?: string
+          order_number?: string
+          products_formatted?: string
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+          webhook_response?: string | null
+          webhook_sent?: boolean
+          webhook_sent_at?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           adjustments: number | null
