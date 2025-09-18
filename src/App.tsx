@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import { AuthPage } from "@/components/auth/AuthPage";
 import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import DriverPortal from "./pages/DriverPortal";
 import Knowledgebase from "./pages/Knowledgebase";
@@ -80,8 +81,10 @@ function AppRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <AppRoutes />
-      <Toaster />
+      <TooltipProvider>
+        <AppRoutes />
+        <Toaster />
+      </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
