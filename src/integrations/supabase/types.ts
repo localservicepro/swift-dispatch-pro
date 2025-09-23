@@ -885,6 +885,8 @@ export type Database = {
           order_number: string
           products_formatted: string
           status: Database["public"]["Enums"]["order_status"]
+          truck_registration: string | null
+          truck_type: string | null
           updated_at: string
           webhook_response: string | null
           webhook_sent: boolean
@@ -907,6 +909,8 @@ export type Database = {
           order_number: string
           products_formatted: string
           status?: Database["public"]["Enums"]["order_status"]
+          truck_registration?: string | null
+          truck_type?: string | null
           updated_at?: string
           webhook_response?: string | null
           webhook_sent?: boolean
@@ -929,6 +933,8 @@ export type Database = {
           order_number?: string
           products_formatted?: string
           status?: Database["public"]["Enums"]["order_status"]
+          truck_registration?: string | null
+          truck_type?: string | null
           updated_at?: string
           webhook_response?: string | null
           webhook_sent?: boolean
