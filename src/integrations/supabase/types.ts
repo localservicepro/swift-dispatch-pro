@@ -871,6 +871,7 @@ export type Database = {
       order_sms_webhooks: {
         Row: {
           assignment_status: string
+          company_name: string | null
           contact_person: string | null
           contact_phone: string | null
           created_at: string
@@ -892,6 +893,7 @@ export type Database = {
         }
         Insert: {
           assignment_status?: string
+          company_name?: string | null
           contact_person?: string | null
           contact_phone?: string | null
           created_at?: string
@@ -913,6 +915,7 @@ export type Database = {
         }
         Update: {
           assignment_status?: string
+          company_name?: string | null
           contact_person?: string | null
           contact_phone?: string | null
           created_at?: string
