@@ -870,6 +870,7 @@ export type Database = {
       }
       order_sms_webhooks: {
         Row: {
+          assignment_status: string
           contact_person: string | null
           contact_phone: string | null
           created_at: string
@@ -890,6 +891,7 @@ export type Database = {
           webhook_url: string | null
         }
         Insert: {
+          assignment_status?: string
           contact_person?: string | null
           contact_phone?: string | null
           created_at?: string
@@ -910,6 +912,7 @@ export type Database = {
           webhook_url?: string | null
         }
         Update: {
+          assignment_status?: string
           contact_person?: string | null
           contact_phone?: string | null
           created_at?: string
@@ -955,10 +958,8 @@ export type Database = {
           delivery_time: string | null
           driver_id: string | null
           driver_name: string | null
-          ghl_opportunity_id: string | null
           id: string
           is_split_order: boolean | null
-          last_synced_to_ghl: string | null
           master_order_id: string | null
           order_notes: string | null
           order_number: string
@@ -1012,10 +1013,8 @@ export type Database = {
           delivery_time?: string | null
           driver_id?: string | null
           driver_name?: string | null
-          ghl_opportunity_id?: string | null
           id?: string
           is_split_order?: boolean | null
-          last_synced_to_ghl?: string | null
           master_order_id?: string | null
           order_notes?: string | null
           order_number: string
@@ -1069,10 +1068,8 @@ export type Database = {
           delivery_time?: string | null
           driver_id?: string | null
           driver_name?: string | null
-          ghl_opportunity_id?: string | null
           id?: string
           is_split_order?: boolean | null
-          last_synced_to_ghl?: string | null
           master_order_id?: string | null
           order_notes?: string | null
           order_number?: string
