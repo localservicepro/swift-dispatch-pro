@@ -878,10 +878,12 @@ export type Database = {
           customer_name: string
           delivery_address: string
           delivery_date: string | null
+          delivery_notes: string | null
           delivery_time: string | null
           driver_name: string | null
           id: string
           order_id: string
+          order_notes: string | null
           order_number: string
           products_formatted: string
           status: Database["public"]["Enums"]["order_status"]
@@ -902,10 +904,12 @@ export type Database = {
           customer_name: string
           delivery_address: string
           delivery_date?: string | null
+          delivery_notes?: string | null
           delivery_time?: string | null
           driver_name?: string | null
           id?: string
           order_id: string
+          order_notes?: string | null
           order_number: string
           products_formatted: string
           status?: Database["public"]["Enums"]["order_status"]
@@ -926,10 +930,12 @@ export type Database = {
           customer_name?: string
           delivery_address?: string
           delivery_date?: string | null
+          delivery_notes?: string | null
           delivery_time?: string | null
           driver_name?: string | null
           id?: string
           order_id?: string
+          order_notes?: string | null
           order_number?: string
           products_formatted?: string
           status?: Database["public"]["Enums"]["order_status"]

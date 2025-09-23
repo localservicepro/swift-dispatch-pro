@@ -23,6 +23,8 @@ interface SMSWebhookData {
   assignment_status: string;
   truck_registration: string | null;
   truck_type: string | null;
+  delivery_notes: string | null;
+  order_notes: string | null;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -123,6 +125,8 @@ const handler = async (req: Request): Promise<Response> => {
           assignment_status: record.assignment_status,
           truck_registration: record.truck_registration,
           truck_type: record.truck_type,
+          delivery_notes: record.delivery_notes,
+          order_notes: record.order_notes,
           timestamp: new Date().toISOString()
         };
 
