@@ -2515,7 +2515,7 @@ export type Database = {
         | "seasonal"
         | "customer_tier"
       truck_type: "small" | "medium" | "large" | "crane"
-      user_role: "admin" | "driver" | "customer"
+      user_role: "admin" | "driver" | "customer" | "account_customer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2668,7 +2668,7 @@ export const Constants = {
         "customer_tier",
       ],
       truck_type: ["small", "medium", "large", "crane"],
-      user_role: ["admin", "driver", "customer"],
+      user_role: ["admin", "driver", "customer", "account_customer"],
     },
   },
 } as const
