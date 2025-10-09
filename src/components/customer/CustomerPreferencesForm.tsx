@@ -10,38 +10,13 @@ interface CustomerPreferencesFormProps {
     is_active: boolean;
     sms_notifications_enabled: boolean;
     stop_credit: boolean;
-    portal_access_enabled?: boolean;
   };
   onFormDataChange: (updates: Partial<CustomerPreferencesFormProps['formData']>) => void;
 }
 
 export function CustomerPreferencesForm({ formData, onFormDataChange }: CustomerPreferencesFormProps) {
-  const isAccountCustomer = formData.customer_type === 'account';
-
   return (
     <>
-      {isAccountCustomer && (
-        <div className="flex items-start space-x-2 p-4 bg-primary/5 rounded-lg">
-          <div className="mt-1">
-            <Switch
-              id="portal_access_enabled"
-              checked={formData.portal_access_enabled || false}
-              onCheckedChange={(checked) => 
-                onFormDataChange({ portal_access_enabled: checked })
-              }
-            />
-          </div>
-          <div>
-            <Label htmlFor="portal_access_enabled" className="block font-semibold">
-              Enable Portal Access
-            </Label>
-            <p className="text-xs text-muted-foreground mt-1">
-              Allow this customer to log in and manage their orders through the account portal
-            </p>
-          </div>
-        </div>
-      )}
-      
       <div>
         <Label htmlFor="customer_type">Customer Type</Label>
         <Select

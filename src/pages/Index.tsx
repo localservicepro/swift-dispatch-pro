@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
@@ -18,46 +19,13 @@ import { LogOut, Loader2 } from "lucide-react";
 import { TeamManagement } from "@/components/TeamManagement";
 import { PersonalizedGreeting } from "@/components/PersonalizedGreeting";
 import { SuburbManagement } from "@/components/SuburbManagement";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-
-const tabToPath: Record<string, string> = {
-  dashboard: "/",
-  opportunities: "/opportunities",
-  orders: "/orders",
-  products: "/products",
-  customers: "/customers",
-  payments: "/payments",
-  trucks: "/trucks",
-  drivers: "/drivers",
-  suburbs: "/suburbs",
-  emails: "/emails",
-  settings: "/settings",
-};
-
-const pathToTab = (path: string): string => {
-  const entry = Object.entries(tabToPath).find(([, p]) => p === path);
-  return entry ? entry[0] : "dashboard";
-};
 
 const Index = () => {
-  const location = useLocation();
-  const initialTab = pathToTab(location.pathname);
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState("dashboard");
   const { signOut, profile, signingOut } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Sync tab when URL changes (e.g., direct navigation)
-    const tab = pathToTab(location.pathname);
-    if (tab !== activeTab) setActiveTab(tab);
-  }, [location.pathname]);
-
-  const handleSetActiveTab = (tab: string) => {
-    setActiveTab(tab);
-    const path = tabToPath[tab] || "/";
-    if (location.pathname !== path) navigate(path);
-  };
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -106,7 +74,7 @@ const Index = () => {
       <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
         {/* Desktop Sidebar */}
         <div className="hidden md:block">
-          <AdminSidebar activeTab={activeTab} setActiveTab={handleSetActiveTab} />
+          <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         </div>
         
         {/* Main Content Area */}
@@ -147,7 +115,7 @@ const Index = () => {
         </div>
         
         {/* Mobile Bottom Navigation */}
-        <MobileBottomNav activeTab={activeTab} setActiveTab={handleSetActiveTab} />
+        <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
       </div>
     </SidebarProvider>
   );

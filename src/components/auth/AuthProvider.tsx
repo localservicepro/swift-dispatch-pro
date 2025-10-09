@@ -8,7 +8,7 @@ interface Profile {
   id: string;
   email: string;
   full_name: string;
-  role: 'admin' | 'driver' | 'customer' | 'account_customer';
+  role: 'admin' | 'driver' | 'customer';
 }
 
 interface AuthContextType {

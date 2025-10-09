@@ -11,9 +11,6 @@ import Knowledgebase from "./pages/Knowledgebase";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
-import AccountCustomerLogin from "./pages/AccountCustomerLogin";
-import AccountPortal from "./pages/AccountPortal";
-import Storefront from "./pages/Storefront";
 
 const queryClient = new QueryClient();
 
@@ -57,16 +54,6 @@ function AuthenticatedApp() {
           )
         } 
       />
-      {/* Direct routes for dashboard tabs */}
-      <Route path="/orders" element={<Index />} />
-      <Route path="/products" element={<Index />} />
-      <Route path="/customers" element={<Index />} />
-      <Route path="/payments" element={<Index />} />
-      <Route path="/trucks" element={<Index />} />
-      <Route path="/drivers" element={<Index />} />
-      <Route path="/suburbs" element={<Index />} />
-      <Route path="/emails" element={<Index />} />
-      <Route path="/settings" element={<Index />} />
       <Route 
         path="/knowledgebase" 
         element={<Knowledgebase />} 
@@ -80,18 +67,11 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public payment routes */}
+        {/* Public payment routes - no authentication required */}
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
         
-        {/* Account customer portal */}
-        <Route path="/account-login" element={<AccountCustomerLogin />} />
-        <Route path="/account-portal/*" element={<AccountPortal />} />
-        
-        {/* Storefront with prefix to avoid conflicts */}
-        <Route path="/store/:storeSlug" element={<Storefront />} />
-        
-        {/* Admin/driver routes - catch-all */}
+        {/* All other routes require authentication */}
         <Route path="/*" element={<AuthenticatedApp />} />
       </Routes>
     </BrowserRouter>
