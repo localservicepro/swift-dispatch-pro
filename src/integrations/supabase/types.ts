@@ -310,6 +310,53 @@ export type Database = {
           },
         ]
       }
+      customer_stores: {
+        Row: {
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string | null
+          custom_message: string | null
+          customer_id: string
+          display_name: string
+          id: string
+          is_active: boolean | null
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          custom_message?: string | null
+          customer_id: string
+          display_name: string
+          id?: string
+          is_active?: boolean | null
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          custom_message?: string | null
+          customer_id?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean | null
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_stores_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           auth_user_id: string | null
@@ -327,10 +374,15 @@ export type Database = {
           id: string
           is_active: boolean
           last_name: string | null
+          last_portal_login: string | null
           phone: string | null
+          portal_access_enabled: boolean | null
           sms_notifications_enabled: boolean
           sms_opt_out_date: string | null
           stop_credit: boolean
+          store_enabled: boolean | null
+          store_settings: Json | null
+          store_slug: string | null
           stripe_customer_id: string | null
           suburb_id: string | null
           updated_at: string
@@ -351,10 +403,15 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_name?: string | null
+          last_portal_login?: string | null
           phone?: string | null
+          portal_access_enabled?: boolean | null
           sms_notifications_enabled?: boolean
           sms_opt_out_date?: string | null
           stop_credit?: boolean
+          store_enabled?: boolean | null
+          store_settings?: Json | null
+          store_slug?: string | null
           stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
@@ -375,10 +432,15 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_name?: string | null
+          last_portal_login?: string | null
           phone?: string | null
+          portal_access_enabled?: boolean | null
           sms_notifications_enabled?: boolean
           sms_opt_out_date?: string | null
           stop_credit?: boolean
+          store_enabled?: boolean | null
+          store_settings?: Json | null
+          store_slug?: string | null
           stripe_customer_id?: string | null
           suburb_id?: string | null
           updated_at?: string
@@ -973,6 +1035,9 @@ export type Database = {
           delivery_time: string | null
           driver_id: string | null
           driver_name: string | null
+          end_customer_email: string | null
+          end_customer_name: string | null
+          end_customer_phone: string | null
           id: string
           is_split_order: boolean | null
           master_order_id: string | null
@@ -988,6 +1053,7 @@ export type Database = {
           pickup_location_address: string | null
           pickup_location_name: string | null
           pickup_time: string | null
+          placed_via: string | null
           products: Json
           products_formatted: string | null
           purchase_order: string | null
@@ -995,6 +1061,7 @@ export type Database = {
           special_instructions: string | null
           split_number: number | null
           status: Database["public"]["Enums"]["order_status"]
+          storefront_customer_id: string | null
           subtotal: number | null
           total_amount: number
           truck_id: string | null
@@ -1028,6 +1095,9 @@ export type Database = {
           delivery_time?: string | null
           driver_id?: string | null
           driver_name?: string | null
+          end_customer_email?: string | null
+          end_customer_name?: string | null
+          end_customer_phone?: string | null
           id?: string
           is_split_order?: boolean | null
           master_order_id?: string | null
@@ -1043,6 +1113,7 @@ export type Database = {
           pickup_location_address?: string | null
           pickup_location_name?: string | null
           pickup_time?: string | null
+          placed_via?: string | null
           products: Json
           products_formatted?: string | null
           purchase_order?: string | null
@@ -1050,6 +1121,7 @@ export type Database = {
           special_instructions?: string | null
           split_number?: number | null
           status?: Database["public"]["Enums"]["order_status"]
+          storefront_customer_id?: string | null
           subtotal?: number | null
           total_amount: number
           truck_id?: string | null
@@ -1083,6 +1155,9 @@ export type Database = {
           delivery_time?: string | null
           driver_id?: string | null
           driver_name?: string | null
+          end_customer_email?: string | null
+          end_customer_name?: string | null
+          end_customer_phone?: string | null
           id?: string
           is_split_order?: boolean | null
           master_order_id?: string | null
@@ -1098,6 +1173,7 @@ export type Database = {
           pickup_location_address?: string | null
           pickup_location_name?: string | null
           pickup_time?: string | null
+          placed_via?: string | null
           products?: Json
           products_formatted?: string | null
           purchase_order?: string | null
@@ -1105,6 +1181,7 @@ export type Database = {
           special_instructions?: string | null
           split_number?: number | null
           status?: Database["public"]["Enums"]["order_status"]
+          storefront_customer_id?: string | null
           subtotal?: number | null
           total_amount?: number
           truck_id?: string | null
@@ -1161,6 +1238,13 @@ export type Database = {
             columns: ["master_order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_storefront_customer_id_fkey"
+            columns: ["storefront_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
@@ -1922,6 +2006,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          customer_id: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       woocommerce_category_mapping: {
         Row: {
           created_at: string
@@ -2368,6 +2487,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      generate_store_slug: {
+        Args: { business_name: string }
+        Returns: string
+      }
       get_active_specials_for_product: {
         Args: { customer_tier_param?: string; product_id_param: string }
         Returns: {
@@ -2387,6 +2510,10 @@ export type Database = {
           product_name: string
           total_back_ordered: number
         }[]
+      }
+      get_customer_id_for_user: {
+        Args: { _user_id: string }
+        Returns: string
       }
       get_low_stock_products: {
         Args: { threshold?: number }
@@ -2423,6 +2550,13 @@ export type Database = {
       }
       has_mixed_stock_availability: {
         Args: { order_id_param: string }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["user_role"]
+          _user_id: string
+        }
         Returns: boolean
       }
       is_current_user_admin: {
