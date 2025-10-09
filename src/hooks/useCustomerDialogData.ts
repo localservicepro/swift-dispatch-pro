@@ -19,6 +19,7 @@ export function useCustomerDialogData(customer: Customer | null) {
     is_active: true,
     sms_notifications_enabled: true,
     stop_credit: false,
+    portal_access_enabled: false,
     company_name: '',
     business_name: '',
     contact_role: 'Primary Contact',
@@ -37,13 +38,14 @@ export function useCustomerDialogData(customer: Customer | null) {
         email: customer.email || '',
         phone: customer.phone || '',
         full_address: fullAddress,
-        delivery_address: deliveryAddress || fullAddress, // Auto-populate if empty
+        delivery_address: deliveryAddress || fullAddress,
         suburb_id: customer.suburb_id || '',
         customer_type: (customer.customer_type as 'residential' | 'trade' | 'account') || 'residential',
         entity_type: (customer.entity_type as 'individual' | 'business') || 'individual',
         is_active: customer.is_active ?? true,
         sms_notifications_enabled: customer.sms_notifications_enabled ?? true,
         stop_credit: (customer as any).stop_credit ?? false,
+        portal_access_enabled: (customer as any).portal_access_enabled ?? false,
         company_name: customer.company_name || '',
         business_name: customer.business_name || '',
         contact_role: customer.contact_role || getDefaultContactRole(customer.customer_type as any, customer.entity_type as any),
@@ -68,6 +70,7 @@ export function useCustomerDialogData(customer: Customer | null) {
         is_active: true,
         sms_notifications_enabled: true,
         stop_credit: false,
+        portal_access_enabled: false,
         company_name: '',
         business_name: '',
         contact_role: 'Owner',
@@ -139,7 +142,7 @@ export function useCustomerDialogData(customer: Customer | null) {
     }
   };
 
-  const handlePreferencesChange = (updates: Partial<{ customer_type: 'residential' | 'trade' | 'account'; entity_type: 'individual' | 'business'; is_active: boolean; sms_notifications_enabled: boolean; stop_credit: boolean }>) => {
+  const handlePreferencesChange = (updates: Partial<{ customer_type: 'residential' | 'trade' | 'account'; entity_type: 'individual' | 'business'; is_active: boolean; sms_notifications_enabled: boolean; stop_credit: boolean; portal_access_enabled: boolean }>) => {
     setFormData(prev => {
       const newData = { ...prev, ...updates };
       

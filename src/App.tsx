@@ -11,6 +11,9 @@ import Knowledgebase from "./pages/Knowledgebase";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
+import AccountCustomerLogin from "./pages/AccountCustomerLogin";
+import AccountPortal from "./pages/AccountPortal";
+import Storefront from "./pages/Storefront";
 
 const queryClient = new QueryClient();
 
@@ -67,12 +70,19 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public payment routes - no authentication required */}
+        {/* Public payment routes */}
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
         
-        {/* All other routes require authentication */}
+        {/* Account customer portal */}
+        <Route path="/account-login" element={<AccountCustomerLogin />} />
+        <Route path="/account-portal/*" element={<AccountPortal />} />
+        
+        {/* Admin/driver routes */}
         <Route path="/*" element={<AuthenticatedApp />} />
+        
+        {/* Storefront - must be last */}
+        <Route path="/:storeSlug" element={<Storefront />} />
       </Routes>
     </BrowserRouter>
   );
