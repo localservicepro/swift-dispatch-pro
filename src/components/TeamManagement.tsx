@@ -16,7 +16,7 @@ interface Profile {
   full_name: string | null;
   email: string;
   phone: string | null;
-  role: 'admin' | 'driver' | 'customer' | 'account_customer';
+  role: 'admin' | 'driver' | 'customer';
   created_at: string;
 }
 export function TeamManagement() {
@@ -61,7 +61,7 @@ export function TeamManagement() {
       const {
         data,
         error
-      } = await supabase.from('profiles').select('*').order('created_at', {
+      } = await supabase.from('profiles').select('*').in('role', ['admin', 'driver']).order('created_at', {
         ascending: false
       });
       console.log('[TeamManagement] Profiles query result:', {
@@ -79,7 +79,7 @@ export function TeamManagement() {
         setProfiles([]);
         return;
       }
-      setProfiles(data);
+      setProfiles(data as Profile[]);
       const drivers = data.filter(p => p.role === 'driver');
       const admins = data.filter(p => p.role === 'admin');
       console.log('[TeamManagement] Profile breakdown:', {

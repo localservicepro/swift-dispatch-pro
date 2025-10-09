@@ -46,7 +46,7 @@ export class ReceiptService {
       .from('orders')
       .select(`
         *,
-        customers (
+        customers!customer_id (
           email,
           company_name,
           business_name
@@ -125,7 +125,7 @@ export class ReceiptService {
         *,
         orders (
           *,
-          customers (
+          customers!customer_id (
             email,
             company_name,
             business_name
