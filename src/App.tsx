@@ -57,6 +57,16 @@ function AuthenticatedApp() {
           )
         } 
       />
+      {/* Direct routes for dashboard tabs */}
+      <Route path="/orders" element={<Index />} />
+      <Route path="/products" element={<Index />} />
+      <Route path="/customers" element={<Index />} />
+      <Route path="/payments" element={<Index />} />
+      <Route path="/trucks" element={<Index />} />
+      <Route path="/drivers" element={<Index />} />
+      <Route path="/suburbs" element={<Index />} />
+      <Route path="/emails" element={<Index />} />
+      <Route path="/settings" element={<Index />} />
       <Route 
         path="/knowledgebase" 
         element={<Knowledgebase />} 
