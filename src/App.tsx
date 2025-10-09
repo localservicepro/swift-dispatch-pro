@@ -78,11 +78,11 @@ function AppRoutes() {
         <Route path="/account-login" element={<AccountCustomerLogin />} />
         <Route path="/account-portal/*" element={<AccountPortal />} />
         
-        {/* Admin/driver routes */}
-        <Route path="/*" element={<AuthenticatedApp />} />
+        {/* Storefront with prefix to avoid conflicts */}
+        <Route path="/store/:storeSlug" element={<Storefront />} />
         
-        {/* Storefront - must be last */}
-        <Route path="/:storeSlug" element={<Storefront />} />
+        {/* Admin/driver routes - catch-all */}
+        <Route path="/*" element={<AuthenticatedApp />} />
       </Routes>
     </BrowserRouter>
   );
