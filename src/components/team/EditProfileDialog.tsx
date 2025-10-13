@@ -13,7 +13,7 @@ interface Profile {
   full_name: string | null;
   email: string;
   phone: string | null;
-  role: 'admin' | 'driver' | 'customer';
+  role: 'admin' | 'driver' | 'customer' | 'account_customer';
   created_at: string;
 }
 

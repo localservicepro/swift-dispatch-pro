@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Loader2, RefreshCw, Settings, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { WooCommerceSyncDialog } from "./WooCommerceSyncDialog";
 
@@ -43,7 +44,8 @@ interface SyncSettings {
 
 export function WooCommerceSyncStatus() {
   const { toast } = useToast();
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { isAdmin } = useUserRole();
   const [settings, setSettings] = useState<SyncSettings | null>(null);
   const [recentLogs, setRecentLogs] = useState<SyncLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -191,7 +193,7 @@ export function WooCommerceSyncStatus() {
   }
 
   // Show authentication required message
-  if (!user || !profile) {
+  if (!user) {
     return (
       <Card>
         <CardHeader>
@@ -214,7 +216,7 @@ export function WooCommerceSyncStatus() {
   }
 
   // Show access denied for non-admin users
-  if (profile.role !== 'admin') {
+  if (!isAdmin) {
     return (
       <Card>
         <CardHeader>

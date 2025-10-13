@@ -8,7 +8,6 @@ interface Profile {
   id: string;
   email: string;
   full_name: string;
-  role: 'admin' | 'driver' | 'customer';
 }
 
 interface AuthContextType {
@@ -77,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             fetchProfile(session.user.id);
           }, 0);
           
-          // Create admin profile for new users if needed
+          // Check if profile exists, if not it was created by trigger
           setTimeout(async () => {
             try {
               const { data: existingProfile } = await supabase
@@ -87,19 +86,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .single();
 
               if (!existingProfile) {
-                await supabase
-                  .from('profiles')
-                  .insert({
-                    id: session.user.id,
-                    email: session.user.email || '',
-                    full_name: session.user.user_metadata?.full_name || '',
-                    role: 'admin'
-                  });
-                // Fetch the newly created profile
-                fetchProfile(session.user.id);
+                // Profile should be created by handle_new_user trigger
+                // Fetch after a delay to ensure trigger completed
+                setTimeout(() => fetchProfile(session.user.id), 500);
               }
             } catch (error) {
-              console.error('Error creating profile:', error);
+              console.error('Error checking profile:', error);
             }
           }, 0);
         } else if (session?.user && profile === null) {

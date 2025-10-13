@@ -7,22 +7,25 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import DriverPortal from "./pages/DriverPortal";
+import CustomerPortal from "./pages/CustomerPortal";
 import Knowledgebase from "./pages/Knowledgebase";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
+import { useUserRole } from "./hooks/useUserRole";
 
 const queryClient = new QueryClient();
 
 function AuthenticatedApp() {
-  const { user, profile, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { role, loading: roleLoading } = useUserRole();
 
-  if (loading) {
+  if (authLoading || roleLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -32,13 +35,16 @@ function AuthenticatedApp() {
     return <AuthPage />;
   }
 
+  // Route based on user role
   return (
     <Routes>
       <Route 
         path="/" 
         element={
-          profile?.role === 'driver' ? (
+          role === 'driver' ? (
             <Navigate to="/driver" replace />
+          ) : role === 'account_customer' ? (
+            <Navigate to="/customer-portal" replace />
           ) : (
             <Index />
           )
@@ -47,8 +53,18 @@ function AuthenticatedApp() {
       <Route 
         path="/driver" 
         element={
-          profile?.role === 'driver' ? (
+          role === 'driver' ? (
             <DriverPortal />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } 
+      />
+      <Route 
+        path="/customer-portal" 
+        element={
+          role === 'account_customer' ? (
+            <CustomerPortal />
           ) : (
             <Navigate to="/" replace />
           )

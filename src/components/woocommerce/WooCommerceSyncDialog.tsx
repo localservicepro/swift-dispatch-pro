@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Loader2, AlertCircle } from "lucide-react";
 
 interface WooCommerceSyncDialogProps {
@@ -25,7 +26,8 @@ export function WooCommerceSyncDialog({
   onSuccess 
 }: WooCommerceSyncDialogProps) {
   const { toast } = useToast();
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { isAdmin } = useUserRole();
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
@@ -114,7 +116,7 @@ export function WooCommerceSyncDialog({
     e.preventDefault();
     
     // Check authentication
-    if (!user || !profile) {
+    if (!user) {
       toast({
         title: "Authentication Required",
         description: "Please log in to save WooCommerce settings",
@@ -124,7 +126,7 @@ export function WooCommerceSyncDialog({
     }
 
     // Check admin role
-    if (profile.role !== 'admin') {
+    if (!isAdmin) {
       toast({
         title: "Access Denied",
         description: "Only administrators can manage WooCommerce settings",
@@ -200,7 +202,7 @@ export function WooCommerceSyncDialog({
   }
 
   // Show authentication required message
-  if (!user || !profile) {
+  if (!user) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl">
@@ -227,7 +229,7 @@ export function WooCommerceSyncDialog({
   }
 
   // Show access denied for non-admin users
-  if (profile.role !== 'admin') {
+  if (!isAdmin) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl">
