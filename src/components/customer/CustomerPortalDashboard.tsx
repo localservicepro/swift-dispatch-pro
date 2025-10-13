@@ -5,8 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Package, LogOut } from "lucide-react";
+import { Plus, Package, LogOut, Users } from "lucide-react";
 import { CustomerOrderCreate } from "./CustomerOrderCreate";
+import { CustomerContactsManager } from "./CustomerContactsManager";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDistanceToNow } from "date-fns";
 
 export function CustomerPortalDashboard() {
@@ -89,96 +91,126 @@ export function CustomerPortalDashboard() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-foreground">My Orders</h2>
-          <Button onClick={() => setIsCreatingOrder(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create New Order
-          </Button>
-        </div>
+        <Tabs defaultValue="orders" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="orders">My Orders</TabsTrigger>
+            <TabsTrigger value="contacts">
+              <Users className="h-4 w-4 mr-2" />
+              Team Contacts
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Orders List */}
-        {isLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Loading orders...</p>
-          </div>
-        ) : orders && orders.length > 0 ? (
-          <div className="grid gap-4">
-            {orders.map((order) => (
-              <Card key={order.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">Order #{order.order_number}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Badge className={getStatusColor(order.status)}>
-                        {order.status.replace('_', ' ').toUpperCase()}
-                      </Badge>
-                      <Badge className={getPaymentStatusColor(order.payment_status || 'pending')}>
-                        {(order.payment_status || 'pending').toUpperCase()}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Delivery Address</p>
-                      <p className="text-sm text-foreground">{order.delivery_address}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Delivery Date</p>
-                      <p className="text-sm text-foreground">
-                        {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : 'Not scheduled'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Total Amount</p>
-                      <p className="text-lg font-bold text-foreground">${order.total_amount?.toFixed(2)}</p>
-                    </div>
-                  </div>
-                  
-                  {/* Products */}
-                  <div className="mt-4">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
-                      <Package className="h-4 w-4 inline mr-1" />
-                      Products
-                    </p>
-                    <div className="text-sm text-foreground">
-                      {order.products_formatted || 'No products listed'}
-                    </div>
-                  </div>
-
-                  {order.order_notes && (
-                    <div className="mt-4">
-                      <p className="text-sm font-medium text-muted-foreground">Notes</p>
-                      <p className="text-sm text-foreground">{order.order_notes}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No orders yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Create your first order to get started
-              </p>
+          <TabsContent value="orders">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-foreground">My Orders</h2>
               <Button onClick={() => setIsCreatingOrder(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Create New Order
               </Button>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+
+            {/* Orders List */}
+            {isLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                <p className="mt-4 text-muted-foreground">Loading orders...</p>
+              </div>
+            ) : orders && orders.length > 0 ? (
+              <div className="grid gap-4">
+                {orders.map((order) => (
+                  <Card key={order.id}>
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-lg">Order #{order.order_number}</CardTitle>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge className={getStatusColor(order.status)}>
+                            {order.status.replace('_', ' ').toUpperCase()}
+                          </Badge>
+                          <Badge className={getPaymentStatusColor(order.payment_status || 'pending')}>
+                            {(order.payment_status || 'pending').toUpperCase()}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Delivery Address</p>
+                          <p className="text-sm text-foreground">{order.delivery_address}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Delivery Date</p>
+                          <p className="text-sm text-foreground">
+                            {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : 'Not scheduled'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Total Amount</p>
+                          <p className="text-lg font-bold text-foreground">${order.total_amount?.toFixed(2)}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Products */}
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">
+                          <Package className="h-4 w-4 inline mr-1" />
+                          Products
+                        </p>
+                        <div className="text-sm text-foreground">
+                          {order.products_formatted || 'No products listed'}
+                        </div>
+                      </div>
+
+                      {order.order_notes && (
+                        <div className="mt-4">
+                          <p className="text-sm font-medium text-muted-foreground">Notes</p>
+                          <p className="text-sm text-foreground">{order.order_notes}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">No orders yet</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create your first order to get started
+                  </p>
+                  <Button onClick={() => setIsCreatingOrder(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Order
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="contacts">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground mb-6">Team Contacts</h2>
+              {customer && customer.customer_type === 'account' ? (
+                <CustomerContactsManager
+                  customerId={customer.id}
+                  customerType={customer.customer_type as "account"}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <p className="text-muted-foreground">Contact management is only available for account customers.</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Order Creation Dialog */}
