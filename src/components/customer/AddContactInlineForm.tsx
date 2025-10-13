@@ -83,9 +83,16 @@ export function AddContactInlineForm({
       });
     } catch (error: any) {
       console.error('Error creating contact:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        customerId: customerId
+      });
       toast({
         title: "Error",
-        description: "Failed to create contact. Please try again.",
+        description: error.message || "Failed to create contact. Please try again.",
         variant: "destructive",
       });
     } finally {
