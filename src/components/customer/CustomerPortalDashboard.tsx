@@ -5,15 +5,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Package, LogOut, Users } from "lucide-react";
+import { Plus, Package, LogOut, Users, LayoutDashboard } from "lucide-react";
 import { CustomerOrderCreate } from "./CustomerOrderCreate";
 import { CustomerContactsManager } from "./CustomerContactsManager";
+import { CustomerDashboardAnalytics } from "./CustomerDashboardAnalytics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDistanceToNow } from "date-fns";
 
 export function CustomerPortalDashboard() {
   const { signOut, user } = useAuth();
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   // Fetch customer info
   const { data: customer } = useQuery({
@@ -91,14 +93,32 @@ export function CustomerPortalDashboard() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="orders" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="orders">My Orders</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="dashboard">
+              <LayoutDashboard className="h-4 w-4 mr-2" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="orders">
+              <Package className="h-4 w-4 mr-2" />
+              My Orders
+            </TabsTrigger>
             <TabsTrigger value="contacts">
               <Users className="h-4 w-4 mr-2" />
               Team Contacts
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="dashboard">
+            {customer && (
+              <CustomerDashboardAnalytics
+                customerId={customer.id}
+                customerType={customer.customer_type}
+                onCreateOrder={() => setIsCreatingOrder(true)}
+                onManageContacts={() => setActiveTab("contacts")}
+              />
+            )}
+          </TabsContent>
 
           <TabsContent value="orders">
             <div className="flex justify-between items-center mb-6">
