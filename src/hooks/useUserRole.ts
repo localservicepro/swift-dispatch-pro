@@ -18,17 +18,33 @@ export function useUserRole() {
           return;
         }
 
+        // Fetch all roles for the user (they might have multiple)
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', user.id)
-          .single();
+          .eq('user_id', user.id);
 
         if (error) {
           console.error('Error fetching user role:', error);
           setRole(null);
+        } else if (data && data.length > 0) {
+          // Determine effective role based on priority: admin > driver > account_customer > customer
+          const roles = data.map(r => r.role);
+          
+          let effectiveRole: UserRole | null = null;
+          if (roles.includes('admin')) {
+            effectiveRole = 'admin';
+          } else if (roles.includes('driver')) {
+            effectiveRole = 'driver';
+          } else if (roles.includes('account_customer')) {
+            effectiveRole = 'account_customer';
+          } else if (roles.includes('customer')) {
+            effectiveRole = 'customer';
+          }
+          
+          setRole(effectiveRole);
         } else {
-          setRole(data?.role as UserRole);
+          setRole(null);
         }
       } catch (error) {
         console.error('Error in useUserRole:', error);
