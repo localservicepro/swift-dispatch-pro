@@ -4,8 +4,15 @@ import { render } from 'npm:@react-email/render@0.0.15'
 import * as React from 'npm:react@18.2.0'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0'
 
-import { renderOrderConfirmationEmail, renderDeliveryStatusUpdateEmail, renderPaymentConfirmationEmail } from './templates.ts';
-import { renderInvoiceEmail, renderBatchInvoiceEmail } from './templates.ts';
+import { 
+  renderOrderConfirmationEmail, 
+  renderDeliveryStatusUpdateEmail, 
+  renderPaymentConfirmationEmail,
+  renderInvoiceEmail,
+  renderBatchInvoiceEmail,
+  renderPortalWelcomeEmail,
+  renderPortalLoginEmail
+} from './templates.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -108,6 +115,16 @@ serve(async (req) => {
       console.log('Processing payment confirmation email...');
       subject = `Payment Confirmation - Order ${emailData.orderNumber}`;
       htmlContent = await renderPaymentConfirmationEmail(emailData);
+      recipientEmail = emailData.customerEmail;
+    } else if (emailType === 'portal-welcome') {
+      console.log('Processing portal welcome email...');
+      subject = `Welcome to Your Customer Portal - ${emailData.businessName}`;
+      htmlContent = await renderPortalWelcomeEmail(emailData);
+      recipientEmail = emailData.customerEmail;
+    } else if (emailType === 'portal-login') {
+      console.log('Processing portal login email...');
+      subject = `Customer Portal Login - ${emailData.businessName}`;
+      htmlContent = await renderPortalLoginEmail(emailData);
       recipientEmail = emailData.customerEmail;
     } else if (emailType === 'test-connection') {
       console.log('Processing test connection email...');

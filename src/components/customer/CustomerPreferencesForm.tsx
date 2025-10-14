@@ -2,6 +2,10 @@
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { CustomerPortalAccessCard } from "./CustomerPortalAccessCard";
+import type { Database } from '@/integrations/supabase/types';
+
+type Customer = Database['public']['Tables']['customers']['Row'];
 
 interface CustomerPreferencesFormProps {
   formData: {
@@ -12,9 +16,20 @@ interface CustomerPreferencesFormProps {
     stop_credit: boolean;
   };
   onFormDataChange: (updates: Partial<CustomerPreferencesFormProps['formData']>) => void;
+  customer?: Customer | null;
+  primaryContactEmail?: string | null;
+  primaryContactName?: string | null;
+  onAccessChange?: () => void;
 }
 
-export function CustomerPreferencesForm({ formData, onFormDataChange }: CustomerPreferencesFormProps) {
+export function CustomerPreferencesForm({ 
+  formData, 
+  onFormDataChange,
+  customer,
+  primaryContactEmail,
+  primaryContactName,
+  onAccessChange
+}: CustomerPreferencesFormProps) {
   return (
     <>
       <div>
@@ -102,6 +117,17 @@ export function CustomerPreferencesForm({ formData, onFormDataChange }: Customer
           </p>
         </div>
       </div>
+
+      {formData.customer_type === 'account' && (
+        <div className="pt-4 border-t">
+          <CustomerPortalAccessCard
+            customer={customer}
+            primaryContactEmail={primaryContactEmail}
+            primaryContactName={primaryContactName}
+            onAccessChange={onAccessChange}
+          />
+        </div>
+      )}
     </>
   );
 }

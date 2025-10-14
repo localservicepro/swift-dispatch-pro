@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CustomerCompanyForm } from './CustomerCompanyForm';
 import { CustomerContactForm } from './CustomerContactForm';
@@ -8,6 +8,7 @@ import { CustomerContactsManager } from './CustomerContactsManager';
 import { CustomerOrders } from './CustomerOrders';
 import { CustomerStats } from './CustomerStats';
 import { CustomerCreditsManagement } from './CustomerCreditsManagement';
+import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
 type Customer = Database['public']['Tables']['customers']['Row'];
@@ -57,6 +58,39 @@ export function CustomerDialogTabs({
   onSuburbChange,
   onContactsChange
 }: CustomerDialogTabsProps) {
+  const [primaryContactEmail, setPrimaryContactEmail] = useState<string | null>(null);
+  const [primaryContactName, setPrimaryContactName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (customer && formData.customer_type === 'account') {
+      loadPrimaryContact();
+    }
+  }, [customer?.id, formData.customer_type]);
+
+  const loadPrimaryContact = async () => {
+    if (!customer) return;
+
+    const { data, error } = await supabase
+      .from('customer_contacts')
+      .select('first_name, last_name, email')
+      .eq('customer_id', customer.id)
+      .eq('is_primary_contact', true)
+      .eq('is_active', true)
+      .single();
+
+    if (!error && data) {
+      setPrimaryContactEmail(data.email);
+      setPrimaryContactName(`${data.first_name} ${data.last_name}`.trim());
+    } else {
+      setPrimaryContactEmail(null);
+      setPrimaryContactName(null);
+    }
+  };
+
+  const handleAccessChange = () => {
+    onContactsChange?.();
+  };
+
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList>
@@ -126,6 +160,10 @@ export function CustomerDialogTabs({
             stop_credit: formData.stop_credit,
           }}
           onFormDataChange={onPreferencesChange}
+          customer={customer}
+          primaryContactEmail={primaryContactEmail}
+          primaryContactName={primaryContactName}
+          onAccessChange={handleAccessChange}
         />
       </TabsContent>
 

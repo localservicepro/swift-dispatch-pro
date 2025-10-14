@@ -205,8 +205,18 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
     }
   };
   
-  const handleSetPrimaryContact = async (contactId: string) => {
+  const handleSetPrimaryContact = async (contactId: string, contactEmail: string | null) => {
+    if (!contactEmail) {
+      toast({
+        title: "Email required",
+        description: "Primary contact must have an email address for portal access",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (!confirm("Set this contact as the primary contact for this account?")) return;
+    
     const { error } = await supabase.rpc('set_primary_contact', {
       p_customer_id: customerId,
       p_contact_id: contactId,
@@ -221,7 +231,7 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
     }
     toast({
       title: "Primary contact updated",
-      description: "This contact is now the primary for the account.",
+      description: "This contact is now the primary for the account and can access the customer portal.",
     });
     
     // Invalidate queries to refresh all customer data across components
@@ -286,8 +296,9 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        onClick={() => handleSetPrimaryContact(contact.id)}
+                        onClick={() => handleSetPrimaryContact(contact.id, contact.email)}
                         title="Set as Primary"
+                        disabled={!contact.email}
                       >
                         <Star className="w-4 h-4" />
                       </Button>

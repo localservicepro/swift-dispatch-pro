@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import DriverPortal from "./pages/DriverPortal";
 import CustomerPortal from "./pages/CustomerPortal";
+import PortalLogin from "./pages/PortalLogin";
 import Knowledgebase from "./pages/Knowledgebase";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
@@ -83,7 +84,8 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public payment routes - no authentication required */}
+        {/* Public routes - no authentication required */}
+        <Route path="/portal-login" element={<PortalLogin />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
         

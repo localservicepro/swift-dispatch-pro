@@ -99,3 +99,33 @@ export async function renderBatchInvoiceEmail(data: any) {
     })
   );
 }
+
+export async function renderPortalWelcomeEmail(data: any) {
+  console.log('Rendering portal welcome email with data:', data);
+  
+  const { PortalWelcomeEmail } = await import('./_templates/portal-welcome.tsx');
+  
+  return await render(
+    React.createElement(PortalWelcomeEmail, {
+      contactName: data.contactName,
+      businessName: data.businessName,
+      magicLink: data.magicLink,
+      expiresIn: data.expiresIn,
+    })
+  );
+}
+
+export async function renderPortalLoginEmail(data: any) {
+  console.log('Rendering portal login email with data:', data);
+  
+  const { PortalLoginEmail } = await import('./_templates/portal-login.tsx');
+  
+  return await render(
+    React.createElement(PortalLoginEmail, {
+      contactName: data.contactName,
+      businessName: data.businessName,
+      magicLink: data.magicLink,
+      expiresIn: data.expiresIn,
+    })
+  );
+}
