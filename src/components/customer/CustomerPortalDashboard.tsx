@@ -105,7 +105,7 @@ export function CustomerPortalDashboard() {
             </TabsTrigger>
             <TabsTrigger value="contacts">
               <Users className="h-4 w-4 mr-2" />
-              Team Contacts
+              Contacts
             </TabsTrigger>
           </TabsList>
 
@@ -215,7 +215,7 @@ export function CustomerPortalDashboard() {
 
           <TabsContent value="contacts">
             <div>
-              <h2 className="text-xl font-semibold text-foreground mb-6">Team Contacts</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-6">Contacts</h2>
               {customer && customer.customer_type === 'account' ? (
                 <CustomerContactsManager
                   customerId={customer.id}
