@@ -8,6 +8,7 @@ import { User, AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminTeamSection } from "./team/AdminTeamSection";
 import { DriverTeamSection } from "./team/DriverTeamSection";
+import { UserRoleManagement } from "./team/UserRoleManagement";
 import { AddTeamMemberDialog } from "./team/AddTeamMemberDialog";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useDatabaseHealth } from "@/hooks/useDatabaseHealth";
@@ -266,7 +267,11 @@ export function TeamManagement() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="roles" className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  User Roles
+                </TabsTrigger>
                 <TabsTrigger value="drivers" className="flex items-center gap-2">
                   <User className="w-4 h-4" />
                   Drivers ({driverProfiles.length})
@@ -277,6 +282,12 @@ export function TeamManagement() {
                 </TabsTrigger>
               </TabsList>
               
+              <TabsContent value="roles" className="mt-6">
+                <ErrorBoundary fallbackTitle="User Roles Section Error">
+                  <UserRoleManagement />
+                </ErrorBoundary>
+              </TabsContent>
+
               <TabsContent value="drivers" className="mt-6">
                 <ErrorBoundary fallbackTitle="Driver Section Error">
                   <DriverTeamSection drivers={driverProfiles} onUpdateRole={updateUserRole} onDeleteUser={deleteUser} onRefresh={handleRefresh} refreshing={refreshing} />
