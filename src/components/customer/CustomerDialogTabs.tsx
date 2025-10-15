@@ -89,6 +89,7 @@ export function CustomerDialogTabs({
 
   const handleAccessChange = () => {
     onContactsChange?.();
+    loadPrimaryContact(); // Refresh primary contact info when portal access changes
   };
 
   return (

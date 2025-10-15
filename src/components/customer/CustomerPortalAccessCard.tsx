@@ -3,9 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { LogIn, Mail, AlertTriangle, CheckCircle, XCircle, Send, KeyRound, Copy, RefreshCw, Ban } from 'lucide-react';
+import { Mail, AlertCircle, Check, Copy, Key, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
 import type { Database } from '@/integrations/supabase/types';
 
 type Customer = Database['public']['Tables']['customers']['Row'];
@@ -26,35 +29,23 @@ export function CustomerPortalAccessCard({
   const [isEnabling, setIsEnabling] = useState(false);
   const [isSendingLink, setIsSendingLink] = useState(false);
   const [isGeneratingPin, setIsGeneratingPin] = useState(false);
-  const [lastLogin, setLastLogin] = useState<string | null>(null);
   const [generatedPin, setGeneratedPin] = useState<string | null>(null);
   const [pinExpiresAt, setPinExpiresAt] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (customer?.last_portal_login) {
-      setLastLogin(new Date(customer.last_portal_login).toLocaleString());
-    }
     if (customer?.pin_expires_at) {
-      setPinExpiresAt(new Date(customer.pin_expires_at).toLocaleDateString());
+      setPinExpiresAt(customer.pin_expires_at);
     }
-  }, [customer?.last_portal_login, customer?.pin_expires_at]);
+  }, [customer?.pin_expires_at]);
 
-  const canEnablePortal = customer?.customer_type === 'account' && primaryContactEmail;
-  const portalEnabled = customer?.portal_access_enabled;
-  const pinEnabled = customer?.pin_enabled;
+  // Only show for account customers
+  if (customer?.customer_type !== 'account') {
+    return null;
+  }
 
   const handleTogglePortalAccess = async () => {
     if (!customer || !primaryContactEmail) return;
-
-    if (!canEnablePortal) {
-      toast({
-        title: "Cannot enable portal",
-        description: "Please set a primary contact with an email address first",
-        variant: "destructive"
-      });
-      return;
-    }
 
     setIsEnabling(true);
 
@@ -68,8 +59,8 @@ export function CustomerPortalAccessCard({
       if (error) throw error;
 
       toast({
-        title: portalEnabled ? "Portal access disabled" : "Portal access enabled",
-        description: portalEnabled 
+        title: customer.portal_access_enabled ? "Portal access disabled" : "Portal access enabled",
+        description: customer.portal_access_enabled 
           ? "Customer portal access has been disabled" 
           : "Welcome email sent to primary contact",
       });
@@ -119,7 +110,7 @@ export function CustomerPortalAccessCard({
     }
   };
 
-  const handleGeneratePin = async (regenerate = false) => {
+  const handleGeneratePin = async () => {
     if (!customer || !primaryContactEmail) return;
 
     setIsGeneratingPin(true);
@@ -129,17 +120,17 @@ export function CustomerPortalAccessCard({
       const { data, error } = await supabase.functions.invoke('generate-portal-pin', {
         body: {
           customer_id: customer.id,
-          regenerate
+          regenerate: customer.pin_enabled || false
         }
       });
 
       if (error) throw error;
 
       setGeneratedPin(data.pin);
-      setPinExpiresAt(new Date(data.expires_at).toLocaleDateString());
+      setPinExpiresAt(data.expires_at);
 
       toast({
-        title: regenerate ? "PIN regenerated" : "PIN generated",
+        title: customer.pin_enabled ? "PIN regenerated" : "PIN generated",
         description: `New PIN has been sent to ${primaryContactEmail}`,
       });
 
@@ -204,182 +195,243 @@ export function CustomerPortalAccessCard({
     }
   };
 
-  // Only show for account customers
-  if (customer?.customer_type !== 'account') {
-    return null;
-  }
-
   return (
-    <Card>
+    <Card className="mt-6">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <LogIn className="w-5 h-5" />
-              Customer Portal Access
-            </CardTitle>
-            <CardDescription>
-              Allow primary contact to access customer portal via magic link
-            </CardDescription>
-          </div>
-          {portalEnabled ? (
-            <Badge variant="default" className="flex items-center gap-1">
-              <CheckCircle className="w-3 h-3" />
-              Enabled
-            </Badge>
-          ) : (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <XCircle className="w-3 h-3" />
-              Disabled
-            </Badge>
-          )}
-        </div>
+        <CardTitle>Customer Portal Setup</CardTitle>
+        <CardDescription>
+          Configure portal access and authentication for this account customer
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {!primaryContactEmail && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
+      <CardContent className="space-y-6">
+        {/* Primary Contact Info */}
+        {primaryContactEmail ? (
+          <div className="space-y-2">
+            <Label>Primary Contact</Label>
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="font-medium">{primaryContactName || "N/A"}</p>
+              <p className="text-sm text-muted-foreground">{primaryContactEmail}</p>
+            </div>
+          </div>
+        ) : (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              No primary contact with email address found. Please set a primary contact first.
+              No primary contact set. Please set a primary contact in the Contacts tab before setting up portal access.
             </AlertDescription>
           </Alert>
         )}
 
         {primaryContactEmail && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm">
-              <Mail className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium">Primary Contact:</span>
-              <span>{primaryContactName || 'Unknown'}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Mail className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium">Email:</span>
-              <span className="text-muted-foreground">{primaryContactEmail}</span>
-            </div>
-            {lastLogin && portalEnabled && (
-              <div className="flex items-center gap-2 text-sm">
-                <CheckCircle className="w-4 h-4 text-muted-foreground" />
-                <span className="font-medium">Last Login:</span>
-                <span className="text-muted-foreground">{lastLogin}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex gap-2 pt-4">
-          <Button
-            onClick={handleTogglePortalAccess}
-            disabled={!canEnablePortal || isEnabling}
-            variant={portalEnabled ? "destructive" : "default"}
-          >
-            {isEnabling ? "Processing..." : portalEnabled ? "Disable Access" : "Enable Access"}
-          </Button>
-          
-          {portalEnabled && (
-            <Button
-              onClick={handleSendLoginLink}
-              disabled={isSendingLink}
-              variant="outline"
-            >
-              <Send className="w-4 h-4 mr-2" />
-              {isSendingLink ? "Sending..." : "Send Magic Link"}
-            </Button>
-          )}
-        </div>
-
-        {portalEnabled && (
           <>
-            <Alert>
-              <Mail className="h-4 w-4" />
-              <AlertDescription>
-                Primary contact can use magic link or PIN code to access the portal.
-              </AlertDescription>
-            </Alert>
-
-            <div className="border-t pt-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <KeyRound className="w-5 h-5 text-muted-foreground" />
-                  <span className="font-semibold">PIN Code Access</span>
+            {/* Step 1: Generate PIN */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                  1
                 </div>
-                {pinEnabled ? (
-                  <Badge variant="default" className="flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" />
-                    Enabled
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="flex items-center gap-1">
-                    <XCircle className="w-3 h-3" />
-                    Disabled
-                  </Badge>
-                )}
+                <Label className="text-base font-semibold">Generate PIN Code</Label>
               </div>
+              
+              <div className="ml-8 space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Create a secure 6-digit PIN that the customer will use to login to their portal.
+                </p>
 
-              {pinEnabled && pinExpiresAt && (
-                <div className="text-sm text-muted-foreground">
-                  Expires: {pinExpiresAt}
-                </div>
-              )}
+                {customer.pin_enabled && !generatedPin && (
+                  <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                    <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-200">
+                      <Check className="mr-1 h-3 w-3" />
+                      PIN Active
+                    </Badge>
+                    {pinExpiresAt && (
+                      <span className="text-xs text-muted-foreground">
+                        Expires: {format(new Date(pinExpiresAt), "PPp")}
+                      </span>
+                    )}
+                  </div>
+                )}
 
-              {generatedPin && (
-                <Alert>
-                  <KeyRound className="h-4 w-4" />
-                  <AlertDescription>
-                    <div className="space-y-2">
-                      <p className="font-medium">Generated PIN Code:</p>
-                      <div className="flex items-center gap-2">
-                        <code className="text-2xl font-bold tracking-widest bg-muted px-4 py-2 rounded">
-                          {generatedPin}
-                        </code>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleCopyPin}
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Button>
+                {generatedPin && (
+                  <Alert className="bg-primary/5 border-primary/20">
+                    <AlertCircle className="h-4 w-4 text-primary" />
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="font-medium">PIN Code Generated</p>
+                        <div className="flex items-center gap-2 p-2 bg-background rounded border">
+                          <code className="flex-1 text-lg font-mono tracking-wider">
+                            {generatedPin}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleCopyPin}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Copy this PIN to share with the customer. It was also sent via email.
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        This PIN will only be shown once. Save it securely.
-                      </p>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-              <div className="flex gap-2">
-                {!pinEnabled ? (
+                <div className="flex gap-2">
                   <Button
-                    onClick={() => handleGeneratePin(false)}
+                    onClick={handleGeneratePin}
                     disabled={isGeneratingPin}
                     variant="outline"
+                    size="sm"
                   >
-                    <KeyRound className="w-4 h-4 mr-2" />
-                    {isGeneratingPin ? "Generating..." : "Generate PIN"}
+                    {isGeneratingPin ? (
+                      <>
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Key className="mr-2 h-3 w-3" />
+                        {customer.pin_enabled ? "Regenerate PIN" : "Generate New PIN"}
+                      </>
+                    )}
                   </Button>
-                ) : (
-                  <>
-                    <Button
-                      onClick={() => handleGeneratePin(true)}
-                      disabled={isGeneratingPin}
-                      variant="outline"
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      {isGeneratingPin ? "Regenerating..." : "Regenerate PIN"}
-                    </Button>
+                  
+                  {customer.pin_enabled && (
                     <Button
                       onClick={handleDisablePin}
-                      disabled={isGeneratingPin}
                       variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
                     >
-                      <Ban className="w-4 h-4 mr-2" />
                       Disable PIN
                     </Button>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
             </div>
+
+            <Separator />
+
+            {/* Step 2: Enable Portal Access */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                  2
+                </div>
+                <Label className="text-base font-semibold">Enable Portal Access</Label>
+              </div>
+              
+              <div className="ml-8 space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  {customer.portal_access_enabled 
+                    ? "Portal access is currently enabled for this customer."
+                    : "Activate the customer portal to allow login access."}
+                </p>
+
+                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Portal Status</span>
+                      <Badge variant={customer.portal_access_enabled ? "default" : "secondary"}>
+                        {customer.portal_access_enabled ? "Enabled" : "Disabled"}
+                      </Badge>
+                    </div>
+                    {customer.last_portal_login && (
+                      <p className="text-sm text-muted-foreground">
+                        Last login: {format(new Date(customer.last_portal_login), "PPp")}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    onClick={handleTogglePortalAccess}
+                    disabled={isEnabling}
+                    variant={customer.portal_access_enabled ? "destructive" : "default"}
+                  >
+                    {isEnabling ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : customer.portal_access_enabled ? (
+                      "Disable Access"
+                    ) : (
+                      "Enable Access"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {customer.portal_access_enabled && (
+              <>
+                <Separator />
+
+                {/* Step 3: Share Credentials */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                      3
+                    </div>
+                    <Label className="text-base font-semibold">Share Login Credentials</Label>
+                  </div>
+                  
+                  <div className="ml-8 space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Send login credentials to the customer via email or copy the PIN to share manually.
+                    </p>
+
+                    {/* Magic Link Option */}
+                    <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                      <div className="space-y-1">
+                        <p className="font-medium text-sm">Send Magic Link</p>
+                        <p className="text-xs text-muted-foreground">
+                          Email a secure one-time login link to {primaryContactEmail}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleSendLoginLink}
+                        disabled={isSendingLink}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {isSendingLink ? (
+                          <>
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="mr-2 h-3 w-3" />
+                            Send Link
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Copy PIN Option */}
+                    {customer.pin_enabled && (
+                      <div className="p-3 bg-muted rounded-lg space-y-2">
+                        <p className="font-medium text-sm">Share PIN Code</p>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Customer can login at the portal using their 6-digit PIN
+                        </p>
+                        <Button
+                          onClick={handleGeneratePin}
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                        >
+                          <Key className="mr-2 h-3 w-3" />
+                          View & Copy PIN
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
       </CardContent>
