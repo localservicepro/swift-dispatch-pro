@@ -94,17 +94,39 @@ export default function PortalLogin() {
       if (error) throw error;
 
       if (data.success) {
-        toast({
-          title: "Login successful!",
-          description: `Welcome back, ${data.customer_name}`,
-        });
-        
-        // Store customer info for portal access
-        localStorage.setItem('portal_customer_id', data.customer_id);
-        localStorage.setItem('portal_customer_name', data.customer_name);
-        
-        // Redirect to customer portal
-        navigate('/customer-portal');
+        // If we have session tokens, establish a Supabase auth session
+        if (data.session?.access_token && data.session?.refresh_token) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+
+          if (sessionError) {
+            console.error('Error setting session:', sessionError);
+            toast({
+              title: "Session error",
+              description: "Could not establish login session. Please try again.",
+              variant: "destructive"
+            });
+            return;
+          }
+
+          // Session established successfully
+          toast({
+            title: "Login successful!",
+            description: `Welcome back, ${data.customer_name}`,
+          });
+          
+          // Navigate to customer portal - ProtectedRoute will now work
+          navigate('/customer-portal');
+        } else {
+          // Fallback: No auth_user_id exists for this customer
+          toast({
+            title: "Account setup required",
+            description: "Your account needs to be set up for portal access. Please contact support.",
+            variant: "destructive"
+          });
+        }
       }
     } catch (error: any) {
       console.error('Error verifying PIN:', error);

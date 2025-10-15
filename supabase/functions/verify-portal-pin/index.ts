@@ -138,7 +138,7 @@ serve(async (req) => {
     });
 
     // If customer has auth_user_id, create a session
-    let session = null;
+    let sessionTokens = null;
     if (customer.auth_user_id) {
       // Generate auth session using admin API
       const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
@@ -148,8 +148,12 @@ serve(async (req) => {
 
       if (sessionError) {
         console.error('Error generating session:', sessionError);
-      } else {
-        session = sessionData;
+      } else if (sessionData.properties) {
+        // Extract access and refresh tokens from the generated link
+        sessionTokens = {
+          access_token: sessionData.properties.access_token,
+          refresh_token: sessionData.properties.refresh_token,
+        };
       }
     }
 
@@ -160,7 +164,8 @@ serve(async (req) => {
         success: true,
         customer_id: customer.id,
         customer_name: `${customer.first_name} ${customer.last_name}`.trim(),
-        session,
+        customer_email: customer.email,
+        session: sessionTokens,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
