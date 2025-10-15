@@ -42,7 +42,7 @@ serve(async (req) => {
     // Find customer by PIN hash directly
     const { data: customer, error: customerError } = await supabase
       .from('customers')
-      .select('id, first_name, last_name, email, portal_access_enabled, pin_enabled, portal_access_pin, pin_expires_at, pin_failed_attempts, pin_locked_until, auth_user_id')
+      .select('id, first_name, last_name, company_name, business_name, email, portal_access_enabled, pin_enabled, portal_access_pin, pin_expires_at, pin_failed_attempts, pin_locked_until, auth_user_id')
       .eq('portal_access_pin', hashedPin)
       .eq('pin_enabled', true)
       .maybeSingle();
@@ -164,7 +164,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         customer_id: customer.id,
-        customer_name: `${customer.first_name} ${customer.last_name}`.trim(),
+        customer_name: customer.company_name || customer.business_name || `${customer.first_name} ${customer.last_name}`.trim(),
         customer_email: customer.email,
         session: sessionTokens,
       }),

@@ -117,8 +117,10 @@ export default function PortalLogin() {
             description: `Welcome back, ${data.customer_name}`,
           });
           
-          // Navigate to customer portal - ProtectedRoute will now work
-          navigate('/customer-portal');
+          // Wait for auth state to fully update before navigating
+          setTimeout(() => {
+            navigate('/customer-portal');
+          }, 500);
         } else {
           // Fallback: No auth_user_id exists for this customer
           toast({
