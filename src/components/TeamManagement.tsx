@@ -137,11 +137,18 @@ export function TeamManagement() {
     }
     try {
       console.log(`[TeamManagement] Deleting user ${userId}`);
-      const {
-        error
-      } = await supabase.auth.admin.deleteUser(userId);
+      
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: userId }
+      });
+      
       if (error) throw error;
-      loadProfiles();
+      if (data && !data.success) {
+        throw new Error(data.error || 'Failed to delete user');
+      }
+      
+      await loadProfiles();
+      
       toast({
         title: "User Deleted",
         description: "User has been removed from the system"
@@ -150,7 +157,7 @@ export function TeamManagement() {
       console.error('[TeamManagement] Error deleting user:', error);
       toast({
         title: "Error",
-        description: "Failed to delete user",
+        description: error.message || "Failed to delete user",
         variant: "destructive"
       });
     }
