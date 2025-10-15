@@ -94,15 +94,15 @@ export default function PortalLogin() {
       if (error) throw error;
 
       if (data.success) {
-        // If we have session tokens, establish a Supabase auth session
-        if (data.session?.access_token && data.session?.refresh_token) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
+        // If we have a hashed token, verify it to establish a Supabase auth session
+        if (data.session?.hashed_token) {
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: data.session.hashed_token,
+            type: 'email',
           });
 
-          if (sessionError) {
-            console.error('Error setting session:', sessionError);
+          if (verifyError) {
+            console.error('Error verifying OTP:', verifyError);
             toast({
               title: "Session error",
               description: "Could not establish login session. Please try again.",

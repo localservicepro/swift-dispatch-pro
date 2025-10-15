@@ -148,12 +148,13 @@ serve(async (req) => {
 
       if (sessionError) {
         console.error('Error generating session:', sessionError);
-      } else if (sessionData.properties) {
-        // Extract access and refresh tokens from the generated link
+      } else if (sessionData.properties?.hashed_token) {
+        // Return the hashed token for client-side verification
         sessionTokens = {
-          access_token: sessionData.properties.access_token,
-          refresh_token: sessionData.properties.refresh_token,
+          hashed_token: sessionData.properties.hashed_token,
+          email: customer.email,
         };
+        console.log('Generated hashed_token for customer:', customer.id);
       }
     }
 
