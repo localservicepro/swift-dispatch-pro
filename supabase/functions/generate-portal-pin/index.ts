@@ -70,10 +70,6 @@ serve(async (req) => {
       throw new Error('Customer not found');
     }
 
-    if (!customer.portal_access_enabled) {
-      throw new Error('Portal access is not enabled for this customer');
-    }
-
     if (!customer.email) {
       throw new Error('Customer email is required for PIN generation');
     }
