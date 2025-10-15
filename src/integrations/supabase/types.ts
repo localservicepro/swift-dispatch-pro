@@ -376,7 +376,13 @@ export type Database = {
           last_name: string | null
           last_portal_login: string | null
           phone: string | null
+          pin_created_at: string | null
+          pin_enabled: boolean | null
+          pin_expires_at: string | null
+          pin_failed_attempts: number | null
+          pin_locked_until: string | null
           portal_access_enabled: boolean | null
+          portal_access_pin: string | null
           sms_notifications_enabled: boolean
           sms_opt_out_date: string | null
           stop_credit: boolean
@@ -405,7 +411,13 @@ export type Database = {
           last_name?: string | null
           last_portal_login?: string | null
           phone?: string | null
+          pin_created_at?: string | null
+          pin_enabled?: boolean | null
+          pin_expires_at?: string | null
+          pin_failed_attempts?: number | null
+          pin_locked_until?: string | null
           portal_access_enabled?: boolean | null
+          portal_access_pin?: string | null
           sms_notifications_enabled?: boolean
           sms_opt_out_date?: string | null
           stop_credit?: boolean
@@ -434,7 +446,13 @@ export type Database = {
           last_name?: string | null
           last_portal_login?: string | null
           phone?: string | null
+          pin_created_at?: string | null
+          pin_enabled?: boolean | null
+          pin_expires_at?: string | null
+          pin_failed_attempts?: number | null
+          pin_locked_until?: string | null
           portal_access_enabled?: boolean | null
+          portal_access_pin?: string | null
           sms_notifications_enabled?: boolean
           sms_opt_out_date?: string | null
           stop_credit?: boolean
@@ -1321,6 +1339,50 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      portal_login_attempts: {
+        Row: {
+          attempt_type: string
+          created_at: string | null
+          customer_id: string | null
+          email: string
+          failure_reason: string | null
+          id: string
+          ip_address: unknown | null
+          success: boolean | null
+          user_agent: string | null
+        }
+        Insert: {
+          attempt_type: string
+          created_at?: string | null
+          customer_id?: string | null
+          email: string
+          failure_reason?: string | null
+          id?: string
+          ip_address?: unknown | null
+          success?: boolean | null
+          user_agent?: string | null
+        }
+        Update: {
+          attempt_type?: string
+          created_at?: string | null
+          customer_id?: string | null
+          email?: string
+          failure_reason?: string | null
+          id?: string
+          ip_address?: unknown | null
+          success?: boolean | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_login_attempts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pricing_tiers: {
         Row: {

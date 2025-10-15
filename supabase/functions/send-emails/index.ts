@@ -11,7 +11,9 @@ import {
   renderInvoiceEmail,
   renderBatchInvoiceEmail,
   renderPortalWelcomeEmail,
-  renderPortalLoginEmail
+  renderPortalLoginEmail,
+  renderPortalPinCreatedEmail,
+  renderPortalPinRegeneratedEmail
 } from './templates.ts';
 
 const corsHeaders = {
@@ -126,6 +128,16 @@ serve(async (req) => {
       subject = `Customer Portal Login - ${emailData.businessName}`;
       htmlContent = await renderPortalLoginEmail(emailData);
       recipientEmail = emailData.customerEmail;
+    } else if (emailType === 'portal-pin-created') {
+      console.log('Processing portal PIN created email...');
+      subject = 'Your Customer Portal PIN Code';
+      htmlContent = await renderPortalPinCreatedEmail(emailData);
+      recipientEmail = emailData.to || emailData.customerEmail;
+    } else if (emailType === 'portal-pin-regenerated') {
+      console.log('Processing portal PIN regenerated email...');
+      subject = 'Your Portal PIN Has Been Reset';
+      htmlContent = await renderPortalPinRegeneratedEmail(emailData);
+      recipientEmail = emailData.to || emailData.customerEmail;
     } else if (emailType === 'test-connection') {
       console.log('Processing test connection email...');
       subject = 'Email Configuration Test';

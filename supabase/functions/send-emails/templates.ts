@@ -129,3 +129,31 @@ export async function renderPortalLoginEmail(data: any) {
     })
   );
 }
+
+export async function renderPortalPinCreatedEmail(data: any) {
+  console.log('Rendering portal PIN created email with data:', data);
+  
+  const { PortalPinCreatedEmail } = await import('./_templates/portal-pin-created.tsx');
+  
+  return await render(
+    React.createElement(PortalPinCreatedEmail, {
+      customerName: data.customerName,
+      pin: data.pin,
+      expiresAt: data.expiresAt,
+    })
+  );
+}
+
+export async function renderPortalPinRegeneratedEmail(data: any) {
+  console.log('Rendering portal PIN regenerated email with data:', data);
+  
+  const { PortalPinRegeneratedEmail } = await import('./_templates/portal-pin-regenerated.tsx');
+  
+  return await render(
+    React.createElement(PortalPinRegeneratedEmail, {
+      customerName: data.customerName,
+      pin: data.pin,
+      expiresAt: data.expiresAt,
+    })
+  );
+}
