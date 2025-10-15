@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import { AuthPage } from "@/components/auth/AuthPage";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
@@ -36,39 +37,31 @@ function AuthenticatedApp() {
     return <AuthPage />;
   }
 
-  // Route based on user role
+  // Route based on user role with strict protection
   return (
     <Routes>
       <Route 
         path="/" 
         element={
-          role === 'driver' ? (
-            <Navigate to="/driver" replace />
-          ) : role === 'account_customer' ? (
-            <Navigate to="/customer-portal" replace />
-          ) : (
+          <ProtectedRoute allowedRoles={['admin']}>
             <Index />
-          )
+          </ProtectedRoute>
         } 
       />
       <Route 
         path="/driver" 
         element={
-          role === 'driver' ? (
+          <ProtectedRoute allowedRoles={['driver']}>
             <DriverPortal />
-          ) : (
-            <Navigate to="/" replace />
-          )
+          </ProtectedRoute>
         } 
       />
       <Route 
         path="/customer-portal" 
         element={
-          role === 'account_customer' ? (
+          <ProtectedRoute allowedRoles={['account_customer']}>
             <CustomerPortal />
-          ) : (
-            <Navigate to="/" replace />
-          )
+          </ProtectedRoute>
         } 
       />
       <Route 

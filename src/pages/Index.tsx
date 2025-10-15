@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
@@ -20,12 +20,28 @@ import { TeamManagement } from "@/components/TeamManagement";
 import { PersonalizedGreeting } from "@/components/PersonalizedGreeting";
 import { SuburbManagement } from "@/components/SuburbManagement";
 import { useNavigate } from "react-router-dom";
+import { useUserRole } from "@/hooks/useUserRole";
 
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const { signOut, profile, signingOut } = useAuth();
   const navigate = useNavigate();
+  const { role } = useUserRole();
+
+  // Defense-in-depth: Double-check role access to prevent unauthorized access
+  useEffect(() => {
+    if (role && role !== 'admin') {
+      console.warn('Unauthorized access attempt to admin dashboard by role:', role);
+      if (role === 'account_customer') {
+        navigate('/customer-portal', { replace: true });
+      } else if (role === 'driver') {
+        navigate('/driver', { replace: true });
+      } else {
+        navigate('/portal-login', { replace: true });
+      }
+    }
+  }, [role, navigate]);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
