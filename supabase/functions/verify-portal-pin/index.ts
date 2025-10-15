@@ -25,22 +25,26 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { email, pin } = await req.json();
+    const { pin } = await req.json();
 
-    if (!email || !pin) {
-      throw new Error('Email and PIN are required');
+    if (!pin) {
+      throw new Error('PIN is required');
     }
 
-    // Validate PIN format
+    // Validate PIN format (6 digits)
     if (!/^\d{6}$/.test(pin)) {
       throw new Error('Invalid PIN format');
     }
 
-    // Get customer by email
+    // Hash the PIN to look up in database
+    const hashedPin = await hashPin(pin);
+
+    // Find customer by PIN hash directly
     const { data: customer, error: customerError } = await supabase
       .from('customers')
       .select('id, first_name, last_name, email, portal_access_enabled, pin_enabled, portal_access_pin, pin_expires_at, pin_failed_attempts, pin_locked_until, auth_user_id')
-      .eq('email', email.toLowerCase())
+      .eq('portal_access_pin', hashedPin)
+      .eq('pin_enabled', true)
       .maybeSingle();
 
     if (customerError) {
@@ -48,39 +52,27 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
-    // Log failed attempt if customer not found
+    // Log failed attempt if customer not found (don't reveal if PIN exists)
     if (!customer) {
       await supabase.from('portal_login_attempts').insert({
-        email: email.toLowerCase(),
+        email: 'unknown',
         attempt_type: 'pin',
         success: false,
-        failure_reason: 'Customer not found',
+        failure_reason: 'Invalid PIN',
       });
-      throw new Error('Invalid email or PIN');
+      throw new Error('Invalid PIN');
     }
 
     // Check if portal access is enabled
     if (!customer.portal_access_enabled) {
       await supabase.from('portal_login_attempts').insert({
         customer_id: customer.id,
-        email: email.toLowerCase(),
+        email: customer.email || 'unknown',
         attempt_type: 'pin',
         success: false,
         failure_reason: 'Portal access disabled',
       });
       throw new Error('Portal access is not enabled');
-    }
-
-    // Check if PIN is enabled
-    if (!customer.pin_enabled || !customer.portal_access_pin) {
-      await supabase.from('portal_login_attempts').insert({
-        customer_id: customer.id,
-        email: email.toLowerCase(),
-        attempt_type: 'pin',
-        success: false,
-        failure_reason: 'PIN not enabled',
-      });
-      throw new Error('PIN authentication is not enabled for this account');
     }
 
     // Check if account is locked
@@ -90,7 +82,7 @@ serve(async (req) => {
         const minutesRemaining = Math.ceil((lockUntil.getTime() - Date.now()) / 60000);
         await supabase.from('portal_login_attempts').insert({
           customer_id: customer.id,
-          email: email.toLowerCase(),
+          email: customer.email || 'unknown',
           attempt_type: 'pin',
           success: false,
           failure_reason: 'Account locked',
@@ -105,7 +97,7 @@ serve(async (req) => {
       if (expiresAt < new Date()) {
         await supabase.from('portal_login_attempts').insert({
           customer_id: customer.id,
-          email: email.toLowerCase(),
+          email: customer.email || 'unknown',
           attempt_type: 'pin',
           success: false,
           failure_reason: 'PIN expired',
@@ -114,53 +106,24 @@ serve(async (req) => {
       }
     }
 
-    // Hash the provided PIN and compare
-    const hashedPin = await hashPin(pin);
-    const pinMatches = hashedPin === customer.portal_access_pin;
-
-    if (!pinMatches) {
-      // Increment failed attempts
-      const newFailedAttempts = (customer.pin_failed_attempts || 0) + 1;
-      const maxAttempts = 5;
-
-      let lockUntil = null;
-      if (newFailedAttempts >= maxAttempts) {
-        // Lock account for 30 minutes
-        lockUntil = new Date();
-        lockUntil.setMinutes(lockUntil.getMinutes() + 30);
-      }
-
+    // PIN already matched in the initial lookup, so we know it's correct
+    // But we'll still check failed attempts to prevent the issue
+    if ((customer.pin_failed_attempts || 0) > 0) {
+      // Reset failed attempts since we found the customer
       await supabase
         .from('customers')
         .update({
-          pin_failed_attempts: newFailedAttempts,
-          pin_locked_until: lockUntil?.toISOString(),
+          pin_failed_attempts: 0,
+          pin_locked_until: null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', customer.id);
-
-      await supabase.from('portal_login_attempts').insert({
-        customer_id: customer.id,
-        email: email.toLowerCase(),
-        attempt_type: 'pin',
-        success: false,
-        failure_reason: 'Incorrect PIN',
-      });
-
-      const remainingAttempts = maxAttempts - newFailedAttempts;
-      if (remainingAttempts > 0) {
-        throw new Error(`Invalid PIN. ${remainingAttempts} attempt(s) remaining`);
-      } else {
-        throw new Error('Account locked for 30 minutes due to too many failed attempts');
-      }
     }
 
-    // PIN is correct - reset failed attempts and create session
+    // PIN is correct (found by hash lookup) - update login timestamp and create session
     await supabase
       .from('customers')
       .update({
-        pin_failed_attempts: 0,
-        pin_locked_until: null,
         last_portal_login: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -169,7 +132,7 @@ serve(async (req) => {
     // Log successful attempt
     await supabase.from('portal_login_attempts').insert({
       customer_id: customer.id,
-      email: email.toLowerCase(),
+      email: customer.email || 'unknown',
       attempt_type: 'pin',
       success: true,
     });

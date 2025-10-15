@@ -6,16 +6,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Weak PIN patterns to avoid
+const WEAK_PINS = [
+  '000000', '111111', '222222', '333333', '444444', '555555', 
+  '666666', '777777', '888888', '999999',
+  '123456', '654321', '012345', '234567', '345678', '456789',
+  '987654', '876543', '765432', '543210'
+];
+
+// Check if PIN is weak (repeating digits or sequential)
+function isWeakPin(pin: string): boolean {
+  if (WEAK_PINS.includes(pin)) return true;
+  if (/^(.)\1{5}$/.test(pin)) return true; // All same digit
+  return false;
+}
+
 // Generate secure 6-digit PIN
 function generateSecurePin(): string {
   const array = new Uint32Array(1);
   crypto.getRandomValues(array);
   const pin = (array[0] % 1000000).toString().padStart(6, '0');
   
-  // Avoid weak PINs like 000000, 111111, 123456
-  const weakPins = ['000000', '111111', '222222', '333333', '444444', '555555', '666666', '777777', '888888', '999999', '123456', '654321'];
-  if (weakPins.includes(pin)) {
-    return generateSecurePin(); // Recursive call for weak PIN
+  if (isWeakPin(pin)) {
+    return generateSecurePin(); // Regenerate if weak
   }
   
   return pin;
@@ -65,9 +78,41 @@ serve(async (req) => {
       throw new Error('Customer email is required for PIN generation');
     }
 
-    // Generate PIN and hash it
-    const plainPin = generateSecurePin();
-    const hashedPin = await hashPin(plainPin);
+    // Generate unique PIN with retry logic
+    let plainPin = '';
+    let hashedPin = '';
+    let attempts = 0;
+    const maxAttempts = 20;
+    
+    while (attempts < maxAttempts) {
+      plainPin = generateSecurePin();
+      hashedPin = await hashPin(plainPin);
+      
+      // Check if this PIN already exists
+      const { data: existingPin, error: checkError } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('portal_access_pin', hashedPin)
+        .eq('pin_enabled', true)
+        .maybeSingle();
+      
+      if (checkError) {
+        console.error('Error checking PIN uniqueness:', checkError);
+        throw new Error('Failed to generate PIN');
+      }
+      
+      // If no existing PIN found, we have a unique one
+      if (!existingPin) {
+        break;
+      }
+      
+      attempts++;
+      console.log(`PIN collision detected, regenerating (attempt ${attempts}/${maxAttempts})`);
+    }
+    
+    if (attempts >= maxAttempts) {
+      throw new Error('Unable to generate unique PIN after multiple attempts. Please try again.');
+    }
 
     // Set expiration (90 days from now)
     const expiresAt = new Date();

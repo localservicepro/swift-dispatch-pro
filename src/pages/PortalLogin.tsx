@@ -13,7 +13,6 @@ import { useNavigate } from 'react-router-dom';
 
 export default function PortalLogin() {
   const [email, setEmail] = useState('');
-  const [pinEmail, setPinEmail] = useState('');
   const [pin, setPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -66,19 +65,19 @@ export default function PortalLogin() {
     e.preventDefault();
     setPinError(false);
     
-    if (!pinEmail || !pin) {
+    if (!pin) {
       toast({
-        title: "Required fields",
-        description: "Please enter both email and PIN code",
+        title: "PIN required",
+        description: "Please enter your 6-digit PIN code",
         variant: "destructive"
       });
       return;
     }
 
-    if (pin.length !== 6) {
+    if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
       toast({
         title: "Invalid PIN",
-        description: "PIN must be 6 digits",
+        description: "PIN must be exactly 6 digits",
         variant: "destructive"
       });
       setPinError(true);
@@ -89,10 +88,7 @@ export default function PortalLogin() {
 
     try {
       const { data, error } = await supabase.functions.invoke('verify-portal-pin', {
-        body: {
-          email: pinEmail,
-          pin
-        }
+        body: { pin }
       });
 
       if (error) throw error;
@@ -103,17 +99,18 @@ export default function PortalLogin() {
           description: `Welcome back, ${data.customer_name}`,
         });
         
-        // If session data is provided, sign in with the session
-        if (data.session) {
-          // Redirect to customer portal
-          navigate('/customer-portal');
-        }
+        // Store customer info for portal access
+        localStorage.setItem('portal_customer_id', data.customer_id);
+        localStorage.setItem('portal_customer_name', data.customer_name);
+        
+        // Redirect to customer portal
+        navigate('/customer-portal');
       }
     } catch (error: any) {
       console.error('Error verifying PIN:', error);
       toast({
         title: "Login failed",
-        description: error.message || "Invalid email or PIN code",
+        description: error.message || "Invalid PIN code",
         variant: "destructive"
       });
       setPinError(true);
@@ -242,24 +239,7 @@ export default function PortalLogin() {
             <TabsContent value="pin">
               <form onSubmit={handlePinLogin} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="pin-email">Email Address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="pin-email"
-                      type="email"
-                      placeholder="your.email@company.com"
-                      value={pinEmail}
-                      onChange={(e) => setPinEmail(e.target.value)}
-                      className="pl-10"
-                      disabled={isLoading}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="pin-input">6-Digit PIN Code</Label>
+                  <Label htmlFor="pin-input">Enter Your 6-Digit PIN</Label>
                   <PinCodeInput
                     value={pin}
                     onChange={(value) => {
@@ -269,6 +249,9 @@ export default function PortalLogin() {
                     disabled={isLoading}
                     error={pinError}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Enter the PIN code provided by your account manager
+                  </p>
                 </div>
 
                 <Button
@@ -279,7 +262,7 @@ export default function PortalLogin() {
                   {isLoading ? (
                     <>
                       <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
-                      Logging in...
+                      Verifying...
                     </>
                   ) : (
                     <>
@@ -292,7 +275,7 @@ export default function PortalLogin() {
                 <Alert>
                   <KeyRound className="h-4 w-4" />
                   <AlertDescription>
-                    Enter your 6-digit PIN code sent to your email. If you don't have a PIN, use the Magic Link option.
+                    Quick access for account customers. Enter your 6-digit PIN to login instantly.
                   </AlertDescription>
                 </Alert>
               </form>
