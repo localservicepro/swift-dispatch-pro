@@ -12,7 +12,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, allowedRoles, redirectTo }: ProtectedRouteProps) {
   const { user, loading: authLoading } = useAuth();
-  const { role, loading: roleLoading } = useUserRole();
+  const { roles, loading: roleLoading } = useUserRole();
 
   if (authLoading || roleLoading) {
     return (
@@ -25,18 +25,21 @@ export function ProtectedRoute({ children, allowedRoles, redirectTo }: Protected
     );
   }
 
-  if (!user || !role) {
+  if (!user || roles.length === 0) {
     return <Navigate to="/portal-login" replace />;
   }
 
-  if (!allowedRoles.includes(role)) {
-    console.warn(`Unauthorized access attempt. User role: ${role}, Required: ${allowedRoles.join(', ')}`);
+  // Check if user has ANY of the allowed roles
+  const hasAllowedRole = allowedRoles.some(allowedRole => roles.includes(allowedRole));
+
+  if (!hasAllowedRole) {
+    console.warn(`Unauthorized access attempt. User roles: ${roles.join(', ')}, Required: ${allowedRoles.join(', ')}`);
     
-    // Redirect based on user role
-    if (role === 'account_customer') {
+    // Redirect based on user roles (priority order)
+    if (roles.includes('account_customer')) {
       return <Navigate to="/customer-portal" replace />;
     }
-    if (role === 'driver') {
+    if (roles.includes('driver')) {
       return <Navigate to="/driver" replace />;
     }
     return <Navigate to={redirectTo || "/portal-login"} replace />;

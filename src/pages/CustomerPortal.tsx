@@ -5,7 +5,7 @@ import { Navigate } from "react-router-dom";
 
 export default function CustomerPortal() {
   const { user, loading: authLoading } = useAuth();
-  const { role, loading: roleLoading } = useUserRole();
+  const { isAccountCustomer, loading: roleLoading } = useUserRole();
 
   if (authLoading || roleLoading) {
     return (
@@ -23,7 +23,7 @@ export default function CustomerPortal() {
   }
 
   // Only account customers can access this portal
-  if (role !== 'account_customer') {
+  if (!isAccountCustomer) {
     return <Navigate to="/" replace />;
   }
 
