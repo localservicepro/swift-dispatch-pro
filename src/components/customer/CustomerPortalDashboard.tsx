@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { formatDistanceToNow } from "date-fns";
 
 export function CustomerPortalDashboard() {
   const { signOut, user } = useAuth();
+  const navigate = useNavigate();
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -84,7 +86,15 @@ export function CustomerPortalDashboard() {
               Welcome, {customer?.company_name || customer?.business_name || `${customer?.first_name} ${customer?.last_name}`}
             </p>
           </div>
-          <Button variant="outline" onClick={() => signOut()}>
+          <Button 
+            variant="outline" 
+            onClick={async () => {
+              const { error } = await signOut();
+              if (!error) {
+                navigate('/portal-login', { replace: true });
+              }
+            }}
+          >
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out
           </Button>

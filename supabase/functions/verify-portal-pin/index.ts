@@ -140,6 +140,31 @@ serve(async (req) => {
     // If customer has auth_user_id, create a session
     let sessionTokens = null;
     if (customer.auth_user_id) {
+      // Ensure user_roles entry exists for account_customer
+      const { data: existingRole } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', customer.auth_user_id)
+        .eq('role', 'account_customer')
+        .eq('customer_id', customer.id)
+        .maybeSingle();
+
+      if (!existingRole) {
+        const { error: roleInsertError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: customer.auth_user_id,
+            role: 'account_customer',
+            customer_id: customer.id,
+          });
+        
+        if (roleInsertError) {
+          console.error('Error creating user_roles:', roleInsertError);
+        } else {
+          console.log('Created account_customer role for user:', customer.auth_user_id);
+        }
+      }
+
       // Generate auth session using admin API
       const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
         type: 'magiclink',

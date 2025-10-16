@@ -117,10 +117,18 @@ export default function PortalLogin() {
             description: `Welcome back, ${data.customer_name}`,
           });
           
-          // Wait for auth state to fully update before navigating
+          // Listen for auth state change and navigate when signed in
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+              navigate('/customer-portal', { replace: true });
+              subscription.unsubscribe();
+            }
+          });
+
+          // Safety fallback in case listener is missed
           setTimeout(() => {
-            navigate('/customer-portal');
-          }, 500);
+            navigate('/customer-portal', { replace: true });
+          }, 1000);
         } else {
           // Fallback: No auth_user_id exists for this customer
           toast({
