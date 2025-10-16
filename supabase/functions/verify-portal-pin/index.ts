@@ -174,6 +174,25 @@ serve(async (req) => {
       if (sessionError) {
         console.error('Error generating session:', sessionError);
       } else if (sessionData.properties?.hashed_token) {
+        // CRITICAL: Ensure the actual signed-in user has the account_customer role
+        if (sessionData.user?.id) {
+          const { error: sessionRoleError } = await supabase
+            .from('user_roles')
+            .upsert({
+              user_id: sessionData.user.id,
+              role: 'account_customer',
+              customer_id: customer.id
+            }, {
+              onConflict: 'user_id,role'
+            });
+
+          if (sessionRoleError) {
+            console.error('Error upserting account_customer role for signed-in user:', sessionRoleError);
+          } else {
+            console.log('Ensured account_customer role for signed-in user:', sessionData.user.id);
+          }
+        }
+
         // Return the hashed token for client-side verification
         sessionTokens = {
           hashed_token: sessionData.properties.hashed_token,

@@ -11,6 +11,7 @@ export function useUserRole() {
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
+        setLoading(true); // Set loading immediately before fetching
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
@@ -65,6 +66,7 @@ export function useUserRole() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      setLoading(true); // Set loading before re-fetching on auth change
       fetchUserRole();
     });
 
