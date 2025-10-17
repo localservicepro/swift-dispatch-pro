@@ -39,7 +39,7 @@ export function DeliveryMapCard({ address, customerName, orderId }: DeliveryMapC
   };
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-white border-2 border-blue-200 rounded-lg overflow-hidden shadow-sm">
+    <div className="bg-gradient-to-br from-blue-50 to-white border-2 border-blue-200 rounded-lg shadow-sm">
       <div className="p-4">
         <div className="flex items-start gap-3 text-slate-700 mb-4">
           <MapPin className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -52,9 +52,10 @@ export function DeliveryMapCard({ address, customerName, orderId }: DeliveryMapC
         <Button
           onClick={openDirections}
           size="lg"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 animate-pulse hover:animate-none"
+          className="w-full min-h-[48px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold shadow-md hover:shadow-lg transition-colors duration-200"
+          style={{ WebkitTapHighlightColor: 'transparent' }}
         >
-          <Navigation className="w-5 h-5 mr-2" />
+          <Navigation className="w-5 h-5 mr-2 flex-shrink-0" />
           Get Directions
         </Button>
       </div>
