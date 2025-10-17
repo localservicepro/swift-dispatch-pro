@@ -39,22 +39,22 @@ export function DeliveryMapCard({ address, customerName, orderId }: DeliveryMapC
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div className="p-3">
-        <div className="flex items-start gap-2 text-slate-700 mb-3">
-          <MapPin className="w-4 h-4 text-slate-500 mt-0.5" />
+    <div className="bg-gradient-to-br from-blue-50 to-white border-2 border-blue-200 rounded-lg overflow-hidden shadow-sm">
+      <div className="p-4">
+        <div className="flex items-start gap-3 text-slate-700 mb-4">
+          <MapPin className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
-            <div className="font-medium text-sm">{customerName}</div>
-            <div className="text-sm text-slate-600">{address}</div>
+            <div className="font-semibold text-base mb-1">{customerName}</div>
+            <div className="text-sm text-slate-600 leading-relaxed">{address}</div>
           </div>
         </div>
         
         <Button
           onClick={openDirections}
-          size="sm"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+          size="lg"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 animate-pulse hover:animate-none"
         >
-          <Navigation className="w-4 h-4 mr-2" />
+          <Navigation className="w-5 h-5 mr-2" />
           Get Directions
         </Button>
       </div>
