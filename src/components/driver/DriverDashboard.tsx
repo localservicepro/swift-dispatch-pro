@@ -113,6 +113,11 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
           *,
           trucks!orders_truck_id_fkey (
             registration_number
+          ),
+          customers!orders_customer_id_fkey (
+            customer_type,
+            company_name,
+            business_name
           )
         `)
         .eq('driver_id', user.id)
