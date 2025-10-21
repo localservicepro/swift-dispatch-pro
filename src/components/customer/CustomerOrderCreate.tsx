@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -48,6 +48,28 @@ export function CustomerOrderCreate({ customer, onClose, onSuccess }: CustomerOr
       return data;
     }
   });
+
+  // Fetch business settings for default pickup address
+  const { data: businessSettings } = useQuery({
+    queryKey: ['business-settings'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('business_settings')
+        .select('business_address, business_name')
+        .single();
+      return data;
+    }
+  });
+
+  // Auto-populate pickup address when switching to pickup method
+  useEffect(() => {
+    if (deliveryMethod === 'pickup' && businessSettings?.business_address && !pickupLocation.address) {
+      setPickupLocation(prev => ({
+        ...prev,
+        address: businessSettings.business_address
+      }));
+    }
+  }, [deliveryMethod, businessSettings]);
 
   const calculateTotal = () => {
     const subtotal = cart.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
@@ -206,7 +228,7 @@ export function CustomerOrderCreate({ customer, onClose, onSuccess }: CustomerOr
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label>Pickup Location Address *</Label>
+                      <Label>Pickup Location Address * (Default: Our Yard)</Label>
                       <GoogleAddressAutocomplete
                         value={pickupLocation.address}
                         onChange={(addr) => setPickupLocation({...pickupLocation, address: addr})}
