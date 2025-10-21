@@ -40,6 +40,8 @@ export const DeliveryStatusUpdateEmail = ({
         return 'Your order is on the way'
       case 'delivered':
         return 'Your order has been delivered'
+      case 'ready_for_pickup':
+        return 'Your order is ready for pickup'
       default:
         return `Order status: ${status}`
     }

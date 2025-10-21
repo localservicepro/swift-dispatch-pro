@@ -62,6 +62,23 @@ interface PaymentConfirmationData {
   paymentDate: string;
 }
 
+interface PickupReadyData {
+  customerName: string;
+  customerEmail: string;
+  orderNumber: string;
+  orderItems: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+  }>;
+  totalAmount: number;
+  pickupAddress: string;
+  businessName?: string;
+  businessHours?: string;
+  specialInstructions?: string;
+  contactPhone?: string;
+}
+
 export const emailService = {
   async getCustomerEmail(orderId: string): Promise<string | null> {
     try {
@@ -222,6 +239,29 @@ export const emailService = {
     } catch (error: any) {
       console.error('Failed to send invoice email:', error);
       throw new Error(`Failed to send invoice: ${error.message}`);
+    }
+  },
+
+  async sendPickupReadyNotification(data: PickupReadyData) {
+    console.log('Sending pickup ready notification email:', data);
+    
+    try {
+      const { error } = await supabase.functions.invoke('send-emails', {
+        body: {
+          emailType: 'pickup-ready',
+          emailData: data
+        }
+      });
+      
+      if (error) {
+        console.error('Error sending pickup ready notification:', error);
+        throw new Error(`Email service error: ${error.message}`);
+      }
+      
+      console.log('Pickup ready notification email sent successfully');
+    } catch (error: any) {
+      console.error('Failed to send pickup ready notification email:', error);
+      throw new Error(`Failed to send pickup notification: ${error.message}`);
     }
   }
 };

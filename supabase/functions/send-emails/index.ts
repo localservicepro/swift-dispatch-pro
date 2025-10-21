@@ -13,7 +13,8 @@ import {
   renderPortalWelcomeEmail,
   renderPortalLoginEmail,
   renderPortalPinCreatedEmail,
-  renderPortalPinRegeneratedEmail
+  renderPortalPinRegeneratedEmail,
+  renderPickupReadyEmail
 } from './templates.ts';
 
 const corsHeaders = {
@@ -138,6 +139,11 @@ serve(async (req) => {
       subject = 'Your Portal PIN Has Been Reset';
       htmlContent = await renderPortalPinRegeneratedEmail(emailData);
       recipientEmail = emailData.to || emailData.customerEmail;
+    } else if (emailType === 'pickup-ready') {
+      console.log('Processing pickup ready email...');
+      subject = `Your Order is Ready for Pickup - Order ${emailData.orderNumber}`;
+      htmlContent = await renderPickupReadyEmail(emailData);
+      recipientEmail = emailData.customerEmail;
     } else if (emailType === 'test-connection') {
       console.log('Processing test connection email...');
       subject = 'Email Configuration Test';

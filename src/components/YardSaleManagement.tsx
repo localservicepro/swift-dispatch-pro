@@ -10,11 +10,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Package, Filter, X, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { updateOrderStatus as updateOrderStatusService } from "@/utils/orderStatusService";
+import { emailService } from "@/utils/emailService";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 
 const YARD_SALE_STAGES = [
   { id: 'requested', title: 'Requested', color: 'bg-slate-100 border-slate-300', textColor: 'text-slate-700' },
-  { id: 'preparing', title: 'Prepared', color: 'bg-blue-100 border-blue-300', textColor: 'text-blue-700' },
-  { id: 'delivered', title: 'Pick Up', color: 'bg-green-100 border-green-300', textColor: 'text-green-700' }
+  { id: 'preparing', title: 'Preparing', color: 'bg-yellow-100 border-yellow-300', textColor: 'text-yellow-700' },
+  { id: 'ready_for_pickup', title: 'Ready for Pickup', color: 'bg-blue-100 border-blue-300', textColor: 'text-blue-700' },
+  { id: 'delivered', title: 'Picked Up', color: 'bg-green-100 border-green-300', textColor: 'text-green-700' }
 ];
 
 export function YardSaleManagement() {
@@ -23,6 +26,7 @@ export function YardSaleManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { profile } = useAuth();
+  const { settings: businessSettings } = useBusinessSettings();
 
   // Fetch pickup/yard sale orders
   const { data: yardSaleOrders = [], isLoading, error, refetch } = useQuery({
@@ -103,6 +107,8 @@ export function YardSaleManagement() {
       let stage = 'requested';
       if (order.status === 'preparing') {
         stage = 'preparing';
+      } else if (order.status === 'ready_for_pickup') {
+        stage = 'ready_for_pickup';
       } else if (order.status === 'delivered') {
         stage = 'delivered';
       }
@@ -114,7 +120,7 @@ export function YardSaleManagement() {
   }, [filteredOrders]);
 
   // Update order status
-  const updateOrderStatus = async (orderId: string, currentStatus: string, newStatus: string, orderNumber: string, customerName: string) => {
+  const updateOrderStatus = async (orderId: string, currentStatus: string, newStatus: string, orderNumber: string, customerName: string, orderData?: any) => {
     try {
       if (!profile?.full_name) {
         throw new Error('User profile not found');
@@ -129,6 +135,57 @@ export function YardSaleManagement() {
         updatedBy: profile.full_name,
         notes: `Status updated via yard sale management`
       });
+
+      // If moving to ready_for_pickup, send email notification
+      if (newStatus === 'ready_for_pickup' && orderData) {
+        try {
+          // Get customer email
+          let customerEmail = '';
+          if (orderData.customer_id) {
+            const { data: customerData } = await supabase
+              .from('customers')
+              .select('email')
+              .eq('id', orderData.customer_id)
+              .single();
+            customerEmail = customerData?.email || '';
+          }
+
+          if (customerEmail) {
+            // Format order items from products JSON
+            const orderItems = (orderData.products || []).map((item: any) => ({
+              name: item.name || item.product_name || 'Product',
+              quantity: item.quantity || 1,
+              price: item.price || item.unit_price || 0,
+            }));
+
+            await emailService.sendPickupReadyNotification({
+              customerName: orderData.customer_name,
+              customerEmail,
+              orderNumber: orderData.order_number,
+              orderItems,
+              totalAmount: orderData.total_amount || 0,
+              pickupAddress: businessSettings?.business_address || 'Please contact us for pickup location',
+              businessName: businessSettings?.business_name,
+              businessHours: 'Monday - Friday: 8:00 AM - 5:00 PM',
+              specialInstructions: orderData.special_instructions,
+              contactPhone: businessSettings?.business_phone,
+            });
+
+            toast({
+              title: "Email Sent",
+              description: `Pickup ready notification sent to ${customerEmail}`,
+            });
+          }
+        } catch (emailError) {
+          console.error('Error sending pickup ready email:', emailError);
+          // Don't fail the status update if email fails
+          toast({
+            title: "Warning",
+            description: "Status updated but email notification failed to send",
+            variant: "destructive",
+          });
+        }
+      }
 
       toast({
         title: "Status Updated",
@@ -241,8 +298,9 @@ export function YardSaleManagement() {
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="requested">Requested</SelectItem>
-                <SelectItem value="preparing">Prepared</SelectItem>
-                <SelectItem value="delivered">Pick Up</SelectItem>
+                <SelectItem value="preparing">Preparing</SelectItem>
+                <SelectItem value="ready_for_pickup">Ready for Pickup</SelectItem>
+                <SelectItem value="delivered">Picked Up</SelectItem>
               </SelectContent>
             </Select>
             {hasActiveFilters && (
@@ -292,17 +350,26 @@ export function YardSaleManagement() {
                       {stage.id === 'requested' && (
                         <Button
                           size="sm"
-                          onClick={() => updateOrderStatus(order.id, 'requested', 'preparing', order.order_number, order.customer_name)}
+                          onClick={() => updateOrderStatus(order.id, 'requested', 'preparing', order.order_number, order.customer_name, order)}
                           className="w-full"
                         >
-                          Mark Prepared
+                          Mark Preparing
                         </Button>
                       )}
                       {stage.id === 'preparing' && (
                         <Button
                           size="sm"
-                          onClick={() => updateOrderStatus(order.id, 'preparing', 'delivered', order.order_number, order.customer_name)}
+                          onClick={() => updateOrderStatus(order.id, 'preparing', 'ready_for_pickup', order.order_number, order.customer_name, order)}
                           className="w-full"
+                        >
+                          Mark Ready for Pickup
+                        </Button>
+                      )}
+                      {stage.id === 'ready_for_pickup' && (
+                        <Button
+                          size="sm"
+                          onClick={() => updateOrderStatus(order.id, 'ready_for_pickup', 'delivered', order.order_number, order.customer_name, order)}
+                          className="w-full bg-green-600 hover:bg-green-700"
                         >
                           Mark Picked Up
                         </Button>

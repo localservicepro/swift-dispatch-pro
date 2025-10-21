@@ -157,3 +157,23 @@ export async function renderPortalPinRegeneratedEmail(data: any) {
     })
   );
 }
+
+export async function renderPickupReadyEmail(data: any) {
+  console.log('Rendering pickup ready email with data:', data);
+  
+  const { PickupReadyEmail } = await import('./_templates/pickup-ready.tsx');
+  
+  return await render(
+    React.createElement(PickupReadyEmail, {
+      customerName: data.customerName,
+      orderNumber: data.orderNumber,
+      orderItems: data.orderItems,
+      totalAmount: data.totalAmount,
+      pickupAddress: data.pickupAddress,
+      businessName: data.businessName,
+      businessHours: data.businessHours,
+      specialInstructions: data.specialInstructions,
+      contactPhone: data.contactPhone,
+    })
+  );
+}

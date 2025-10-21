@@ -2708,6 +2708,7 @@ export type Database = {
         | "pickup_scheduled"
         | "pickup_in_progress"
         | "pickup_complete"
+        | "ready_for_pickup"
       special_type:
         | "monthly"
         | "limited_time"
@@ -2859,6 +2860,7 @@ export const Constants = {
         "pickup_scheduled",
         "pickup_in_progress",
         "pickup_complete",
+        "ready_for_pickup",
       ],
       special_type: [
         "monthly",
