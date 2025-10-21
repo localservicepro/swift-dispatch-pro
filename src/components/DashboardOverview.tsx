@@ -81,14 +81,16 @@ export function DashboardOverview() {
   useEffect(() => {
     loadDashboardData();
 
-    // Set up real-time subscriptions
+    // Set up optimized real-time subscriptions - only reload specific data
     const ordersChannel = supabase.channel('dashboard-orders').on('postgres_changes', {
       event: '*',
       schema: 'public',
       table: 'orders'
     }, () => {
-      console.log('Orders changed, refreshing dashboard...');
-      loadDashboardData();
+      console.log('Orders changed, refreshing relevant data...');
+      loadMetrics();
+      loadRecentOrders();
+      loadChartData(); // Charts depend on orders
     }).subscribe();
     
     const productsChannel = supabase.channel('dashboard-products').on('postgres_changes', {
@@ -109,13 +111,10 @@ export function DashboardOverview() {
       loadMetrics();
     }).subscribe();
 
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(loadDashboardData, 30000);
     return () => {
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(productsChannel);
       supabase.removeChannel(invoicesChannel);
-      clearInterval(interval);
     };
   }, []);
 

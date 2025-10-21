@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -7,18 +7,23 @@ import { useToast } from "@/hooks/use-toast";
 export function useOpportunityData() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Enhanced cache invalidation function
+  // Debounced cache invalidation function
   const invalidateOrdersCache = async (reason?: string) => {
     console.log(`Invalidating orders cache: ${reason || 'unknown reason'}`);
     
-    // Force invalidate all order-related queries
-    await queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] });
-    await queryClient.invalidateQueries({ queryKey: ['orders'] });
-    await queryClient.invalidateQueries({ queryKey: ['deleted-orders'] });
+    // Clear existing debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
     
-    // Force immediate refetch
-    await queryClient.refetchQueries({ queryKey: ['opportunity-orders'] });
+    // Debounce invalidation to prevent excessive refetches
+    debounceTimerRef.current = setTimeout(async () => {
+      await queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['deleted-orders'] });
+    }, 500);
   };
 
   // Fetch orders for pipeline (excluding soft-deleted orders)
@@ -148,8 +153,10 @@ export function useOpportunityData() {
       console.log('Opportunity orders mapped and sorted by delivery time:', sortedOrders);
       return sortedOrders;
     },
-    staleTime: 0, // Always consider data stale for immediate updates
-    gcTime: 0, // Don't cache data for long
+    staleTime: 1000 * 60 * 2, // Consider data fresh for 2 minutes
+    gcTime: 1000 * 60 * 5, // Keep in cache for 5 minutes
+    refetchOnWindowFocus: false, // Don't refetch when tab regains focus
+    refetchOnMount: false, // Don't refetch every time component mounts
   });
 
   // Set up enhanced real-time subscription for pipeline updates
@@ -214,9 +221,7 @@ export function useOpportunityData() {
               duration: 3000,
             });
             
-            // Force cache refresh after optimistic update
-            await invalidateOrdersCache('order deletion detected');
-            return;
+            return; // Don't invalidate cache, optimistic update is enough
           }
           
           // Handle restoration events (when deleted_at changes from timestamp to null)
@@ -234,12 +239,20 @@ export function useOpportunityData() {
             return;
           }
           
-          // Handle regular status updates
+          // Handle regular status updates with smart invalidation
           if (eventType === 'UPDATE' && oldRecord && newRecord) {
             const oldStatus = oldRecord.status;
             const newStatus = newRecord.status;
             const oldPaymentStatus = oldRecord.payment_status;
             const newPaymentStatus = newRecord.payment_status;
+            
+            // Only invalidate for meaningful changes
+            const meaningfulChange = 
+              oldStatus !== newStatus ||
+              oldPaymentStatus !== newPaymentStatus ||
+              oldRecord.delivery_address !== newRecord.delivery_address ||
+              oldRecord.customer_address !== newRecord.customer_address ||
+              oldRecord.delivery_suburb_id !== newRecord.delivery_suburb_id;
             
             if (oldStatus !== newStatus) {
               console.log('Order status changed:', newRecord?.order_number, oldStatus, '->', newStatus);
@@ -258,6 +271,20 @@ export function useOpportunityData() {
                 duration: 3000,
               });
             }
+            
+            // Only invalidate cache for meaningful changes
+            if (meaningfulChange) {
+              await invalidateOrdersCache(`meaningful UPDATE`);
+            } else {
+              // For minor updates, just update the specific order in cache
+              queryClient.setQueryData(['opportunity-orders'], (oldData: any[]) => {
+                if (!oldData) return oldData;
+                return oldData.map(order => 
+                  order.id === newRecord.id ? { ...order, ...newRecord } : order
+                );
+              });
+            }
+            return;
           }
           
           // Handle new orders
@@ -268,11 +295,8 @@ export function useOpportunityData() {
               description: `Order ${newRecord.order_number} entered pipeline`,
               duration: 3000,
             });
-          }
-          
-          // Invalidate cache for all events except deletion (already handled optimistically)
-          if (!(eventType === 'UPDATE' && oldRecord?.deleted_at === null && newRecord?.deleted_at !== null)) {
-            await invalidateOrdersCache(`real-time ${eventType} - delivery address tracking enabled`);
+            
+            await invalidateOrdersCache('new order INSERT');
           }
         }
       )
