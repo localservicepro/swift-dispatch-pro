@@ -48,7 +48,12 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
       // Get form data with proper time format for database submission
       const submissionData = getFormDataForSubmission();
       
-      await handleOrderSubmission(order, submissionData, onOrderUpdated, onClose);
+      await handleOrderSubmission(order, submissionData, onOrderUpdated, () => {
+        // Delay closing to allow toast to render
+        setTimeout(() => {
+          onClose();
+        }, 150);
+      });
     } catch (error) {
       // Error handling is done in the submission function
     } finally {

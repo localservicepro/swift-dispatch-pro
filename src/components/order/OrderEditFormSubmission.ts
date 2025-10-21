@@ -222,20 +222,40 @@ export function useOrderFormSubmission() {
       // ENHANCED: Manual cache invalidation after successful order update
       await invalidateOrderCaches(deliveryAddressChanged ? 'delivery address changed' : 'comprehensive order update');
 
-      toast({
-        title: "Success",
-        description: `Order updated successfully! ${totalAmountChanged ? 'Total amount and payments have been adjusted.' : ''}`,
+      // Display success toast with defensive error handling
+      console.log('✅ ORDER UPDATED SUCCESSFULLY:', order.order_number, {
+        totalAmountChanged,
+        finalTotal: finalTotalAmount
       });
+      
+      try {
+        console.log('📢 Displaying success toast for order:', order.order_number);
+        toast({
+          title: "Success",
+          description: `Order updated successfully! ${totalAmountChanged ? 'Total amount and payments have been adjusted.' : ''}`,
+        });
+        console.log('✅ Toast displayed successfully');
+      } catch (toastError) {
+        console.error('❌ Toast failed to display:', toastError);
+        // Fallback: at least show in console
+        console.log('%c✅ ORDER UPDATED SUCCESSFULLY', 'color: green; font-size: 16px; font-weight: bold', order.order_number);
+      }
 
       onOrderUpdated();
       onClose();
     } catch (error: any) {
-      console.error('Error updating order:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update order. Please try again.",
-        variant: "destructive",
-      });
+      console.error('❌ ORDER UPDATE FAILED:', error);
+      
+      try {
+        toast({
+          title: "Error",
+          description: "Failed to update order. Please try again.",
+          variant: "destructive",
+        });
+      } catch (toastError) {
+        console.error('❌ Error toast failed to display:', toastError);
+        alert('Failed to update order. Please check console for details.');
+      }
       throw error;
     }
   };
