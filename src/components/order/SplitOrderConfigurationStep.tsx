@@ -141,6 +141,7 @@ export function SplitOrderConfigurationStep({
           splits={splits}
           onSplitsChange={onSplitsChange}
           onCartChange={onCartChange}
+          customer={customer}
         />
 
         {/* Action Buttons */}

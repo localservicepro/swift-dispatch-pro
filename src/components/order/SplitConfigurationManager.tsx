@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CartItem, SplitConfig, Product } from "./types";
+import { CartItem, SplitConfig, Product, Customer } from "./types";
 import { CompactProductTable } from "./CompactProductTable";
 import { CompactSplitConfig } from "./CompactSplitConfig";
 import { SplitControlsHeader } from "./SplitControlsHeader";
@@ -15,13 +15,15 @@ interface SplitConfigurationManagerProps {
   splits: SplitConfig[];
   onSplitsChange: (splits: SplitConfig[]) => void;
   onCartChange?: (cart: CartItem[]) => void;
+  customer?: Customer;
 }
 
 export function SplitConfigurationManager({
   cart,
   splits,
   onSplitsChange,
-  onCartChange
+  onCartChange,
+  customer
 }: SplitConfigurationManagerProps) {
   const { toast } = useToast();
   const [numberOfSplits, setNumberOfSplits] = useState(splits.length || 2);
@@ -302,6 +304,7 @@ export function SplitConfigurationManager({
             cart={cart}
             onUpdateSplit={updateSplit}
             isCommonDateMode={useSameDateForAll}
+            customer={customer}
           />
         </TabsContent>
       </Tabs>
