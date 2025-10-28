@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Package, Tag } from "lucide-react";
 
@@ -120,14 +121,33 @@ export function ProductSpecialSelector({
     }
   };
 
+  const handleSelectAll = () => {
+    const allFilteredIds = filteredProducts.map(p => p.id);
+    const uniqueIds = [...new Set([...selectedProducts, ...allFilteredIds])];
+    onProductsChange(uniqueIds);
+  };
+
+  const handleDeselectAll = () => {
+    const filteredIds = filteredProducts.map(p => p.id);
+    const remainingIds = selectedProducts.filter(id => !filteredIds.includes(id));
+    onProductsChange(remainingIds);
+  };
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = !searchQuery || 
       product.name.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesCategory = selectedCategoryFilter === "all" || 
+    const matchesDropdownCategory = selectedCategoryFilter === "all" || 
       product.category?.name === categories.find(c => c.id === selectedCategoryFilter)?.name;
     
-    return matchesSearch && matchesCategory;
+    // If categories are selected via checkboxes, only show products from those categories
+    const matchesSelectedCategories = selectedCategories.length === 0 || 
+      selectedCategories.some(categoryId => {
+        const category = categories.find(c => c.id === categoryId);
+        return product.category?.name === category?.name;
+      });
+    
+    return matchesSearch && matchesDropdownCategory && matchesSelectedCategories;
   });
 
   return (
@@ -144,22 +164,24 @@ export function ProductSpecialSelector({
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Select categories to apply this special to all products within those categories.
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {categories.map((category) => (
-                <div key={category.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`category-${category.id}`}
-                    checked={selectedCategories.includes(category.id)}
-                    onCheckedChange={(checked) => handleCategoryToggle(category.id, checked as boolean)}
-                  />
-                  <Label htmlFor={`category-${category.id}`} className="text-sm">
-                    {category.name}
-                  </Label>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {categories
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((category) => (
+                  <div key={category.id} className="flex items-center space-x-2 p-2 border rounded hover:bg-accent transition-colors">
+                    <Checkbox
+                      id={`category-${category.id}`}
+                      checked={selectedCategories.includes(category.id)}
+                      onCheckedChange={(checked) => handleCategoryToggle(category.id, checked as boolean)}
+                    />
+                    <Label htmlFor={`category-${category.id}`} className="text-sm cursor-pointer flex-1">
+                      {category.name}
+                    </Label>
+                  </div>
+                ))}
             </div>
             {selectedCategories.length > 0 && (
               <div className="mt-3">
@@ -218,6 +240,40 @@ export function ProductSpecialSelector({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Active Filtering Indicator */}
+            {selectedCategories.length > 0 && (
+              <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                <Badge variant="default">
+                  Filtering by {selectedCategories.length} categor{selectedCategories.length === 1 ? 'y' : 'ies'}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  Showing products from selected categories above
+                </span>
+              </div>
+            )}
+
+            {/* Select All / Deselect All Buttons */}
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAll}
+                disabled={filteredProducts.length === 0}
+              >
+                Select All ({filteredProducts.length})
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDeselectAll}
+                disabled={selectedProducts.length === 0}
+              >
+                Deselect All
+              </Button>
             </div>
 
             {/* Product List */}
