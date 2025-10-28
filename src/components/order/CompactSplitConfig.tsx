@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -84,6 +83,12 @@ export function CompactSplitConfig({
               <div className="flex items-center justify-between w-full mr-4">
                 <div className="flex items-center gap-3">
                   <span className="font-medium">{split.name}</span>
+                  {!split.sameAsBilling && split.deliveryAddress && (
+                    <Badge variant="default" className="text-xs">
+                      <MapPin className="w-3 h-3 mr-1" />
+                      Custom Address
+                    </Badge>
+                  )}
                   {isSplitConfigComplete(split) && (
                     <CheckCircle className="w-4 h-4 text-green-600" />
                   )}
@@ -182,45 +187,56 @@ export function CompactSplitConfig({
 
                 {/* Delivery Address */}
                 {customer && (
-                  <div>
-                    <Label className="text-xs font-medium mb-2 block flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      Delivery Address
-                    </Label>
-                    
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Checkbox
-                        id={`same-billing-${index}`}
-                        checked={split.sameAsBilling}
-                        onCheckedChange={(checked) => onUpdateSplit(index, { 
-                          sameAsBilling: checked as boolean,
-                          deliveryAddress: checked ? customer.full_address : split.deliveryAddress,
-                          deliverySuburbId: checked ? customer.suburb_id : split.deliverySuburbId
-                        })}
-                      />
-                      <Label htmlFor={`same-billing-${index}`} className="text-xs">
-                        Same as billing address
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        Delivery Address
                       </Label>
+                      
+                      <Button
+                        type="button"
+                        variant={split.sameAsBilling ? "outline" : "default"}
+                        size="sm"
+                        onClick={() => onUpdateSplit(index, { 
+                          sameAsBilling: !split.sameAsBilling,
+                          deliveryAddress: !split.sameAsBilling ? customer.full_address : split.deliveryAddress,
+                          deliverySuburbId: !split.sameAsBilling ? customer.suburb_id : split.deliverySuburbId
+                        })}
+                        className="h-8 text-xs"
+                      >
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {split.sameAsBilling ? "Use Different Address" : "Use Billing Address"}
+                      </Button>
                     </div>
-
+                    
                     {split.sameAsBilling ? (
-                      <div className="text-xs bg-gray-50 p-2 rounded border">
-                        {customer.full_address}
+                      <div className="p-3 bg-muted/50 rounded-md border border-border">
+                        <p className="text-sm text-muted-foreground">
+                          Using billing address: <span className="font-medium text-foreground">{customer.full_address}</span>
+                        </p>
                         {customer.suburb && (
-                          <div className="text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {customer.suburb.name}, {customer.suburb.state}
-                          </div>
+                          </p>
                         )}
                       </div>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-3 p-4 bg-primary/5 rounded-md border border-primary/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="default" className="text-xs">
+                            Custom Delivery Address
+                          </Badge>
+                        </div>
+                        
                         <EnhancedAddressInput
                           value={split.deliveryAddress || ""}
                           onChange={(value) => onUpdateSplit(index, { deliveryAddress: value })}
                           onAddressSelect={(addressData) => handleAddressSelect(index, addressData)}
-                          placeholder="Enter delivery address..."
+                          placeholder="Search for delivery address..."
                           className="text-xs"
                         />
+                        
                         <SuburbSelector
                           selectedSuburbId={split.deliverySuburbId || ""}
                           onSuburbChange={(suburbId) => handleSuburbChange(index, suburbId)}
