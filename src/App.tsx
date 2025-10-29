@@ -15,6 +15,17 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
 import { useUserRole } from "./hooks/useUserRole";
+import { DashboardOverview } from "@/components/DashboardOverview";
+import { OpportunityPipeline } from "@/components/OpportunityPipeline";
+import { OrderManagement } from "@/components/OrderManagement";
+import { ProductManagement } from "@/components/ProductManagement";
+import { CustomerManagement } from "@/components/CustomerManagement";
+import { PaymentManagement } from "@/components/PaymentManagement";
+import { EmailManagement } from "@/components/EmailManagement";
+import { TruckManagement } from "@/components/TruckManagement";
+import { TeamManagement } from "@/components/TeamManagement";
+import { SuburbManagement } from "@/components/SuburbManagement";
+import { Settings } from "@/components/Settings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,8 +70,21 @@ function AuthenticatedApp() {
           <ProtectedRoute allowedRoles={['admin']}>
             <Index />
           </ProtectedRoute>
-        } 
-      />
+        }
+      >
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardOverview />} />
+        <Route path="opportunities" element={<OpportunityPipeline />} />
+        <Route path="orders" element={<OrderManagement />} />
+        <Route path="products" element={<ProductManagement />} />
+        <Route path="customers" element={<CustomerManagement />} />
+        <Route path="payments" element={<PaymentManagement />} />
+        <Route path="fleet" element={<TruckManagement />} />
+        <Route path="team" element={<TeamManagement />} />
+        <Route path="suburbs" element={<SuburbManagement />} />
+        <Route path="emails" element={<EmailManagement />} />
+        <Route path="settings" element={<Settings />} />
+      </Route>
       <Route 
         path="/driver" 
         element={

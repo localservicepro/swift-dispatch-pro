@@ -1,40 +1,20 @@
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { MobileHeader } from "@/components/MobileHeader";
-import { DashboardOverview } from "@/components/DashboardOverview";
-import { OpportunityPipeline } from "@/components/OpportunityPipeline";
-import { OrderManagement } from "@/components/OrderManagement";
-import { ProductManagement } from "@/components/ProductManagement";
-import { PaymentManagement } from "@/components/PaymentManagement";
-import { EmailManagement } from "@/components/EmailManagement";
-import { CustomerManagement } from "@/components/CustomerManagement";
-import { Settings } from "@/components/Settings";
-import { TruckManagement } from "@/components/TruckManagement";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { LogOut, Loader2 } from "lucide-react";
-import { TeamManagement } from "@/components/TeamManagement";
 import { PersonalizedGreeting } from "@/components/PersonalizedGreeting";
-import { SuburbManagement } from "@/components/SuburbManagement";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Outlet } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState(() => {
-    // Remember where the user was (admin tab only, no dialog state)
-    return localStorage.getItem('sd_active_tab') || 'dashboard';
-  });
   const { signOut, profile, signingOut } = useAuth();
   const navigate = useNavigate();
   const { role } = useUserRole();
-
-  // Persist active tab when it changes (minimal persistence)
-  useEffect(() => {
-    localStorage.setItem('sd_active_tab', activeTab);
-  }, [activeTab]);
 
   // Defense-in-depth: Double-check role access to prevent unauthorized access
   useEffect(() => {
@@ -60,51 +40,19 @@ const Index = () => {
     }
   };
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case "dashboard":
-        return <DashboardOverview />;
-      case "opportunities":
-        return <OpportunityPipeline />;
-      case "orders":
-        return <OrderManagement />;
-      case "products":
-        return <ProductManagement />;
-      case "customers":
-        return <CustomerManagement />;
-      case "payments":
-        return <PaymentManagement />;
-      case "trucks":
-        return <TruckManagement />;
-      case "drivers":
-        return <TeamManagement />;
-      case "suburbs":
-        return <SuburbManagement />;
-      case "emails":
-        return <EmailManagement />;
-      case "knowledgebase":
-        navigate("/knowledgebase");
-        return <DashboardOverview />;
-      case "settings":
-        return <Settings />;
-      default:
-        return <DashboardOverview />;
-    }
-  };
-
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
         {/* Desktop Sidebar */}
         <div className="hidden md:block">
-          <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+          <AdminSidebar />
         </div>
         
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Mobile Header with user info */}
           <div className="md:hidden">
-            <MobileHeader activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} />
+            <MobileHeader profile={profile} />
           </div>
           
           {/* Desktop header with personalized greeting */}
@@ -132,13 +80,13 @@ const Index = () => {
           {/* Content */}
           <main className="flex-1 overflow-y-auto">
             <div className="p-4 md:p-6 pb-20 md:pb-6">
-              {renderContent()}
+              <Outlet />
             </div>
           </main>
         </div>
         
         {/* Mobile Bottom Navigation */}
-        <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+        <MobileBottomNav />
       </div>
     </SidebarProvider>
   );

@@ -1,69 +1,74 @@
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { BarChart3, Package, ShoppingCart, Users, CreditCard, Mail, Settings, Users2, Target, Trash2, Truck, ShoppingBag, MapPin, BookOpen } from "lucide-react";
+import { BarChart3, Package, ShoppingCart, Users, CreditCard, Mail, Settings, Users2, Target, Truck, MapPin, BookOpen } from "lucide-react";
 import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 const menuItems = [{
   title: "Dashboard",
   icon: BarChart3,
-  id: "dashboard"
+  id: "dashboard",
+  path: "/dashboard"
 }, {
   title: "Opportunities",
   icon: Target,
-  id: "opportunities"
+  id: "opportunities",
+  path: "/opportunities"
 }, {
   title: "Order Management",
   icon: ShoppingCart,
-  id: "orders"
+  id: "orders",
+  path: "/orders"
 }, {
   title: "Products",
   icon: Package,
-  id: "products"
+  id: "products",
+  path: "/products"
 }, {
   title: "Customers",
   icon: Users,
-  id: "customers"
+  id: "customers",
+  path: "/customers"
 }, {
   title: "Payments",
   icon: CreditCard,
-  id: "payments"
+  id: "payments",
+  path: "/payments"
 }, {
   title: "Fleet Management",
   icon: Truck,
-  id: "trucks"
+  id: "trucks",
+  path: "/fleet"
 }, {
   title: "Team Management",
   icon: Users2,
-  id: "drivers"
+  id: "drivers",
+  path: "/team"
 }, {
   title: "Suburb Management",
   icon: MapPin,
-  id: "suburbs"
+  id: "suburbs",
+  path: "/suburbs"
 }, {
   title: "Email Management",
   icon: Mail,
-  id: "emails"
+  id: "emails",
+  path: "/emails"
 }, {
   title: "Help & Guides",
   icon: BookOpen,
-  id: "knowledgebase"
+  id: "knowledgebase",
+  path: "/knowledgebase"
 }, {
   title: "Settings",
   icon: Settings,
-  id: "settings"
+  id: "settings",
+  path: "/settings"
 }];
-interface AdminSidebarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-}
-export function AdminSidebar({
-  activeTab,
-  setActiveTab
-}: AdminSidebarProps) {
+export function AdminSidebar() {
   const [logoError, setLogoError] = useState(false);
+  const location = useLocation();
   const handleLogoError = () => {
     console.error("Logo failed to load:", "/lovable-uploads/299f278a-b44f-48ee-80b0-722271e302f3.png");
     setLogoError(true);
@@ -90,9 +95,14 @@ export function AdminSidebar({
           <div className="flex flex-col gap-2 p-4">
             <SidebarMenu>
               {menuItems.map(item => <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton onClick={() => setActiveTab(item.id)} className={cn("w-full justify-start", activeTab === item.id ? "text-primary bg-primary/10" : "hover:bg-accent hover:text-accent-foreground")}>
-                    <item.icon className="mr-2 h-4 w-4" />
-                    {item.title}
+                  <SidebarMenuButton asChild>
+                    <Link 
+                      to={item.path}
+                      className={cn("w-full justify-start", location.pathname === item.path && "text-primary bg-primary/10")}
+                    >
+                      <item.icon className="mr-2 h-4 w-4" />
+                      {item.title}
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>)}
             </SidebarMenu>
