@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
+  const prevUserIdRef = useRef<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -66,8 +67,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         
+        // IGNORE redundant SIGNED_IN events for the same user
+        if (event === 'SIGNED_IN' && session?.user?.id === prevUserIdRef.current && user) {
+          console.log('Ignoring redundant SIGNED_IN event for same user');
+          return;
+        }
+        
+        // Track user ID to detect redundant sign-ins
+        if (event === 'SIGNED_IN' && session?.user) {
+          prevUserIdRef.current = session.user.id;
+        }
+        
         // Handle sign out immediately
         if (event === 'SIGNED_OUT' || !session) {
+          prevUserIdRef.current = null;
           clearAuthState();
           setLoading(false);
           return;

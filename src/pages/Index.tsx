@@ -23,10 +23,18 @@ import { useNavigate } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Remember where the user was (admin tab only, no dialog state)
+    return localStorage.getItem('sd_active_tab') || 'dashboard';
+  });
   const { signOut, profile, signingOut } = useAuth();
   const navigate = useNavigate();
   const { role } = useUserRole();
+
+  // Persist active tab when it changes (minimal persistence)
+  useEffect(() => {
+    localStorage.setItem('sd_active_tab', activeTab);
+  }, [activeTab]);
 
   // Defense-in-depth: Double-check role access to prevent unauthorized access
   useEffect(() => {

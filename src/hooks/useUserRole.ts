@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 type UserRole = 'admin' | 'driver' | 'customer' | 'account_customer';
 
@@ -7,17 +8,22 @@ export function useUserRole() {
   const [role, setRole] = useState<UserRole | null>(null);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const hasLoadedRef = useRef(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
-        setLoading(true); // Set loading immediately before fetching
-        const { data: { user } } = await supabase.auth.getUser();
+        // Only show loading indicator on the very first fetch
+        if (!hasLoadedRef.current) {
+          setLoading(true);
+        }
         
         if (!user) {
           setRole(null);
           setRoles([]);
           setLoading(false);
+          hasLoadedRef.current = true;
           return;
         }
 
@@ -59,27 +65,12 @@ export function useUserRole() {
         setRoles([]);
       } finally {
         setLoading(false);
+        hasLoadedRef.current = true;
       }
     };
 
     fetchUserRole();
-
-    // Listen for auth changes - but ignore token refreshes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      // Ignore token refresh to prevent unnecessary loading states
-      if (event === 'TOKEN_REFRESHED') {
-        return; // Don't refetch roles on token refresh
-      }
-      
-      // Only refetch on actual auth changes
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        setLoading(true);
-        fetchUserRole();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  }, [user?.id]); // Only refetch when user ID changes
 
   return { 
     role, 
