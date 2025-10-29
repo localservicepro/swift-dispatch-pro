@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Outlet, Navigate, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
@@ -15,11 +15,15 @@ const ORDER_DRAFT_KEY = 'order_form_draft';
 export function AdminLayout() {
   const { signOut, profile, signingOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
-  // Redirect to orders if there's a draft and we're on the root/dashboard
-  const shouldRedirectToOrders = 
-    (location.pathname === '/' || location.pathname === '/dashboard') &&
-    (sessionStorage.getItem(ORDER_CREATING_KEY) === 'true' || sessionStorage.getItem(ORDER_DRAFT_KEY));
+  // Handle order draft redirect only once on mount if needed
+  useEffect(() => {
+    if ((location.pathname === '/' || location.pathname === '/dashboard') &&
+        (sessionStorage.getItem(ORDER_CREATING_KEY) === 'true' || sessionStorage.getItem(ORDER_DRAFT_KEY))) {
+      navigate('/orders', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -30,10 +34,6 @@ export function AdminLayout() {
       console.log("Successfully signed out");
     }
   };
-
-  if (shouldRedirectToOrders) {
-    return <Navigate to="/orders" replace />;
-  }
 
   return (
     <SidebarProvider>
