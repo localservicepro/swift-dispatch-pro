@@ -22,29 +22,11 @@ import { SuburbManagement } from "@/components/SuburbManagement";
 import { useNavigate } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
 
-
-const ACTIVE_TAB_KEY = 'admin_active_tab';
-const ORDER_CREATING_KEY = 'order_is_creating';
-const ORDER_DRAFT_KEY = 'order_form_draft';
-
 const Index = () => {
-  const [activeTab, setActiveTab] = useState(() => {
-    const saved = sessionStorage.getItem(ACTIVE_TAB_KEY);
-    if (saved) return saved;
-    // If we have an in-progress order, default to Orders tab
-    if (sessionStorage.getItem(ORDER_CREATING_KEY) === 'true' || sessionStorage.getItem(ORDER_DRAFT_KEY)) {
-      return 'orders';
-    }
-    return 'dashboard';
-  });
+  const [activeTab, setActiveTab] = useState('dashboard');
   const { signOut, profile, signingOut } = useAuth();
   const navigate = useNavigate();
   const { role } = useUserRole();
-
-  // Persist activeTab to sessionStorage
-  useEffect(() => {
-    sessionStorage.setItem(ACTIVE_TAB_KEY, activeTab);
-  }, [activeTab]);
 
   // Defense-in-depth: Double-check role access to prevent unauthorized access
   useEffect(() => {
