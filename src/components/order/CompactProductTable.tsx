@@ -116,13 +116,19 @@ export function CompactProductTable({
     setInputValue("");
   };
 
-  const handleSplitQuantityChange = (splitIndex: number, productId: string, change: number) => {
+  const handleSplitQuantityChange = (splitIndex: number, productId: string, direction: 'increase' | 'decrease') => {
+    const cartItem = cart.find(item => item.product.id === productId);
+    if (!cartItem) return;
+    
+    const increment = getQuantityIncrement(cartItem.product);
+    const change = direction === 'increase' ? increment : -increment;
+    
     const split = splits[splitIndex];
     const splitProduct = split.products.find(p => p.productId === productId);
     const currentQuantity = splitProduct?.quantity || 0;
-    const newQuantity = Math.max(0, currentQuantity + change);
+    const rawNewQuantity = Math.max(0, currentQuantity + change);
+    const newQuantity = roundToValidQuantity(rawNewQuantity, cartItem.product);
     
-    const cartItem = cart.find(item => item.product.id === productId);
     const totalAllocated = getTotalAllocated(productId);
     const remainingQuantity = (cartItem?.quantity || 0) - totalAllocated + currentQuantity;
     
@@ -239,7 +245,7 @@ export function CompactProductTable({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, -1)}
+                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, 'decrease')}
                           disabled={splitQuantity <= 0}
                           className="h-5 w-5 p-0"
                         >
@@ -249,7 +255,7 @@ export function CompactProductTable({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, 1)}
+                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, 'increase')}
                           disabled={remainingQuantity <= 0}
                           className="h-5 w-5 p-0"
                         >
