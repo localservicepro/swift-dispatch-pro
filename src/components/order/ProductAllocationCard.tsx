@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Package, Plus, Minus, Trash2, Edit3 } from "lucide-react";
 import { CartItem, SplitConfig } from "./types";
 import { useToast } from "@/hooks/use-toast";
-import { isBulkCategory } from "@/utils/categoryUtils";
 
 interface ProductAllocationCardProps {
   cartItem: CartItem;
@@ -241,9 +240,6 @@ export function ProductAllocationCard({
               const splitProduct = split.products.find(p => p.productId === cartItem.product.id);
               const splitQuantity = splitProduct?.quantity || 0;
               
-              // Calculate increment based on product type: 0.5 for bulk, 1.0 for regular
-              const increment = isBulkCategory(cartItem.product) ? 0.5 : 1.0;
-              
               return (
                 <div key={split.id} className="flex items-center justify-between bg-gray-50 rounded p-2">
                   <span className="text-xs text-gray-700">{split.name}</span>
@@ -251,10 +247,9 @@ export function ProductAllocationCard({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleSplitQuantityAdjust(index, -increment)}
+                      onClick={() => handleSplitQuantityAdjust(index, -1)}
                       disabled={splitQuantity <= 0}
                       className="h-5 w-5 p-0"
-                      title={`Decrease by ${increment}`}
                     >
                       <Minus className="w-2 h-2" />
                     </Button>
@@ -262,10 +257,9 @@ export function ProductAllocationCard({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleSplitQuantityAdjust(index, increment)}
-                      disabled={remainingQuantity < increment}
+                      onClick={() => handleSplitQuantityAdjust(index, 1)}
+                      disabled={remainingQuantity <= 0}
                       className="h-5 w-5 p-0"
-                      title={`Increase by ${increment}`}
                     >
                       <Plus className="w-2 h-2" />
                     </Button>

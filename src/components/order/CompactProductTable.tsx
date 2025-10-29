@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Minus, Edit3, Trash2 } from "lucide-react";
 import { CartItem, SplitConfig } from "./types";
 import { useToast } from "@/hooks/use-toast";
-import { isBulkCategory, getQuantityIncrement, getQuantityInputStep, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
+import { getQuantityIncrement, getQuantityInputStep, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
 
 interface CompactProductTableProps {
   cart: CartItem[];
@@ -233,19 +233,15 @@ export function CompactProductTable({
                   const splitProduct = split.products.find(p => p.productId === cartItem.product.id);
                   const splitQuantity = splitProduct?.quantity || 0;
                   
-                  // Calculate increment based on product type: 0.5 for bulk, 1.0 for regular
-                  const increment = isBulkCategory(cartItem.product) ? 0.5 : 1.0;
-                  
                   return (
                     <TableCell key={split.id} className="py-2 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, -increment)}
+                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, -1)}
                           disabled={splitQuantity <= 0}
                           className="h-5 w-5 p-0"
-                          title={`Decrease by ${increment}`}
                         >
                           <Minus className="w-2 h-2" />
                         </Button>
@@ -253,10 +249,9 @@ export function CompactProductTable({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, increment)}
-                          disabled={remainingQuantity < increment}
+                          onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, 1)}
+                          disabled={remainingQuantity <= 0}
                           className="h-5 w-5 p-0"
-                          title={`Increase by ${increment}`}
                         >
                           <Plus className="w-2 h-2" />
                         </Button>

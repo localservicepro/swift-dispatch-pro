@@ -1,31 +1,69 @@
 import { cn } from "@/lib/utils";
-import { Link, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { BarChart3, Package, ShoppingCart, Users, CreditCard, Mail, Settings, Users2, Target, Truck, MapPin, BookOpen } from "lucide-react";
+import { BarChart3, Package, ShoppingCart, Users, CreditCard, Mail, Settings, Users2, Target, Trash2, Truck, ShoppingBag, MapPin, BookOpen } from "lucide-react";
 import { useState } from "react";
 
-const menuItems = [
-  { title: "Dashboard", icon: BarChart3, path: "/" },
-  { title: "Pipeline", icon: Target, path: "/pipeline" },
-  { title: "Orders", icon: ShoppingCart, path: "/orders" },
-  { title: "Products", icon: Package, path: "/products" },
-  { title: "Customers", icon: Users, path: "/customers" },
-  { title: "Payments", icon: CreditCard, path: "/payments" },
-  { title: "Fleet", icon: Truck, path: "/fleet" },
-  { title: "Team", icon: Users2, path: "/team" },
-  { title: "Suburbs", icon: MapPin, path: "/suburbs" },
-  { title: "Emails", icon: Mail, path: "/emails" },
-  { title: "Help Center", icon: BookOpen, path: "/knowledgebase" },
-  { title: "Settings", icon: Settings, path: "/settings" },
-];
-export function AdminSidebar() {
-  const location = useLocation();
+const menuItems = [{
+  title: "Dashboard",
+  icon: BarChart3,
+  id: "dashboard"
+}, {
+  title: "Opportunities",
+  icon: Target,
+  id: "opportunities"
+}, {
+  title: "Order Management",
+  icon: ShoppingCart,
+  id: "orders"
+}, {
+  title: "Products",
+  icon: Package,
+  id: "products"
+}, {
+  title: "Customers",
+  icon: Users,
+  id: "customers"
+}, {
+  title: "Payments",
+  icon: CreditCard,
+  id: "payments"
+}, {
+  title: "Fleet Management",
+  icon: Truck,
+  id: "trucks"
+}, {
+  title: "Team Management",
+  icon: Users2,
+  id: "drivers"
+}, {
+  title: "Suburb Management",
+  icon: MapPin,
+  id: "suburbs"
+}, {
+  title: "Email Management",
+  icon: Mail,
+  id: "emails"
+}, {
+  title: "Help & Guides",
+  icon: BookOpen,
+  id: "knowledgebase"
+}, {
+  title: "Settings",
+  icon: Settings,
+  id: "settings"
+}];
+interface AdminSidebarProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+}
+export function AdminSidebar({
+  activeTab,
+  setActiveTab
+}: AdminSidebarProps) {
   const [logoError, setLogoError] = useState(false);
-  
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
   const handleLogoError = () => {
     console.error("Logo failed to load:", "/lovable-uploads/299f278a-b44f-48ee-80b0-722271e302f3.png");
     setLogoError(true);
@@ -51,22 +89,12 @@ export function AdminSidebar() {
         <ScrollArea className="h-full">
           <div className="flex flex-col gap-2 p-4">
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    className={cn(
-                      "w-full justify-start",
-                      isActive(item.path) && "bg-primary/10 text-primary font-semibold"
-                    )}
-                  >
-                    <Link to={item.path}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </Link>
+              {menuItems.map(item => <SidebarMenuItem key={item.id}>
+                  <SidebarMenuButton onClick={() => setActiveTab(item.id)} className={cn("w-full justify-start", activeTab === item.id ? "text-primary bg-primary/10" : "hover:bg-accent hover:text-accent-foreground")}>
+                    <item.icon className="mr-2 h-4 w-4" />
+                    {item.title}
                   </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                </SidebarMenuItem>)}
             </SidebarMenu>
           </div>
         </ScrollArea>

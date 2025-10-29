@@ -1,7 +1,6 @@
 
 import { Menu, Settings, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link, useLocation } from "react-router-dom";
 import {
   Sheet,
   SheetContent,
@@ -14,16 +13,17 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 
 interface MobileHeaderProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
   profile?: {
     full_name?: string;
     email?: string;
   };
 }
 
-export function MobileHeader({ profile }: MobileHeaderProps) {
+export function MobileHeader({ activeTab, setActiveTab, profile }: MobileHeaderProps) {
   const { signOut, signingOut } = useAuth();
   const { toast } = useToast();
-  const location = useLocation();
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -59,17 +59,17 @@ export function MobileHeader({ profile }: MobileHeaderProps) {
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
           <div className="mt-6 space-y-2">
-            <Link
-              to="/settings"
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                location.pathname === "/settings"
+            <button
+              onClick={() => setActiveTab("settings")}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                activeTab === "settings"
                   ? "bg-primary text-primary-foreground"
                   : "hover:bg-slate-100"
               }`}
             >
               <Settings className="w-4 h-4" />
               <span>Settings</span>
-            </Link>
+            </button>
             
             <button
               onClick={handleSignOut}

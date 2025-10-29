@@ -6,18 +6,7 @@ import { AuthPage } from "@/components/auth/AuthPage";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AdminLayout } from "./layouts/AdminLayout";
-import Dashboard from "./pages/admin/Dashboard";
-import Pipeline from "./pages/admin/Pipeline";
-import Orders from "./pages/admin/Orders";
-import Products from "./pages/admin/Products";
-import Customers from "./pages/admin/Customers";
-import Payments from "./pages/admin/Payments";
-import Fleet from "./pages/admin/Fleet";
-import Team from "./pages/admin/Team";
-import Suburbs from "./pages/admin/Suburbs";
-import Emails from "./pages/admin/Emails";
-import SettingsPage from "./pages/admin/Settings";
+import Index from "./pages/Index";
 import DriverPortal from "./pages/DriverPortal";
 import CustomerPortal from "./pages/CustomerPortal";
 import PortalLogin from "./pages/PortalLogin";
@@ -51,28 +40,14 @@ function AuthenticatedApp() {
   // Route based on user role with strict protection
   return (
     <Routes>
-      {/* Admin routes with nested routing */}
       <Route 
         path="/" 
         element={
           <ProtectedRoute allowedRoles={['admin']}>
-            <AdminLayout />
+            <Index />
           </ProtectedRoute>
-        }
-      >
-        <Route index element={<Dashboard />} />
-        <Route path="pipeline" element={<Pipeline />} />
-        <Route path="orders" element={<Orders />} />
-        <Route path="products" element={<Products />} />
-        <Route path="customers" element={<Customers />} />
-        <Route path="payments" element={<Payments />} />
-        <Route path="fleet" element={<Fleet />} />
-        <Route path="team" element={<Team />} />
-        <Route path="suburbs" element={<Suburbs />} />
-        <Route path="emails" element={<Emails />} />
-        <Route path="settings" element={<SettingsPage />} />
-      </Route>
-      
+        } 
+      />
       <Route 
         path="/driver" 
         element={
@@ -115,31 +90,12 @@ function AppRoutes() {
 }
 
 const App = () => {
-  // Unregister service worker and clear all caches to fix React duplicate instance issue
+  // Unregister service worker to prevent reload loops (immediate fix)
   React.useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => {
         regs.forEach(reg => reg.unregister());
       });
-    }
-    
-    // Clear all caches to eliminate stale chunks
-    if ('caches' in window) {
-      caches.keys().then(names => {
-        names.forEach(name => caches.delete(name));
-      });
-    }
-    
-    // Clear sessionStorage entries except order-related ones
-    try {
-      const keysToKeep = ['order_form_draft', 'admin_active_tab', 'order_is_creating'];
-      Object.keys(sessionStorage).forEach(key => {
-        if (!keysToKeep.includes(key)) {
-          sessionStorage.removeItem(key);
-        }
-      });
-    } catch (e) {
-      console.error('Error clearing storage:', e);
     }
   }, []);
 
