@@ -64,10 +64,18 @@ export function useUserRole() {
 
     fetchUserRole();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      setLoading(true); // Set loading before re-fetching on auth change
-      fetchUserRole();
+    // Listen for auth changes - but ignore token refreshes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      // Ignore token refresh to prevent unnecessary loading states
+      if (event === 'TOKEN_REFRESHED') {
+        return; // Don't refetch roles on token refresh
+      }
+      
+      // Only refetch on actual auth changes
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        setLoading(true);
+        fetchUserRole();
+      }
     });
 
     return () => subscription.unsubscribe();

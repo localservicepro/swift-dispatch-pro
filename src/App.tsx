@@ -16,13 +16,26 @@ import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
 import { useUserRole } from "./hooks/useUserRole";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false, // Don't refetch when tab regains focus
+      refetchOnMount: false, // Don't refetch when component remounts
+      staleTime: 1000 * 60 * 5, // Data stays fresh for 5 minutes
+      gcTime: 1000 * 60 * 10, // Keep unused data in cache for 10 minutes
+      retry: 1, // Only retry failed requests once
+    },
+  },
+});
 
 function AuthenticatedApp() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   const { role, loading: roleLoading } = useUserRole();
 
-  if (authLoading || roleLoading) {
+  // Only show loading on initial check, not on token refresh
+  const isInitializing = authLoading && !session;
+  
+  if (isInitializing || (roleLoading && user && !role)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
