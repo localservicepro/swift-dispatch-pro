@@ -27,6 +27,8 @@ export function CompactProductTable({
   const { toast } = useToast();
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
+  const [editingSplitQuantity, setEditingSplitQuantity] = useState<string | null>(null);
+  const [splitInputValue, setSplitInputValue] = useState("");
 
   const parseQuantityInput = (input: string): number => {
     // Handle fractional input like "1 1/4" or "1.25"
@@ -120,7 +122,7 @@ export function CompactProductTable({
     const cartItem = cart.find(item => item.product.id === productId);
     if (!cartItem) return;
     
-    const increment = getQuantityIncrement(cartItem.product);
+    const increment = 1; // Always use whole number increments for buttons
     const change = direction === 'increase' ? increment : -increment;
     
     const split = splits[splitIndex];
@@ -142,6 +144,52 @@ export function CompactProductTable({
     }
 
     onUpdateSplitQuantity?.(splitIndex, productId, newQuantity);
+  };
+
+  const handleSplitQuantityEdit = (splitIndex: number, productId: string, currentQuantity: number) => {
+    const editKey = `${splitIndex}-${productId}`;
+    setEditingSplitQuantity(editKey);
+    setSplitInputValue(formatQuantity(currentQuantity));
+  };
+
+  const handleSplitQuantitySubmit = (splitIndex: number, productId: string) => {
+    const newQuantity = parseQuantityInput(splitInputValue);
+    const cartItem = cart.find(item => item.product.id === productId);
+    if (!cartItem) return;
+
+    if (isNaN(newQuantity) || newQuantity < 0) {
+      toast({
+        title: "Invalid quantity",
+        description: "Please enter a valid quantity (minimum 0)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const split = splits[splitIndex];
+    const splitProduct = split.products.find(p => p.productId === productId);
+    const currentQuantity = splitProduct?.quantity || 0;
+    const totalAllocated = getTotalAllocated(productId);
+    const remainingQuantity = cartItem.quantity - totalAllocated + currentQuantity;
+
+    if (newQuantity > remainingQuantity) {
+      toast({
+        title: "Cannot allocate more",
+        description: `Only ${formatQuantity(remainingQuantity)} remaining to allocate`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const roundedQuantity = roundToValidQuantity(newQuantity, cartItem.product);
+    onUpdateSplitQuantity?.(splitIndex, productId, roundedQuantity);
+    setEditingSplitQuantity(null);
+    setSplitInputValue("");
+  };
+
+  const handleSplitQuantityCancel = () => {
+    setEditingSplitQuantity(null);
+    setSplitInputValue("");
   };
 
   const handleDeleteProduct = (productId: string) => {
@@ -238,6 +286,8 @@ export function CompactProductTable({
                 {splits.map((split, splitIndex) => {
                   const splitProduct = split.products.find(p => p.productId === cartItem.product.id);
                   const splitQuantity = splitProduct?.quantity || 0;
+                  const editKey = `${splitIndex}-${cartItem.product.id}`;
+                  const isEditing = editingSplitQuantity === editKey;
                   
                   return (
                     <TableCell key={split.id} className="py-2 text-center">
@@ -251,7 +301,33 @@ export function CompactProductTable({
                         >
                           <Minus className="w-2 h-2" />
                         </Button>
-                        <span className="text-xs font-medium w-8 text-center">{formatQuantity(splitQuantity)}</span>
+                        
+                        {isEditing ? (
+                          <Input
+                            type="number"
+                            value={splitInputValue}
+                            onChange={(e) => setSplitInputValue(e.target.value)}
+                            className="h-6 w-14 text-xs text-center px-1"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSplitQuantitySubmit(splitIndex, cartItem.product.id);
+                              if (e.key === 'Escape') handleSplitQuantityCancel();
+                            }}
+                            onBlur={() => handleSplitQuantitySubmit(splitIndex, cartItem.product.id)}
+                            placeholder="0.25"
+                            step="0.001"
+                            min="0"
+                            autoFocus
+                          />
+                        ) : (
+                          <span 
+                            className="text-xs font-medium w-8 text-center cursor-pointer hover:bg-gray-100 px-1 py-0.5 rounded"
+                            onClick={() => handleSplitQuantityEdit(splitIndex, cartItem.product.id, splitQuantity)}
+                            title="Click to edit"
+                          >
+                            {formatQuantity(splitQuantity)}
+                          </span>
+                        )}
+                        
                         <Button
                           variant="outline"
                           size="sm"
