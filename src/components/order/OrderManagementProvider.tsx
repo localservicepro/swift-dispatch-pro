@@ -89,6 +89,9 @@ interface OrderManagementProviderProps {
   children: ReactNode;
 }
 
+const ORDER_CREATING_KEY = 'order_is_creating';
+const ORDER_DRAFT_KEY = 'order_form_draft';
+
 export function OrderManagementProvider({ children }: OrderManagementProviderProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -100,6 +103,20 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
   const [editingNotes, setEditingNotes] = useState<Order | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Auto-open Create Order dialog if draft exists
+  useEffect(() => {
+    const wasCreating = sessionStorage.getItem(ORDER_CREATING_KEY) === 'true';
+    const hasDraft = !!sessionStorage.getItem(ORDER_DRAFT_KEY);
+    if (wasCreating || hasDraft) {
+      setIsCreating(true);
+    }
+  }, []);
+
+  // Persist isCreating state
+  useEffect(() => {
+    sessionStorage.setItem(ORDER_CREATING_KEY, String(isCreating));
+  }, [isCreating]);
 
   // Use custom hooks for data and actions
   const { orders, isLoading, error, refetch } = useOrderData();

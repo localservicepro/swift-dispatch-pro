@@ -1,18 +1,16 @@
 // Service Worker for SwiftDispatch Pro
-const CACHE_VERSION = Date.now(); // Dynamic versioning
+const CACHE_VERSION = '1'; // Static version to prevent reload loops
 const CACHE_NAME = `swiftdispatch-v${CACHE_VERSION}`;
 const STATIC_CACHE_NAME = `swiftdispatch-static-v${CACHE_VERSION}`;
 
 const urlsToCache = [
   '/',
-  '/src/main.tsx',
-  '/src/index.css'
+  '/index.css'
 ];
 
-// Install event - Skip waiting for immediate activation
+// Install event
 self.addEventListener('install', event => {
   console.log('[SW] Installing new version');
-  self.skipWaiting(); // Force immediate activation
   
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME)
@@ -23,7 +21,7 @@ self.addEventListener('install', event => {
   );
 });
 
-// Activate event - Clean up old caches and claim clients
+// Activate event - Clean up old caches
 self.addEventListener('activate', event => {
   console.log('[SW] Activating new version');
   
@@ -40,9 +38,6 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    }).then(() => {
-      // Take control of all clients immediately
-      return self.clients.claim();
     })
   );
 });
