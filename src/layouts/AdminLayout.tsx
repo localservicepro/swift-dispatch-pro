@@ -19,7 +19,7 @@ export function AdminLayout() {
 
   // Handle order draft redirect only once on mount if needed
   useEffect(() => {
-    if ((location.pathname === '/' || location.pathname === '/dashboard') &&
+    if (location.pathname === '/' &&
         (sessionStorage.getItem(ORDER_CREATING_KEY) === 'true' || sessionStorage.getItem(ORDER_DRAFT_KEY))) {
       navigate('/orders', { replace: true });
     }

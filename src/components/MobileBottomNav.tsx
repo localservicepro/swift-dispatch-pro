@@ -16,7 +16,7 @@ import {
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const menuItems = [
-  { title: "Dashboard", icon: BarChart3, path: "/dashboard" },
+  { title: "Dashboard", icon: BarChart3, path: "/" },
   { title: "Pipeline", icon: Target, path: "/pipeline" },
   { title: "Orders", icon: ShoppingCart, path: "/orders" },
   { title: "Products", icon: Package, path: "/products" },
@@ -31,7 +31,6 @@ export function MobileBottomNav() {
   const location = useLocation();
   
   const isActive = (path: string) => {
-    if (path === "/dashboard" && location.pathname === "/") return true;
     return location.pathname === path;
   };
   return (

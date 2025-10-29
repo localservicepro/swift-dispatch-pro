@@ -61,7 +61,6 @@ function AuthenticatedApp() {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="dashboard" element={<Dashboard />} />
         <Route path="pipeline" element={<Pipeline />} />
         <Route path="orders" element={<Orders />} />
         <Route path="products" element={<Products />} />
