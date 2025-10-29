@@ -90,12 +90,31 @@ function AppRoutes() {
 }
 
 const App = () => {
-  // Unregister service worker to prevent reload loops (immediate fix)
+  // Unregister service worker and clear all caches to fix React duplicate instance issue
   React.useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => {
         regs.forEach(reg => reg.unregister());
       });
+    }
+    
+    // Clear all caches to eliminate stale chunks
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      });
+    }
+    
+    // Clear sessionStorage entries except order-related ones
+    try {
+      const keysToKeep = ['order_form_draft', 'admin_active_tab', 'order_is_creating'];
+      Object.keys(sessionStorage).forEach(key => {
+        if (!keysToKeep.includes(key)) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    } catch (e) {
+      console.error('Error clearing storage:', e);
     }
   }, []);
 

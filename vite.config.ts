@@ -27,4 +27,13 @@ export default defineConfig(({ mode }) => ({
     include: ['react', 'react-dom'],
     dedupe: ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react/jsx-runtime'],
+        },
+      },
+    },
+  },
 }));
