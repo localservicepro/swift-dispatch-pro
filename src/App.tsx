@@ -6,7 +6,18 @@ import { AuthPage } from "@/components/auth/AuthPage";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index";
+import { AdminLayout } from "./layouts/AdminLayout";
+import Dashboard from "./pages/admin/Dashboard";
+import Pipeline from "./pages/admin/Pipeline";
+import Orders from "./pages/admin/Orders";
+import Products from "./pages/admin/Products";
+import Customers from "./pages/admin/Customers";
+import Payments from "./pages/admin/Payments";
+import Fleet from "./pages/admin/Fleet";
+import Team from "./pages/admin/Team";
+import Suburbs from "./pages/admin/Suburbs";
+import Emails from "./pages/admin/Emails";
+import SettingsPage from "./pages/admin/Settings";
 import DriverPortal from "./pages/DriverPortal";
 import CustomerPortal from "./pages/CustomerPortal";
 import PortalLogin from "./pages/PortalLogin";
@@ -40,14 +51,29 @@ function AuthenticatedApp() {
   // Route based on user role with strict protection
   return (
     <Routes>
+      {/* Admin routes with nested routing */}
       <Route 
         path="/" 
         element={
           <ProtectedRoute allowedRoles={['admin']}>
-            <Index />
+            <AdminLayout />
           </ProtectedRoute>
-        } 
-      />
+        }
+      >
+        <Route index element={<Dashboard />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="pipeline" element={<Pipeline />} />
+        <Route path="orders" element={<Orders />} />
+        <Route path="products" element={<Products />} />
+        <Route path="customers" element={<Customers />} />
+        <Route path="payments" element={<Payments />} />
+        <Route path="fleet" element={<Fleet />} />
+        <Route path="team" element={<Team />} />
+        <Route path="suburbs" element={<Suburbs />} />
+        <Route path="emails" element={<Emails />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
+      
       <Route 
         path="/driver" 
         element={
