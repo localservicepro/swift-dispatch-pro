@@ -5,7 +5,10 @@ import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals } from "../utils/paymentCalculations";
 import { useDeliveryFeeCalculation } from "@/hooks/useDeliveryFeeCalculation";
 
+const STORAGE_KEY = "order_form_draft";
+
 export function useOrderFormState() {
+  const [isRestoringFromDraft, setIsRestoringFromDraft] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedContact, setSelectedContact] = useState<SelectedContact | null>(null);
@@ -53,6 +56,112 @@ export function useOrderFormState() {
   
   // Delivery fee calculation hook
   const { autoPopulateDeliveryFee, getDeliveryFeeInfo } = useDeliveryFeeCalculation();
+
+  // Restore draft from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const savedDraft = sessionStorage.getItem(STORAGE_KEY);
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        console.log('Restoring order draft from sessionStorage');
+        
+        // Restore all state
+        if (parsed.currentStep) setCurrentStep(parsed.currentStep);
+        if (parsed.selectedCustomer) setSelectedCustomer(parsed.selectedCustomer);
+        if (parsed.selectedContact) setSelectedContact(parsed.selectedContact);
+        if (parsed.cart) setCart(parsed.cart);
+        if (parsed.adjustments !== undefined) setAdjustments(parsed.adjustments);
+        if (parsed.deliveryMethod) setDeliveryMethod(parsed.deliveryMethod);
+        if (parsed.orderType) setOrderType(parsed.orderType);
+        if (parsed.splits) setSplits(parsed.splits);
+        if (parsed.deliveryDate) setDeliveryDate(parsed.deliveryDate);
+        if (parsed.deliveryTime) setDeliveryTime(parsed.deliveryTime);
+        if (parsed.pickupTiming) setPickupTiming(parsed.pickupTiming);
+        if (parsed.specialInstructions) setSpecialInstructions(parsed.specialInstructions);
+        if (parsed.paymentMethod) setPaymentMethod(parsed.paymentMethod);
+        if (parsed.orderNotes) setOrderNotes(parsed.orderNotes);
+        if (parsed.deliveryNotes) setDeliveryNotes(parsed.deliveryNotes);
+        if (parsed.purchaseOrder) setPurchaseOrder(parsed.purchaseOrder);
+        if (parsed.deliveryAddress) setDeliveryAddress(parsed.deliveryAddress);
+        if (parsed.sameAsBilling !== undefined) setSameAsBilling(parsed.sameAsBilling);
+        if (parsed.useGlobalDeliveryAddress !== undefined) setUseGlobalDeliveryAddress(parsed.useGlobalDeliveryAddress);
+        if (parsed.selectedSuburbId) setSelectedSuburbId(parsed.selectedSuburbId);
+        if (parsed.manualDeliveryFee !== undefined) setManualDeliveryFee(parsed.manualDeliveryFee);
+        if (parsed.isDeliveryFeeManuallySet !== undefined) setIsDeliveryFeeManuallySet(parsed.isDeliveryFeeManuallySet);
+        if (parsed.isUsingCustomerAddress !== undefined) setIsUsingCustomerAddress(parsed.isUsingCustomerAddress);
+      }
+    } catch (error) {
+      console.error('Error restoring order draft:', error);
+    } finally {
+      setIsRestoringFromDraft(false);
+    }
+  }, []);
+
+  // Auto-save to sessionStorage (debounced)
+  useEffect(() => {
+    // Skip saving during initial restore
+    if (isRestoringFromDraft) return;
+
+    const timeoutId = setTimeout(() => {
+      try {
+        const formState = {
+          currentStep,
+          selectedCustomer,
+          selectedContact,
+          cart,
+          adjustments,
+          deliveryMethod,
+          orderType,
+          splits,
+          deliveryDate,
+          deliveryTime,
+          pickupTiming,
+          specialInstructions,
+          paymentMethod,
+          orderNotes,
+          deliveryNotes,
+          purchaseOrder,
+          deliveryAddress,
+          sameAsBilling,
+          useGlobalDeliveryAddress,
+          selectedSuburbId,
+          manualDeliveryFee,
+          isDeliveryFeeManuallySet,
+          isUsingCustomerAddress,
+        };
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(formState));
+      } catch (error) {
+        console.error('Error saving order draft:', error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    isRestoringFromDraft,
+    currentStep,
+    selectedCustomer,
+    selectedContact,
+    cart,
+    adjustments,
+    deliveryMethod,
+    orderType,
+    splits,
+    deliveryDate,
+    deliveryTime,
+    pickupTiming,
+    specialInstructions,
+    paymentMethod,
+    orderNotes,
+    deliveryNotes,
+    purchaseOrder,
+    deliveryAddress,
+    sameAsBilling,
+    useGlobalDeliveryAddress,
+    selectedSuburbId,
+    manualDeliveryFee,
+    isDeliveryFeeManuallySet,
+    isUsingCustomerAddress,
+  ]);
 
   // Auto-populate delivery address when customer is selected
   useEffect(() => {
@@ -189,6 +298,16 @@ export function useOrderFormState() {
       gstIncluded: true
     };
 
+  // Function to clear the draft
+  const clearOrderDraft = () => {
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+      console.log('Order draft cleared from sessionStorage');
+    } catch (error) {
+      console.error('Error clearing order draft:', error);
+    }
+  };
+
   return {
     // State
     currentStep,
@@ -247,6 +366,7 @@ export function useOrderFormState() {
     getDeliveryFeeInfo,
     clearDeliveryAddress,
     resetToCustomerAddress,
+    clearOrderDraft,
     
     // Navigation
     nextStep,

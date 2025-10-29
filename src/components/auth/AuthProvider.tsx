@@ -58,6 +58,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
         
+        // IGNORE token refresh to prevent unnecessary re-renders and page reloads
+        if (event === 'TOKEN_REFRESHED') {
+          // Update session silently without triggering loading/profile refetch
+          setSession(session);
+          setUser(session?.user ?? null);
+          return;
+        }
+        
         // Handle sign out immediately
         if (event === 'SIGNED_OUT' || !session) {
           clearAuthState();

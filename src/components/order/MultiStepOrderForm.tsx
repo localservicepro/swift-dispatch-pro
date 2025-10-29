@@ -81,6 +81,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     clearDeliveryAddress,
     resetToCustomerAddress,
     getDeliveryFeeInfo,
+    clearOrderDraft,
     nextStep,
     prevStep,
     setCurrentStep,
@@ -153,6 +154,9 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         title: "Success!",
         description: `Order ${result.orderNumber} created successfully`,
       });
+
+      // Clear the draft from sessionStorage
+      clearOrderDraft();
 
       // Call the onOrderCreated callback if provided
       if (onOrderCreated) {
