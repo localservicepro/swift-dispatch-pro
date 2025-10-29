@@ -21,7 +21,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           new_values: Json | null
           old_values: Json | null
           target_details: Json | null
@@ -35,7 +35,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           target_details?: Json | null
@@ -49,7 +49,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           target_details?: Json | null
@@ -1348,7 +1348,7 @@ export type Database = {
           email: string
           failure_reason: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           success: boolean | null
           user_agent: string | null
         }
@@ -1359,7 +1359,7 @@ export type Database = {
           email: string
           failure_reason?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           success?: boolean | null
           user_agent?: string | null
         }
@@ -1370,7 +1370,7 @@ export type Database = {
           email?: string
           failure_reason?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           success?: boolean | null
           user_agent?: string | null
         }
@@ -2521,10 +2521,7 @@ export type Database = {
         Args: { driver_id: string; driver_license: string; driver_name: string }
         Returns: undefined
       }
-      create_single_order: {
-        Args: { p_order_data: Json }
-        Returns: string
-      }
+      create_single_order: { Args: { p_order_data: Json }; Returns: string }
       create_split_order: {
         Args: { p_master_order_data: Json; p_split_orders: Json[] }
         Returns: string[]
@@ -2533,10 +2530,7 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: string[]
       }
-      deduct_inventory: {
-        Args: { order_id_param: string }
-        Returns: undefined
-      }
+      deduct_inventory: { Args: { order_id_param: string }; Returns: undefined }
       determine_order_status: {
         Args: { order_items: Json }
         Returns: Database["public"]["Enums"]["order_status"]
@@ -2545,18 +2539,9 @@ export type Database = {
         Args: { p_customer_id: string; p_email: string; p_password: string }
         Returns: Json
       }
-      format_products_text: {
-        Args: { products_json: Json }
-        Returns: string
-      }
-      generate_short_order_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_store_slug: {
-        Args: { business_name: string }
-        Returns: string
-      }
+      format_products_text: { Args: { products_json: Json }; Returns: string }
+      generate_short_order_number: { Args: never; Returns: string }
+      generate_store_slug: { Args: { business_name: string }; Returns: string }
       get_active_specials_for_product: {
         Args: { customer_tier_param?: string; product_id_param: string }
         Returns: {
@@ -2568,7 +2553,7 @@ export type Database = {
         }[]
       }
       get_back_order_summary: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           current_stock: number
           orders_count: number
@@ -2577,10 +2562,7 @@ export type Database = {
           total_back_ordered: number
         }[]
       }
-      get_customer_id_for_user: {
-        Args: { _user_id: string }
-        Returns: string
-      }
+      get_customer_id_for_user: { Args: { _user_id: string }; Returns: string }
       get_low_stock_products: {
         Args: { threshold?: number }
         Returns: {
@@ -2598,18 +2580,12 @@ export type Database = {
         }
         Returns: number
       }
-      get_stripe_settings: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      get_stripe_settings: { Args: never; Returns: Json }
       get_truck_display_info: {
         Args: { truck_type_param: Database["public"]["Enums"]["truck_type"] }
         Returns: string
       }
-      hard_delete_order: {
-        Args: { p_order_id: string }
-        Returns: undefined
-      }
+      hard_delete_order: { Args: { p_order_id: string }; Returns: undefined }
       hard_delete_split_order_group: {
         Args: { p_order_id: string }
         Returns: Json
@@ -2625,10 +2601,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_current_user_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_current_user_admin: { Args: never; Returns: boolean }
       log_admin_activity: {
         Args: {
           p_action_type: string
@@ -2641,22 +2614,13 @@ export type Database = {
         }
         Returns: string
       }
-      process_return: {
-        Args: { return_id_param: string }
-        Returns: undefined
-      }
+      process_return: { Args: { return_id_param: string }; Returns: undefined }
       restore_inventory: {
         Args: { order_id_param: string }
         Returns: undefined
       }
-      restore_order: {
-        Args: { p_order_id: string }
-        Returns: undefined
-      }
-      restore_split_order_group: {
-        Args: { p_order_id: string }
-        Returns: Json
-      }
+      restore_order: { Args: { p_order_id: string }; Returns: undefined }
+      restore_split_order_group: { Args: { p_order_id: string }; Returns: Json }
       set_primary_contact: {
         Args: { p_contact_id: string; p_customer_id: string }
         Returns: undefined
