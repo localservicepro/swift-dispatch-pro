@@ -29,6 +29,14 @@ export const getMinimumQuantity = (product: Product): number => {
 };
 
 /**
+ * Get the default quantity when adding a product to cart
+ * This is different from minimum - it's a practical starting point
+ */
+export const getDefaultQuantity = (product: Product): number => {
+  return 1.0; // Default to 1 unit for all products (practical starting amount)
+};
+
+/**
  * Validate a quantity for a specific product
  */
 export const validateQuantity = (quantity: number, product: Product): boolean => {
