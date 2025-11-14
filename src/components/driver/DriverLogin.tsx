@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Truck, Eye, EyeOff } from "lucide-react";
-import { isSafari, showSafariInstructions } from "@/utils/browserCompatibility";
+import { isSafari, showSafariInstructions, isModernIOS, getIOSVersion } from "@/utils/browserCompatibility";
 
 interface DriverLoginProps {
   onLogin: (user: any, profile: any) => void;
@@ -57,14 +57,26 @@ export function DriverLogin({ onLogin }: DriverLoginProps) {
       }
     } catch (error: any) {
       const isSafariBrowser = isSafari();
+      const isModern = isModernIOS();
+      
+      let errorMessage = error.message;
+      let errorTitle = "Login Failed";
+      let duration = 5000;
+      
+      if (isModern) {
+        errorTitle = `iOS ${getIOSVersion()}+ Not Supported in Safari`;
+        errorMessage = "Please use Chrome or Firefox browser, or add this site to Home Screen as a web app.";
+        duration = 15000;
+      } else if (isSafariBrowser) {
+        errorMessage = "Safari's privacy settings may be blocking login. Try Chrome/Firefox or adjust Settings → Safari → Privacy";
+        duration = 10000;
+      }
       
       toast({
-        title: "Login Failed",
-        description: isSafariBrowser 
-          ? "Safari's privacy settings may be blocking login. Please check Settings > Safari > Privacy"
-          : error.message,
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive",
-        duration: isSafariBrowser ? 10000 : 5000,
+        duration: duration,
       });
       
       if (isSafariBrowser) {

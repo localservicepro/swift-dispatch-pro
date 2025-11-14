@@ -11,6 +11,16 @@ export const isIOS = (): boolean => {
   return /iPad|iPhone|iPod/.test(navigator.userAgent);
 };
 
+export const getIOSVersion = (): number | null => {
+  const match = navigator.userAgent.match(/OS (\d+)_/);
+  return match ? parseInt(match[1], 10) : null;
+};
+
+export const isModernIOS = (): boolean => {
+  const version = getIOSVersion();
+  return version !== null && version >= 17;
+};
+
 export const isStorageAccessible = (): boolean => {
   try {
     const testKey = '__storage_test__';
@@ -30,6 +40,8 @@ export const getBrowserInfo = () => {
   return {
     isSafari: isSafari(),
     isIOS: isIOS(),
+    iosVersion: getIOSVersion(),
+    isModernIOS: isModernIOS(),
     hasLocalStorage: isStorageAccessible(),
     hasWebSockets: canUseWebSockets(),
     userAgent: navigator.userAgent,
@@ -37,6 +49,25 @@ export const getBrowserInfo = () => {
 };
 
 export const showSafariInstructions = () => {
+  const iosVersion = getIOSVersion();
+  const isModern = isModernIOS();
+  
+  if (isModern) {
+    return `
+iOS ${iosVersion}+ Enhanced Privacy Settings:
+
+IMPORTANT: iOS 17+ has stricter privacy that may prevent login even with settings adjusted.
+
+Recommended Solutions:
+1. Use Chrome or Firefox browser instead of Safari
+2. Add this website to your Home Screen (works as a web app and bypasses some restrictions)
+3. Disable Private Relay: Settings > Apple ID > iCloud > Private Relay > Turn OFF
+4. Safari Settings: Settings > Safari > Privacy & Security > Turn OFF both tracking prevention options
+
+Note: Even with these settings, iOS 17+ may still block authentication. Chrome/Firefox work better.
+    `.trim();
+  }
+  
   return `
 Safari Privacy Settings:
 1. Open Safari on your device

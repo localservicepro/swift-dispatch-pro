@@ -4,9 +4,9 @@ import { useToast } from "@/hooks/use-toast";
 import { DriverLogin } from "@/components/driver/DriverLogin";
 import { DriverDashboard } from "@/components/driver/DriverDashboard";
 import { supportEmailService } from "@/utils/supportEmailService";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { isSafari, isStorageAccessible } from "@/utils/browserCompatibility";
+import { isSafari, isStorageAccessible, isModernIOS, getIOSVersion } from "@/utils/browserCompatibility";
 
 export default function DriverPortal() {
   const [user, setUser] = useState<any>(null);
@@ -16,8 +16,8 @@ export default function DriverPortal() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check for Safari-specific issues
-    if (isSafari() && !isStorageAccessible()) {
+    // Check for Safari-specific issues, especially iOS 17+
+    if (isSafari() && (!isStorageAccessible() || isModernIOS())) {
       setShowSafariWarning(true);
     }
     checkUser();
@@ -87,12 +87,25 @@ export default function DriverPortal() {
         {showSafariWarning && (
           <Alert className="absolute top-4 left-4 right-4 max-w-2xl mx-auto" variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Safari Users:</strong> If you're having trouble logging in, please:
-              <ul className="list-disc ml-4 mt-2">
-                <li>Enable "Prevent Cross-Site Tracking" to OFF in Settings &gt; Safari &gt; Privacy</li>
-                <li>Or try using Chrome/Firefox for the driver portal</li>
-              </ul>
+            <AlertTitle>
+              {isModernIOS() ? `iOS ${getIOSVersion()}+ Compatibility Issue` : 'Safari Compatibility Issue'}
+            </AlertTitle>
+            <AlertDescription className="mt-2">
+              {isModernIOS() ? (
+                <>
+                  <p className="font-semibold mb-2">iOS 17+ has stricter privacy that blocks authentication.</p>
+                  <p className="mb-2"><strong>Recommended:</strong> Install Chrome or Firefox from the App Store</p>
+                  <p className="text-sm">Alternative: Add to Home Screen (tap Share → Add to Home Screen) to bypass some restrictions</p>
+                </>
+              ) : (
+                <>
+                  <strong>Safari Users:</strong> If you're having trouble logging in:
+                  <ul className="list-disc ml-4 mt-2">
+                    <li>Turn OFF "Prevent Cross-Site Tracking" in Settings → Safari → Privacy</li>
+                    <li>Or use Chrome/Firefox browser instead</li>
+                  </ul>
+                </>
+              )}
             </AlertDescription>
           </Alert>
         )}
@@ -110,9 +123,23 @@ export default function DriverPortal() {
         {showSafariWarning && (
           <Alert className="m-4" variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Safari Compatibility Issue:</strong> Safari's privacy settings may prevent login. 
-              Please disable "Prevent Cross-Site Tracking" in Settings &gt; Safari &gt; Privacy, or use Chrome/Firefox.
+            <AlertTitle>
+              {isModernIOS() ? `iOS ${getIOSVersion()}+ Not Fully Supported` : 'Safari Compatibility Issue'}
+            </AlertTitle>
+            <AlertDescription className="mt-2">
+              {isModernIOS() ? (
+                <>
+                  <p className="font-semibold mb-2">Latest iPhones (iOS 17+) have privacy features that block this login.</p>
+                  <p className="mb-2"><strong>Solution:</strong> Download and use Chrome or Firefox from the App Store</p>
+                  <p className="text-sm mb-2"><strong>Or:</strong> Tap Share → "Add to Home Screen" to install as web app</p>
+                  <p className="text-xs text-muted-foreground">iOS 17+ blocks third-party authentication even with Safari settings changed.</p>
+                </>
+              ) : (
+                <>
+                  <strong>Safari Compatibility Issue:</strong> Safari's privacy settings may prevent login. 
+                  Please disable "Prevent Cross-Site Tracking" in Settings → Safari → Privacy, or use Chrome/Firefox.
+                </>
+              )}
             </AlertDescription>
           </Alert>
         )}
