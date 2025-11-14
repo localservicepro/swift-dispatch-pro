@@ -29,10 +29,15 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
   useEffect(() => {
     fetchOrders();
     
-    // Subscribe to real-time updates for driver-specific orders
+    // Subscribe to real-time updates for driver-specific orders with Safari-compatible error handling
     console.log('Setting up real-time subscription for driver orders...');
-    const subscription = supabase
-      .channel('driver-orders')
+    const channel = supabase
+      .channel('driver-orders', {
+        config: {
+          broadcast: { self: true },
+          presence: { key: user.id },
+        },
+      })
       .on('postgres_changes', 
         { 
           event: '*', 
@@ -97,11 +102,34 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log('Real-time subscription status:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to driver orders');
+        }
+        
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Real-time channel error:', err);
+          toast({
+            title: "Connection Issue",
+            description: "Live updates may not work. Please refresh the page.",
+            variant: "destructive",
+          });
+        }
+        
+        if (status === 'TIMED_OUT') {
+          console.error('Real-time subscription timed out');
+          toast({
+            title: "Connection Timeout",
+            description: "Trying to reconnect...",
+          });
+        }
+      });
 
     return () => {
       console.log('Cleaning up driver real-time subscription...');
-      subscription.unsubscribe();
+      channel.unsubscribe();
     };
   }, [user.id, toast, profile?.full_name]);
 
