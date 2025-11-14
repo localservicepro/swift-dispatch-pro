@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Truck, Eye, EyeOff } from "lucide-react";
+import { isSafari, showSafariInstructions } from "@/utils/browserCompatibility";
 
 interface DriverLoginProps {
   onLogin: (user: any, profile: any) => void;
@@ -55,11 +56,20 @@ export function DriverLogin({ onLogin }: DriverLoginProps) {
         }
       }
     } catch (error: any) {
+      const isSafariBrowser = isSafari();
+      
       toast({
         title: "Login Failed",
-        description: error.message,
+        description: isSafariBrowser 
+          ? "Safari's privacy settings may be blocking login. Please check Settings > Safari > Privacy"
+          : error.message,
         variant: "destructive",
+        duration: isSafariBrowser ? 10000 : 5000,
       });
+      
+      if (isSafariBrowser) {
+        console.log(showSafariInstructions());
+      }
     } finally {
       setLoading(false);
     }

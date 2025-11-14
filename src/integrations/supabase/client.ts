@@ -5,13 +5,74 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://wntcxbxitsanbyrtfhwv.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndudGN4YnhpdHNhbmJ5cnRmaHd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2NDM2NTQsImV4cCI6MjA2NTIxOTY1NH0.lPHMb4tCdoVgIAG4G0FbLcnBcV-mhNIAc8UUuYbo91Q";
 
+// Custom storage adapter with Safari fallback
+class SafariCompatibleStorage {
+  private storage: Storage | null = null;
+  private memoryStorage: Map<string, string> = new Map();
+  
+  constructor() {
+    // Test if localStorage is accessible (Safari may block it)
+    try {
+      const testKey = '__storage_test__';
+      localStorage.setItem(testKey, 'test');
+      localStorage.removeItem(testKey);
+      this.storage = localStorage;
+    } catch (e) {
+      console.warn('localStorage not available, using memory storage (session will not persist)');
+      this.storage = null;
+    }
+  }
+  
+  getItem(key: string): string | null {
+    if (this.storage) {
+      try {
+        return this.storage.getItem(key);
+      } catch (e) {
+        console.error('Error reading from localStorage:', e);
+      }
+    }
+    return this.memoryStorage.get(key) || null;
+  }
+  
+  setItem(key: string, value: string): void {
+    if (this.storage) {
+      try {
+        this.storage.setItem(key, value);
+        return;
+      } catch (e) {
+        console.error('Error writing to localStorage:', e);
+      }
+    }
+    this.memoryStorage.set(key, value);
+  }
+  
+  removeItem(key: string): void {
+    if (this.storage) {
+      try {
+        this.storage.removeItem(key);
+        return;
+      } catch (e) {
+        console.error('Error removing from localStorage:', e);
+      }
+    }
+    this.memoryStorage.delete(key);
+  }
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: new SafariCompatibleStorage(),
     persistSession: true,
     autoRefreshToken: true,
-  }
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
 });

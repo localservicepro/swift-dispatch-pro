@@ -4,14 +4,22 @@ import { useToast } from "@/hooks/use-toast";
 import { DriverLogin } from "@/components/driver/DriverLogin";
 import { DriverDashboard } from "@/components/driver/DriverDashboard";
 import { supportEmailService } from "@/utils/supportEmailService";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { isSafari, isStorageAccessible } from "@/utils/browserCompatibility";
 
 export default function DriverPortal() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [showSafariWarning, setShowSafariWarning] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    // Check for Safari-specific issues
+    if (isSafari() && !isStorageAccessible()) {
+      setShowSafariWarning(true);
+    }
     checkUser();
   }, []);
 
@@ -47,6 +55,16 @@ export default function DriverPortal() {
       }
     } catch (error) {
       console.error('Error checking user:', error);
+      
+      // Show Safari-specific error message
+      if (isSafari()) {
+        toast({
+          title: "Safari Compatibility Issue",
+          description: "Please ensure cookies and website data are enabled in Safari Settings > Privacy",
+          variant: "destructive",
+          duration: 10000,
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -66,6 +84,18 @@ export default function DriverPortal() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        {showSafariWarning && (
+          <Alert className="absolute top-4 left-4 right-4 max-w-2xl mx-auto" variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Safari Users:</strong> If you're having trouble logging in, please:
+              <ul className="list-disc ml-4 mt-2">
+                <li>Enable "Prevent Cross-Site Tracking" to OFF in Settings &gt; Safari &gt; Privacy</li>
+                <li>Or try using Chrome/Firefox for the driver portal</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-slate-600">Loading...</p>
@@ -75,7 +105,20 @@ export default function DriverPortal() {
   }
 
   if (!user || !profile) {
-    return <DriverLogin onLogin={handleLogin} />;
+    return (
+      <>
+        {showSafariWarning && (
+          <Alert className="m-4" variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Safari Compatibility Issue:</strong> Safari's privacy settings may prevent login. 
+              Please disable "Prevent Cross-Site Tracking" in Settings &gt; Safari &gt; Privacy, or use Chrome/Firefox.
+            </AlertDescription>
+          </Alert>
+        )}
+        <DriverLogin onLogin={handleLogin} />
+      </>
+    );
   }
 
   return <DriverDashboard user={user} profile={profile} onLogout={handleLogout} />;
