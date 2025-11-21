@@ -96,6 +96,15 @@ export function useSuburbManagement() {
       matchingSuburb = findSuburbByNameOnly(fullAddressOrSuburbName);
     }
     
+    // If still not found, try postcode matching as a fallback
+    if (!matchingSuburb) {
+      // Extract postcode from address (last 4 digits)
+      const postcodeMatch = fullAddressOrSuburbName.match(/\b\d{4}\b/);
+      if (postcodeMatch) {
+        matchingSuburb = findSuburbByPostcode(postcodeMatch[0]);
+      }
+    }
+    
     if (matchingSuburb) {
       console.log('Auto-selecting suburb:', matchingSuburb);
       onSuburbChange(matchingSuburb.id, matchingSuburb);

@@ -66,12 +66,10 @@ export function CompactSplitConfig({
   const handleAddressSelect = (splitIndex: number, addressData: any) => {
     onUpdateSplit(splitIndex, { deliveryAddress: addressData.fullAddress });
     
-    // Auto-select suburb based on postcode if available
-    if (addressData.postcode) {
-      handleAutoSuburbSelection(addressData.postcode, (suburbId: string) => {
-        onUpdateSplit(splitIndex, { deliverySuburbId: suburbId });
-      });
-    }
+    // Pass full address to find suburb by name first, then fall back to postcode
+    handleAutoSuburbSelection(addressData.fullAddress, (suburbId: string) => {
+      onUpdateSplit(splitIndex, { deliverySuburbId: suburbId });
+    });
   };
 
   const handleSuburbChange = async (splitIndex: number, suburbId: string) => {
