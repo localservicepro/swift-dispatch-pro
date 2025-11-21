@@ -44,7 +44,8 @@ export function SplitConfigurationManager({
         deliveryTime: "",
         specialInstructions: "",
         sameAsBilling: true,
-        deliveryAddress: ""
+        deliveryAddress: "",
+        deliveryFee: 0
       });
     }
     return newSplits;

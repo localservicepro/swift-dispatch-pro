@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -87,6 +86,19 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setCurrentStep,
     getTotalSteps
   } = useOrderFormState();
+
+  // Calculate total delivery fee from all splits for split orders
+  useEffect(() => {
+    if (orderType === 'split' && splits.length > 0 && deliveryMethod === 'delivery') {
+      const totalDeliveryFee = splits.reduce((sum, split) => {
+        return sum + (split.deliveryFee || 0);
+      }, 0);
+      
+      if (totalDeliveryFee !== deliveryFee) {
+        setManualDeliveryFee(totalDeliveryFee);
+      }
+    }
+  }, [splits, orderType, deliveryMethod]);
 
   const handleOrderCreation = async () => {
     if (!selectedCustomer) {
