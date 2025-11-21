@@ -82,6 +82,7 @@ export interface SplitConfig {
   sameAsBilling: boolean;
   suburbId?: string;
   deliverySuburbId?: string;
+  deliveryFee?: number;
 }
 
 export interface Order {

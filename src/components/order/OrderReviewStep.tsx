@@ -282,7 +282,14 @@ export function OrderReviewStep({
             {orderType === "split" ? (
               splits.map((split, splitIndex) => (
                 <div key={splitIndex} className="bg-gray-50 p-4 rounded-lg space-y-2">
-                  <h4 className="font-medium text-sm text-gray-700">{split.name}</h4>
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-medium text-sm text-gray-700">{split.name}</h4>
+                    {split.deliveryFee > 0 && (
+                      <Badge variant="outline" className="text-xs">
+                        Delivery: AU${split.deliveryFee.toFixed(2)}
+                      </Badge>
+                    )}
+                  </div>
                   <div className="space-y-1">
                     {split.products.map((splitProduct: any, productIndex: number) => {
                       const cartItem = cart.find(item => item.product.id === splitProduct.productId);
@@ -461,35 +468,59 @@ export function OrderReviewStep({
             )}
             {deliveryMethod === "delivery" && (
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="delivery-fee" className="flex items-center gap-2">
-                    Delivery Fee:
-                    {deliveryFeeInfo && !isDeliveryFeeManuallySet && (
-                      <Badge variant="outline" className="text-xs text-green-600 bg-green-50">
-                        Auto from {deliveryFeeInfo.suburbName}
-                      </Badge>
-                    )}
-                    {isDeliveryFeeManuallySet && (
-                      <Badge variant="outline" className="text-xs text-blue-600 bg-blue-50">
-                        Manually set
-                      </Badge>
-                    )}
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <span>AU$</span>
-                    <Input
-                      id="delivery-fee"
-                      type="number"
-                      value={deliveryFee.toFixed(2)}
-                      onChange={handleDeliveryFeeChange}
-                      className="w-20 h-8 text-right"
-                      min="0"
-                      step="0.01"
-                      disabled={isCreating}
-                    />
+                {orderType === "split" ? (
+                  // For split orders, show breakdown of delivery fees
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Delivery Fees by Split:</Label>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
+                      {splits.map((split, index) => (
+                        <div key={index} className="flex justify-between text-xs">
+                          <span>{split.name}:</span>
+                          <span className="font-medium">AU${(split.deliveryFee || 0).toFixed(2)}</span>
+                        </div>
+                      ))}
+                      <Separator className="my-1" />
+                      <div className="flex justify-between text-sm font-semibold">
+                        <span>Total Delivery Fee:</span>
+                        <span>AU${deliveryFee.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Each split's delivery fee is auto-calculated from its suburb
+                    </p>
                   </div>
-                </div>
-                {deliveryFeeInfo && !isDeliveryFeeManuallySet && (
+                ) : (
+                  // For single orders, show editable delivery fee
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="delivery-fee" className="flex items-center gap-2">
+                      Delivery Fee:
+                      {deliveryFeeInfo && !isDeliveryFeeManuallySet && (
+                        <Badge variant="outline" className="text-xs text-green-600 bg-green-50">
+                          Auto from {deliveryFeeInfo.suburbName}
+                        </Badge>
+                      )}
+                      {isDeliveryFeeManuallySet && (
+                        <Badge variant="outline" className="text-xs text-blue-600 bg-blue-50">
+                          Manually set
+                        </Badge>
+                      )}
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <span>AU$</span>
+                      <Input
+                        id="delivery-fee"
+                        type="number"
+                        value={deliveryFee.toFixed(2)}
+                        onChange={handleDeliveryFeeChange}
+                        className="w-20 h-8 text-right"
+                        min="0"
+                        step="0.01"
+                        disabled={isCreating}
+                      />
+                    </div>
+                  </div>
+                )}
+                {orderType !== "split" && deliveryFeeInfo && !isDeliveryFeeManuallySet && (
                   <p className="text-xs text-muted-foreground">
                     📍 Auto-populated from {deliveryFeeInfo.displayText}. You can edit if needed.
                   </p>

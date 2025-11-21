@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Calendar as CalendarIcon, Clock, MapPin, FileText, CheckCircle } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, MapPin, FileText, CheckCircle, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CartItem, SplitConfig, Customer } from "./types";
 import { generateTimeSlots } from "@/utils/timeSlotUtils";
@@ -17,6 +18,8 @@ import { EnhancedAddressInput } from "@/components/ui/enhanced-address-input";
 import { SuburbSelector } from "../order/SuburbSelector";
 import { useSuburbManagement } from "@/hooks/useSuburbManagement";
 import { createAddressSelectHandler } from "@/utils/addressUtils";
+import { useDeliveryFeeCalculation } from "@/hooks/useDeliveryFeeCalculation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CompactSplitConfigProps {
   splits: SplitConfig[];
@@ -35,6 +38,7 @@ export function CompactSplitConfig({
 }: CompactSplitConfigProps) {
   const timeSlots = generateTimeSlots();
   const { handleAutoSuburbSelection } = useSuburbManagement();
+  const { fetchSuburbData, parseDeliveryRate } = useDeliveryFeeCalculation();
 
   const getSplitTotal = (split: SplitConfig) => {
     return split.products.reduce((sum, splitProduct) => {
@@ -70,9 +74,32 @@ export function CompactSplitConfig({
     }
   };
 
-  const handleSuburbChange = (splitIndex: number, suburbId: string) => {
+  const handleSuburbChange = async (splitIndex: number, suburbId: string) => {
     onUpdateSplit(splitIndex, { deliverySuburbId: suburbId });
+    
+    // Fetch suburb data and calculate delivery fee
+    const suburbData = await fetchSuburbData(suburbId);
+    if (suburbData) {
+      const deliveryFee = parseDeliveryRate(suburbData.delivery_rate);
+      onUpdateSplit(splitIndex, { deliveryFee });
+    }
   };
+
+  // Auto-calculate delivery fee when suburb changes
+  useEffect(() => {
+    splits.forEach(async (split, index) => {
+      const suburbId = split.deliverySuburbId || (split.sameAsBilling ? split.suburbId : null);
+      if (suburbId && split.deliveryFee === undefined) {
+        const suburbData = await fetchSuburbData(suburbId);
+        if (suburbData) {
+          const deliveryFee = parseDeliveryRate(suburbData.delivery_rate);
+          if (deliveryFee > 0) {
+            onUpdateSplit(index, { deliveryFee });
+          }
+        }
+      }
+    });
+  }, [splits.map(s => s.deliverySuburbId || s.suburbId).join(',')]);
 
   return (
     <div className="space-y-3">
@@ -243,6 +270,24 @@ export function CompactSplitConfig({
                         />
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Delivery Fee Display */}
+                {(split.deliverySuburbId || (split.sameAsBilling && split.suburbId)) && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs font-medium flex items-center gap-1">
+                        <Truck className="w-3 h-3" />
+                        Delivery Fee
+                      </Label>
+                      <Badge variant="default" className="text-sm">
+                        AU${(split.deliveryFee || 0).toFixed(2)}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Auto-calculated from suburb delivery rate
+                    </p>
                   </div>
                 )}
 
