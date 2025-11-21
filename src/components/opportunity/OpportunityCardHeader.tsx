@@ -6,6 +6,7 @@ import { NotesIndicator } from "../notes/NotesIndicator";
 import { PurchaseOrderDisplay } from "../order/PurchaseOrderDisplay";
 import { StopCreditIndicator } from "../customer/StopCreditIndicator";
 import { ReceiptButton } from "@/components/ui/receipt-button";
+import { formatOrderNumber } from "@/utils/orderNumberFormatter";
 
 interface OpportunityCardHeaderProps {
   order: any;
@@ -27,7 +28,7 @@ export function OpportunityCardHeader({
   return (
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-2">
-        <h3 className="font-semibold text-slate-800 text-sm">{order.order_number}</h3>
+        <h3 className="font-semibold text-slate-800 text-sm">{formatOrderNumber(order)}</h3>
         <PurchaseOrderDisplay 
           purchaseOrder={order.purchase_order}
           variant="secondary"

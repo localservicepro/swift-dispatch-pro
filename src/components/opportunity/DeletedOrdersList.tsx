@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { formatOrderNumber } from "@/utils/orderNumberFormatter";
 import { 
   Search, 
   RotateCcw, 
@@ -241,7 +242,7 @@ export function DeletedOrdersList() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Link2 className="w-4 h-4" />
-                        <span>Master: {masterOrder.order_number}</span>
+                        <span>Master: {formatOrderNumber(masterOrder)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4" />
@@ -255,7 +256,7 @@ export function DeletedOrdersList() {
                         <div key={order.id} className="bg-white rounded p-3 border text-sm">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium">{order.order_number}</span>
+                              <span className="font-medium">{formatOrderNumber(order)}</span>
                               {!(order as any).master_order_id && (
                                 <Badge variant="secondary" className="text-xs">Master</Badge>
                               )}
@@ -343,9 +344,9 @@ export function DeletedOrdersList() {
               <Card key={order.id} className="border border-red-200 hover:border-red-300 transition-colors">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1">
+                  <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-slate-800">{order.order_number}</h3>
+                        <h3 className="font-semibold text-slate-800">{formatOrderNumber(order)}</h3>
                         <Badge className={getDeletedBadgeColor(order.deleted_at)}>
                           <Clock className="w-3 h-3 mr-1" />
                           Deleted {formatDeletedDate(order.deleted_at)}

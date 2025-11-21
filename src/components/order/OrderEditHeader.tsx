@@ -2,6 +2,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { PurchaseOrderDisplay } from './PurchaseOrderDisplay';
+import { formatOrderNumber } from '@/utils/orderNumberFormatter';
 
 interface OrderEditHeaderProps {
   orderNumber: string;
@@ -18,7 +19,7 @@ export function OrderEditHeader({ orderNumber, purchaseOrder, customerName, cust
       <div className="flex items-center gap-3">
         <h2 className="text-2xl font-bold text-slate-800">Edit Order</h2>
         <Badge variant="outline" className="text-sm">
-          {orderNumber}
+          {formatOrderNumber({ order_number: orderNumber, master_order_id: undefined, is_split_order: false })}
         </Badge>
         <PurchaseOrderDisplay 
           purchaseOrder={purchaseOrder} 
