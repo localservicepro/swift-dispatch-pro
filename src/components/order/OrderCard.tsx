@@ -16,6 +16,7 @@ import { useOrderReturns } from "@/hooks/useOrderReturns";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
+import { formatOrderNumber } from "@/utils/orderNumberFormatter";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -219,7 +220,7 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-            {order.order_number}
+            {formatOrderNumber(order)}
             {order.stop_credit && (
               <StopCreditIndicator />
             )}
