@@ -56,14 +56,13 @@ serve(async (req) => {
 
     console.log('User created successfully:', authData.user?.id);
 
-    // Update the profile with additional info
-    if (authData.user) {
+    // The trigger will auto-create profile and user_roles entries
+    // But we can update profile with additional info like phone
+    if (authData.user && phone) {
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
         .update({
-          full_name,
-          phone: phone || null,
-          role
+          phone: phone
         })
         .eq('id', authData.user.id);
 
@@ -72,6 +71,8 @@ serve(async (req) => {
         // Don't throw here as the user was created successfully
       }
     }
+
+    console.log('User role assigned via trigger:', role);
 
     return new Response(
       JSON.stringify({ 
