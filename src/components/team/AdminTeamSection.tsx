@@ -4,10 +4,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Mail, Phone, RefreshCw, Shield } from "lucide-react";
+import { User, Mail, Phone, RefreshCw, Shield, Key } from "lucide-react";
 import { EditProfileDialog } from "./EditProfileDialog";
 import { ViewActivityDialog } from "./ViewActivityDialog";
 import { RemoveTeamMemberDialog } from "./RemoveTeamMemberDialog";
+import { ResetPasswordDialog } from "./ResetPasswordDialog";
+import { usePasswordReset } from "@/hooks/usePasswordReset";
 
 interface Profile {
   id: string;
@@ -36,8 +38,10 @@ export function AdminTeamSection({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<Profile | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
+  const { resetPassword, isResetting } = usePasswordReset();
 
   const handleEditProfile = (admin: Profile) => {
     setSelectedAdmin(admin);
@@ -52,6 +56,11 @@ export function AdminTeamSection({
   const handleRemoveAdmin = (admin: Profile) => {
     setSelectedAdmin(admin);
     setRemoveDialogOpen(true);
+  };
+
+  const handleResetPassword = (admin: Profile) => {
+    setSelectedAdmin(admin);
+    setResetPasswordOpen(true);
   };
 
   const handleConfirmRemove = async () => {
@@ -145,13 +154,21 @@ export function AdminTeamSection({
                 </div>
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button 
                   size="sm" 
                   variant="outline"
                   onClick={() => handleEditProfile(admin)}
                 >
                   Edit Profile
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => handleResetPassword(admin)}
+                >
+                  <Key className="w-4 h-4 mr-2" />
+                  Reset Password
                 </Button>
                 <Button 
                   size="sm" 
@@ -194,6 +211,20 @@ export function AdminTeamSection({
         member={selectedAdmin}
         isLoading={isRemoving}
       />
+
+      {selectedAdmin && (
+        <ResetPasswordDialog
+          open={resetPasswordOpen}
+          onOpenChange={setResetPasswordOpen}
+          userId={selectedAdmin.id}
+          userEmail={selectedAdmin.email}
+          onSuccess={() => setResetPasswordOpen(false)}
+          onReset={async (userId, password) => {
+            await resetPassword(userId, password);
+          }}
+          isResetting={isResetting}
+        />
+      )}
     </>
   );
 }
