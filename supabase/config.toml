@@ -4,6 +4,9 @@ project_id = "wntcxbxitsanbyrtfhwv"
 [functions.delete-user]
 verify_jwt = true
 
+[functions.reset-user-password]
+verify_jwt = true
+
 [functions.generate-pdf-receipt]
 verify_jwt = false
 

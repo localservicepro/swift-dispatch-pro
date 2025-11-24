@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Key } from "lucide-react";
+import { ResetPasswordDialog } from "./ResetPasswordDialog";
+import { usePasswordReset } from "@/hooks/usePasswordReset";
 
 interface Profile {
   id: string;
@@ -28,7 +30,9 @@ export function EditProfileDialog({ open, onOpenChange, profile, onProfileUpdate
   const [fullName, setFullName] = useState(profile?.full_name || "");
   const [phone, setPhone] = useState(profile?.phone || "");
   const [isLoading, setIsLoading] = useState(false);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const { toast } = useToast();
+  const { resetPassword, isResetting } = usePasswordReset();
 
   const handleSave = async () => {
     if (!profile) return;
@@ -74,57 +78,88 @@ export function EditProfileDialog({ open, onOpenChange, profile, onProfileUpdate
   }, [profile]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Edit Profile</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              value={profile?.email || ""}
-              disabled
-              className="bg-gray-50"
-            />
-            <p className="text-xs text-gray-500">Email cannot be changed</p>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                value={profile?.email || ""}
+                disabled
+                className="bg-gray-50"
+              />
+              <p className="text-xs text-gray-500">Email cannot be changed</p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Enter full name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Enter phone number"
+              />
+            </div>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="fullName">Full Name</Label>
-            <Input
-              id="fullName"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Enter full name"
-            />
+          
+          <div className="border-t pt-4 pb-4">
+            <Button
+              variant="outline"
+              onClick={() => setResetPasswordOpen(true)}
+              className="w-full"
+            >
+              <Key className="w-4 h-4 mr-2" />
+              Reset Password
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Set a new password for this user if they forgot theirs
+            </p>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="phone">Phone Number</Label>
-            <Input
-              id="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Enter phone number"
-            />
+          
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
           </div>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Changes"
-            )}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+      
+      {profile && (
+        <ResetPasswordDialog
+          open={resetPasswordOpen}
+          onOpenChange={setResetPasswordOpen}
+          userId={profile.id}
+          userEmail={profile.email}
+          onSuccess={() => setResetPasswordOpen(false)}
+          onReset={async (userId, password) => {
+            await resetPassword(userId, password);
+          }}
+          isResetting={isResetting}
+        />
+      )}
+    </>
   );
 }

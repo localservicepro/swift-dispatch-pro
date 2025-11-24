@@ -14,8 +14,11 @@ import {
   Plus, 
   X,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Key
 } from "lucide-react";
+import { ResetPasswordDialog } from "./ResetPasswordDialog";
+import { usePasswordReset } from "@/hooks/usePasswordReset";
 import {
   Select,
   SelectContent,
@@ -62,7 +65,9 @@ export function UserRoleManagement() {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [roleToAdd, setRoleToAdd] = useState<UserRole | null>(null);
   const [roleToRemove, setRoleToRemove] = useState<{ userId: string; role: UserRole } | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<{ userId: string; email: string } | null>(null);
   const { toast } = useToast();
+  const { resetPassword, isResetting } = usePasswordReset();
 
   useEffect(() => {
     loadUsersWithRoles();
@@ -336,15 +341,24 @@ export function UserRoleManagement() {
                     </div>
                   </div>
                   
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedUser(user.user_id)}
-                    className="ml-4"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Role
-                  </Button>
+                  <div className="ml-4 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setResetPasswordUser({ userId: user.user_id, email: user.email })}
+                    >
+                      <Key className="w-4 h-4 mr-1" />
+                      Reset Password
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedUser(user.user_id)}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Role
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -420,6 +434,21 @@ export function UserRoleManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reset Password Dialog */}
+      {resetPasswordUser && (
+        <ResetPasswordDialog
+          open={!!resetPasswordUser}
+          onOpenChange={() => setResetPasswordUser(null)}
+          userId={resetPasswordUser.userId}
+          userEmail={resetPasswordUser.email}
+          onSuccess={() => setResetPasswordUser(null)}
+          onReset={async (userId, password) => {
+            await resetPassword(userId, password);
+          }}
+          isResetting={isResetting}
+        />
+      )}
     </div>
   );
 }

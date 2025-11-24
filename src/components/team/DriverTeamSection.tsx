@@ -4,10 +4,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Mail, Phone, RefreshCw, Truck } from "lucide-react";
+import { User, Mail, Phone, RefreshCw, Truck, Key } from "lucide-react";
 import { EditProfileDialog } from "./EditProfileDialog";
 import { ViewDeliveriesDialog } from "./ViewDeliveriesDialog";
 import { RemoveTeamMemberDialog } from "./RemoveTeamMemberDialog";
+import { ResetPasswordDialog } from "./ResetPasswordDialog";
+import { usePasswordReset } from "@/hooks/usePasswordReset";
 
 interface Profile {
   id: string;
@@ -36,8 +38,10 @@ export function DriverTeamSection({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deliveriesDialogOpen, setDeliveriesDialogOpen] = useState(false);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Profile | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
+  const { resetPassword, isResetting } = usePasswordReset();
 
   const handleEditProfile = (driver: Profile) => {
     setSelectedDriver(driver);
@@ -52,6 +56,11 @@ export function DriverTeamSection({
   const handleRemoveDriver = (driver: Profile) => {
     setSelectedDriver(driver);
     setRemoveDialogOpen(true);
+  };
+
+  const handleResetPassword = (driver: Profile) => {
+    setSelectedDriver(driver);
+    setResetPasswordOpen(true);
   };
 
   const handleConfirmRemove = async () => {
@@ -145,13 +154,21 @@ export function DriverTeamSection({
                 </div>
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button 
                   size="sm" 
                   variant="outline"
                   onClick={() => handleEditProfile(driver)}
                 >
                   Edit Profile
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => handleResetPassword(driver)}
+                >
+                  <Key className="w-4 h-4 mr-2" />
+                  Reset Password
                 </Button>
                 <Button 
                   size="sm" 
@@ -194,6 +211,20 @@ export function DriverTeamSection({
         member={selectedDriver}
         isLoading={isRemoving}
       />
+
+      {selectedDriver && (
+        <ResetPasswordDialog
+          open={resetPasswordOpen}
+          onOpenChange={setResetPasswordOpen}
+          userId={selectedDriver.id}
+          userEmail={selectedDriver.email}
+          onSuccess={() => setResetPasswordOpen(false)}
+          onReset={async (userId, password) => {
+            await resetPassword(userId, password);
+          }}
+          isResetting={isResetting}
+        />
+      )}
     </>
   );
 }
