@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useUserRole } from "@/hooks/useUserRole";
+import { logSecurityEvent } from "@/utils/securityLogger";
 
 type UserRole = 'admin' | 'driver' | 'customer' | 'account_customer';
 
@@ -33,7 +34,14 @@ export function ProtectedRoute({ children, allowedRoles, redirectTo }: Protected
   const hasAllowedRole = allowedRoles.some(allowedRole => roles.includes(allowedRole));
 
   if (!hasAllowedRole) {
-    console.warn(`Unauthorized access attempt. User roles: ${roles.join(', ')}, Required: ${allowedRoles.join(', ')}`);
+    // Log security event for audit trail
+    logSecurityEvent('unauthorized_access', {
+      userId: user.id,
+      email: user.email,
+      userRoles: roles,
+      attemptedPath: window.location.pathname,
+      reason: `User attempted to access route requiring roles: ${allowedRoles.join(', ')}`
+    });
     
     // Redirect based on user roles (priority order)
     if (roles.includes('account_customer')) {
@@ -42,6 +50,11 @@ export function ProtectedRoute({ children, allowedRoles, redirectTo }: Protected
     if (roles.includes('driver')) {
       return <Navigate to="/driver" replace />;
     }
+    if (roles.includes('admin')) {
+      return <Navigate to="/dashboard" replace />;
+    }
+    
+    // If user has no valid role, send to portal login
     return <Navigate to={redirectTo || "/portal-login"} replace />;
   }
 
