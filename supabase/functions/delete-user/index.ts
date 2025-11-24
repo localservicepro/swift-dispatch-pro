@@ -33,15 +33,24 @@ serve(async (req) => {
     
     console.log(`[delete-user] Admin ${user.email} attempting to delete user ${user_id}`);
     
-    // Check if caller is admin using has_role function
-    const { data: isAdmin, error: roleError } = await supabaseClient.rpc('has_role', {
-      _user_id: user.id,
-      _role: 'admin'
+    // Check if caller is super admin
+    const { data: isSuperAdmin, error: roleError } = await supabaseClient.rpc('is_super_admin', {
+      _user_id: user.id
     });
     
-    if (roleError || !isAdmin) {
+    if (roleError || !isSuperAdmin) {
       console.error('[delete-user] Permission denied:', roleError);
-      throw new Error('Only admins can delete users');
+      throw new Error('Only super admins can delete users');
+    }
+    
+    // Check if caller can manage target user (prevents self-deletion)
+    const { data: canManage, error: manageError } = await supabaseClient.rpc('can_manage_user', {
+      _actor_id: user.id,
+      _target_id: user_id
+    });
+    
+    if (manageError || !canManage) {
+      throw new Error('Cannot delete this user. Super admins cannot delete themselves.');
     }
     
     // Prevent self-deletion
@@ -64,21 +73,21 @@ serve(async (req) => {
       throw new Error('Target user not found');
     }
     
-    // If deleting an admin, check if they're the last admin
-    const hasAdminRole = targetRoles.some(r => r.role === 'admin');
-    if (hasAdminRole) {
-      const { count, error: adminCountError } = await supabaseClient
+    // If deleting a super_admin, check if they're the last super admin
+    const hasSuperAdminRole = targetRoles.some(r => r.role === 'super_admin');
+    if (hasSuperAdminRole) {
+      const { count, error: superAdminCountError } = await supabaseClient
         .from('user_roles')
         .select('user_id', { count: 'exact', head: true })
-        .eq('role', 'admin');
+        .eq('role', 'super_admin');
       
-      if (adminCountError) {
-        console.error('[delete-user] Error checking admin count:', adminCountError);
-        throw new Error('Failed to check admin count');
+      if (superAdminCountError) {
+        console.error('[delete-user] Error checking super admin count:', superAdminCountError);
+        throw new Error('Failed to check super admin count');
       }
       
       if (count && count <= 1) {
-        throw new Error('Cannot delete the last admin user');
+        throw new Error('Cannot delete the last super admin user');
       }
     }
     

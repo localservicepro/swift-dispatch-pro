@@ -33,13 +33,22 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
     
-    const { data: isAdmin, error: roleError } = await supabaseClient.rpc('has_role', {
-      _user_id: user.id,
-      _role: 'admin'
+    const { data: isSuperAdmin, error: roleError } = await supabaseClient.rpc('is_super_admin', {
+      _user_id: user.id
     });
     
-    if (roleError || !isAdmin) {
-      throw new Error('Only admins can reset passwords');
+    if (roleError || !isSuperAdmin) {
+      throw new Error('Only super admins can reset passwords');
+    }
+    
+    // Check if caller can manage target user (prevents self-reset)
+    const { data: canManage, error: manageError } = await supabaseClient.rpc('can_manage_user', {
+      _actor_id: user.id,
+      _target_id: user_id
+    });
+    
+    if (manageError || !canManage) {
+      throw new Error('Cannot reset password for this user. Super admins cannot reset their own password via this method.');
     }
     
     if (user_id === user.id) {

@@ -14,6 +14,7 @@ import Knowledgebase from "./pages/Knowledgebase";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
+import MyProfile from "./pages/MyProfile";
 import { useUserRole } from "./hooks/useUserRole";
 import { DashboardOverview } from "@/components/DashboardOverview";
 import { OpportunityPipeline } from "@/components/OpportunityPipeline";
@@ -67,7 +68,7 @@ function AuthenticatedApp() {
       <Route 
         path="/" 
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
             <Index />
           </ProtectedRoute>
         }
@@ -80,7 +81,14 @@ function AuthenticatedApp() {
         <Route path="customers" element={<CustomerManagement />} />
         <Route path="payments" element={<PaymentManagement />} />
         <Route path="fleet" element={<TruckManagement />} />
-        <Route path="team" element={<TeamManagement />} />
+        <Route 
+          path="team" 
+          element={
+            <ProtectedRoute allowedRoles={['super_admin']}>
+              <TeamManagement />
+            </ProtectedRoute>
+          } 
+        />
         <Route path="suburbs" element={<SuburbManagement />} />
         <Route path="emails" element={<EmailManagement />} />
         <Route path="settings" element={<Settings />} />
@@ -98,6 +106,14 @@ function AuthenticatedApp() {
         element={
           <ProtectedRoute allowedRoles={['account_customer']}>
             <CustomerPortal />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/my-profile" 
+        element={
+          <ProtectedRoute allowedRoles={['super_admin', 'admin', 'driver', 'customer', 'account_customer']}>
+            <MyProfile />
           </ProtectedRoute>
         } 
       />

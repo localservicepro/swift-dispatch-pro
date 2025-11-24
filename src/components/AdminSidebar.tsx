@@ -1,9 +1,10 @@
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { BarChart3, Package, ShoppingCart, Users, CreditCard, Mail, Settings, Users2, Target, Truck, MapPin, BookOpen } from "lucide-react";
+import { BarChart3, Package, ShoppingCart, Users, CreditCard, Mail, Settings, Users2, Target, Truck, MapPin, BookOpen, User } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const menuItems = [{
   title: "Dashboard",
@@ -44,7 +45,8 @@ const menuItems = [{
   title: "Team Management",
   icon: Users2,
   id: "drivers",
-  path: "/team"
+  path: "/team",
+  requiresSuperAdmin: true
 }, {
   title: "Suburb Management",
   icon: MapPin,
@@ -61,14 +63,21 @@ const menuItems = [{
   id: "knowledgebase",
   path: "/knowledgebase"
 }, {
+  title: "My Profile",
+  icon: User,
+  id: "my-profile",
+  path: "/my-profile"
+}, {
   title: "Settings",
   icon: Settings,
   id: "settings",
   path: "/settings"
 }];
+
 export function AdminSidebar() {
   const [logoError, setLogoError] = useState(false);
   const location = useLocation();
+  const { isSuperAdmin } = useUserRole();
   const handleLogoError = () => {
     console.error("Logo failed to load:", "/lovable-uploads/299f278a-b44f-48ee-80b0-722271e302f3.png");
     setLogoError(true);
@@ -94,7 +103,9 @@ export function AdminSidebar() {
         <ScrollArea className="h-full">
           <div className="flex flex-col gap-2 p-4">
             <SidebarMenu>
-              {menuItems.map(item => <SidebarMenuItem key={item.id}>
+              {menuItems
+                .filter(item => !item.requiresSuperAdmin || isSuperAdmin)
+                .map(item => <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton asChild>
                     <Link 
                       to={item.path}
