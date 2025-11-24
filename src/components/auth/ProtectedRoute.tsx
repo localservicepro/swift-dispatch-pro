@@ -43,15 +43,18 @@ export function ProtectedRoute({ children, allowedRoles, redirectTo }: Protected
       reason: `User attempted to access route requiring roles: ${allowedRoles.join(', ')}`
     });
     
-    // Redirect based on user roles (priority order)
-    if (roles.includes('account_customer')) {
-      return <Navigate to="/customer-portal" replace />;
+    // Redirect based on user roles (priority order - highest first)
+    if (roles.includes('super_admin')) {
+      return <Navigate to="/dashboard" replace />;
+    }
+    if (roles.includes('admin')) {
+      return <Navigate to="/dashboard" replace />;
     }
     if (roles.includes('driver')) {
       return <Navigate to="/driver" replace />;
     }
-    if (roles.includes('admin')) {
-      return <Navigate to="/dashboard" replace />;
+    if (roles.includes('account_customer')) {
+      return <Navigate to="/customer-portal" replace />;
     }
     
     // If user has no valid role, send to portal login

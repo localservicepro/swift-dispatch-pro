@@ -18,7 +18,7 @@ const Index = () => {
 
   // Defense-in-depth: Double-check role access to prevent unauthorized access
   useEffect(() => {
-    if (role && role !== 'admin') {
+    if (role && role !== 'admin' && role !== 'super_admin') {
       console.warn('Unauthorized access attempt to admin dashboard by role:', role);
       if (role === 'account_customer') {
         navigate('/customer-portal', { replace: true });
