@@ -3,7 +3,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useUserRole } from "@/hooks/useUserRole";
 import { logSecurityEvent } from "@/utils/securityLogger";
 
-type UserRole = 'admin' | 'driver' | 'customer' | 'account_customer';
+type UserRole = 'super_admin' | 'admin' | 'driver' | 'customer' | 'account_customer';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

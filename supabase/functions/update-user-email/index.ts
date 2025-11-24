@@ -48,16 +48,28 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    // Check if user is admin using has_role function
-    const { data: isAdmin, error: roleError } = await supabaseClient.rpc('has_role', {
-      _user_id: user.id,
-      _role: 'admin' as any,
+    // Check if user is super admin
+    const { data: isSuperAdmin, error: roleError } = await supabaseClient.rpc('is_super_admin', {
+      _user_id: user.id
     });
 
-    if (roleError || !isAdmin) {
+    if (roleError || !isSuperAdmin) {
       console.error('Role check error:', roleError);
       return new Response(
-        JSON.stringify({ error: 'Only admins can update user emails' }),
+        JSON.stringify({ error: 'Only super admins can update user emails' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Check if caller can manage target user (prevents self-update)
+    const { data: canManage, error: manageError } = await supabaseClient.rpc('can_manage_user', {
+      _actor_id: user.id,
+      _target_id: userId
+    });
+    
+    if (manageError || !canManage) {
+      return new Response(
+        JSON.stringify({ error: 'Cannot update email for this user. Super admins cannot update their own email via this method.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

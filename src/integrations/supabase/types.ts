@@ -2497,6 +2497,10 @@ export type Database = {
         }
         Returns: number
       }
+      can_manage_user: {
+        Args: { _actor_id: string; _target_id: string }
+        Returns: boolean
+      }
       check_stock_availability: {
         Args: { order_items: Json }
         Returns: {
@@ -2602,6 +2606,7 @@ export type Database = {
         Returns: boolean
       }
       is_current_user_admin: { Args: never; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       log_admin_activity: {
         Args: {
           p_action_type: string

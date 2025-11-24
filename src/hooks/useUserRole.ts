@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
 
-type UserRole = 'admin' | 'driver' | 'customer' | 'account_customer';
+type UserRole = 'super_admin' | 'admin' | 'driver' | 'customer' | 'account_customer';
 
 export function useUserRole() {
   const [role, setRole] = useState<UserRole | null>(null);
@@ -42,9 +42,11 @@ export function useUserRole() {
           const userRoles = data.map(r => r.role as UserRole);
           setRoles(userRoles);
           
-          // Determine effective role based on priority: admin > driver > account_customer > customer
+          // Determine effective role based on priority: super_admin > admin > driver > account_customer > customer
           let effectiveRole: UserRole | null = null;
-          if (userRoles.includes('admin')) {
+          if (userRoles.includes('super_admin')) {
+            effectiveRole = 'super_admin';
+          } else if (userRoles.includes('admin')) {
             effectiveRole = 'admin';
           } else if (userRoles.includes('driver')) {
             effectiveRole = 'driver';
@@ -76,6 +78,7 @@ export function useUserRole() {
     role, 
     roles,
     loading, 
+    isSuperAdmin: roles.includes('super_admin'),
     isAdmin: roles.includes('admin'), 
     isDriver: roles.includes('driver'), 
     isAccountCustomer: roles.includes('account_customer') 

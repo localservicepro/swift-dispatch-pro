@@ -10,6 +10,12 @@ verify_jwt = true
 [functions.update-user-email]
 verify_jwt = true
 
+[functions.update-own-profile]
+verify_jwt = true
+
+[functions.update-own-email]
+verify_jwt = true
+
 [functions.generate-pdf-receipt]
 verify_jwt = false
 
