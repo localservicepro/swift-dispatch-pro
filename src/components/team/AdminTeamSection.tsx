@@ -10,6 +10,7 @@ import { ViewActivityDialog } from "./ViewActivityDialog";
 import { RemoveTeamMemberDialog } from "./RemoveTeamMemberDialog";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { usePasswordReset } from "@/hooks/usePasswordReset";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface Profile {
   id: string;
@@ -22,7 +23,7 @@ interface Profile {
 
 interface AdminTeamSectionProps {
   admins: Profile[];
-  onUpdateRole: (userId: string, newRole: 'admin' | 'driver') => void;
+  onUpdateRole: (userId: string, newRole: 'super_admin' | 'admin' | 'driver') => void;
   onDeleteUser: (userId: string) => void;
   onRefresh: () => void;
   refreshing: boolean;
@@ -42,6 +43,7 @@ export function AdminTeamSection({
   const [selectedAdmin, setSelectedAdmin] = useState<Profile | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const { resetPassword, isResetting } = usePasswordReset();
+  const { isSuperAdmin } = useUserRole();
 
   const handleEditProfile = (admin: Profile) => {
     setSelectedAdmin(admin);
@@ -111,20 +113,23 @@ export function AdminTeamSection({
                   </div>
                   <div>
                     <h3 className="font-semibold text-slate-800">{admin.full_name || 'No name'}</h3>
-                    <Badge className="bg-purple-100 text-purple-800 text-xs">
-                      Administrator
+                    <Badge className={admin.role === 'super_admin' 
+                      ? "bg-yellow-100 text-yellow-800 text-xs border-yellow-200" 
+                      : "bg-purple-100 text-purple-800 text-xs border-purple-200"}>
+                      {admin.role === 'super_admin' ? 'Super Admin' : 'Administrator'}
                     </Badge>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Select 
                     value={admin.role} 
-                    onValueChange={(value: 'admin' | 'driver') => onUpdateRole(admin.id, value)}
+                    onValueChange={(value: 'super_admin' | 'admin' | 'driver') => onUpdateRole(admin.id, value)}
                   >
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-40">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="driver">Driver</SelectItem>
                     </SelectContent>

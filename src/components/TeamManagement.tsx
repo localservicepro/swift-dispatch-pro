@@ -85,7 +85,7 @@ export function TeamManagement() {
       }
       setProfiles(data);
       const drivers = data.filter(p => p.role === 'driver');
-      const admins = data.filter(p => p.role === 'admin');
+      const admins = data.filter(p => p.role === 'admin' || p.role === 'super_admin');
       console.log('[TeamManagement] Profile breakdown:', {
         total: data.length,
         drivers: drivers.length,
@@ -111,15 +111,32 @@ export function TeamManagement() {
     await loadProfiles();
     await runHealthCheck();
   };
-  const updateUserRole = async (userId: string, newRole: 'admin' | 'driver' | 'customer') => {
+  const updateUserRole = async (userId: string, newRole: 'super_admin' | 'admin' | 'driver' | 'customer') => {
     try {
       console.log(`[TeamManagement] Updating user ${userId} role to ${newRole}`);
-      const {
-        error
-      } = await supabase.from('profiles').update({
-        role: newRole
-      }).eq('id', userId);
-      if (error) throw error;
+      
+      // Update profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId);
+      
+      if (profileError) throw profileError;
+      
+      // Update user_roles table - delete old roles and insert new one
+      const { error: deleteError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+        
+      if (deleteError) throw deleteError;
+      
+      const { error: insertError } = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role: newRole });
+        
+      if (insertError) throw insertError;
+      
       loadProfiles();
       toast({
         title: "Success",
@@ -166,7 +183,7 @@ export function TeamManagement() {
     }
   };
   const driverProfiles = profiles.filter(p => p.role === 'driver');
-  const adminProfiles = profiles.filter(p => p.role === 'admin');
+  const adminProfiles = profiles.filter(p => p.role === 'admin' || p.role === 'super_admin');
   if (loading) {
     return <div className="flex items-center justify-center p-12">
         <Loader2 className="w-8 h-8 animate-spin" />
