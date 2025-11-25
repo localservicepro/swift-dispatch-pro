@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface AddTeamMemberDialogProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export function AddTeamMemberDialog({
     role: defaultRole
   });
   const { toast } = useToast();
+  const { isSuperAdmin } = useUserRole();
 
   const handleAddMember = async () => {
     if (!newMember.email || !newMember.password || !newMember.full_name) {
@@ -166,9 +168,14 @@ export function AddTeamMemberDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="driver">Driver</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                {isSuperAdmin && <SelectItem value="admin">Admin</SelectItem>}
               </SelectContent>
             </Select>
+            {!isSuperAdmin && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Only super admins can create admin accounts
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4">
