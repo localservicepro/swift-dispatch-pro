@@ -22,7 +22,7 @@ interface Profile {
 
 interface AdminTeamSectionProps {
   admins: Profile[];
-  onUpdateRole: (userId: string, newRole: 'admin' | 'driver' | 'customer') => void;
+  onUpdateRole: (userId: string, newRole: 'admin' | 'driver') => void;
   onDeleteUser: (userId: string) => void;
   onRefresh: () => void;
   refreshing: boolean;
@@ -119,7 +119,7 @@ export function AdminTeamSection({
                 <div className="flex items-center gap-2">
                   <Select 
                     value={admin.role} 
-                    onValueChange={(value: 'admin' | 'driver' | 'customer') => onUpdateRole(admin.id, value)}
+                    onValueChange={(value: 'admin' | 'driver') => onUpdateRole(admin.id, value)}
                   >
                     <SelectTrigger className="w-32">
                       <SelectValue />
@@ -127,7 +127,6 @@ export function AdminTeamSection({
                     <SelectContent>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="driver">Driver</SelectItem>
-                      <SelectItem value="customer">Customer</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

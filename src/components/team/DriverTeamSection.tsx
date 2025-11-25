@@ -22,7 +22,7 @@ interface Profile {
 
 interface DriverTeamSectionProps {
   drivers: Profile[];
-  onUpdateRole: (userId: string, newRole: 'admin' | 'driver' | 'customer') => void;
+  onUpdateRole: (userId: string, newRole: 'admin' | 'driver') => void;
   onDeleteUser: (userId: string) => void;
   onRefresh: () => void;
   refreshing: boolean;
@@ -119,7 +119,7 @@ export function DriverTeamSection({
                 <div className="flex items-center gap-2">
                   <Select 
                     value={driver.role} 
-                    onValueChange={(value: 'admin' | 'driver' | 'customer') => onUpdateRole(driver.id, value)}
+                    onValueChange={(value: 'admin' | 'driver') => onUpdateRole(driver.id, value)}
                   >
                     <SelectTrigger className="w-32">
                       <SelectValue />
@@ -127,7 +127,6 @@ export function DriverTeamSection({
                     <SelectContent>
                       <SelectItem value="driver">Driver</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="customer">Customer</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
