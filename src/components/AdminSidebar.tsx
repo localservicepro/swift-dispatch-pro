@@ -77,7 +77,7 @@ const menuItems = [{
 export function AdminSidebar() {
   const [logoError, setLogoError] = useState(false);
   const location = useLocation();
-  const { isSuperAdmin } = useUserRole();
+  const { isSuperAdmin, isAdmin } = useUserRole();
   const handleLogoError = () => {
     console.error("Logo failed to load:", "/lovable-uploads/299f278a-b44f-48ee-80b0-722271e302f3.png");
     setLogoError(true);
@@ -104,7 +104,7 @@ export function AdminSidebar() {
           <div className="flex flex-col gap-2 p-4">
             <SidebarMenu>
               {menuItems
-                .filter(item => !item.requiresSuperAdmin || isSuperAdmin)
+                .filter(item => !item.requiresSuperAdmin || isSuperAdmin || isAdmin)
                 .map(item => <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton asChild>
                     <Link 

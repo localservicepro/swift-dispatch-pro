@@ -22,7 +22,24 @@ serve(async (req) => {
   }
 
   try {
-    // Create Supabase client with service role key for admin operations
+    // Create Supabase client for auth check
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization')! },
+        },
+      }
+    );
+
+    // Verify the user is authenticated
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Create Supabase client with service role key for permission check and admin operations
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -34,7 +51,20 @@ serve(async (req) => {
       }
     );
 
+    // Check if user is super_admin or admin
+    const { data: isSuperAdmin } = await supabaseAdmin.rpc('is_super_admin', { _user_id: user.id });
+    const { data: isAdmin } = await supabaseAdmin.rpc('is_admin', { _user_id: user.id });
+
+    if (!isSuperAdmin && !isAdmin) {
+      throw new Error('Only admins can create users');
+    }
+
     const { email, password, full_name, phone, role }: CreateUserRequest = await req.json();
+
+    // Regular admins can only create drivers, super admins can create both
+    if (!isSuperAdmin && role === 'admin') {
+      throw new Error('Only super admins can create admin accounts');
+    }
 
     console.log('Creating user:', { email, full_name, role });
 

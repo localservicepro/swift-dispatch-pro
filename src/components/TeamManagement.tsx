@@ -12,6 +12,8 @@ import { UserRoleManagement } from "./team/UserRoleManagement";
 import { AddTeamMemberDialog } from "./team/AddTeamMemberDialog";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useDatabaseHealth } from "@/hooks/useDatabaseHealth";
+import { useUserRole } from "@/hooks/useUserRole";
+
 interface Profile {
   id: string;
   full_name: string | null;
@@ -34,6 +36,7 @@ export function TeamManagement() {
     healthCheck,
     runHealthCheck
   } = useDatabaseHealth();
+  const { isSuperAdmin } = useUserRole();
   useEffect(() => {
     loadProfiles();
   }, []);
@@ -274,26 +277,32 @@ export function TeamManagement() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="roles" className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  User Roles
-                </TabsTrigger>
+              <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-3' : 'grid-cols-1'}`}>
+                {isSuperAdmin && (
+                  <TabsTrigger value="roles" className="flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    User Roles
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="drivers" className="flex items-center gap-2">
                   <User className="w-4 h-4" />
                   Drivers ({driverProfiles.length})
                 </TabsTrigger>
-                <TabsTrigger value="admins" className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Admins ({adminProfiles.length})
-                </TabsTrigger>
+                {isSuperAdmin && (
+                  <TabsTrigger value="admins" className="flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Admins ({adminProfiles.length})
+                  </TabsTrigger>
+                )}
               </TabsList>
               
-              <TabsContent value="roles" className="mt-6">
-                <ErrorBoundary fallbackTitle="User Roles Section Error">
-                  <UserRoleManagement />
-                </ErrorBoundary>
-              </TabsContent>
+              {isSuperAdmin && (
+                <TabsContent value="roles" className="mt-6">
+                  <ErrorBoundary fallbackTitle="User Roles Section Error">
+                    <UserRoleManagement />
+                  </ErrorBoundary>
+                </TabsContent>
+              )}
 
               <TabsContent value="drivers" className="mt-6">
                 <ErrorBoundary fallbackTitle="Driver Section Error">
@@ -301,11 +310,13 @@ export function TeamManagement() {
                 </ErrorBoundary>
               </TabsContent>
               
-              <TabsContent value="admins" className="mt-6">
-                <ErrorBoundary fallbackTitle="Admin Section Error">
-                  <AdminTeamSection admins={adminProfiles} onUpdateRole={updateUserRole} onDeleteUser={deleteUser} onRefresh={handleRefresh} refreshing={refreshing} />
-                </ErrorBoundary>
-              </TabsContent>
+              {isSuperAdmin && (
+                <TabsContent value="admins" className="mt-6">
+                  <ErrorBoundary fallbackTitle="Admin Section Error">
+                    <AdminTeamSection admins={adminProfiles} onUpdateRole={updateUserRole} onDeleteUser={deleteUser} onRefresh={handleRefresh} refreshing={refreshing} />
+                  </ErrorBoundary>
+                </TabsContent>
+              )}
             </Tabs>
           </CardContent>
         </Card>
