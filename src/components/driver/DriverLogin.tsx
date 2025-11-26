@@ -33,14 +33,22 @@ export function DriverLogin({ onLogin }: DriverLoginProps) {
       if (error) throw error;
 
       if (data.user) {
-        // Check if user is a driver
+        // Get user profile
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)
           .single();
 
-        if (profile && profile.role === 'driver') {
+        // Check if user has driver role in user_roles table
+        const { data: userRoles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id);
+
+        const hasDriverRole = userRoles?.some(r => r.role === 'driver');
+
+        if (hasDriverRole && profile) {
           onLogin(data.user, profile);
           toast({
             title: "Welcome back!",
