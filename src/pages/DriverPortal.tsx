@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/useUserRole";
 import { DriverLogin } from "@/components/driver/DriverLogin";
 import { DriverDashboard } from "@/components/driver/DriverDashboard";
-import { supportEmailService } from "@/utils/supportEmailService";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { isSafari, isStorageAccessible, isModernIOS, getIOSVersion } from "@/utils/browserCompatibility";
+import { useNavigate } from "react-router-dom";
 
 export default function DriverPortal() {
   const [user, setUser] = useState<any>(null);
@@ -14,42 +15,51 @@ export default function DriverPortal() {
   const [profile, setProfile] = useState<any>(null);
   const [showSafariWarning, setShowSafariWarning] = useState(false);
   const { toast } = useToast();
+  const { roles, loading: rolesLoading } = useUserRole();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check for Safari-specific issues, especially iOS 17+
     if (isSafari() && (!isStorageAccessible() || isModernIOS())) {
       setShowSafariWarning(true);
     }
-    checkUser();
-  }, []);
+    if (!rolesLoading) {
+      checkUser();
+    }
+  }, [rolesLoading, roles]);
 
   const checkUser = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        // Check if user is a driver
+        // Get user profile
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();
         
-        if (profile && profile.role === 'driver') {
+        // Wait for roles to load
+        if (rolesLoading) return;
+        
+        // Check if user has driver role from user_roles table
+        if (roles.includes('driver')) {
           setUser(user);
           setProfile(profile);
         } else {
-          try {
-            await supportEmailService.openSupportEmail({
-              subject: 'Driver Portal Access Request',
-              body: 'Hello, I am trying to access the driver portal but do not have proper access:\n\n'
-            });
-          } catch (error: any) {
-            toast({
-              title: "Access Denied",
-              description: "You don't have driver access to this portal. Please contact support.",
-              variant: "destructive",
-            });
+          // User doesn't have driver role - redirect appropriately
+          toast({
+            title: "Access Denied",
+            description: "You don't have driver access to this portal.",
+            variant: "destructive",
+          });
+          
+          // Redirect based on their actual role
+          if (roles.includes('super_admin') || roles.includes('admin')) {
+            navigate('/');
+          } else {
+            navigate('/portal');
           }
         }
       }
