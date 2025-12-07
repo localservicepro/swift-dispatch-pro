@@ -960,7 +960,9 @@ export type Database = {
           delivery_date: string | null
           delivery_notes: string | null
           delivery_time: string | null
+          driver_email: string | null
           driver_name: string | null
+          driver_phone: string | null
           id: string
           order_id: string
           order_notes: string | null
@@ -986,7 +988,9 @@ export type Database = {
           delivery_date?: string | null
           delivery_notes?: string | null
           delivery_time?: string | null
+          driver_email?: string | null
           driver_name?: string | null
+          driver_phone?: string | null
           id?: string
           order_id: string
           order_notes?: string | null
@@ -1012,7 +1016,9 @@ export type Database = {
           delivery_date?: string | null
           delivery_notes?: string | null
           delivery_time?: string | null
+          driver_email?: string | null
           driver_name?: string | null
+          driver_phone?: string | null
           id?: string
           order_id?: string
           order_notes?: string | null
