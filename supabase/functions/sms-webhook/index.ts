@@ -12,6 +12,8 @@ interface SMSWebhookData {
   order_number: string;
   products_formatted: string;
   driver_name: string | null;
+  driver_email: string | null;
+  driver_phone: string | null;
   delivery_address: string;
   customer_name: string;
   company_name: string | null;
@@ -114,6 +116,8 @@ const handler = async (req: Request): Promise<Response> => {
           order_number: record.order_number,
           products: record.products_formatted,
           driver: record.driver_name || 'Not assigned',
+          driver_email: record.driver_email,
+          driver_phone: record.driver_phone,
           delivery_address: record.delivery_address,
           customer: record.customer_name,
           company: record.company_name,
