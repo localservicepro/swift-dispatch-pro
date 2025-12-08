@@ -69,7 +69,7 @@ serve(async (req) => {
     console.log('Creating user:', { email, full_name, role });
 
     // Create user with admin privileges
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: authData, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       user_metadata: {
@@ -79,9 +79,9 @@ serve(async (req) => {
       email_confirm: true
     });
 
-    if (authError) {
-      console.error('Auth error:', authError);
-      throw authError;
+    if (createUserError) {
+      console.error('Auth error:', createUserError);
+      throw createUserError;
     }
 
     console.log('User created successfully:', authData.user?.id);
