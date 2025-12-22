@@ -1,10 +1,10 @@
-
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { OrderManagementProvider, useOrderManagement } from "./order/OrderManagementProvider";
 import { OrderManagementDialogs } from "./order/OrderManagementDialogs";
 import { OrderManagementHeader } from "./order/OrderManagementHeader";
 import { OrderSearchFilters, OrderSearchControls } from "./order/OrderSearchFilters";
 import { OrderList } from "./order/OrderList";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 function OrderManagementContent() {
   const {
@@ -100,8 +100,10 @@ function OrderManagementContent() {
 
 export function OrderManagement() {
   return (
-    <OrderManagementProvider>
-      <OrderManagementContent />
-    </OrderManagementProvider>
+    <ErrorBoundary fallbackTitle="Order Management Error" showRefresh>
+      <OrderManagementProvider>
+        <OrderManagementContent />
+      </OrderManagementProvider>
+    </ErrorBoundary>
   );
 }

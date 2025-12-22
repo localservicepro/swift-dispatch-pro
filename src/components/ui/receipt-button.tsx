@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Printer, Loader2 } from "lucide-react";
 import { ReceiptService } from "@/services/receiptService";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface ReceiptButtonProps {
@@ -26,6 +27,7 @@ export function ReceiptButton({
   icon = true
 }: ReceiptButtonProps) {
   const [isPrinting, setIsPrinting] = useState(false);
+  const { toast } = useToast();
 
   const handlePrint = async (e?: React.MouseEvent) => {
     if (e) {
@@ -44,8 +46,18 @@ export function ReceiptButton({
 
       await ReceiptService.printReceipt(receiptUrl);
       console.log(`Receipt printed for order ${orderNumber}`);
+      
+      toast({
+        title: "Receipt Ready",
+        description: "Print dialog opened in new window.",
+      });
     } catch (error: any) {
       console.error('Receipt print error:', error);
+      toast({
+        title: "Print Error",
+        description: error.message || "Failed to print receipt. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsPrinting(false);
     }

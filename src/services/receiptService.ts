@@ -245,29 +245,49 @@ export class ReceiptService {
 
   static async printReceipt(receiptUrl: string): Promise<void> {
     try {
-      // Open receipt in new window and trigger print
+      // Open receipt in new window
       const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        // Fetch the HTML content
-        const response = await fetch(receiptUrl);
-        const htmlContent = await response.text();
-        
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        
-        // Wait for content to load, then print
-        printWindow.onload = () => {
-          setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-          }, 500);
-        };
-      } else {
+      if (!printWindow) {
         throw new Error('Popup blocked - please allow popups to print receipts');
       }
+
+      let htmlContent: string;
+
+      // Handle base64 data URLs directly without fetching (prevents hang issues)
+      if (receiptUrl.startsWith('data:text/html')) {
+        try {
+          const base64Content = receiptUrl.split(',')[1];
+          htmlContent = atob(base64Content);
+        } catch (decodeError) {
+          console.error('Base64 decode error:', decodeError);
+          throw new Error('Failed to decode receipt content');
+        }
+      } else {
+        // For regular URLs, fetch the content
+        const response = await fetch(receiptUrl);
+        if (!response.ok) {
+          throw new Error('Failed to fetch receipt content');
+        }
+        htmlContent = await response.text();
+      }
+
+      // Write content to the popup window
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+
+      // Trigger print after content loads with a timeout
+      // Don't auto-close - let user close manually for better reliability
+      setTimeout(() => {
+        try {
+          printWindow.print();
+        } catch (printError) {
+          console.error('Print dialog error:', printError);
+        }
+      }, 500);
+      
     } catch (error) {
       console.error('Print error:', error);
-      throw new Error('Failed to print receipt');
+      throw error instanceof Error ? error : new Error('Failed to print receipt');
     }
   }
 }
