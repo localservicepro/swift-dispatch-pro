@@ -58,8 +58,15 @@ const handler = async (req: Request): Promise<Response> => {
 
     logStep('Processing thermal receipt request', { invoiceId, orderId, requestId });
 
+    // Fetch business settings
+    const { data: businessSettings } = await supabase
+      .from('business_settings')
+      .select('business_name, business_email, business_phone, business_address, abn')
+      .single()
+
     let invoice = null;
     let order = null;
+    let suburbName = null;
 
     if (receiptData) {
       order = receiptData;
@@ -72,7 +79,9 @@ const handler = async (req: Request): Promise<Response> => {
             id,
             order_number,
             customer_name,
+            customer_phone,
             customer_address,
+            delivery_address,
             products,
             total_amount,
             delivery_date,
@@ -82,6 +91,10 @@ const handler = async (req: Request): Promise<Response> => {
             subtotal,
             delivery_fee,
             adjustments,
+            delivery_notes,
+            contact_name,
+            contact_phone,
+            delivery_suburb_id,
             created_at
           )
         `)
@@ -95,6 +108,15 @@ const handler = async (req: Request): Promise<Response> => {
 
       invoice = invoiceData;
       order = invoiceData.orders;
+
+      if (order.delivery_suburb_id) {
+        const { data: suburb } = await supabase
+          .from('suburbs')
+          .select('name')
+          .eq('id', order.delivery_suburb_id)
+          .single()
+        suburbName = suburb?.name || null;
+      }
     } else if (orderId) {
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
@@ -102,6 +124,7 @@ const handler = async (req: Request): Promise<Response> => {
           id,
           order_number,
           customer_name,
+          customer_phone,
           customer_address,
           delivery_address,
           products,
@@ -113,6 +136,10 @@ const handler = async (req: Request): Promise<Response> => {
           subtotal,
           delivery_fee,
           adjustments,
+          delivery_notes,
+          contact_name,
+          contact_phone,
+          delivery_suburb_id,
           created_at
         `)
         .eq('id', orderId)
@@ -124,6 +151,15 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       order = orderData;
+
+      if (order.delivery_suburb_id) {
+        const { data: suburb } = await supabase
+          .from('suburbs')
+          .select('name')
+          .eq('id', order.delivery_suburb_id)
+          .single()
+        suburbName = suburb?.name || null;
+      }
       
       const { data: existingInvoice } = await supabase
         .from('invoices')
@@ -141,6 +177,8 @@ const handler = async (req: Request): Promise<Response> => {
     const receiptHtml = generateThermalReceiptHTML({
       invoice,
       order,
+      businessSettings,
+      suburbName,
       requestId
     })
 
@@ -238,250 +276,258 @@ const handler = async (req: Request): Promise<Response> => {
 }
 
 function generateThermalReceiptHTML(data: any): string {
-  const { invoice, order, requestId } = data
+  const { invoice, order, businessSettings, suburbName, requestId } = data
   const orderItems = order.products || []
-  const isOrderReceipt = !invoice
-  const isPaidOrder = order.payment_status === 'paid' || invoice?.status === 'paid'
+  
+  // Business details
+  const businessName = businessSettings?.business_name || 'Surrey Hills Garden Supplies'
+  const businessAddress = businessSettings?.business_address || '680 Canterbury Rd, Surrey Hills, 3127'
+  const businessPhone = businessSettings?.business_phone || '03 9890 3901'
+  const businessAbn = businessSettings?.abn || '44 788 796 653'
+  
+  // Calculate totals
+  const totalAmount = invoice?.amount || order.total_amount || 0
+  const deliveryFee = order.delivery_fee || 0
+  const gstAmount = totalAmount / 11
+  
+  // Format dates
+  const invoiceDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-AU') : new Date().toLocaleDateString('en-AU')
+  const deliveryDate = order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('en-AU') : ''
+  const deliveryTime = order.delivery_time || ''
+  
+  const deliveryAddress = order.delivery_address || order.customer_address || ''
+  const deliveryDateTime = [deliveryDate, deliveryTime].filter(Boolean).join(' ')
+  
+  const contactName = order.contact_name || order.customer_name || ''
+  const contactPhone = order.contact_phone || order.customer_phone || ''
+  const deliveryNotes = order.delivery_notes || ''
   
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Thermal Receipt - ${invoice?.invoice_number || order.order_number}</title>
+  <title>Tax Invoice - ${invoice?.invoice_number || order.order_number}</title>
   <style>
-    * { 
-      margin: 0; 
-      padding: 0; 
-      box-sizing: border-box; 
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
       font-family: 'Courier New', monospace; 
-      font-size: 12px;
+      font-size: 11px;
       line-height: 1.2;
       color: #000;
       background: #fff;
-      width: 58mm; /* Standard thermal paper width */
+      width: 80mm;
       margin: 0 auto;
-      padding: 2mm;
+      padding: 3mm;
     }
     .thermal-receipt {
       width: 100%;
-      max-width: 54mm;
     }
-    .center { 
-      text-align: center; 
-    }
-    .bold { 
-      font-weight: bold; 
-    }
-    .large { 
-      font-size: 14px; 
-    }
-    .small { 
-      font-size: 10px; 
-    }
-    .divider {
-      border-top: 1px dashed #000;
-      margin: 2mm 0;
-      width: 100%;
-    }
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
+    
     .header {
+      text-align: center;
       margin-bottom: 3mm;
+      padding-bottom: 2mm;
+      border-bottom: 1px dashed #000;
     }
-    .company-name {
-      font-size: 16px;
+    .business-name {
+      font-size: 14px;
       font-weight: bold;
       margin-bottom: 1mm;
     }
-    .receipt-type {
-      font-size: 14px;
-      font-weight: bold;
+    .business-details {
+      font-size: 9px;
+      line-height: 1.3;
+    }
+    
+    .invoice-info {
       margin: 2mm 0;
-    }
-    .status-line {
-      font-weight: bold;
-      margin: 2mm 0;
-      padding: 1mm;
-      border: 1px solid #000;
-    }
-    .info-line {
-      display: flex;
-      justify-content: space-between;
-      margin: 1mm 0;
-      width: 100%;
-    }
-    .item-line {
-      margin: 1mm 0;
-      font-size: 11px;
-    }
-    .item-name {
-      font-weight: bold;
-    }
-    .item-qty-price {
-      display: flex;
-      justify-content: space-between;
       font-size: 10px;
     }
-    .total-section {
+    .invoice-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 1mm 0;
+    }
+    
+    .divider {
+      border-top: 1px dashed #000;
+      margin: 2mm 0;
+    }
+    
+    .product-row {
+      padding: 1.5mm 0;
+      border-bottom: 1px dotted #999;
+    }
+    .product-name {
+      font-weight: bold;
+      font-size: 10px;
+    }
+    .product-details {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+    }
+    
+    .totals {
+      margin-top: 2mm;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 1mm 0;
+      font-size: 10px;
+    }
+    .total-row.grand {
+      font-weight: bold;
+      font-size: 12px;
+      border-top: 1px solid #000;
+      padding-top: 1mm;
+      margin-top: 2mm;
+    }
+    .total-row.gst {
+      font-size: 9px;
+      font-style: italic;
+    }
+    
+    .notes-section {
       margin-top: 3mm;
-      border-top: 2px solid #000;
       padding-top: 2mm;
+      border-top: 1px dashed #000;
     }
-    .total-line {
-      display: flex;
-      justify-content: space-between;
+    .notes-box {
+      border: 1px solid #000;
+      padding: 2mm;
       margin: 1mm 0;
+      min-height: 12mm;
+      font-size: 9px;
+    }
+    .notes-label {
       font-weight: bold;
+      font-size: 9px;
     }
-    .subtotal-line {
-      display: flex;
-      justify-content: space-between;
-      margin: 0.5mm 0;
-      font-size: 10px;
-    }
+    
     .footer {
       margin-top: 3mm;
-      border-top: 1px dashed #000;
       padding-top: 2mm;
-      font-size: 10px;
-    }
-    
-    /* Print optimizations for thermal printers */
-    @media print {
-      body { 
-        width: 58mm !important;
-        margin: 0 !important;
-        padding: 1mm !important;
-        font-size: 11px !important;
-      }
-      .thermal-receipt {
-        width: 100% !important;
-        max-width: none !important;
-      }
-      @page {
-        size: 58mm auto;
-        margin: 0;
-      }
-    }
-    
-    /* ESC/POS compatible styles */
-    .esc-pos-bold {
-      font-weight: bold;
-      text-decoration: underline;
-    }
-    .esc-pos-center {
+      border-top: 1px dashed #000;
       text-align: center;
     }
-    .esc-pos-double-height {
-      font-size: 150%;
-      line-height: 1;
+    .footer-title {
+      font-weight: bold;
+      font-size: 10px;
+      margin-bottom: 1mm;
+    }
+    .footer-text {
+      font-size: 8px;
+      font-style: italic;
+      line-height: 1.2;
+    }
+    
+    @media print {
+      body { 
+        width: 80mm !important;
+        margin: 0 !important;
+        padding: 2mm !important;
+      }
+      @page {
+        size: 80mm auto;
+        margin: 0;
+      }
     }
   </style>
 </head>
 <body>
   <div class="thermal-receipt">
     <!-- Header -->
-    <div class="header center">
-      <div class="company-name">SwiftDispatch Pro</div>
-      <div class="receipt-type">${isOrderReceipt ? (isPaidOrder ? 'PAYMENT RECEIPT' : 'ORDER RECEIPT') : 'INVOICE RECEIPT'}</div>
+    <div class="header">
+      <div class="business-name">${businessName}</div>
+      <div class="business-details">
+        ${businessAddress}<br>
+        Ph: ${businessPhone} | ABN: ${businessAbn}
+      </div>
+    </div>
+    
+    <!-- Invoice Info -->
+    <div class="invoice-info">
+      <div class="invoice-row">
+        <span class="bold">Tax Invoice No:</span>
+        <span>${invoice?.invoice_number || order.order_number}</span>
+      </div>
+      <div class="invoice-row">
+        <span>Date:</span>
+        <span>${invoiceDate}</span>
+      </div>
+      ${deliveryDateTime ? `
+      <div class="invoice-row">
+        <span>Delivery:</span>
+        <span>${deliveryDateTime}</span>
+      </div>
+      ` : ''}
+      ${deliveryAddress ? `
+      <div style="margin-top: 1mm; font-size: 9px;">
+        <span class="bold">Address:</span> ${deliveryAddress}
+      </div>
+      ` : ''}
     </div>
     
     <div class="divider"></div>
     
-    <!-- Status -->
-    <div class="status-line center">
-      ${isPaidOrder ? '✓ PAYMENT CONFIRMED' : `⏳ ${order.payment_status?.toUpperCase() || 'PENDING'}`}
-    </div>
-    
-    <div class="divider"></div>
-    
-    <!-- Receipt Info -->
-    <div class="info-line">
-      <span>Receipt #:</span>
-      <span class="bold">${invoice?.invoice_number || order.order_number}</span>
-    </div>
-    <div class="info-line">
-      <span>Order #:</span>
-      <span class="bold">${order.order_number}</span>
-    </div>
-    <div class="info-line">
-      <span>Date:</span>
-      <span>${new Date(order.created_at).toLocaleDateString()}</span>
-    </div>
-    <div class="info-line">
-      <span>Time:</span>
-      <span>${new Date(order.created_at).toLocaleTimeString()}</span>
-    </div>
-    
-    <div class="divider"></div>
-    
-    <!-- Customer Info -->
-    <div class="center bold">CUSTOMER</div>
-    <div class="center">${order.customer_name}</div>
-    ${order.customer_address ? `<div class="center small">${order.customer_address}</div>` : ''}
-    
-    <div class="divider"></div>
-    
-    <!-- Items -->
-    ${orderItems.length > 0 ? `
-      <div class="center bold">ITEMS</div>
-      ${orderItems.map((item: any) => `
-        <div class="item-line">
-          <div class="item-name">${item.name || 'Product'}</div>
-          <div class="item-qty-price">
-            <span>Qty: ${item.quantity || 1}</span>
-            <span>$${(item.price || 0).toFixed(2)}</span>
-          </div>
-        </div>
-      `).join('')}
+    <!-- Products -->
+    ${orderItems.map((item: any) => {
+      const itemName = item.name || item.product_name || 'Product'
+      const itemPrice = Number(item.price || item.unit_price || 0)
+      const itemQty = item.quantity || 1
+      const lineTotal = itemPrice * itemQty
       
-      <div class="divider"></div>
-    ` : ''}
+      return `
+    <div class="product-row">
+      <div class="product-name">${itemName}</div>
+      <div class="product-details">
+        <span>Qty: ${itemQty}</span>
+        <span>$${lineTotal.toFixed(2)}</span>
+      </div>
+    </div>`
+    }).join('')}
     
     <!-- Totals -->
-    <div class="total-section">
-      ${order.subtotal ? `
-        <div class="subtotal-line">
-          <span>Subtotal:</span>
-          <span>$${order.subtotal.toFixed(2)}</span>
-        </div>
-      ` : ''}
-      ${order.delivery_fee ? `
-        <div class="subtotal-line">
-          <span>Delivery:</span>
-          <span>$${order.delivery_fee.toFixed(2)}</span>
-        </div>
-      ` : ''}
-      ${order.adjustments && order.adjustments !== 0 ? `
-        <div class="subtotal-line">
-          <span>Adjustments:</span>
-          <span>${order.adjustments > 0 ? '+' : ''}$${order.adjustments.toFixed(2)}</span>
-        </div>
-      ` : ''}
-      
-      <div class="divider"></div>
-      
-      <div class="total-line large">
-        <span>TOTAL:</span>
-        <span>$${(invoice?.amount || order.total_amount || 0).toFixed(2)}</span>
+    <div class="totals">
+      ${deliveryFee > 0 ? `
+      <div class="total-row">
+        <span>Delivery${suburbName ? ` (${suburbName})` : ''}</span>
+        <span>$${deliveryFee.toFixed(2)}</span>
       </div>
-      
-      ${order.payment_method ? `
-        <div class="info-line">
-          <span>Payment:</span>
-          <span>${order.payment_method}</span>
-        </div>
       ` : ''}
+      <div class="total-row grand">
+        <span>TOTAL</span>
+        <span>$${totalAmount.toFixed(2)}</span>
+      </div>
+      <div class="total-row gst">
+        <span>GST included</span>
+        <span>$${gstAmount.toFixed(2)}</span>
+      </div>
     </div>
     
-    <div class="divider"></div>
+    <!-- Notes -->
+    <div class="notes-section">
+      <div class="notes-box">
+        <div class="notes-label">Delivery notes:</div>
+        ${deliveryNotes}
+      </div>
+      <div class="notes-box">
+        <div class="notes-label">Contact:</div>
+        ${contactName}${contactPhone ? ` / ${contactPhone}` : ''}
+      </div>
+    </div>
     
     <!-- Footer -->
-    <div class="footer center">
-      <div class="bold">Thank you!</div>
-      <div class="small">Generated: ${new Date().toLocaleString()}</div>
-      <div class="small">ID: ${requestId}</div>
+    <div class="footer">
+      <div class="footer-title">Delivery Times are indicative</div>
+      <div class="footer-text">
+        Delivery times are not guaranteed. We take no responsibility for damage, loss or injury caused to the person or property of the customer.
+      </div>
     </div>
   </div>
 </body>
