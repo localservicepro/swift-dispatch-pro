@@ -265,11 +265,20 @@ function generateSimpleReceiptHTML(data: any): string {
   // Format dates
   const invoiceDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-AU') : (order.orderDate || new Date().toLocaleDateString('en-AU'))
   const deliveryDate = order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('en-AU') : ''
-  const deliveryTime = order.delivery_time || ''
+  
+  // Format delivery time (convert 24h to 12h format)
+  const formatTime = (time: string): string => {
+    if (!time) return ''
+    const [hours, minutes] = time.split(':')
+    const hour = parseInt(hours)
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const hour12 = hour % 12 || 12
+    return `${hour12}:${minutes} ${ampm}`
+  }
+  const deliveryTime = order.delivery_time ? formatTime(order.delivery_time) : ''
   
   const deliveryAddress = order.delivery_address || order.deliveryAddress || order.customer_address || ''
-  const deliveryDateTime = [deliveryDate, deliveryTime].filter(Boolean).join(' ')
-  const deliveryAddressLine = [deliveryAddress, deliveryDateTime].filter(Boolean).join(', ')
+  const deliveryDateTimeLine = [deliveryDate, deliveryTime].filter(Boolean).join(' at ')
   
   const contactName = order.contact_name || order.customer_name || order.customerName || ''
   const contactPhone = order.contact_phone || order.customer_phone || ''
@@ -442,9 +451,15 @@ function generateSimpleReceiptHTML(data: any): string {
         <span class="invoice-value">${invoiceDate}</span>
       </div>
       <div class="invoice-row">
-        <span class="invoice-label">Delivery Address, Date & Time:</span>
-        <span class="invoice-value">${deliveryAddressLine}</span>
+        <span class="invoice-label">Delivery Address:</span>
+        <span class="invoice-value">${deliveryAddress}</span>
       </div>
+      ${deliveryDateTimeLine ? `
+      <div class="invoice-row">
+        <span class="invoice-label">Scheduled Date & Time:</span>
+        <span class="invoice-value">${deliveryDateTimeLine}</span>
+      </div>
+      ` : ''}
     </div>
     
     <div class="products-header">
