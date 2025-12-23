@@ -290,11 +290,14 @@ function generateThermalReceiptHTML(data: any): string {
   const deliveryFee = order.delivery_fee || 0
   const gstAmount = totalAmount / 11
   
-  // Format dates
-  const invoiceDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-AU') : new Date().toLocaleDateString('en-AU')
-  const deliveryDate = order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('en-AU') : ''
+  // Format dates - support both snake_case (database) and camelCase (receiptData)
+  const invoiceDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-AU') : (order.orderDate || new Date().toLocaleDateString('en-AU'))
   
-  // Format delivery time (convert 24h to 12h format)
+  // Get delivery date - support both naming conventions
+  const deliveryDateRaw = order.delivery_date || order.deliveryDate || ''
+  const deliveryDate = deliveryDateRaw ? new Date(deliveryDateRaw).toLocaleDateString('en-AU') : ''
+  
+  // Format delivery time (convert 24h to 12h format) - support both naming conventions
   const formatTime = (time: string): string => {
     if (!time) return ''
     const [hours, minutes] = time.split(':')
@@ -303,14 +306,19 @@ function generateThermalReceiptHTML(data: any): string {
     const hour12 = hour % 12 || 12
     return `${hour12}:${minutes} ${ampm}`
   }
-  const deliveryTime = order.delivery_time ? formatTime(order.delivery_time) : ''
+  const deliveryTimeRaw = order.delivery_time || order.deliveryTime || ''
+  const deliveryTime = deliveryTimeRaw ? formatTime(deliveryTimeRaw) : ''
   
-  const deliveryAddress = order.delivery_address || order.customer_address || ''
+  // Format delivery address - support both naming conventions
+  const deliveryAddress = order.delivery_address || order.deliveryAddress || order.customer_address || ''
   const deliveryDateTimeLine = [deliveryDate, deliveryTime].filter(Boolean).join(' at ')
   
-  const contactName = order.contact_name || order.customer_name || ''
-  const contactPhone = order.contact_phone || order.customer_phone || ''
-  const deliveryNotes = order.delivery_notes || ''
+  // Contact info - support both naming conventions
+  const contactName = order.contact_name || order.contactName || order.customer_name || order.customerName || ''
+  const contactPhone = order.contact_phone || order.contactPhone || order.customer_phone || order.customerPhone || ''
+  
+  // Delivery notes - support both naming conventions
+  const deliveryNotes = order.delivery_notes || order.deliveryNotes || ''
   
   return `<!DOCTYPE html>
 <html lang="en">
