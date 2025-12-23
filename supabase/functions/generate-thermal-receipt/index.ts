@@ -293,10 +293,20 @@ function generateThermalReceiptHTML(data: any): string {
   // Format dates
   const invoiceDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-AU') : new Date().toLocaleDateString('en-AU')
   const deliveryDate = order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('en-AU') : ''
-  const deliveryTime = order.delivery_time || ''
+  
+  // Format delivery time (convert 24h to 12h format)
+  const formatTime = (time: string): string => {
+    if (!time) return ''
+    const [hours, minutes] = time.split(':')
+    const hour = parseInt(hours)
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const hour12 = hour % 12 || 12
+    return `${hour12}:${minutes} ${ampm}`
+  }
+  const deliveryTime = order.delivery_time ? formatTime(order.delivery_time) : ''
   
   const deliveryAddress = order.delivery_address || order.customer_address || ''
-  const deliveryDateTime = [deliveryDate, deliveryTime].filter(Boolean).join(' ')
+  const deliveryDateTimeLine = [deliveryDate, deliveryTime].filter(Boolean).join(' at ')
   
   const contactName = order.contact_name || order.customer_name || ''
   const contactPhone = order.contact_phone || order.customer_phone || ''
@@ -460,10 +470,10 @@ function generateThermalReceiptHTML(data: any): string {
         <span>Date:</span>
         <span>${invoiceDate}</span>
       </div>
-      ${deliveryDateTime ? `
+      ${deliveryDateTimeLine ? `
       <div class="invoice-row">
-        <span>Delivery:</span>
-        <span>${deliveryDateTime}</span>
+        <span>Scheduled:</span>
+        <span>${deliveryDateTimeLine}</span>
       </div>
       ` : ''}
       ${deliveryAddress ? `
