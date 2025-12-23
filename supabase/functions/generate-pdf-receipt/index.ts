@@ -44,11 +44,12 @@ const handler = async (req: Request): Promise<Response> => {
     // Fetch business settings
     const { data: businessSettings } = await supabase
       .from('business_settings')
-      .select('business_name, business_email, business_phone, business_address')
+      .select('business_name, business_email, business_phone, business_address, abn')
       .single()
 
     let invoice = null;
     let order = null;
+    let suburbName = null;
 
     if (receiptData) {
       order = receiptData;
@@ -61,7 +62,9 @@ const handler = async (req: Request): Promise<Response> => {
             id,
             order_number,
             customer_name,
+            customer_phone,
             customer_address,
+            delivery_address,
             products,
             total_amount,
             delivery_date,
@@ -71,6 +74,10 @@ const handler = async (req: Request): Promise<Response> => {
             subtotal,
             delivery_fee,
             adjustments,
+            delivery_notes,
+            contact_name,
+            contact_phone,
+            delivery_suburb_id,
             created_at
           )
         `)
@@ -84,6 +91,15 @@ const handler = async (req: Request): Promise<Response> => {
 
       invoice = invoiceData;
       order = invoiceData.orders;
+
+      if (order.delivery_suburb_id) {
+        const { data: suburb } = await supabase
+          .from('suburbs')
+          .select('name')
+          .eq('id', order.delivery_suburb_id)
+          .single()
+        suburbName = suburb?.name || null;
+      }
     } else if (orderId) {
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
@@ -91,6 +107,7 @@ const handler = async (req: Request): Promise<Response> => {
           id,
           order_number,
           customer_name,
+          customer_phone,
           customer_address,
           delivery_address,
           products,
@@ -102,6 +119,10 @@ const handler = async (req: Request): Promise<Response> => {
           subtotal,
           delivery_fee,
           adjustments,
+          delivery_notes,
+          contact_name,
+          contact_phone,
+          delivery_suburb_id,
           created_at
         `)
         .eq('id', orderId)
@@ -113,6 +134,15 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       order = orderData;
+
+      if (order.delivery_suburb_id) {
+        const { data: suburb } = await supabase
+          .from('suburbs')
+          .select('name')
+          .eq('id', order.delivery_suburb_id)
+          .single()
+        suburbName = suburb?.name || null;
+      }
       
       const { data: existingInvoice } = await supabase
         .from('invoices')
@@ -127,11 +157,11 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Either invoiceId, orderId, or receiptData must be provided')
     }
 
-    // Generate simple HTML for PDF conversion
     const receiptHtml = generateSimpleReceiptHTML({
       invoice,
       order,
       businessSettings,
+      suburbName,
       requestId
     })
 
@@ -140,7 +170,6 @@ const handler = async (req: Request): Promise<Response> => {
       requestId 
     });
 
-    // For now, return HTML as base64 data URL (PDF conversion will be added later)
     const encoder = new TextEncoder();
     const data = encoder.encode(receiptHtml);
     let binary = '';
@@ -206,9 +235,8 @@ const handler = async (req: Request): Promise<Response> => {
 }
 
 function generateSimpleReceiptHTML(data: any): string {
-  const { invoice, order, businessSettings, requestId } = data
+  const { invoice, order, businessSettings, suburbName, requestId } = data
   
-  // Handle different product data structures (supports snake_case and camelCase)
   let orderItems = [] as any[]
   const products = order?.products ?? null
   const items = order?.items ?? null
@@ -222,250 +250,258 @@ function generateSimpleReceiptHTML(data: any): string {
     orderItems = items
   }
   
-  // Use business name from settings or fallback
-  const businessName = businessSettings?.business_name || 'Business Name'
-  const isOrderReceipt = !invoice
-  const isPaidOrder = (order.payment_status === 'paid' || order.paymentStatus === 'paid' || invoice?.status === 'paid')
+  // Business details
+  const businessName = businessSettings?.business_name || 'Surrey Hills Garden Supplies'
+  const businessAddress = businessSettings?.business_address || '680 Canterbury Rd, Surrey Hills, 3127'
+  const businessPhone = businessSettings?.business_phone || '03 9890 3901'
+  const businessEmail = businessSettings?.business_email || 'sales@surreyhillsgardensupplies.com.au'
+  const businessAbn = businessSettings?.abn || '44 788 796 653'
+  
+  // Calculate totals
+  const totalAmount = invoice?.amount || order.total_amount || order.totalAmount || 0
+  const deliveryFee = order.delivery_fee || order.deliveryFee || 0
+  const gstAmount = totalAmount / 11
+  
+  // Format dates
+  const invoiceDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-AU') : (order.orderDate || new Date().toLocaleDateString('en-AU'))
+  const deliveryDate = order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('en-AU') : ''
+  const deliveryTime = order.delivery_time || ''
+  
+  const deliveryAddress = order.delivery_address || order.deliveryAddress || order.customer_address || ''
+  const deliveryDateTime = [deliveryDate, deliveryTime].filter(Boolean).join(' ')
+  const deliveryAddressLine = [deliveryAddress, deliveryDateTime].filter(Boolean).join(', ')
+  
+  const contactName = order.contact_name || order.customer_name || order.customerName || ''
+  const contactPhone = order.contact_phone || order.customer_phone || ''
+  const deliveryNotes = order.delivery_notes || ''
   
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Receipt - ${invoice?.invoice_number || order.invoiceNumber || order.order_number || order.orderNumber || 'N/A'}</title>
+  <title>Tax Invoice - ${invoice?.invoice_number || order.invoiceNumber || order.order_number || order.orderNumber || 'N/A'}</title>
   <style>
-    * { 
-      margin: 0; 
-      padding: 0; 
-      box-sizing: border-box; 
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
-      font-family: 'Courier New', monospace; 
+      font-family: Arial, sans-serif; 
       font-size: 12px;
-      line-height: 1.3;
+      line-height: 1.4;
       color: #000;
       background: #fff;
-      width: 210mm;
-      margin: 0 auto;
-      padding: 10mm;
+      padding: 15px;
     }
-    .receipt {
-      width: 100%;
-      max-width: 80mm;
+    .receipt-container {
+      max-width: 600px;
       margin: 0 auto;
+      background: white;
     }
-    .center { text-align: center; }
-    .bold { font-weight: bold; }
-    .large { font-size: 16px; }
-    .medium { font-size: 14px; }
-    .small { font-size: 10px; }
     
     .header {
-      text-align: center;
-      margin-bottom: 5mm;
-      border-bottom: 1px solid #000;
-      padding-bottom: 3mm;
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #000;
     }
-    .company-name {
+    .logo {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+    }
+    .business-info { flex: 1; }
+    .business-name {
       font-size: 18px;
       font-weight: bold;
-      margin-bottom: 2mm;
+      margin-bottom: 3px;
     }
-    .receipt-title {
-      font-size: 14px;
-      font-weight: bold;
-      margin: 2mm 0;
-    }
-    .decorative-border {
-      text-align: center;
-      margin: 2mm 0;
+    .business-details {
+      font-size: 11px;
+      line-height: 1.3;
     }
     
-    .status {
-      text-align: center;
-      font-weight: bold;
-      margin: 3mm 0;
-      padding: 2mm;
-      border: 2px solid #000;
-    }
-    
-    .info-section {
-      margin: 3mm 0;
-    }
-    .info-line {
+    .invoice-details { margin-bottom: 10px; }
+    .invoice-row {
       display: flex;
-      justify-content: space-between;
-      margin: 1mm 0;
+      margin-bottom: 5px;
     }
-    
-    .customer-section {
-      text-align: center;
-      margin: 3mm 0;
-      border: 1px dashed #000;
-      padding: 2mm;
-    }
-    
-    .items-section {
-      margin: 3mm 0;
-    }
-    .items-header {
-      text-align: center;
+    .invoice-label {
       font-weight: bold;
+      min-width: 180px;
+    }
+    .invoice-value { flex: 1; }
+    
+    .products-header {
+      display: flex;
+      font-weight: bold;
+      padding: 5px 0;
       border-bottom: 1px solid #000;
-      padding: 1mm;
-      margin-bottom: 2mm;
+      margin-top: 15px;
     }
-    .item {
-      margin: 1mm 0;
-      padding: 1mm;
-    }
-    .item-name {
-      font-weight: bold;
-    }
-    .item-details {
-      display: flex;
-      justify-content: space-between;
-      font-size: 10px;
-      margin-top: 0.5mm;
-    }
+    .products-header .col-name { flex: 2; }
+    .products-header .col-qty { width: 80px; text-align: center; }
+    .products-header .col-price { width: 100px; text-align: right; }
     
-    .totals {
-      margin-top: 5mm;
-      border-top: 2px solid #000;
-      padding-top: 2mm;
-    }
-    .subtotal-line {
+    .product-row {
       display: flex;
-      justify-content: space-between;
-      margin: 1mm 0;
+      padding: 8px 0;
+      border-bottom: 1px solid #ccc;
+    }
+    .product-row .col-name { flex: 2; padding-right: 10px; }
+    .product-row .col-qty { width: 80px; text-align: center; }
+    .product-row .col-price { width: 100px; text-align: right; }
+    
+    .totals-section { margin-top: 15px; }
+    .total-row {
+      display: flex;
+      justify-content: flex-end;
+      padding: 5px 0;
+    }
+    .total-label { width: 150px; text-align: left; }
+    .total-value { width: 100px; text-align: right; }
+    .total-row.grand-total {
+      font-weight: bold;
+      font-size: 14px;
+      border-top: 2px solid #000;
+      margin-top: 5px;
+      padding-top: 8px;
+    }
+    .total-row.gst {
+      font-style: italic;
       font-size: 11px;
     }
-    .total-line {
-      display: flex;
-      justify-content: space-between;
-      margin: 2mm 0;
-      font-weight: bold;
-      font-size: 14px;
-      border-top: 1px dashed #000;
-      padding-top: 2mm;
+    
+    .notes-section {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
     }
+    .notes-box {
+      border: 1px solid #000;
+      padding: 8px;
+      min-height: 60px;
+    }
+    .notes-box-label {
+      font-weight: bold;
+      margin-bottom: 5px;
+      font-size: 11px;
+    }
+    .notes-box-content { font-size: 11px; }
     
     .footer {
-      margin-top: 8mm;
+      margin-top: 25px;
       text-align: center;
       border-top: 1px solid #000;
-      padding-top: 3mm;
+      padding-top: 15px;
+    }
+    .disclaimer-title {
+      font-weight: bold;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .disclaimer-text {
+      font-style: italic;
       font-size: 10px;
+      line-height: 1.4;
+      max-width: 500px;
+      margin: 0 auto;
     }
     
     @media print {
-      body { 
-        width: auto !important;
-        margin: 0 !important;
-        padding: 5mm !important;
-      }
-      @page {
-        size: A4;
-        margin: 10mm;
-      }
+      body { padding: 0; margin: 0; }
+      .receipt-container { max-width: none; }
+      @page { size: A4; margin: 15mm; }
     }
   </style>
 </head>
 <body>
-  <div class="receipt">
-    <!-- Header -->
+  <div class="receipt-container">
     <div class="header">
-      <div class="company-name">${businessName.toUpperCase()}</div>
-      <div class="decorative-border">* * * * * * * * * * * * * *</div>
-      <div class="receipt-title">${isOrderReceipt ? (isPaidOrder ? 'PAYMENT RECEIPT' : 'ORDER RECEIPT') : 'INVOICE RECEIPT'}</div>
-      <div class="decorative-border">* * * * * * * * * * * * * *</div>
+      <div class="logo">🌳</div>
+      <div class="business-info">
+        <div class="business-name">${businessName}</div>
+        <div class="business-details">
+          ${businessAddress}<br>
+          Ph: ${businessPhone}<br>
+          E: ${businessEmail}<br>
+          ABN: ${businessAbn}
+        </div>
+      </div>
     </div>
     
-    <!-- Receipt Information -->
-    <div class="info-section">
-      <div class="info-line">
-        <span>Receipt No:</span>
-        <span class="bold">${invoice?.invoice_number || order.invoiceNumber || order.order_number || order.orderNumber || 'N/A'}</span>
+    <div class="invoice-details">
+      <div class="invoice-row">
+        <span class="invoice-label">Tax Invoice No:</span>
+        <span class="invoice-value">${invoice?.invoice_number || order.invoiceNumber || order.order_number || order.orderNumber || 'N/A'}</span>
+        <span class="invoice-label" style="width: 60px;">Date:</span>
+        <span class="invoice-value">${invoiceDate}</span>
       </div>
-      <div class="info-line">
-        <span>Order No:</span>
-        <span class="bold">${order.order_number || order.orderNumber || 'N/A'}</span>
+      <div class="invoice-row">
+        <span class="invoice-label">Delivery Address, Date & Time:</span>
+        <span class="invoice-value">${deliveryAddressLine}</span>
       </div>
-      <div class="info-line">
-        <span>Date:</span>
-        <span>${order.created_at ? new Date(order.created_at).toLocaleDateString() : (order.orderDate || 'N/A')}</span>
-      </div>
-      ${(order.payment_method || order.paymentMethod) ? `
-      <div class="info-line">
-        <span>Payment:</span>
-        <span>${order.payment_method || order.paymentMethod}</span>
-      </div>
-      ` : ''}
     </div>
     
-    <!-- Customer -->
-    <div class="customer-section">
-      <div class="bold">CUSTOMER</div>
-      <div>${(order.customer_name || order.customerName) || 'N/A'}</div>
-      ${(order.customer_address || order.deliveryAddress) ? `<div class="small">${order.customer_address || order.deliveryAddress}</div>` : ''}
+    <div class="products-header">
+      <span class="col-name">Product</span>
+      <span class="col-qty">Qty</span>
+      <span class="col-price">Price</span>
     </div>
     
-    <!-- Items -->
-    ${orderItems.length > 0 ? `
-      <div class="items-section">
-        <div class="items-header">ORDER ITEMS</div>
-        ${orderItems.map((item: any) => {
-          const itemName = item.name || item.product_name || 'Product'
-          const itemPrice = (item.price ?? item.unit_price ?? item.unitPrice ?? 0)
-          const itemQuantity = item.quantity || 1
-          return `
-          <div class="item">
-            <div class="item-name">${itemName}</div>
-            <div class="item-details">
-              <span>Qty: ${itemQuantity}</span>
-              <span>@ $${Number(itemPrice).toFixed(2)}</span>
-              <span>$${(Number(itemPrice) * Number(itemQuantity)).toFixed(2)}</span>
-            </div>
-          </div>
-          `
-        }).join('')}
-      </div>
-    ` : '<div class="items-section"><div class="items-header">NO ITEMS</div></div>'}
+    ${orderItems.map((item: any) => {
+      const itemName = item.name || item.product_name || 'Product'
+      const itemPrice = Number(item.price ?? item.unit_price ?? item.unitPrice ?? 0)
+      const itemQty = item.quantity || 1
+      const lineTotal = itemPrice * itemQty
+      
+      return `
+    <div class="product-row">
+      <span class="col-name">${itemName}</span>
+      <span class="col-qty">${itemQty}</span>
+      <span class="col-price">$${lineTotal.toFixed(2)}</span>
+    </div>`
+    }).join('')}
     
-    <!-- Totals -->
-    <div class="totals">
-      ${(order.subtotal ?? order.subTotal) ? `
-        <div class="subtotal-line">
-          <span>Subtotal:</span>
-          <span>$${Number(order.subtotal ?? order.subTotal).toFixed(2)}</span>
-        </div>
-      ` : ''}
-      ${((order.delivery_fee ?? order.deliveryFee) && Number(order.delivery_fee ?? order.deliveryFee) > 0) ? `
-        <div class="subtotal-line">
-          <span>Delivery Fee:</span>
-          <span>$${Number(order.delivery_fee ?? order.deliveryFee).toFixed(2)}</span>
-        </div>
-      ` : ''}
-      ${(order.adjustments && order.adjustments !== 0) ? `
-        <div class="subtotal-line">
-          <span>Adjustments:</span>
-          <span>${order.adjustments > 0 ? '+' : ''}$${Number(order.adjustments).toFixed(2)}</span>
-        </div>
+    <div class="totals-section">
+      ${deliveryFee > 0 ? `
+      <div class="total-row">
+        <span class="total-label">Delivery${suburbName ? ` (${suburbName})` : ''}</span>
+        <span class="total-value">$${Number(deliveryFee).toFixed(2)}</span>
+      </div>
       ` : ''}
       
-      <div class="total-line">
-        <span>TOTAL:</span>
-        <span>$${Number(invoice?.amount ?? order.total_amount ?? order.totalAmount ?? 0).toFixed(2)}</span>
+      <div class="total-row grand-total">
+        <span class="total-label">Total</span>
+        <span class="total-value">$${Number(totalAmount).toFixed(2)}</span>
+      </div>
+      
+      <div class="total-row gst">
+        <span class="total-label">GST included</span>
+        <span class="total-value">$${gstAmount.toFixed(2)}</span>
       </div>
     </div>
     
-    <!-- Footer -->
+    <div class="notes-section">
+      <div class="notes-box">
+        <div class="notes-box-label">Delivery notes:</div>
+        <div class="notes-box-content">${deliveryNotes}</div>
+      </div>
+      <div class="notes-box">
+        <div class="notes-box-label">Contact name/Phone No:</div>
+        <div class="notes-box-content">${contactName}${contactPhone ? ` / ${contactPhone}` : ''}</div>
+      </div>
+    </div>
+    
     <div class="footer">
-      <div class="decorative-border">* * * * * * * * * * * * * *</div>
-      <div class="bold">THANK YOU FOR YOUR BUSINESS!</div>
-      <div class="decorative-border">* * * * * * * * * * * * * *</div>
-      <div class="small">Generated: ${new Date().toLocaleString()}</div>
-      <div class="small">Receipt ID: ${requestId.slice(-8)}</div>
+      <div class="disclaimer-title">Delivery Times are indicative</div>
+      <div class="disclaimer-text">
+        Delivery times are not guaranteed. We take no responsibility for damage, loss or injury caused to the person or property of the customer arising out of order, delivery of goods or installation of goods, beyond the purchase price of goods delivered.
+      </div>
     </div>
   </div>
 </body>
