@@ -521,7 +521,7 @@ function generateReceiptHTML(data: any): string {
   <div class="receipt-container">
     <!-- Header with Logo and Business Info -->
     <div class="header">
-      <div class="logo">🌳</div>
+      <div class="logo"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEwAACxMBAJqcGAAAAqZJREFUaIHtmT9oFEEUxn/f7B2H5lATCwURwUIQLCwsRLCwsLGwECwsLCwEwUawsLCwsLCwsLAQBAsLCwsLCxvBQhAEsRCxiImkMJfcze7MWOzs3t7tbpKb2z3j/WDg2N2Z+d58b97OzApKJBKJRCKRSCQSiUQi8V9AVPQAdqMqokA1UvQWwImKnqEocNEr/J8gRW8k0GVgFXifhGMl2GrhjQQHJNgEbBD0bCQ4AHwDskePRSIigW3xR+ALEHixP4PJZpNl/+GR3EriKPADyJIV/RQR0QgBkB1dxzKJyAYCG4AbREZG6NWrJv1pC+BLYB0RC9gJnAI6AIiMjPAK0Bv9u4G9wE3gcEhXJNgL/AG8ALoikCXYD1wJiN4JLAV6Al0RxkRYEuEPIFN+/mNIpAchbSIsBVYBe4CHANKHdBbwCqiJbAM5rIcAfgl5vgu0hxxbQnohoHoQ6EcDqBGAJ8F1kTDq/zL4HawHCwc8jwQHgI9AgQC8AjoDeL9/F+iO6F+BWkQCPARqAWVBFy/QA9Ri+jPQC2jxgDuhDxG7pQNIiYhYRPRDyAEJhjoQOidgCeRwNqA7EhyOgD+ATt9Xf4O/AO0RxETQEhLgI9APuBuBfsAhoNOXxwH+TaDfJrALeBaIuR0y0BmH8xmI0aZoD0R0AKJE/C/Tq2oCjQZQbR/YSCD1V0R9TmJSXRO4K0ImASYhNQGJLsC6COsD6EdwnUD/SJAOoCck8hKyM/ZZqN9HtLuADoEFwB/AqQDsCvgtUPyAfgh0CmRpANwLhBPgG9AcAMdDQs8H4CjQbAKmBNQ0gGpnoDwCfoJEfYAOlHQH1Dqgc8BfAB0CxoNAR0R2EZD2QNq/V78IOBwBL0NiRUC0E2gkIq6FxNhCeiLQSP8XjJb+D4mW/g9N6WrCAAAAAElFTkSuQmCC" alt="Logo" style="width: 60px; height: 60px; object-fit: contain;"></div>
       <div class="business-info">
         <div class="business-name">${businessName}</div>
         <div class="business-details">
