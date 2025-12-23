@@ -23,6 +23,12 @@ export interface ReceiptData {
   invoiceNumber?: string;
   receiptType: 'order' | 'payment' | 'invoice';
   adjustments?: number;
+  // New fields for delivery details
+  deliveryDate?: string;
+  deliveryTime?: string;
+  deliveryNotes?: string;
+  contactName?: string;
+  contactPhone?: string;
   businessInfo?: {
     name: string;
     email: string;
@@ -85,6 +91,12 @@ export class ReceiptService {
       invoiceNumber: invoiceData?.invoice_number || '',
       receiptType: invoiceData ? 'invoice' : (orderData.payment_status === 'paid' ? 'payment' : 'order'),
       adjustments: orderData.adjustments || 0,
+      // Add delivery details
+      deliveryDate: orderData.delivery_date || '',
+      deliveryTime: orderData.delivery_time || '',
+      deliveryNotes: orderData.delivery_notes || '',
+      contactName: orderData.contact_name || orderData.customer_name || '',
+      contactPhone: orderData.contact_phone || orderData.customer_phone || '',
       businessInfo: businessData ? {
         name: businessData.business_name,
         email: businessData.business_email,
@@ -167,6 +179,12 @@ export class ReceiptService {
       invoiceNumber: invoiceData.invoice_number,
       receiptType: 'invoice',
       adjustments: orderData.adjustments || 0,
+      // Add delivery details
+      deliveryDate: orderData.delivery_date || '',
+      deliveryTime: orderData.delivery_time || '',
+      deliveryNotes: orderData.delivery_notes || '',
+      contactName: orderData.contact_name || orderData.customer_name || '',
+      contactPhone: orderData.contact_phone || orderData.customer_phone || '',
       businessInfo: businessData ? {
         name: businessData.business_name,
         email: businessData.business_email,
