@@ -350,6 +350,21 @@ function generateThermalReceiptHTML(data: any): string {
       padding-bottom: 2mm;
       border-bottom: 1px dashed #000;
     }
+    .header-logo {
+      width: 40px;
+      height: 40px;
+      border: 1px solid #cc0000;
+      margin: 0 auto 2mm auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+    }
+    .header-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
     .business-name {
       font-size: 14px;
       font-weight: bold;
@@ -461,6 +476,7 @@ function generateThermalReceiptHTML(data: any): string {
   <div class="thermal-receipt">
     <!-- Header -->
     <div class="header">
+      <div class="header-logo"><img src="https://surreyhillsgardensupplies.com.au/wp-content/uploads/2021/07/SHGS-TREE.png" alt="Logo"></div>
       <div class="business-name">${businessName}</div>
       <div class="business-details">
         ${businessAddress}<br>
