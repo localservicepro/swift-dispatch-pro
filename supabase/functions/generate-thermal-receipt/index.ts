@@ -444,20 +444,6 @@ function generateThermalReceiptHTML(data: any): string {
       margin-bottom: 1mm;
     }
     
-    /* Stamp Box for Truck Type */
-    .stamp-box {
-      border: 1px solid #000;
-      padding: 2mm;
-      min-height: 10mm;
-      width: 50%;
-      margin-bottom: 2mm;
-    }
-    .stamp-box-label {
-      font-size: 9px;
-      font-weight: bold;
-      text-transform: uppercase;
-    }
-    
     .footer {
       margin-top: 3mm;
       padding-top: 2mm;
@@ -558,11 +544,6 @@ function generateThermalReceiptHTML(data: any): string {
         <span>GST included</span>
         <span>$${gstAmount.toFixed(2)}</span>
       </div>
-    </div>
-    
-    <!-- Truck Type Stamp Box -->
-    <div class="stamp-box">
-      <div class="stamp-box-label">Truck Type:</div>
     </div>
     
     <!-- Notes -->
