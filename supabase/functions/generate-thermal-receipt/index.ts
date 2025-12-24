@@ -432,10 +432,13 @@ function generateThermalReceiptHTML(data: any): string {
       border: 1px solid #000;
       padding: 3mm;
       margin: 1.5mm 0;
-      min-height: 15mm;
+      min-height: 20mm;
+      height: auto;
       font-size: 11px;
       font-weight: 500;
       line-height: 1.4;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
     }
     .notes-label {
       font-weight: bold;
