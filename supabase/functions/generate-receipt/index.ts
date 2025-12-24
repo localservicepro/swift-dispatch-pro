@@ -487,16 +487,19 @@ function generateReceiptHTML(data: any): string {
     }
     .notes-box {
       border: 1px solid #000;
-      padding: 8px;
-      min-height: 60px;
+      padding: 12px;
+      min-height: 80px;
     }
     .notes-box-label {
       font-weight: bold;
-      margin-bottom: 5px;
-      font-size: 11px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      text-transform: uppercase;
     }
     .notes-box-content {
-      font-size: 11px;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.5;
     }
     
     /* Footer disclaimer */
