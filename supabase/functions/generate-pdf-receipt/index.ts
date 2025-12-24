@@ -419,6 +419,21 @@ function generateSimpleReceiptHTML(data: any): string {
       line-height: 1.5;
     }
     
+    /* Stamp Box for Truck Type */
+    .stamp-box {
+      border: 1px solid #000;
+      padding: 12px;
+      min-height: 50px;
+      width: 50%;
+      margin-bottom: 15px;
+    }
+    .stamp-box-label {
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    
     .footer {
       margin-top: 25px;
       text-align: center;
@@ -516,6 +531,11 @@ function generateSimpleReceiptHTML(data: any): string {
         <span class="total-label">GST included</span>
         <span class="total-value">$${gstAmount.toFixed(2)}</span>
       </div>
+    </div>
+    
+    <!-- Truck Type Stamp Box -->
+    <div class="stamp-box">
+      <div class="stamp-box-label">Truck Type:</div>
     </div>
     
     <div class="notes-section">
