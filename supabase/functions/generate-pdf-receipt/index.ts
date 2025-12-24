@@ -405,7 +405,10 @@ function generateSimpleReceiptHTML(data: any): string {
     .notes-box {
       border: 1px solid #000;
       padding: 12px;
-      min-height: 80px;
+      min-height: 100px;
+      height: auto;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
     }
     .notes-box-label {
       font-weight: bold;
