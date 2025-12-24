@@ -157,13 +157,32 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Either invoiceId, orderId, or receiptData must be provided')
     }
 
+    // Fetch logo and convert to base64
+    let logoBase64 = '';
+    try {
+      const logoUrl = 'https://surreyhillsgardensupplies.com.au/wp-content/uploads/2021/07/SHGS-TREE.png';
+      const logoResponse = await fetch(logoUrl);
+      if (logoResponse.ok) {
+        const logoBuffer = await logoResponse.arrayBuffer();
+        const bytes = new Uint8Array(logoBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        logoBase64 = btoa(binary);
+        logStep('Logo fetched and converted to base64', { size: logoBase64.length, requestId });
+      }
+    } catch (logoError: any) {
+      logStep('Could not fetch logo, using fallback', { error: logoError.message, requestId });
+    }
+
     const receiptHtml = generateSimpleReceiptHTML({
       invoice,
       order,
       businessSettings,
       suburbName,
       requestId
-    })
+    }, logoBase64)
 
     logStep('Simple HTML receipt generated for PDF', { 
       size: receiptHtml.length,
@@ -234,7 +253,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 }
 
-function generateSimpleReceiptHTML(data: any): string {
+function generateSimpleReceiptHTML(data: any, logoBase64: string): string {
   const { invoice, order, businessSettings, suburbName, requestId } = data
   
   let orderItems = [] as any[]
@@ -291,6 +310,9 @@ function generateSimpleReceiptHTML(data: any): string {
   
   // Delivery notes - support both naming conventions
   const deliveryNotes = order.delivery_notes || order.deliveryNotes || ''
+  
+  // Use logo base64 if available
+  const logoSrc = logoBase64 ? `data:image/png;base64,${logoBase64}` : ''
   
   return `<!DOCTYPE html>
 <html lang="en">
@@ -443,7 +465,7 @@ function generateSimpleReceiptHTML(data: any): string {
 <body>
   <div class="receipt-container">
     <div class="header">
-      <div class="logo"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTIwIj48cGF0aCBmaWxsPSIjMjI4QjIyIiBkPSJNNTAgMTBjLTE1IDAtMjUgMTUtMjUgMzBzMTAgMjAgMjUgMjAgMjUtNSAyNS0yMFM2NSAxMCA1MCAxMHoiLz48cGF0aCBmaWxsPSIjMUE2QjFBIiBkPSJNMzUgMjVjLTEyIDgtMTggMjAtMTUgMzUgMyAxMCAxMiAxOCAyNSAyMC01LTUtMTAtMTUtOC0yNSAyLTEwIDgtMjAgMTMtMjUtOC0yLTE1LTMtMTUtNXoiLz48cGF0aCBmaWxsPSIjMjg5QzI4IiBkPSJNNjUgMjVjMTIgOCAxOCAyMCAxNSAzNS0zIDEwLTEyIDE4LTI1IDIwIDUtNSAxMC0xNSA4LTI1LTItMTAtOC0yMC0xMy0yNSA4LTIgMTUtMyAxNS01eiIvPjxyZWN0IGZpbGw9IiM4QjQ1MTMiIHg9IjQ1IiB5PSI3MCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjQwIiByeD0iMiIvPjxlbGxpcHNlIGZpbGw9IiMyMjhCMjIiIGN4PSI1MCIgY3k9IjE1IiByeD0iMTIiIHJ5PSI4Ii8+PGVsbGlwc2UgZmlsbD0iIzFBNkIxQSIgY3g9IjM1IiBjeT0iMjUiIHJ4PSIxMCIgcnk9IjciLz48ZWxsaXBzZSBmaWxsPSIjMjg5QzI4IiBjeD0iNjUiIGN5PSIyNSIgcng9IjEwIiByeT0iNyIvPjxlbGxpcHNlIGZpbGw9IiMxQTZCMUEiIGN4PSIyOCIgY3k9IjQwIiByeD0iOCIgcnk9IjYiLz48ZWxsaXBzZSBmaWxsPSIjMjg5QzI4IiBjeD0iNzIiIGN5PSI0MCIgcng9IjgiIHJ5PSI2Ii8+PC9zdmc+" alt="Surrey Hills Garden Supplies"></div>
+      ${logoSrc ? `<div class="logo"><img src="${logoSrc}" alt="Surrey Hills Garden Supplies"></div>` : ''}
       <div class="business-info">
         <div class="business-name">${businessName}</div>
         <div class="business-details">
