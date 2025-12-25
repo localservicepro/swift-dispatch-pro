@@ -1,6 +1,20 @@
 import { Product } from "@/components/order/types";
 
 /**
+ * Fix floating-point precision issues by rounding to 3 decimal places
+ */
+export const fixPrecision = (value: number): number => {
+  return Math.round(value * 1000) / 1000;
+};
+
+/**
+ * Check if a quantity is effectively zero (accounting for floating-point precision issues)
+ */
+export const isEffectivelyZero = (value: number): boolean => {
+  return Math.abs(value) < 0.0001;
+};
+
+/**
  * Check if a product's category allows fractional quantities
  */
 export const isBulkCategory = (product: Product): boolean => {

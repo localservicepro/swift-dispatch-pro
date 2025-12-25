@@ -4,10 +4,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Minus, Edit3, Trash2 } from "lucide-react";
+import { Plus, Minus, Edit3, Trash2, RotateCcw } from "lucide-react";
 import { CartItem, SplitConfig } from "./types";
 import { useToast } from "@/hooks/use-toast";
-import { getQuantityIncrement, getQuantityInputStep, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage } from "@/utils/categoryUtils";
+import { getQuantityIncrement, getQuantityInputStep, getMinimumQuantity, validateQuantity, roundToValidQuantity, getQuantityErrorMessage, fixPrecision, isEffectivelyZero } from "@/utils/categoryUtils";
 
 interface CompactProductTableProps {
   cart: CartItem[];
@@ -15,6 +15,7 @@ interface CompactProductTableProps {
   onQuantityChange?: (productId: string, newQuantity: number) => void;
   onRemoveFromCart?: (productId: string) => void;
   onUpdateSplitQuantity?: (splitIndex: number, productId: string, quantity: number) => void;
+  onResetAllocations?: () => void;
 }
 
 export function CompactProductTable({ 
@@ -22,7 +23,8 @@ export function CompactProductTable({
   splits, 
   onQuantityChange,
   onRemoveFromCart,
-  onUpdateSplitQuantity
+  onUpdateSplitQuantity,
+  onResetAllocations
 }: CompactProductTableProps) {
   const { toast } = useToast();
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
@@ -59,10 +61,11 @@ export function CompactProductTable({
   };
 
   const getTotalAllocated = (productId: string) => {
-    return splits.reduce((total, split) => {
+    const total = splits.reduce((total, split) => {
       const splitProduct = split.products.find(p => p.productId === productId);
       return total + (splitProduct?.quantity || 0);
     }, 0);
+    return fixPrecision(total);
   };
 
   const handleQuantityEdit = (productId: string, currentQuantity: number) => {
@@ -132,9 +135,9 @@ export function CompactProductTable({
     const newQuantity = roundToValidQuantity(rawNewQuantity, cartItem.product);
     
     const totalAllocated = getTotalAllocated(productId);
-    const remainingQuantity = (cartItem?.quantity || 0) - totalAllocated + currentQuantity;
+    const remainingQuantity = fixPrecision((cartItem?.quantity || 0) - totalAllocated + currentQuantity);
     
-    if (change > 0 && remainingQuantity <= 0) {
+    if (change > 0 && isEffectivelyZero(remainingQuantity)) {
       toast({
         title: "Cannot allocate more",
         description: "No remaining quantity to allocate",
@@ -170,12 +173,12 @@ export function CompactProductTable({
     const splitProduct = split.products.find(p => p.productId === productId);
     const currentQuantity = splitProduct?.quantity || 0;
     const totalAllocated = getTotalAllocated(productId);
-    const remainingQuantity = cartItem.quantity - totalAllocated + currentQuantity;
+    const remainingQuantity = fixPrecision(cartItem.quantity - totalAllocated + currentQuantity);
 
-    if (newQuantity > remainingQuantity) {
+    if (newQuantity > remainingQuantity && !isEffectivelyZero(newQuantity - remainingQuantity)) {
       toast({
         title: "Cannot allocate more",
-        description: `Only ${formatQuantity(remainingQuantity)} remaining to allocate`,
+        description: `Only ${formatQuantity(fixPrecision(remainingQuantity))} remaining to allocate`,
         variant: "destructive",
       });
       return;
@@ -206,8 +209,22 @@ export function CompactProductTable({
   };
 
   return (
-    <div className="border rounded-lg">
-      <Table>
+    <div className="space-y-2">
+      {onResetAllocations && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onResetAllocations}
+            className="text-xs gap-1"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Reset All Allocations
+          </Button>
+        </div>
+      )}
+      <div className="border rounded-lg">
+        <Table>
         <TableHeader>
           <TableRow className="bg-gray-50">
             <TableHead className="w-[250px] text-xs font-medium">Product</TableHead>
@@ -224,8 +241,8 @@ export function CompactProductTable({
         <TableBody>
           {cart.map(cartItem => {
             const totalAllocated = getTotalAllocated(cartItem.product.id);
-            const remainingQuantity = cartItem.quantity - totalAllocated;
-            const isFullyAllocated = remainingQuantity === 0;
+            const remainingQuantity = fixPrecision(cartItem.quantity - totalAllocated);
+            const isFullyAllocated = isEffectivelyZero(remainingQuantity);
             
             return (
               <TableRow key={cartItem.product.id} className="hover:bg-gray-50">
@@ -285,7 +302,7 @@ export function CompactProductTable({
 
                 {splits.map((split, splitIndex) => {
                   const splitProduct = split.products.find(p => p.productId === cartItem.product.id);
-                  const splitQuantity = splitProduct?.quantity || 0;
+                  const splitQuantity = fixPrecision(splitProduct?.quantity || 0);
                   const editKey = `${splitIndex}-${cartItem.product.id}`;
                   const isEditing = editingSplitQuantity === editKey;
                   
@@ -296,7 +313,7 @@ export function CompactProductTable({
                           variant="outline"
                           size="sm"
                           onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, 'decrease')}
-                          disabled={splitQuantity <= 0}
+                          disabled={isEffectivelyZero(splitQuantity)}
                           className="h-5 w-5 p-0"
                         >
                           <Minus className="w-2 h-2" />
@@ -332,7 +349,7 @@ export function CompactProductTable({
                           variant="outline"
                           size="sm"
                           onClick={() => handleSplitQuantityChange(splitIndex, cartItem.product.id, 'increase')}
-                          disabled={remainingQuantity <= 0}
+                          disabled={isEffectivelyZero(remainingQuantity)}
                           className="h-5 w-5 p-0"
                         >
                           <Plus className="w-2 h-2" />
@@ -366,6 +383,7 @@ export function CompactProductTable({
           })}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

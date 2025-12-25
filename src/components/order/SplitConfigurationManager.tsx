@@ -9,6 +9,7 @@ import { SplitControlsHeader } from "./SplitControlsHeader";
 import { CommonDateTimeSelector } from "./CommonDateTimeSelector";
 import { AddProductToSplitDialog } from "./AddProductToSplitDialog";
 import { useToast } from "@/hooks/use-toast";
+import { fixPrecision } from "@/utils/categoryUtils";
 
 interface SplitConfigurationManagerProps {
   cart: CartItem[];
@@ -224,11 +225,13 @@ export function SplitConfigurationManager({
   };
 
   const handleUpdateSplitQuantity = (splitIndex: number, productId: string, quantity: number) => {
+    const fixedQuantity = fixPrecision(quantity);
+    
     const updatedSplits = splits.map((split, index) => {
       if (index === splitIndex) {
         const existingProductIndex = split.products.findIndex(p => p.productId === productId);
         
-        if (quantity <= 0) {
+        if (fixedQuantity <= 0) {
           // Remove product from split if quantity is 0 or less
           return {
             ...split,
@@ -239,14 +242,14 @@ export function SplitConfigurationManager({
           return {
             ...split,
             products: split.products.map((p, pIndex) => 
-              pIndex === existingProductIndex ? { ...p, quantity } : p
+              pIndex === existingProductIndex ? { ...p, quantity: fixedQuantity } : p
             )
           };
         } else {
           // Add new product to split
           return {
             ...split,
-            products: [...split.products, { productId, quantity }]
+            products: [...split.products, { productId, quantity: fixedQuantity }]
           };
         }
       }
@@ -254,6 +257,18 @@ export function SplitConfigurationManager({
     });
 
     onSplitsChange(updatedSplits);
+  };
+
+  const handleResetAllocations = () => {
+    const clearedSplits = splits.map(split => ({
+      ...split,
+      products: []
+    }));
+    onSplitsChange(clearedSplits);
+    toast({
+      title: "Allocations reset",
+      description: "All product allocations have been cleared",
+    });
   };
 
   return (
@@ -296,6 +311,7 @@ export function SplitConfigurationManager({
             onQuantityChange={handleCartQuantityChange}
             onRemoveFromCart={handleRemoveFromCart}
             onUpdateSplitQuantity={handleUpdateSplitQuantity}
+            onResetAllocations={handleResetAllocations}
           />
         </TabsContent>
         
