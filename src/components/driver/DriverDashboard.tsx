@@ -86,17 +86,19 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
                 });
               }
 
-              // Send email notification to customer when driver updates status
-              try {
-                await emailService.sendOrderStatusUpdate(
-                  payload.new.id,
-                  payload.old.status,
-                  payload.new.status,
-                  profile?.full_name
-                );
-              } catch (error) {
-                console.error('Failed to send status update email:', error);
-                // Don't show error toast to driver as email is background process
+              // Send email notification to customer only when order is loading
+              if (payload.new.status === 'loading') {
+                try {
+                  await emailService.sendOrderStatusUpdate(
+                    payload.new.id,
+                    payload.old.status,
+                    payload.new.status,
+                    profile?.full_name
+                  );
+                } catch (error) {
+                  console.error('Failed to send status update email:', error);
+                  // Don't show error toast to driver as email is background process
+                }
               }
             }
           }
