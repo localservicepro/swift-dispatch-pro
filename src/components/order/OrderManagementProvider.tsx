@@ -149,11 +149,14 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
               description: `Order ${payload.new.order_number} changed from ${oldStatus} to ${newStatus}`
             });
 
-            try {
-              const driverName = payload.new.driver_name;
-              await emailService.sendOrderStatusUpdate(payload.new.id, oldStatus, newStatus, driverName);
-            } catch (error) {
-              console.error('Failed to send status update email:', error);
+            // Only send email notification when order status changes to loading
+            if (newStatus === 'loading') {
+              try {
+                const driverName = payload.new.driver_name;
+                await emailService.sendOrderStatusUpdate(payload.new.id, oldStatus, newStatus, driverName);
+              } catch (error) {
+                console.error('Failed to send status update email:', error);
+              }
             }
           }
         }
