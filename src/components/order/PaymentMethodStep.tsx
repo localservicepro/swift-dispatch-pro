@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import { Label } from "@/components/ui/label";
-import { CreditCard, Calendar, Building2, MapPin, AlertCircle, Check, Wallet, HandCoins } from "lucide-react";
+import { CreditCard, Calendar, Building2, MapPin, AlertCircle, Check, Wallet, HandCoins, Truck } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCustomerPaymentMethods } from "@/hooks/useCustomerPaymentMethods";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
@@ -43,6 +43,14 @@ const PAYMENT_METHODS = [
     icon: Calendar,
     available: true,
     hasSurcharge: true
+  },
+  {
+    id: 'cod',
+    label: 'COD - Cash on Delivery',
+    description: 'Driver collects cash payment upon delivery',
+    icon: Truck,
+    available: true,
+    hasSurcharge: false
   },
   {
     id: 'in_yard_cash',
@@ -288,6 +296,10 @@ export function PaymentMethodStep({
             ) : paymentMethod === 'card_on_file' && defaultCard ? (
               <p className="text-xs text-green-600 mt-1">
                 Charge will be processed using your {formatCardBrand(defaultCard.card_brand)} ending in {defaultCard.card_last_four}.
+              </p>
+            ) : paymentMethod === 'cod' ? (
+              <p className="text-xs text-green-600 mt-1">
+                Driver will collect cash payment when delivering the order.
               </p>
             ) : null}
           </div>
