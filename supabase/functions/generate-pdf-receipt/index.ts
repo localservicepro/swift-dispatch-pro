@@ -480,12 +480,6 @@ function generateSimpleReceiptHTML(data: any): string {
         <span class="invoice-label" style="width: 60px;">Date:</span>
         <span class="invoice-value">${invoiceDate}</span>
       </div>
-      ${purchaseOrder ? `
-      <div class="invoice-row">
-        <span class="invoice-label">Customer PO Number:</span>
-        <span class="invoice-value"><strong>${purchaseOrder}</strong></span>
-      </div>
-      ` : ''}
       <div class="invoice-row">
         <span class="invoice-label">Delivery Address:</span>
         <span class="invoice-value">${deliveryAddress}</span>
@@ -544,7 +538,7 @@ function generateSimpleReceiptHTML(data: any): string {
       </div>
       <div class="notes-box">
         <div class="notes-box-label">Order notes:</div>
-        <div class="notes-box-content">${orderNotes}</div>
+        <div class="notes-box-content">${purchaseOrder ? `<strong>PO: ${purchaseOrder}</strong>` : ''}${purchaseOrder && orderNotes ? '<br>' : ''}${orderNotes}</div>
       </div>
     </div>
     <div class="notes-section" style="margin-top: 10px;">
