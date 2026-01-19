@@ -328,6 +328,22 @@ function generateSimpleReceiptHTML(data: any): string {
   // Purchase order - support both naming conventions
   const purchaseOrder = order.purchase_order || order.purchaseOrder || ''
   
+  // Format payment method display
+  const getPaymentMethodDisplay = (method: string): string => {
+    const methodMap: { [key: string]: string } = {
+      'cash': 'CASH',
+      'cod': 'C.O.D',
+      'card_on_file': 'CARD ON FILE',
+      'invoice': 'INVOICE',
+      '7_day_invoice': '7 DAY INVOICE',
+      'in_yard_cash': 'CASH (YARD)',
+      'in_yard_card': 'CARD (YARD)',
+      'account_cash': 'ACCOUNT - CASH',
+      'account_card': 'ACCOUNT - CARD'
+    }
+    return methodMap[method] || method?.toUpperCase() || ''
+  }
+  const paymentMethodDisplay = getPaymentMethodDisplay(paymentMethod)
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -588,14 +604,15 @@ function generateSimpleReceiptHTML(data: any): string {
       </div>
       <div class="notes-box">
         <div class="notes-box-label">Order notes:</div>
-        <div class="notes-box-content">${purchaseOrder ? `<strong>PO: ${purchaseOrder}</strong>` : ''}${purchaseOrder && orderNotes ? '<br>' : ''}${orderNotes}</div>
+        <div class="notes-box-content">${paymentMethodDisplay ? `<strong>${paymentMethodDisplay}</strong><br>` : ''}${purchaseOrder ? `<strong>PO: ${purchaseOrder}</strong>` : ''}${(paymentMethodDisplay || purchaseOrder) && orderNotes ? '<br>' : ''}${orderNotes}</div>
       </div>
     </div>
     <div class="notes-section" style="margin-top: 10px;">
-      <div class="notes-box" style="width: 50%;">
+      <div class="notes-box">
         <div class="notes-box-label">Contact name/Phone No:</div>
         <div class="notes-box-content">${contactName}${contactPhone ? ` / ${contactPhone}` : ''}</div>
       </div>
+      <div class="notes-box" style="visibility: hidden;"></div>
     </div>
     
     <div class="footer">
