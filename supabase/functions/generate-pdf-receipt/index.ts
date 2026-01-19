@@ -613,8 +613,11 @@ function generateSimpleReceiptHTML(data: any): string {
     </div>
     <div class="notes-section" style="margin-top: 10px;">
       <div class="notes-box">
-        <div class="notes-box-label">Contact name/Phone No:</div>
-        <div class="notes-box-content">${contactName}${contactPhone ? ` / ${contactPhone}` : ''}</div>
+        <div class="notes-box-label">Contact Info:</div>
+        <div class="notes-box-content">
+          <div><strong>Name:</strong> ${contactName || 'N/A'}</div>
+          <div><strong>Phone:</strong> ${contactPhone || 'N/A'}</div>
+        </div>
       </div>
       <div class="notes-box" style="visibility: hidden;"></div>
     </div>
