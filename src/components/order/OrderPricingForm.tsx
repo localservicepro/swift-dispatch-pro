@@ -93,10 +93,16 @@ export function OrderPricingForm({
         <Label htmlFor="adjustments" className="text-gray-700 font-medium">Adjustments (AU$)</Label>
         <Input
           id="adjustments"
-          type="number"
-          step="0.01"
+          type="text"
+          inputMode="decimal"
           value={formData.adjustments?.toString() || '0'}
-          onChange={(e) => onInputChange('adjustments', e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            // Allow negative sign, digits, and decimal point
+            if (value === '' || value === '-' || /^-?\d*\.?\d*$/.test(value)) {
+              onInputChange('adjustments', value);
+            }
+          }}
           className="border-amber-200 focus:border-amber-400 focus:ring-amber-200"
           placeholder="0.00"
         />

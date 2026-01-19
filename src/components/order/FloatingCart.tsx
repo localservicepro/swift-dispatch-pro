@@ -259,10 +259,17 @@ export function FloatingCart({
                           </SelectContent>
                         </Select>
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
                           placeholder="0"
                           value={adjustmentValue}
-                          onChange={(e) => setAdjustmentValue(e.target.value)}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            // Allow negative sign, digits, and decimal point
+                            if (value === '' || value === '-' || /^-?\d*\.?\d*$/.test(value)) {
+                              setAdjustmentValue(value);
+                            }
+                          }}
                           className="flex-1"
                         />
                         <Button onClick={applyAdjustment} size="sm">
