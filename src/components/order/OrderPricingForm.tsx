@@ -119,6 +119,7 @@ export function OrderPricingForm({
           className="w-full px-3 py-2 border border-amber-200 rounded-md focus:border-amber-400 focus:ring-amber-200"
         >
           <option value="cash">Cash</option>
+          <option value="cod">COD - Cash on Delivery</option>
           <option value="card_on_file">Card on File</option>
           <option value="invoice">Invoice</option>
           <option value="7_day_invoice">7 Day Invoice</option>
