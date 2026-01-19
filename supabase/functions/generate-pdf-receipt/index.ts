@@ -295,9 +295,14 @@ function generateSimpleReceiptHTML(data: any): string {
   // Format dates - support both snake_case (database) and camelCase (receiptData)
   const invoiceDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-AU') : (order.orderDate || new Date().toLocaleDateString('en-AU'))
   
-  // Get delivery date - support both naming conventions
+  // Get delivery date with day name - support both naming conventions
   const deliveryDateRaw = order.delivery_date || order.deliveryDate || ''
-  const deliveryDate = deliveryDateRaw ? new Date(deliveryDateRaw).toLocaleDateString('en-AU') : ''
+  const getDayName = (dateStr: string): string => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const date = new Date(dateStr)
+    return days[date.getDay()]
+  }
+  const deliveryDate = deliveryDateRaw ? `${new Date(deliveryDateRaw).toLocaleDateString('en-AU')} ${getDayName(deliveryDateRaw)}` : ''
   
   // Format delivery time (convert 24h to 12h format) - support both naming conventions
   const formatTime = (time: string): string => {
