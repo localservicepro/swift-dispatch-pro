@@ -32,6 +32,9 @@ export interface ReceiptData {
   // Order notes and purchase order
   orderNotes?: string;
   purchaseOrder?: string;
+  // Suburb data for delivery fee display
+  suburbName?: string;
+  deliverySuburbId?: string;
   businessInfo?: {
     name: string;
     email: string;
@@ -50,7 +53,7 @@ export class ReceiptService {
       .eq('order_id', orderId)
       .maybeSingle();
 
-    // Get order data
+    // Get order data with suburb
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .select(`
@@ -59,6 +62,10 @@ export class ReceiptService {
           email,
           company_name,
           business_name
+        ),
+        delivery_suburbs:suburbs!orders_delivery_suburb_id_fkey (
+          id,
+          name
         )
       `)
       .eq('id', orderId)
@@ -103,6 +110,9 @@ export class ReceiptService {
       // Add order notes and purchase order
       orderNotes: orderData.order_notes || '',
       purchaseOrder: orderData.purchase_order || '',
+      // Add suburb data for delivery fee display
+      suburbName: orderData.delivery_suburbs?.name || '',
+      deliverySuburbId: orderData.delivery_suburb_id || '',
       businessInfo: businessData ? {
         name: businessData.business_name,
         email: businessData.business_email,
@@ -147,6 +157,10 @@ export class ReceiptService {
             email,
             company_name,
             business_name
+          ),
+          delivery_suburbs:suburbs!orders_delivery_suburb_id_fkey (
+            id,
+            name
           )
         )
       `)
@@ -194,6 +208,9 @@ export class ReceiptService {
       // Add order notes and purchase order
       orderNotes: orderData.order_notes || '',
       purchaseOrder: orderData.purchase_order || '',
+      // Add suburb data for delivery fee display
+      suburbName: orderData.delivery_suburbs?.name || '',
+      deliverySuburbId: orderData.delivery_suburb_id || '',
       businessInfo: businessData ? {
         name: businessData.business_name,
         email: businessData.business_email,

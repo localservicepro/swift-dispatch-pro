@@ -72,6 +72,19 @@ const handler = async (req: Request): Promise<Response> => {
     if (receiptData) {
       logStep('Using provided receipt data', { requestId });
       order = receiptData;
+      
+      // Handle suburb from receiptData
+      if (receiptData.suburbName) {
+        suburbName = receiptData.suburbName;
+      } else if (receiptData.deliverySuburbId || receiptData.delivery_suburb_id) {
+        const suburbId = receiptData.deliverySuburbId || receiptData.delivery_suburb_id;
+        const { data: suburb } = await supabase
+          .from('suburbs')
+          .select('name')
+          .eq('id', suburbId)
+          .single();
+        suburbName = suburb?.name || null;
+      }
     } else if (invoiceId) {
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
