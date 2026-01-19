@@ -29,6 +29,9 @@ export interface ReceiptData {
   deliveryNotes?: string;
   contactName?: string;
   contactPhone?: string;
+  // Order notes and purchase order
+  orderNotes?: string;
+  purchaseOrder?: string;
   businessInfo?: {
     name: string;
     email: string;
@@ -97,6 +100,9 @@ export class ReceiptService {
       deliveryNotes: orderData.delivery_notes || '',
       contactName: orderData.contact_name || orderData.customer_name || '',
       contactPhone: orderData.contact_phone || orderData.customer_phone || '',
+      // Add order notes and purchase order
+      orderNotes: orderData.order_notes || '',
+      purchaseOrder: orderData.purchase_order || '',
       businessInfo: businessData ? {
         name: businessData.business_name,
         email: businessData.business_email,
@@ -185,6 +191,9 @@ export class ReceiptService {
       deliveryNotes: orderData.delivery_notes || '',
       contactName: orderData.contact_name || orderData.customer_name || '',
       contactPhone: orderData.contact_phone || orderData.customer_phone || '',
+      // Add order notes and purchase order
+      orderNotes: orderData.order_notes || '',
+      purchaseOrder: orderData.purchase_order || '',
       businessInfo: businessData ? {
         name: businessData.business_name,
         email: businessData.business_email,
