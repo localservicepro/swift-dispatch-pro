@@ -746,36 +746,30 @@ function generateReceiptHTML(data: any): string {
     
     <!-- Totals Section -->
     <div class="totals-section">
-      ${adjustments !== 0 ? `
       <div class="total-row">
-        <span class="total-label">Price Adjustment</span>
-        <span class="total-value">${adjustments >= 0 ? '' : '-'}$${Math.abs(adjustments).toFixed(2)}</span>
+        <span class="total-label accent">Price Adjustment</span>
+        <span class="total-value">$${adjustments.toFixed(2)}</span>
       </div>
-      ` : ''}
       
       <div class="total-row">
         <span class="total-label">Subtotal</span>
         <span class="total-value">$${subtotal.toFixed(2)}</span>
       </div>
       
-      ${deliveryFee > 0 ? `
       <div class="total-row">
         <span class="total-label">Delivery${suburbName ? ` (${suburbName})` : ''}</span>
         <span class="total-value">$${deliveryFee.toFixed(2)}</span>
       </div>
-      ` : ''}
       
       <div class="total-row">
         <span class="total-label">Sale Total</span>
         <span class="total-value">$${saleTotal.toFixed(2)}</span>
       </div>
       
-      ${surchargeAmount > 0 ? `
       <div class="total-row">
-        <span class="total-label">Surcharge ${surchargePercent}%</span>
+        <span class="total-label accent">Surcharge ${surchargePercent}%</span>
         <span class="total-value">$${surchargeAmount.toFixed(2)}</span>
       </div>
-      ` : ''}
       
       <div class="total-row gst">
         <span class="total-label">GST included</span>
