@@ -78,6 +78,8 @@ const handler = async (req: Request): Promise<Response> => {
           orders!inner(
             id,
             order_number,
+            purchase_order,
+            order_notes,
             customer_name,
             customer_phone,
             customer_address,
@@ -123,6 +125,8 @@ const handler = async (req: Request): Promise<Response> => {
         .select(`
           id,
           order_number,
+          purchase_order,
+          order_notes,
           customer_name,
           customer_phone,
           customer_address,
@@ -320,6 +324,12 @@ function generateThermalReceiptHTML(data: any): string {
   // Delivery notes - support both naming conventions
   const deliveryNotes = order.delivery_notes || order.deliveryNotes || ''
   
+  // Order notes - support both naming conventions
+  const orderNotes = order.order_notes || order.orderNotes || ''
+  
+  // Purchase order - support both naming conventions
+  const purchaseOrder = order.purchase_order || order.purchaseOrder || ''
+  
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -495,6 +505,12 @@ function generateThermalReceiptHTML(data: any): string {
         <span class="bold">Tax Invoice No:</span>
         <span>${invoice?.invoice_number || order.order_number}</span>
       </div>
+      ${purchaseOrder ? `
+      <div class="invoice-row">
+        <span class="bold">Customer PO:</span>
+        <span>${purchaseOrder}</span>
+      </div>
+      ` : ''}
       <div class="invoice-row">
         <span>Date:</span>
         <span>${invoiceDate}</span>
@@ -554,6 +570,10 @@ function generateThermalReceiptHTML(data: any): string {
       <div class="notes-box">
         <div class="notes-label">Delivery notes:</div>
         ${deliveryNotes}
+      </div>
+      <div class="notes-box">
+        <div class="notes-label">Order notes:</div>
+        ${orderNotes}
       </div>
       <div class="notes-box">
         <div class="notes-label">Contact:</div>

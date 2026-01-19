@@ -80,6 +80,8 @@ const handler = async (req: Request): Promise<Response> => {
           orders!inner(
             id,
             order_number,
+            purchase_order,
+            order_notes,
             customer_name,
             customer_phone,
             customer_address,
@@ -132,6 +134,8 @@ const handler = async (req: Request): Promise<Response> => {
         .select(`
           id,
           order_number,
+          purchase_order,
+          order_notes,
           customer_name,
           customer_phone,
           customer_address,
@@ -342,6 +346,12 @@ function generateReceiptHTML(data: any): string {
   
   // Delivery notes - support both naming conventions
   const deliveryNotes = order.delivery_notes || order.deliveryNotes || ''
+  
+  // Order notes - support both naming conventions
+  const orderNotes = order.order_notes || order.orderNotes || ''
+  
+  // Purchase order - support both naming conventions
+  const purchaseOrder = order.purchase_order || order.purchaseOrder || ''
   
   return `<!DOCTYPE html>
 <html lang="en">
@@ -564,6 +574,12 @@ function generateReceiptHTML(data: any): string {
         <span class="invoice-label" style="width: 60px;">Date:</span>
         <span class="invoice-value">${invoiceDate}</span>
       </div>
+      ${purchaseOrder ? `
+      <div class="invoice-row">
+        <span class="invoice-label">Customer PO Number:</span>
+        <span class="invoice-value"><strong>${purchaseOrder}</strong></span>
+      </div>
+      ` : ''}
       <div class="invoice-row">
         <span class="invoice-label">Delivery Address:</span>
         <span class="invoice-value">${deliveryAddress}</span>
@@ -624,6 +640,12 @@ function generateReceiptHTML(data: any): string {
         <div class="notes-box-content">${deliveryNotes}</div>
       </div>
       <div class="notes-box">
+        <div class="notes-box-label">Order notes:</div>
+        <div class="notes-box-content">${orderNotes}</div>
+      </div>
+    </div>
+    <div class="notes-section" style="margin-top: 10px;">
+      <div class="notes-box" style="width: 50%;">
         <div class="notes-box-label">Contact name/Phone No:</div>
         <div class="notes-box-content">${contactName}${contactPhone ? ` / ${contactPhone}` : ''}</div>
       </div>
