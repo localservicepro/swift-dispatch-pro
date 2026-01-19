@@ -524,7 +524,11 @@ function generateSimpleReceiptHTML(data: any): string {
         <span class="invoice-label">Tax Invoice No:</span>
         <span class="invoice-value">${invoice?.invoice_number || order.invoiceNumber || order.order_number || order.orderNumber || 'N/A'}</span>
         <span class="invoice-label" style="width: 60px;">Date:</span>
-        <span class="invoice-value">${invoiceDate}</span>
+        <span class="invoice-value accent">${invoiceDate}</span>
+      </div>
+      <div class="invoice-row">
+        <span class="invoice-label accent">Business Name:</span>
+        <span class="invoice-value">${order.customer_name || order.customerName || ''}</span>
       </div>
       <div class="invoice-row">
         <span class="invoice-label">Delivery Address:</span>
@@ -533,7 +537,7 @@ function generateSimpleReceiptHTML(data: any): string {
       ${deliveryDateTimeLine ? `
       <div class="invoice-row">
         <span class="invoice-label">Scheduled Date & Time:</span>
-        <span class="invoice-value">${deliveryDateTimeLine}</span>
+        <span class="invoice-value accent">${deliveryDateTimeLine}</span>
       </div>
       ` : ''}
     </div>
@@ -541,7 +545,7 @@ function generateSimpleReceiptHTML(data: any): string {
     <div class="products-header">
       <span class="col-name">Product</span>
       <span class="col-qty">Qty</span>
-      <span class="col-unit">Unit</span>
+      <span class="col-unit accent">Unit</span>
       <span class="col-price">Price</span>
     </div>
     
@@ -555,7 +559,7 @@ function generateSimpleReceiptHTML(data: any): string {
     <div class="product-row">
       <span class="col-name">${itemName}</span>
       <span class="col-qty">${itemQty}</span>
-      <span class="col-unit">$${itemPrice.toFixed(2)}</span>
+      <span class="col-unit accent">$${itemPrice.toFixed(2)}</span>
       <span class="col-price">$${lineTotal.toFixed(2)}</span>
     </div>`
     }).join('')}
@@ -567,7 +571,7 @@ function generateSimpleReceiptHTML(data: any): string {
       </div>
       
       <div class="total-row">
-        <span class="total-label">Subtotal</span>
+        <span class="total-label accent">Subtotal</span>
         <span class="total-value">$${subtotal.toFixed(2)}</span>
       </div>
       
@@ -577,13 +581,13 @@ function generateSimpleReceiptHTML(data: any): string {
       </div>
       
       <div class="total-row">
-        <span class="total-label">Sale Total</span>
+        <span class="total-label"><span class="accent">Sale</span> Total</span>
         <span class="total-value">$${saleTotal.toFixed(2)}</span>
       </div>
       
       <div class="total-row">
         <span class="total-label accent">Surcharge ${surchargePercent}%</span>
-        <span class="total-value">$${surchargeAmount.toFixed(2)}</span>
+        <span class="total-value accent">$${surchargeAmount.toFixed(2)}</span>
       </div>
       
       <div class="total-row gst">
@@ -592,8 +596,8 @@ function generateSimpleReceiptHTML(data: any): string {
       </div>
       
       <div class="total-row grand-total">
-        <span class="total-label">Total</span>
-        <span class="total-value">$${Number(totalAmount).toFixed(2)}</span>
+        <span class="total-label accent">Total</span>
+        <span class="total-value accent">$${Number(totalAmount).toFixed(2)}</span>
       </div>
     </div>
     
