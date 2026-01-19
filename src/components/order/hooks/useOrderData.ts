@@ -20,6 +20,7 @@ interface Order {
   status: OrderStatus;
   payment_status?: string;
   payment_date?: string;
+  payment_method?: string;
   driver_id?: string;
   created_at: string;
   delivery_date?: string;
@@ -75,6 +76,7 @@ export function useOrderData() {
           status,
           payment_status,
           payment_date,
+          payment_method,
           driver_id,
           created_at,
           delivery_date,
