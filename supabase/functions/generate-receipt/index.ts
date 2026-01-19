@@ -328,30 +328,76 @@ function generateReceiptHTML(data: any): string {
   // Calculate totals
   const totalAmount = invoice?.amount || order.total_amount || 0
   const deliveryFee = order.delivery_fee || 0
+  const subtotal = order.subtotal || (totalAmount - deliveryFee)
+  const adjustments = order.adjustments || 0
   const gstAmount = totalAmount / 11 // GST is 1/11 of GST-inclusive price
+  
+  // Calculate surcharge if applicable (from payment method)
+  const paymentMethod = order.payment_method || order.paymentMethod || ''
+  let surchargePercent = 0
+  let surchargeAmount = 0
+  if (paymentMethod === 'card_on_file' || paymentMethod === 'in_yard_card' || paymentMethod === 'account_card') {
+    surchargePercent = 1.2
+    // Surcharge is typically on the pre-surcharge amount
+    const preSurchargeTotal = subtotal + deliveryFee + adjustments
+    surchargeAmount = preSurchargeTotal * (surchargePercent / 100)
+  }
+  const saleTotal = subtotal + deliveryFee + adjustments
+  
+  // Format timestamp for top of receipt
+  const now = new Date()
+  const timestamp = now.toLocaleDateString('en-AU') + ', ' + now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false })
   
   // Format dates - support both snake_case (database) and camelCase (receiptData)
   const invoiceDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-AU') : (order.orderDate || new Date().toLocaleDateString('en-AU'))
   
-  // Get delivery date - support both naming conventions
+  // Get delivery date with day name - support both naming conventions
   const deliveryDateRaw = order.delivery_date || order.deliveryDate || ''
-  const deliveryDate = deliveryDateRaw ? new Date(deliveryDateRaw).toLocaleDateString('en-AU') : ''
+  const formatDateWithDay = (dateStr: string): string => {
+    if (!dateStr) return ''
+    const date = new Date(dateStr)
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const dayName = dayNames[date.getDay()]
+    const formatted = date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: '2-digit' })
+    return `${formatted} ${dayName}`
+  }
+  const deliveryDateFormatted = formatDateWithDay(deliveryDateRaw)
   
-  // Format delivery time (convert 24h to 12h format) - support both naming conventions
-  const formatTime = (time: string): string => {
+  // Format delivery time range (e.g., "11:00am - 12:00pm")
+  const formatTimeRange = (time: string): string => {
     if (!time) return ''
+    // Check for special time slots
+    if (time.toLowerCase() === 'urgent' || time.toLowerCase() === 'asap' || time.toLowerCase() === 'any time') {
+      return time
+    }
+    // Handle time range format "HH:MM - HH:MM"
+    if (time.includes(' - ')) {
+      const [start, end] = time.split(' - ')
+      const formatSingleTime = (t: string): string => {
+        const [hours, minutes] = t.split(':')
+        const hour = parseInt(hours)
+        const ampm = hour >= 12 ? 'pm' : 'am'
+        const hour12 = hour % 12 || 12
+        return `${hour12}:${minutes}${ampm}`
+      }
+      return `${formatSingleTime(start)} - ${formatSingleTime(end)}`
+    }
+    // Single time format
     const [hours, minutes] = time.split(':')
     const hour = parseInt(hours)
-    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const ampm = hour >= 12 ? 'pm' : 'am'
     const hour12 = hour % 12 || 12
-    return `${hour12}:${minutes} ${ampm}`
+    return `${hour12}:${minutes}${ampm}`
   }
   const deliveryTimeRaw = order.delivery_time || order.deliveryTime || ''
-  const deliveryTime = deliveryTimeRaw ? formatTime(deliveryTimeRaw) : ''
+  const deliveryTimeFormatted = formatTimeRange(deliveryTimeRaw)
   
-  // Format delivery address (separate line from date/time) - support both naming conventions
+  // Format delivery address - support both naming conventions
   const deliveryAddress = order.delivery_address || order.deliveryAddress || order.customer_address || ''
-  const deliveryDateTimeLine = [deliveryDate, deliveryTime].filter(Boolean).join(' at ')
+  
+  // Customer/Business name
+  const customerName = order.customer_name || order.customerName || ''
+  const businessCustomerName = order.business_name || order.company_name || ''
   
   // Contact info - support both naming conventions
   const contactName = order.contact_name || order.contactName || order.customer_name || order.customerName || ''
@@ -365,6 +411,33 @@ function generateReceiptHTML(data: any): string {
   
   // Purchase order - support both naming conventions
   const purchaseOrder = order.purchase_order || order.purchaseOrder || ''
+  
+  // Format payment method display
+  const getPaymentMethodDisplay = (method: string): string => {
+    const methodMap: { [key: string]: string } = {
+      'cash': 'CASH',
+      'cod': 'C.O.D',
+      'card_on_file': 'CARD',
+      'invoice': 'INVOICE',
+      '7_day_invoice': '7 DAY INVOICE',
+      'in_yard_cash': 'CASH (YARD)',
+      'in_yard_card': 'CARD (YARD)',
+      'account_cash': 'ACCOUNT - CASH',
+      'account_card': 'ACCOUNT - CARD'
+    }
+    return methodMap[method] || method?.toUpperCase() || ''
+  }
+  
+  // Customer type display
+  const customerType = order.customer_type || ''
+  const getCustomerTypeDisplay = (type: string): string => {
+    const typeMap: { [key: string]: string } = {
+      'account': 'ACCOUNT',
+      'trade': 'TRADE',
+      'residential': 'CASH'
+    }
+    return typeMap[type] || type?.toUpperCase() || 'CASH'
+  }
   
   return `<!DOCTYPE html>
 <html lang="en">
@@ -386,6 +459,16 @@ function generateReceiptHTML(data: any): string {
       max-width: 600px;
       margin: 0 auto;
       background: white;
+    }
+    
+    /* Accent color for highlights */
+    .accent { color: #C65D00; }
+    .accent-red { color: #C41E3A; }
+    
+    /* Timestamp */
+    .timestamp {
+      font-size: 11px;
+      margin-bottom: 10px;
     }
     
     /* Header */
@@ -413,13 +496,18 @@ function generateReceiptHTML(data: any): string {
       flex: 1;
     }
     .business-name {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
       margin-bottom: 3px;
     }
     .business-details {
       font-size: 11px;
-      line-height: 1.3;
+      line-height: 1.4;
+    }
+    .abn-section {
+      font-size: 11px;
+      text-align: right;
+      padding-top: 5px;
     }
     
     /* Invoice details */
@@ -428,47 +516,50 @@ function generateReceiptHTML(data: any): string {
     }
     .invoice-row {
       display: flex;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
+      font-size: 11px;
     }
     .invoice-label {
       font-weight: bold;
-      min-width: 180px;
+      min-width: 130px;
     }
     .invoice-value {
       flex: 1;
     }
     
     /* Products table */
-    .products-table {
-      width: 100%;
-      margin: 15px 0;
-      border-collapse: collapse;
-    }
     .products-header {
       display: flex;
       font-weight: bold;
-      padding: 5px 0;
+      padding: 8px 0;
       border-bottom: 1px solid #000;
+      font-size: 11px;
     }
     .products-header .col-name { flex: 2; }
-    .products-header .col-qty { width: 80px; text-align: center; }
-    .products-header .col-price { width: 100px; text-align: right; }
+    .products-header .col-qty { width: 50px; text-align: center; }
+    .products-header .col-unit { width: 70px; text-align: right; }
+    .products-header .col-price { width: 80px; text-align: right; }
     
     .product-row {
       display: flex;
-      padding: 8px 0;
-      border-bottom: 1px solid #ccc;
+      padding: 6px 0;
+      border-bottom: 1px dotted #999;
+      font-size: 11px;
     }
     .product-row .col-name { 
       flex: 2;
       padding-right: 10px;
     }
     .product-row .col-qty { 
-      width: 80px; 
+      width: 50px; 
       text-align: center;
     }
+    .product-row .col-unit { 
+      width: 70px; 
+      text-align: right;
+    }
     .product-row .col-price { 
-      width: 100px; 
+      width: 80px; 
       text-align: right;
     }
     
@@ -479,53 +570,69 @@ function generateReceiptHTML(data: any): string {
     .total-row {
       display: flex;
       justify-content: flex-end;
-      padding: 5px 0;
+      padding: 3px 0;
+      font-size: 11px;
     }
     .total-label {
-      width: 150px;
+      width: 120px;
       text-align: left;
     }
     .total-value {
-      width: 100px;
+      width: 80px;
       text-align: right;
     }
     .total-row.grand-total {
       font-weight: bold;
-      font-size: 14px;
+      font-size: 13px;
       border-top: 2px solid #000;
       margin-top: 5px;
       padding-top: 8px;
     }
+    .total-row.grand-total .total-label,
+    .total-row.grand-total .total-value {
+      color: #C41E3A;
+    }
     .total-row.gst {
       font-style: italic;
-      font-size: 11px;
+      font-size: 10px;
     }
     
-    /* Notes boxes */
+    /* Notes section - new layout */
     .notes-section {
       margin-top: 20px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      display: flex;
       gap: 15px;
+    }
+    .notes-left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .notes-right {
+      flex: 1;
     }
     .notes-box {
       border: 1px solid #000;
-      padding: 12px;
-      min-height: 100px;
-      height: auto;
+      padding: 10px;
+      min-height: 60px;
       overflow-wrap: break-word;
       word-wrap: break-word;
     }
+    .notes-box.tall {
+      min-height: 130px;
+      height: auto;
+    }
     .notes-box-label {
       font-weight: bold;
-      margin-bottom: 8px;
-      font-size: 13px;
+      margin-bottom: 6px;
+      font-size: 11px;
       text-transform: uppercase;
     }
     .notes-box-content {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 500;
-      line-height: 1.5;
+      line-height: 1.4;
     }
     
     /* Footer disclaimer */
@@ -565,18 +672,21 @@ function generateReceiptHTML(data: any): string {
 </head>
 <body>
   <div class="receipt-container">
+    <!-- Timestamp -->
+    <div class="timestamp">${timestamp}</div>
+    
     <!-- Header with Logo and Business Info -->
     <div class="header">
       <div class="logo"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTIwIj48cGF0aCBmaWxsPSIjMjI4QjIyIiBkPSJNNTAgMTBjLTE1IDAtMjUgMTUtMjUgMzBzMTAgMjAgMjUgMjAgMjUtNSAyNS0yMFM2NSAxMCA1MCAxMHoiLz48cGF0aCBmaWxsPSIjMUE2QjFBIiBkPSJNMzUgMjVjLTEyIDgtMTggMjAtMTUgMzUgMyAxMCAxMiAxOCAyNSAyMC01LTUtMTAtMTUtOC0yNSAyLTEwIDgtMjAgMTMtMjUtOC0yLTE1LTMtMTUtNXoiLz48cGF0aCBmaWxsPSIjMjg5QzI4IiBkPSJNNjUgMjVjMTIgOCAxOCAyMCAxNSAzNS0zIDEwLTEyIDE4LTI1IDIwIDUtNSAxMC0xNSA4LTI1LTItMTAtOC0yMC0xMy0yNSA4LTIgMTUtMyAxNS01eiIvPjxyZWN0IGZpbGw9IiM4QjQ1MTMiIHg9IjQ1IiB5PSI3MCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjQwIiByeD0iMiIvPjxlbGxpcHNlIGZpbGw9IiMyMjhCMjIiIGN4PSI1MCIgY3k9IjE1IiByeD0iMTIiIHJ5PSI4Ii8+PGVsbGlwc2UgZmlsbD0iIzFBNkIxQSIgY3g9IjM1IiBjeT0iMjUiIHJ4PSIxMCIgcnk9IjciLz48ZWxsaXBzZSBmaWxsPSIjMjg5QzI4IiBjeD0iNjUiIGN5PSIyNSIgcng9IjEwIiByeT0iNyIvPjxlbGxpcHNlIGZpbGw9IiMxQTZCMUEiIGN4PSIyOCIgY3k9IjQwIiByeD0iOCIgcnk9IjYiLz48ZWxsaXBzZSBmaWxsPSIjMjg5QzI4IiBjeD0iNzIiIGN5PSI0MCIgcng9IjgiIHJ5PSI2Ii8+PC9zdmc+" alt="Surrey Hills Garden Supplies"></div>
       <div class="business-info">
-        <div class="business-name">${businessName}</div>
+        <div class="business-name">${businessName.toUpperCase()}</div>
         <div class="business-details">
-          ${businessAddress}<br>
-          Ph: ${businessPhone}<br>
-          E: ${businessEmail}<br>
-          ABN: ${businessAbn}
+          680 Canterbury Rd, <span class="accent">Surrey Hills</span><br>
+          PH: ${businessPhone}<br>
+          E: <span class="accent">${businessEmail}</span>
         </div>
       </div>
+      <div class="abn-section">ABN: ${businessAbn}</div>
     </div>
     
     <!-- Invoice Details -->
@@ -584,17 +694,29 @@ function generateReceiptHTML(data: any): string {
       <div class="invoice-row">
         <span class="invoice-label">Tax Invoice No:</span>
         <span class="invoice-value">${invoice?.invoice_number || order.order_number}</span>
-        <span class="invoice-label" style="width: 60px;">Date:</span>
+        <span class="invoice-label" style="width: 50px;">Date:</span>
         <span class="invoice-value">${invoiceDate}</span>
       </div>
+      ${businessCustomerName ? `
+      <div class="invoice-row">
+        <span class="invoice-label">Business Name:</span>
+        <span class="invoice-value">${businessCustomerName}</span>
+      </div>
+      ` : ''}
       <div class="invoice-row">
         <span class="invoice-label">Delivery Address:</span>
         <span class="invoice-value">${deliveryAddress}</span>
       </div>
-      ${deliveryDateTimeLine ? `
+      ${deliveryDateFormatted ? `
       <div class="invoice-row">
-        <span class="invoice-label">Scheduled Date & Time:</span>
-        <span class="invoice-value">${deliveryDateTimeLine}</span>
+        <span class="invoice-label">Delivery Date:</span>
+        <span class="invoice-value accent-red">${deliveryDateFormatted}</span>
+      </div>
+      ` : ''}
+      ${deliveryTimeFormatted ? `
+      <div class="invoice-row">
+        <span class="invoice-label">Delivery Time:</span>
+        <span class="invoice-value accent-red">${deliveryTimeFormatted}</span>
       </div>
       ` : ''}
     </div>
@@ -603,6 +725,7 @@ function generateReceiptHTML(data: any): string {
     <div class="products-header">
       <span class="col-name">Product</span>
       <span class="col-qty">Qty</span>
+      <span class="col-unit">Unit</span>
       <span class="col-price">Price</span>
     </div>
     
@@ -616,12 +739,25 @@ function generateReceiptHTML(data: any): string {
     <div class="product-row">
       <span class="col-name">${itemName}</span>
       <span class="col-qty">${itemQty}</span>
+      <span class="col-unit">$${itemPrice.toFixed(2)}</span>
       <span class="col-price">$${lineTotal.toFixed(2)}</span>
     </div>`
     }).join('')}
     
     <!-- Totals Section -->
     <div class="totals-section">
+      ${adjustments !== 0 ? `
+      <div class="total-row">
+        <span class="total-label">Price Adjustment</span>
+        <span class="total-value">${adjustments >= 0 ? '' : '-'}$${Math.abs(adjustments).toFixed(2)}</span>
+      </div>
+      ` : ''}
+      
+      <div class="total-row">
+        <span class="total-label">Subtotal</span>
+        <span class="total-value">$${subtotal.toFixed(2)}</span>
+      </div>
+      
       ${deliveryFee > 0 ? `
       <div class="total-row">
         <span class="total-label">Delivery${suburbName ? ` (${suburbName})` : ''}</span>
@@ -629,32 +765,51 @@ function generateReceiptHTML(data: any): string {
       </div>
       ` : ''}
       
-      <div class="total-row grand-total">
-        <span class="total-label">Total</span>
-        <span class="total-value">$${totalAmount.toFixed(2)}</span>
+      <div class="total-row">
+        <span class="total-label">Sale Total</span>
+        <span class="total-value">$${saleTotal.toFixed(2)}</span>
       </div>
+      
+      ${surchargeAmount > 0 ? `
+      <div class="total-row">
+        <span class="total-label">Surcharge ${surchargePercent}%</span>
+        <span class="total-value">$${surchargeAmount.toFixed(2)}</span>
+      </div>
+      ` : ''}
       
       <div class="total-row gst">
         <span class="total-label">GST included</span>
         <span class="total-value">$${gstAmount.toFixed(2)}</span>
       </div>
+      
+      <div class="total-row grand-total">
+        <span class="total-label">Total</span>
+        <span class="total-value">$${totalAmount.toFixed(2)}</span>
+      </div>
     </div>
     
-    <!-- Notes Section -->
+    <!-- Notes Section - New Layout -->
     <div class="notes-section">
-      <div class="notes-box">
-        <div class="notes-box-label">Delivery notes:</div>
-        <div class="notes-box-content">${deliveryNotes}</div>
+      <div class="notes-left">
+        <div class="notes-box">
+          <div class="notes-box-label">CASH / ACCOUNT / TRADE Etc:</div>
+          <div class="notes-box-content">${getCustomerTypeDisplay(customerType)}</div>
+        </div>
+        <div class="notes-box">
+          <div class="notes-box-label">Contact Name/ Phone No:</div>
+          <div class="notes-box-content">${contactName}${contactPhone ? `<br>${contactPhone}` : ''}</div>
+        </div>
       </div>
-      <div class="notes-box">
-        <div class="notes-box-label">Order notes:</div>
-        <div class="notes-box-content">${purchaseOrder ? `<strong>PO: ${purchaseOrder}</strong>` : ''}${purchaseOrder && orderNotes ? '<br>' : ''}${orderNotes}</div>
-      </div>
-    </div>
-    <div class="notes-section" style="margin-top: 10px;">
-      <div class="notes-box" style="width: 50%;">
-        <div class="notes-box-label">Contact name/Phone No:</div>
-        <div class="notes-box-content">${contactName}${contactPhone ? ` / ${contactPhone}` : ''}</div>
+      <div class="notes-right">
+        <div class="notes-box tall">
+          <div class="notes-box-label">Notes:</div>
+          <div class="notes-box-content">
+            ${getPaymentMethodDisplay(paymentMethod)}
+            ${purchaseOrder ? `<br><strong>PO: ${purchaseOrder}</strong>` : ''}
+            ${deliveryNotes ? `<br>${deliveryNotes}` : ''}
+            ${orderNotes ? `<br>${orderNotes}` : ''}
+          </div>
+        </div>
       </div>
     </div>
     
