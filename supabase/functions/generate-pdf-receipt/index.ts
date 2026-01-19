@@ -277,7 +277,20 @@ function generateSimpleReceiptHTML(data: any): string {
   // Calculate totals
   const totalAmount = invoice?.amount || order.total_amount || order.totalAmount || 0
   const deliveryFee = order.delivery_fee || order.deliveryFee || 0
+  const subtotal = order.subtotal || order.subTotal || (totalAmount - deliveryFee)
+  const adjustments = order.adjustments || 0
   const gstAmount = totalAmount / 11
+  
+  // Calculate surcharge if applicable (from payment method)
+  const paymentMethod = order.payment_method || order.paymentMethod || ''
+  let surchargePercent = 0
+  let surchargeAmount = 0
+  if (paymentMethod === 'card_on_file' || paymentMethod === 'in_yard_card' || paymentMethod === 'account_card' || paymentMethod === '7_day_invoice') {
+    surchargePercent = 1.2
+    const preSurchargeTotal = subtotal + deliveryFee + adjustments
+    surchargeAmount = preSurchargeTotal * (surchargePercent / 100)
+  }
+  const saleTotal = subtotal + deliveryFee + adjustments
   
   // Format dates - support both snake_case (database) and camelCase (receiptData)
   const invoiceDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-AU') : (order.orderDate || new Date().toLocaleDateString('en-AU'))
@@ -387,8 +400,9 @@ function generateSimpleReceiptHTML(data: any): string {
       margin-top: 15px;
     }
     .products-header .col-name { flex: 2; }
-    .products-header .col-qty { width: 80px; text-align: center; }
-    .products-header .col-price { width: 100px; text-align: right; }
+    .products-header .col-qty { width: 60px; text-align: center; }
+    .products-header .col-unit { width: 80px; text-align: right; }
+    .products-header .col-price { width: 80px; text-align: right; }
     
     .product-row {
       display: flex;
@@ -396,8 +410,11 @@ function generateSimpleReceiptHTML(data: any): string {
       border-bottom: 1px solid #ccc;
     }
     .product-row .col-name { flex: 2; padding-right: 10px; }
-    .product-row .col-qty { width: 80px; text-align: center; }
-    .product-row .col-price { width: 100px; text-align: right; }
+    .product-row .col-qty { width: 60px; text-align: center; }
+    .product-row .col-unit { width: 80px; text-align: right; }
+    .product-row .col-price { width: 80px; text-align: right; }
+    
+    .accent { color: #C65D00; }
     
     .totals-section { margin-top: 15px; }
     .total-row {
@@ -508,6 +525,7 @@ function generateSimpleReceiptHTML(data: any): string {
     <div class="products-header">
       <span class="col-name">Product</span>
       <span class="col-qty">Qty</span>
+      <span class="col-unit">Unit</span>
       <span class="col-price">Price</span>
     </div>
     
@@ -521,26 +539,45 @@ function generateSimpleReceiptHTML(data: any): string {
     <div class="product-row">
       <span class="col-name">${itemName}</span>
       <span class="col-qty">${itemQty}</span>
+      <span class="col-unit">$${itemPrice.toFixed(2)}</span>
       <span class="col-price">$${lineTotal.toFixed(2)}</span>
     </div>`
     }).join('')}
     
     <div class="totals-section">
-      ${deliveryFee > 0 ? `
+      <div class="total-row">
+        <span class="total-label accent">Price Adjustment</span>
+        <span class="total-value">$${adjustments.toFixed(2)}</span>
+      </div>
+      
+      <div class="total-row">
+        <span class="total-label">Subtotal</span>
+        <span class="total-value">$${subtotal.toFixed(2)}</span>
+      </div>
+      
       <div class="total-row">
         <span class="total-label">Delivery${suburbName ? ` (${suburbName})` : ''}</span>
         <span class="total-value">$${Number(deliveryFee).toFixed(2)}</span>
       </div>
-      ` : ''}
       
-      <div class="total-row grand-total">
-        <span class="total-label">Total</span>
-        <span class="total-value">$${Number(totalAmount).toFixed(2)}</span>
+      <div class="total-row">
+        <span class="total-label">Sale Total</span>
+        <span class="total-value">$${saleTotal.toFixed(2)}</span>
+      </div>
+      
+      <div class="total-row">
+        <span class="total-label accent">Surcharge ${surchargePercent}%</span>
+        <span class="total-value">$${surchargeAmount.toFixed(2)}</span>
       </div>
       
       <div class="total-row gst">
         <span class="total-label">GST included</span>
         <span class="total-value">$${gstAmount.toFixed(2)}</span>
+      </div>
+      
+      <div class="total-row grand-total">
+        <span class="total-label">Total</span>
+        <span class="total-value">$${Number(totalAmount).toFixed(2)}</span>
       </div>
     </div>
     
