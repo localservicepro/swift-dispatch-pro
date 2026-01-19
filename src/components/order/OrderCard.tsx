@@ -12,6 +12,7 @@ import { Database } from "@/integrations/supabase/types";
 import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
 import { formatDeliveredDate } from "@/utils/dateTimeUtils";
 import { getOrderTypeColors, getOrderTypeLabel, getOrderTypeIcon } from "@/utils/orderTypeColors";
+import { getCustomerTypeColors } from "@/utils/customerTypeColors";
 import { useOrderReturns } from "@/hooks/useOrderReturns";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -165,11 +166,14 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
   // Get return stats for this order
   const returnStats = getReturnStats(order.id);
   
-  // Get order type styling
+  // Get order type styling for badge
   const orderTypeColors = getOrderTypeColors(order.delivery_method);
   const orderTypeLabel = getOrderTypeLabel(order.delivery_method);
   const orderTypeIconName = getOrderTypeIcon(order.delivery_method);
   const OrderTypeIcon = orderTypeIconName === 'Truck' ? Truck : ShoppingBag;
+  
+  // Get customer type colors for card styling (matching Opportunities view)
+  const customerColors = getCustomerTypeColors(order.customer_type);
 
   const formatProducts = (products: any, productsFormatted?: string) => {
     if (productsFormatted && productsFormatted.trim() !== '') {
@@ -212,10 +216,10 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
   return (
     <div className={cn(
       "border rounded-lg p-4 transition-colors",
-      orderTypeColors.card,
-      orderTypeColors.border,
-      orderTypeColors.leftBorder,
-      orderTypeColors.hoverBorder
+      customerColors.card,
+      customerColors.border,
+      customerColors.leftBorder,
+      customerColors.hoverBorder
     )}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
