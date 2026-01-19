@@ -97,6 +97,8 @@ export function useOrderFormSubmission() {
         contact_name: submissionData.contact_name || null,
         contact_email: submissionData.contact_email || null,
         contact_phone: submissionData.contact_phone || null,
+        // Add payment method field
+        payment_method: submissionData.payment_method || null,
         updated_at: new Date().toISOString(),
       };
 
