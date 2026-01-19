@@ -505,12 +505,6 @@ function generateThermalReceiptHTML(data: any): string {
         <span class="bold">Tax Invoice No:</span>
         <span>${invoice?.invoice_number || order.order_number}</span>
       </div>
-      ${purchaseOrder ? `
-      <div class="invoice-row">
-        <span class="bold">Customer PO:</span>
-        <span>${purchaseOrder}</span>
-      </div>
-      ` : ''}
       <div class="invoice-row">
         <span>Date:</span>
         <span>${invoiceDate}</span>
@@ -573,7 +567,7 @@ function generateThermalReceiptHTML(data: any): string {
       </div>
       <div class="notes-box">
         <div class="notes-label">Order notes:</div>
-        ${orderNotes}
+        ${purchaseOrder ? `<strong>PO: ${purchaseOrder}</strong>` : ''}${purchaseOrder && orderNotes ? '<br>' : ''}${orderNotes}
       </div>
       <div class="notes-box">
         <div class="notes-label">Contact:</div>
