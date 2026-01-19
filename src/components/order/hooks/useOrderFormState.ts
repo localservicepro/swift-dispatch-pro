@@ -56,17 +56,14 @@ export function useOrderFormState() {
   // Delivery fee calculation hook
   const { autoPopulateDeliveryFee, getDeliveryFeeInfo } = useDeliveryFeeCalculation();
 
-  // Auto-populate delivery address when customer is selected
+  // When customer changes, clear address (don't auto-populate - user can tick checkbox to use customer address)
   useEffect(() => {
-    if (selectedCustomer && selectedCustomer.full_address) {
-      setDeliveryAddress(selectedCustomer.full_address);
-      setIsUsingCustomerAddress(true);
-      setSameAsBilling(true); // Reset to same as billing when customer changes
-      
-      // Also set suburb if customer has one
-      if (selectedCustomer.suburb_id) {
-        setSelectedSuburbId(selectedCustomer.suburb_id);
-      }
+    if (selectedCustomer) {
+      // Clear delivery address when customer changes (don't auto-populate)
+      setDeliveryAddress("");
+      setIsUsingCustomerAddress(false);
+      setSameAsBilling(false);
+      setSelectedSuburbId(""); // Also clear suburb
     }
     
     // Clear contact when customer changes

@@ -1,14 +1,13 @@
-
 import React from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { OrderAddressForm } from '@/components/order/OrderAddressForm';
-import { User, X, RotateCcw, Calendar as CalendarIcon, Clock, ChevronDown } from 'lucide-react';
+import { User, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { generateTimeSlots } from '@/utils/timeSlotUtils';
 import { isDateBeforeToday } from '@/utils/dateTimeUtils';
@@ -71,50 +70,40 @@ export function DeliveryAddressStep({
     }
   };
 
+  const handleUseCustomerAddressToggle = (checked: boolean) => {
+    if (checked && selectedCustomer?.full_address) {
+      onResetToCustomerAddress?.();
+    } else {
+      onClearAddress?.();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Delivery Address & Schedule</h3>
-          {isUsingCustomerAddress && selectedCustomer && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <User className="w-3 h-3" />
-              Using {selectedCustomer.first_name}'s address
-            </Badge>
-          )}
-        </div>
+        <h3 className="text-lg font-semibold">Delivery Address & Schedule</h3>
 
-        {/* Address status and quick actions */}
-        {selectedCustomer && (
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            {isUsingCustomerAddress ? (
-              <div className="flex items-center gap-2">
-                <span>📍 Using registered customer address</span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onClearAddress}
-                  className="h-7 px-2 text-xs"
-                >
-                  <X className="w-3 h-3 mr-1" />
-                  Use different address
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span>📝 Using custom delivery address</span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onResetToCustomerAddress}
-                  className="h-7 px-2 text-xs"
-                >
-                  <RotateCcw className="w-3 h-3 mr-1" />
-                  Reset to customer address
-                </Button>
-              </div>
+        {/* Use customer address checkbox */}
+        {selectedCustomer && selectedCustomer.full_address && (
+          <div className="p-3 bg-muted/50 rounded-lg border">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="use-customer-address"
+                checked={isUsingCustomerAddress}
+                onCheckedChange={handleUseCustomerAddressToggle}
+              />
+              <label
+                htmlFor="use-customer-address"
+                className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+              >
+                <User className="w-4 h-4" />
+                Use {selectedCustomer.first_name}'s registered address
+              </label>
+            </div>
+            {isUsingCustomerAddress && (
+              <p className="text-xs text-muted-foreground mt-2 pl-6">
+                📍 {selectedCustomer.full_address}
+              </p>
             )}
           </div>
         )}
@@ -122,7 +111,7 @@ export function DeliveryAddressStep({
         {/* Delivery Address Section */}
         <div className="space-y-3">
           <div className="border-b pb-3">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Delivery Address</h4>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">Delivery Address</h4>
             <OrderAddressForm
               formData={formData}
               deliveryRate="" // No longer used for calculations, just reference
@@ -133,7 +122,7 @@ export function DeliveryAddressStep({
 
           {/* Delivery Schedule Section */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gray-700">Delivery Schedule</h4>
+            <h4 className="text-sm font-medium text-muted-foreground">Delivery Schedule</h4>
             <div className="grid grid-cols-2 gap-4">
               {/* Delivery Date */}
               <div className="space-y-2">
