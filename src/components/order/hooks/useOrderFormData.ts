@@ -27,7 +27,7 @@ export interface OrderFormData {
   truck_type: string;
   truck_id: string;
   payment_method: string;
-  adjustments: number;
+  adjustments: string;
   contact_id: string | null;
   contact_name: string | null;
   contact_email: string | null;
@@ -60,7 +60,7 @@ export function useOrderFormData(order: Order) {
     truck_type: order.truck_type || 'none',
     truck_id: order.truck_id || 'none',
     payment_method: order.payment_method || 'cash',
-    adjustments: Number(order.adjustments) || 0,
+    adjustments: order.adjustments?.toString() || '0',
     contact_id: order.contact_id || null,
     contact_name: order.contact_name || null,
     contact_email: order.contact_email || null,
@@ -153,15 +153,18 @@ export function useOrderFormData(order: Order) {
   const calculateTotals = (updatedData: Partial<OrderFormData>) => {
     const currentData = { ...formData, ...updatedData };
     
+    // Parse adjustments from string to number for calculation
+    const adjustmentsNum = parseFloat(currentData.adjustments) || 0;
+    
     if (!paymentSettings) {
       // Fallback calculation without payment settings - GST is included in prices
-      const total = currentData.subtotal + currentData.delivery_fee + currentData.adjustments;
+      const total = currentData.subtotal + currentData.delivery_fee + adjustmentsNum;
       return total.toFixed(2);
     }
 
     const orderTotals = calculateOrderTotals(
       currentData.subtotal,
-      currentData.adjustments,
+      adjustmentsNum,
       currentData.delivery_fee,
       currentData.payment_method,
       paymentSettings
@@ -172,23 +175,30 @@ export function useOrderFormData(order: Order) {
 
   const handleInputChange = (field: string, value: string) => {
     // Handle pricing fields that need recalculation
-    if (field === 'delivery_fee' || field === 'adjustments') {
-      // Improved parsing to handle negative values and intermediate typing states
+    if (field === 'delivery_fee') {
+      // Parse delivery fee as number
       let numValue = 0;
-      if (value === '' || value === '-') {
-        // Allow empty string or just minus sign (intermediate typing state)
-        numValue = 0;
-      } else {
+      if (value !== '' && value !== '-') {
         const parsed = parseFloat(value);
         numValue = isNaN(parsed) ? 0 : parsed;
       }
       
-      const updatedData = { [field]: numValue };
+      const updatedData = { delivery_fee: numValue };
       const newTotal = calculateTotals(updatedData);
       
       setFormData(prev => ({
         ...prev,
-        [field]: numValue,
+        delivery_fee: numValue,
+        total_amount: newTotal
+      }));
+    } else if (field === 'adjustments') {
+      // Store adjustments as string to allow typing negative values
+      const updatedData = { adjustments: value };
+      const newTotal = calculateTotals(updatedData);
+      
+      setFormData(prev => ({
+        ...prev,
+        adjustments: value,
         total_amount: newTotal
       }));
     } else if (field === 'payment_method') {
@@ -320,13 +330,15 @@ export function useOrderFormData(order: Order) {
 
   // Get calculation breakdown for display
   const getCalculationBreakdown = () => {
+    const adjustmentsNum = parseFloat(formData.adjustments) || 0;
+    
     if (!paymentSettings) {
       return {
         subtotal: formData.subtotal,
-        adjustments: formData.adjustments,
+        adjustments: adjustmentsNum,
         deliveryFee: formData.delivery_fee,
         surchargeAmount: 0,
-        gstAmount: (formData.subtotal + formData.adjustments + formData.delivery_fee) / 11, // GST included calculation
+        gstAmount: (formData.subtotal + adjustmentsNum + formData.delivery_fee) / 11, // GST included calculation
         totalAmount: parseFloat(formData.total_amount),
         hasSurcharge: false,
         gstIncluded: true
@@ -335,7 +347,7 @@ export function useOrderFormData(order: Order) {
 
     return calculateOrderTotals(
       formData.subtotal,
-      formData.adjustments,
+      adjustmentsNum,
       formData.delivery_fee,
       formData.payment_method,
       paymentSettings
