@@ -7,17 +7,23 @@ interface TimeSlot {
 export const generateTimeSlots = (): TimeSlot[] => {
   const timeSlots: TimeSlot[] = [];
   
-  // Generate 30-minute ranges from 7:00 AM to 7:30 PM
-  for (let hour = 7; hour <= 19; hour++) {
+  // Add special options at the top
+  timeSlots.push({ value: 'urgent', label: 'Urgent' });
+  timeSlots.push({ value: 'asap', label: 'ASAP' });
+  timeSlots.push({ value: 'anytime', label: 'Any time' });
+  
+  // Generate 1-hour intervals starting every 30 minutes
+  // From 7:00 AM to 4:00 PM (last slot: 4:00 PM - 5:00 PM)
+  for (let hour = 7; hour <= 16; hour++) {
     for (let min = 0; min < 60; min += 30) {
-      // Skip the last iteration for 7:30 PM (19:30)
-      if (hour === 19 && min === 30) break;
+      // Stop after 4:00 PM slot
+      if (hour === 16 && min > 0) break;
       
       const startTime = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-      const endMin = min + 30;
-      const endHour = endMin >= 60 ? hour + 1 : hour;
-      const adjustedEndMin = endMin >= 60 ? 0 : endMin;
-      const endTime = `${endHour.toString().padStart(2, '0')}:${adjustedEndMin.toString().padStart(2, '0')}`;
+      
+      // Calculate end time (1 hour later)
+      const endHour = hour + 1;
+      const endTime = `${endHour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
       
       const startDisplay = new Date(`2000-01-01T${startTime}`).toLocaleTimeString('en-US', {
         hour: 'numeric',
@@ -33,7 +39,7 @@ export const generateTimeSlots = (): TimeSlot[] => {
       
       timeSlots.push({ 
         value: startTime, 
-        label: `${startDisplay}-${endDisplay}` 
+        label: `${startDisplay} - ${endDisplay}` 
       });
     }
   }
