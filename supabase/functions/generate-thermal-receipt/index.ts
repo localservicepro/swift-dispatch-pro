@@ -79,6 +79,7 @@ const handler = async (req: Request): Promise<Response> => {
     let invoice = null;
     let order = null;
     let suburbName = null;
+    let creatorInitials = "";
 
     if (receiptData) {
       order = receiptData;
@@ -122,6 +123,7 @@ const handler = async (req: Request): Promise<Response> => {
             contact_name,
             contact_phone,
             delivery_suburb_id,
+            admin_id,
             created_at
           )
         `)
@@ -169,6 +171,7 @@ const handler = async (req: Request): Promise<Response> => {
           contact_name,
           contact_phone,
           delivery_suburb_id,
+          admin_id,
           created_at
         `)
         .eq('id', orderId)
@@ -203,11 +206,27 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Either invoiceId, orderId, or receiptData must be provided')
     }
 
+    // Fetch creator profile for initials
+    const adminId = order?.admin_id || order?.adminId;
+    if (adminId) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", adminId)
+        .single();
+      
+      if (profile?.full_name) {
+        const parts = profile.full_name.trim().split(/\s+/);
+        creatorInitials = parts.map((p: string) => p.charAt(0).toUpperCase()).join("");
+      }
+    }
+
     const receiptHtml = generateThermalReceiptHTML({
       invoice,
       order,
       businessSettings,
       suburbName,
+      creatorInitials,
       requestId
     })
 
@@ -305,7 +324,7 @@ const handler = async (req: Request): Promise<Response> => {
 }
 
 function generateThermalReceiptHTML(data: any): string {
-  const { invoice, order, businessSettings, suburbName, requestId } = data
+  const { invoice, order, businessSettings, suburbName, creatorInitials, requestId } = data
   const orderItems = order.products || []
   
   // Business details
@@ -355,12 +374,16 @@ function generateThermalReceiptHTML(data: any): string {
   // Purchase order - support both naming conventions
   const purchaseOrder = order.purchase_order || order.purchaseOrder || ''
   
+  // Format order number with creator initials
+  const orderNumber = order.order_number || order.orderNumber || ""
+  const displayOrderNumber = orderNumber + (creatorInitials || "")
+  
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tax Invoice - ${invoice?.invoice_number || order.order_number}</title>
+  <title>Tax Invoice - ${invoice?.invoice_number || displayOrderNumber}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 

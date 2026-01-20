@@ -80,6 +80,7 @@ const handler = async (req: Request): Promise<Response> => {
     let invoice = null;
     let order = null;
     let suburbName = null;
+    let creatorInitials = "";
 
     if (receiptData) {
       logStep('Using provided receipt data', { requestId });
@@ -124,6 +125,7 @@ const handler = async (req: Request): Promise<Response> => {
             contact_name,
             contact_phone,
             delivery_suburb_id,
+            admin_id,
             created_at
           )
         `)
@@ -178,6 +180,7 @@ const handler = async (req: Request): Promise<Response> => {
           contact_name,
           contact_phone,
           delivery_suburb_id,
+          admin_id,
           created_at
         `)
         .eq('id', orderId)
@@ -219,11 +222,27 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Either invoiceId, orderId, or receiptData must be provided')
     }
 
+    // Fetch creator profile for initials
+    const adminId = order?.admin_id || order?.adminId;
+    if (adminId) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", adminId)
+        .single();
+      
+      if (profile?.full_name) {
+        const parts = profile.full_name.trim().split(/\s+/);
+        creatorInitials = parts.map((p: string) => p.charAt(0).toUpperCase()).join("");
+      }
+    }
+
     const receiptHtml = generateReceiptHTML({
       invoice,
       order,
       businessSettings,
       suburbName,
+      creatorInitials,
       sessionId,
       requestId
     })
@@ -327,7 +346,7 @@ const handler = async (req: Request): Promise<Response> => {
 }
 
 function generateReceiptHTML(data: any): string {
-  const { invoice, order, businessSettings, suburbName, sessionId, requestId } = data
+  const { invoice, order, businessSettings, suburbName, creatorInitials, sessionId, requestId } = data
   const orderItems = order.products || []
   
   // Business details
@@ -451,12 +470,16 @@ function generateReceiptHTML(data: any): string {
     return typeMap[type] || type?.toUpperCase() || 'CASH'
   }
   
+  // Format order number with creator initials
+  const orderNumber = order.order_number || order.orderNumber || ""
+  const displayOrderNumber = orderNumber + (creatorInitials || "")
+  
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tax Invoice - ${invoice?.invoice_number || order.order_number}</title>
+  <title>Tax Invoice - ${invoice?.invoice_number || displayOrderNumber}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -705,7 +728,7 @@ function generateReceiptHTML(data: any): string {
     <div class="invoice-details">
       <div class="invoice-row">
         <span class="invoice-label">Tax Invoice No:</span>
-        <span class="invoice-value">${invoice?.invoice_number || order.order_number}</span>
+        <span class="invoice-value">${invoice?.invoice_number || displayOrderNumber}</span>
         <span class="invoice-label" style="width: 50px;">Date:</span>
         <span class="invoice-value">${invoiceDate}</span>
       </div>
