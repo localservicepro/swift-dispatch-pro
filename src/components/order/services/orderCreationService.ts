@@ -43,6 +43,10 @@ interface CreateSplitOrderParams {
 
 export async function createSingleOrder(params: CreateSingleOrderParams) {
   try {
+    // Get current user ID for admin_id
+    const { data: { user } } = await supabase.auth.getUser();
+    const adminId = user?.id || null;
+
     // Fetch current payment settings for calculations
     const { data: paymentSettings, error: settingsError } = await supabase
       .from('payment_settings')
@@ -121,6 +125,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       truck_type: null,
       truck_id: null,
       driver_id: null,
+      admin_id: adminId,
       special_instructions: params.specialInstructions,
       order_notes: params.orderNotes,
       delivery_notes: params.deliveryNotes,
@@ -160,6 +165,10 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
 
 export async function createSplitOrder(params: CreateSplitOrderParams) {
   try {
+    // Get current user ID for admin_id
+    const { data: { user } } = await supabase.auth.getUser();
+    const adminId = user?.id || null;
+
     // Fetch current payment settings for calculations
     const { data: paymentSettings, error: settingsError } = await supabase
       .from('payment_settings')
@@ -261,7 +270,8 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       payment_status: 'pending',
       truck_type: null,
       truck_id: null,
-      driver_id: null
+      driver_id: null,
+      admin_id: adminId
     };
 
     const { data: masterOrder, error: masterError } = await supabase
@@ -374,6 +384,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         truck_type: null,
         truck_id: null,
         driver_id: null,
+        admin_id: adminId,
         special_instructions: split.specialInstructions || '',
         order_notes: params.orderNotes,
         delivery_notes: params.deliveryNotes,
