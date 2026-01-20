@@ -595,8 +595,6 @@ function generateSimpleReceiptHTML(data: any): string {
     </div>`;
       })
       .join("")}
-      })
-      .join("")}
     
     <div class="totals-section">
       <div class="total-row">
