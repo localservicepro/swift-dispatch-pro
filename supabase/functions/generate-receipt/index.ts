@@ -19,6 +19,18 @@ const logStep = (step: string, details?: any) => {
   console.log(`[${timestamp}] [GENERATE-RECEIPT] ${step}${detailsStr}`);
 };
 
+// Helper function to escape special Unicode characters to HTML entities
+const escapeHtmlEntities = (str: string): string => {
+  if (!str) return str;
+  return str
+    .replace(/²/g, '&sup2;')
+    .replace(/³/g, '&sup3;')
+    .replace(/°/g, '&deg;')
+    .replace(/±/g, '&plusmn;')
+    .replace(/×/g, '&times;')
+    .replace(/÷/g, '&divide;');
+};
+
 const encodeToBase64 = (str: string): string => {
   try {
     const encoder = new TextEncoder();
@@ -730,7 +742,7 @@ function generateReceiptHTML(data: any): string {
     </div>
     
     ${orderItems.map((item: any) => {
-      const itemName = item.name || item.product_name || 'Product'
+      const itemName = escapeHtmlEntities(item.name || item.product_name || 'Product')
       const itemPrice = Number(item.price || item.unit_price || 0)
       const itemQty = item.quantity || 1
       const lineTotal = itemPrice * itemQty
