@@ -18,6 +18,18 @@ const logStep = (step: string, details?: any) => {
   console.log(`[${timestamp}] [PDF-RECEIPT] ${step}${detailsStr}`);
 };
 
+// Helper function to escape special Unicode characters to HTML entities
+const escapeHtmlEntities = (str: string): string => {
+  if (!str) return str;
+  return str
+    .replace(/²/g, '&sup2;')
+    .replace(/³/g, '&sup3;')
+    .replace(/°/g, '&deg;')
+    .replace(/±/g, '&plusmn;')
+    .replace(/×/g, '&times;')
+    .replace(/÷/g, '&divide;');
+};
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -569,7 +581,7 @@ function generateSimpleReceiptHTML(data: any): string {
     
     ${orderItems
       .map((item: any) => {
-        const itemName = item.name || item.product_name || "Product";
+        const itemName = escapeHtmlEntities(item.name || item.product_name || "Product");
         const itemPrice = Number(item.price ?? item.unit_price ?? item.unitPrice ?? 0);
         const itemQty = item.quantity || 1;
         const lineTotal = itemPrice * itemQty;
@@ -581,6 +593,8 @@ function generateSimpleReceiptHTML(data: any): string {
       <span class="col-unit accent">$${itemPrice.toFixed(2)}</span>
       <span class="col-price">$${lineTotal.toFixed(2)}</span>
     </div>`;
+      })
+      .join("")}
       })
       .join("")}
     
