@@ -309,10 +309,18 @@ function generateSimpleReceiptHTML(data: any): string {
   }
   const saleTotal = subtotal + deliveryFee + adjustments;
 
+  // Format date as DD/MM/YYYY with leading zeros
+  const formatDateAU = (date: Date): string => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   // Format dates - support both snake_case (database) and camelCase (receiptData)
   const invoiceDate = order.created_at
-    ? new Date(order.created_at).toLocaleDateString("en-AU")
-    : order.orderDate || new Date().toLocaleDateString("en-AU");
+    ? formatDateAU(new Date(order.created_at))
+    : order.orderDate || formatDateAU(new Date());
 
   // Get delivery date with day name - support both naming conventions
   const deliveryDateRaw = order.delivery_date || order.deliveryDate || "";
@@ -322,20 +330,32 @@ function generateSimpleReceiptHTML(data: any): string {
     return days[date.getDay()];
   };
   const deliveryDate = deliveryDateRaw
-    ? `${new Date(deliveryDateRaw).toLocaleDateString("en-AU")} ${getDayName(deliveryDateRaw)}`
+    ? `${formatDateAU(new Date(deliveryDateRaw))} ${getDayName(deliveryDateRaw)}`
     : "";
 
-  // Format delivery time (convert 24h to 12h format) - support both naming conventions
-  const formatTime = (time: string): string => {
+  // Format delivery time range (convert 24h to 12h format with +1 hour range)
+  const formatTimeRange = (time: string): string => {
     if (!time) return "";
+    
+    // Handle special time values
+    if (time === 'urgent') return 'Urgent';
+    if (time === 'asap') return 'ASAP';
+    if (time === 'anytime') return 'Any time';
+    
     const [hours, minutes] = time.split(":");
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
+    const startHour = parseInt(hours);
+    const endHour = startHour + 1;
+    
+    const formatSingleTime = (h: number, m: string): string => {
+      const ampm = h >= 12 ? "PM" : "AM";
+      const hour12 = h % 12 || 12;
+      return `${hour12}:${m} ${ampm}`;
+    };
+    
+    return `${formatSingleTime(startHour, minutes)} - ${formatSingleTime(endHour, minutes)}`;
   };
   const deliveryTimeRaw = order.delivery_time || order.deliveryTime || "";
-  const deliveryTime = deliveryTimeRaw ? formatTime(deliveryTimeRaw) : "";
+  const deliveryTime = deliveryTimeRaw ? formatTimeRange(deliveryTimeRaw) : "";
 
   // Format delivery address - support both naming conventions
   const deliveryAddress = order.delivery_address || order.deliveryAddress || order.customer_address || "";
@@ -558,7 +578,7 @@ function generateSimpleReceiptHTML(data: any): string {
       </div>
       <div class="invoice-row">
         <span class="invoice-label">Delivery Address:</span>
-        <span class="invoice-value">${deliveryAddress}</span>
+        <span class="invoice-value" style="font-weight: bold;">${deliveryAddress}</span>
       </div>
       ${
         deliveryDateTimeLine
