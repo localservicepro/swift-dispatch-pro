@@ -6,6 +6,13 @@ import { isPhoneNumber, phoneSearchMatch } from "@/utils/phoneUtils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
+// Helper function to extract initials from full name
+const getInitials = (fullName: string | null | undefined): string => {
+  if (!fullName) return "";
+  const parts = fullName.trim().split(/\s+/);
+  return parts.map(p => p.charAt(0).toUpperCase()).join("");
+};
+
 interface Order {
   id: string;
   order_number: string;
@@ -52,6 +59,7 @@ interface Order {
   contact_name?: string;
   contact_email?: string;
   contact_phone?: string;
+  admin_initials?: string;
 }
 
 export function useOrderData() {
@@ -100,6 +108,7 @@ export function useOrderData() {
           contact_name,
           contact_email,
           contact_phone,
+          admin_id,
           customers!orders_customer_id_fkey(
             id,
             suburb_id,
@@ -113,6 +122,9 @@ export function useOrderData() {
           ),
           delivered_status:delivery_status_updates!delivery_status_updates_order_id_fkey(
             created_at
+          ),
+          admin_profile:profiles!orders_admin_id_fkey(
+            full_name
           )
         `)
         .is('deleted_at', null)
@@ -135,6 +147,9 @@ export function useOrderData() {
           ? order.delivered_status[order.delivered_status.length - 1].created_at 
           : null;
 
+        // Extract admin initials from profile
+        const adminInitials = getInitials(order.admin_profile?.full_name);
+
         return {
           ...order,
           suburb_id: customerSuburbId || null,
@@ -151,7 +166,8 @@ export function useOrderData() {
           driver_name: order.driver_name || 'Not Assigned',
           truck_registration: order.truck_registration || null,
           truck_type_display: order.truck_type_display || null,
-          delivered_at: deliveredAt
+          delivered_at: deliveredAt,
+          admin_initials: adminInitials
         };
       }) || [];
 

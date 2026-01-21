@@ -60,16 +60,17 @@ interface Order {
   delivery_suburb_postcode?: string;
   company_name?: string;
   business_name?: string;
-      customer_type?: string;
-      stop_credit?: boolean;
-      delivered_at?: string;
-      delivery_method?: string;
-      customers?: {
-        email?: string;
-        company_name?: string;
-        business_name?: string;
-      };
-    }
+  customer_type?: string;
+  stop_credit?: boolean;
+  delivered_at?: string;
+  delivery_method?: string;
+  admin_initials?: string;
+  customers?: {
+    email?: string;
+    company_name?: string;
+    business_name?: string;
+  };
+}
 
 interface OrderCardProps {
   order: Order;

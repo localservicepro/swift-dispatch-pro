@@ -13,16 +13,24 @@ export const formatOrderNumber = (order: {
   order_number: string;
   master_order_id?: string | null;
   is_split_order?: boolean;
+  admin_initials?: string;
 }): string => {
+  let orderNumber = order.order_number;
+  
+  // Append creator initials if available
+  if (order.admin_initials) {
+    orderNumber = `${orderNumber}${order.admin_initials}`;
+  }
+  
   // Master orders (no master_order_id and is_split_order is false)
   // These are the parent orders of split orders
   if (!order.master_order_id && order.is_split_order === false) {
-    return `MO - ${order.order_number}`;
+    return `MO - ${orderNumber}`;
   }
   
   // Split orders (have master_order_id) or regular orders
   // Split orders already include the suffix from the database (ORD-531082-A)
-  return order.order_number;
+  return orderNumber;
 };
 
 /**
