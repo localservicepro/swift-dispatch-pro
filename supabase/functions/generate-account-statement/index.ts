@@ -521,11 +521,11 @@ function generateStatementHTML(data: any): string {
     <div class="payment-summary">
       <div class="payment-summary-title">Payment Summary</div>
       <div class="payment-row">
-        <span class="paid">✓ Paid Orders (${paidCount}):</span>
+        <span class="paid">Paid Orders (${paidCount}):</span>
         <span class="paid">$${paidTotal.toFixed(2)}</span>
       </div>
       <div class="payment-row">
-        <span class="pending">○ Pending Orders (${pendingCount}):</span>
+        <span class="pending">Pending Orders (${pendingCount}):</span>
         <span class="pending">$${pendingTotal.toFixed(2)}</span>
       </div>
     </div>
