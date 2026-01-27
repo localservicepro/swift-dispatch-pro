@@ -23,24 +23,28 @@ const logStep = (step: string, details?: any) => {
 const escapeHtmlEntities = (str: string): string => {
   if (!str) return str;
   return str
-    // Handle curly/smart apostrophes
-    .replace(/'/g, "'")
-    .replace(/'/g, "'")
-    // Handle curly/smart quotes  
-    .replace(/"/g, '"')
-    .replace(/"/g, '"')
+    // Handle curly/smart apostrophes using Unicode code points
+    .replace(/\u2018/g, "'")  // Left single quote '
+    .replace(/\u2019/g, "'")  // Right single quote '
+    .replace(/\u201A/g, "'")  // Single low-9 quote ‚
+    .replace(/\u2032/g, "'")  // Prime ′
+    // Handle curly/smart quotes using Unicode code points
+    .replace(/\u201C/g, '"')  // Left double quote "
+    .replace(/\u201D/g, '"')  // Right double quote "
+    .replace(/\u201E/g, '"')  // Double low-9 quote „
+    .replace(/\u2033/g, '"')  // Double prime ″
     // Handle en/em dashes
-    .replace(/–/g, '-')
-    .replace(/—/g, '-')
+    .replace(/\u2013/g, '-')  // En dash –
+    .replace(/\u2014/g, '-')  // Em dash —
     // Handle ellipsis
-    .replace(/…/g, '...')
+    .replace(/\u2026/g, '...')  // Ellipsis …
     // Handle superscripts and math symbols
-    .replace(/²/g, '&sup2;')
-    .replace(/³/g, '&sup3;')
-    .replace(/°/g, '&deg;')
-    .replace(/±/g, '&plusmn;')
-    .replace(/×/g, '&times;')
-    .replace(/÷/g, '&divide;');
+    .replace(/\u00B2/g, '&sup2;')  // ²
+    .replace(/\u00B3/g, '&sup3;')  // ³
+    .replace(/\u00B0/g, '&deg;')   // °
+    .replace(/\u00B1/g, '&plusmn;') // ±
+    .replace(/\u00D7/g, '&times;')  // ×
+    .replace(/\u00F7/g, '&divide;'); // ÷
 };
 
 const encodeToBase64 = (str: string): string => {
