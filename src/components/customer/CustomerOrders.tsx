@@ -1,12 +1,14 @@
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Package, Calendar, DollarSign } from "lucide-react";
+import { ArrowLeft, Package, Calendar, DollarSign, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
+import { AccountStatementExportDialog } from "./AccountStatementExportDialog";
 
 interface CustomerOrdersProps {
   customer: any;
@@ -14,6 +16,8 @@ interface CustomerOrdersProps {
 }
 
 export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  
   const { data: orders, isLoading } = useQuery({
     queryKey: ["customer-orders", customer.id],
     queryFn: async () => {
@@ -43,19 +47,33 @@ export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
   const totalRevenue = orders?.reduce((sum, order) => sum + calculateDisplayTotal(order), 0) || 0;
   const recentOrders = orders?.slice(0, 5) || [];
 
+  const isAccountCustomer = customer.customer_type === "account";
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" onClick={onBack} className="flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Customers
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800">
-            {customer.first_name} {customer.last_name} - Orders
-          </h1>
-          <p className="text-slate-600">{customer.email}</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={onBack} className="flex items-center gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Customers
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-slate-800">
+              {customer.first_name} {customer.last_name} - Orders
+            </h1>
+            <p className="text-slate-600">{customer.email}</p>
+          </div>
         </div>
+        {isAccountCustomer && (
+          <Button
+            variant="outline"
+            onClick={() => setShowExportDialog(true)}
+            className="flex items-center gap-2"
+          >
+            <FileText className="w-4 h-4" />
+            Export Statement
+          </Button>
+        )}
       </div>
 
       {/* Customer Order Statistics */}
@@ -146,6 +164,14 @@ export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
           )}
         </CardContent>
       </Card>
+
+      {isAccountCustomer && (
+        <AccountStatementExportDialog
+          open={showExportDialog}
+          onOpenChange={setShowExportDialog}
+          customer={customer}
+        />
+      )}
     </div>
   );
 }

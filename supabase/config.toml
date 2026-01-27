@@ -33,3 +33,6 @@ verify_jwt = false
 
 [functions.test-function]
 verify_jwt = false
+
+[functions.generate-account-statement]
+verify_jwt = false
