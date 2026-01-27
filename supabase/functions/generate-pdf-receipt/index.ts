@@ -22,6 +22,18 @@ const logStep = (step: string, details?: any) => {
 const escapeHtmlEntities = (str: string): string => {
   if (!str) return str;
   return str
+    // Handle curly/smart apostrophes
+    .replace(/'/g, "'")
+    .replace(/'/g, "'")
+    // Handle curly/smart quotes  
+    .replace(/"/g, '"')
+    .replace(/"/g, '"')
+    // Handle en/em dashes
+    .replace(/–/g, '-')
+    .replace(/—/g, '-')
+    // Handle ellipsis
+    .replace(/…/g, '...')
+    // Handle superscripts and math symbols
     .replace(/²/g, '&sup2;')
     .replace(/³/g, '&sup3;')
     .replace(/°/g, '&deg;')
