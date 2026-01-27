@@ -53,9 +53,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Customer not found");
     }
 
-    if (customer.customer_type !== "account") {
-      throw new Error("Statement export is only available for account customers");
-    }
 
     // Fetch business settings
     const { data: businessSettings } = await supabase

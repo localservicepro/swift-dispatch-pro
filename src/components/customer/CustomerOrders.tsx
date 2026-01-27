@@ -47,7 +47,7 @@ export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
   const totalRevenue = orders?.reduce((sum, order) => sum + calculateDisplayTotal(order), 0) || 0;
   const recentOrders = orders?.slice(0, 5) || [];
 
-  const isAccountCustomer = customer.customer_type === "account";
+  
 
   return (
     <div className="space-y-6">
@@ -64,16 +64,14 @@ export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
             <p className="text-slate-600">{customer.email}</p>
           </div>
         </div>
-        {isAccountCustomer && (
-          <Button
-            variant="outline"
-            onClick={() => setShowExportDialog(true)}
-            className="flex items-center gap-2"
-          >
-            <FileText className="w-4 h-4" />
-            Export Statement
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          onClick={() => setShowExportDialog(true)}
+          className="flex items-center gap-2"
+        >
+          <FileText className="w-4 h-4" />
+          Export Statement
+        </Button>
       </div>
 
       {/* Customer Order Statistics */}
@@ -165,13 +163,11 @@ export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
         </CardContent>
       </Card>
 
-      {isAccountCustomer && (
-        <AccountStatementExportDialog
-          open={showExportDialog}
-          onOpenChange={setShowExportDialog}
-          customer={customer}
-        />
-      )}
+      <AccountStatementExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        customer={customer}
+      />
     </div>
   );
 }
