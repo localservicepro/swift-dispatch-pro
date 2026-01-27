@@ -512,9 +512,9 @@ function generateReceiptHTML(data: any): string {
       background: white;
     }
     
-    /* Accent color for highlights */
-    .accent { color: #C65D00; }
-    .accent-red { color: #C41E3A; }
+    /* Accent color for highlights - now black for clean printing */
+    .accent { color: #000; }
+    .accent-red { color: #000; }
     
     /* Timestamp */
     .timestamp {
@@ -641,7 +641,7 @@ function generateReceiptHTML(data: any): string {
     }
     .total-row.grand-total .total-label,
     .total-row.grand-total .total-value {
-      color: #C41E3A;
+      color: #000;
     }
     .total-row.gst {
       font-style: italic;

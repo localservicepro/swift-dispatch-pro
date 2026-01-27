@@ -516,7 +516,7 @@ function generateSimpleReceiptHTML(data: any): string {
     .product-row .col-unit { width: 80px; text-align: right; }
     .product-row .col-price { width: 80px; text-align: right; }
     
-    .accent { color: #C65D00; }
+    .accent { color: #000; }
     
     .totals-section { margin-top: 15px; }
     .total-row {
