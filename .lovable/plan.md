@@ -1,62 +1,87 @@
 
-
-## Fix Character Encoding in Payment Summary
+## Fix Character Encoding for Product Names in Receipt Printing
 
 ### Problem
-The Payment Summary section in the generated account statement PDF is showing garbled characters "â□□" instead of the intended check mark (✓) and circle (○) symbols. This is a character encoding issue where Unicode characters are not being properly rendered.
+The product name "Richie's Mix" is displaying as "Richieâ□□s Mix" on printed receipts. This is the same encoding issue we just fixed in the account statement - Unicode characters like curly apostrophes (') are not being properly escaped for HTML rendering.
+
+### Root Cause
+Both receipt generation Edge Functions (`generate-receipt` and `generate-pdf-receipt`) have an `escapeHtmlEntities` helper function that only handles a limited set of Unicode characters (², ³, °, etc.) but **does not handle apostrophes and quote characters**.
 
 ### Solution
-Replace the Unicode special characters with simple text indicators that will render correctly across all environments:
+Update the `escapeHtmlEntities` function in both Edge Functions to:
+1. Replace curly/smart apostrophes (', ') with straight apostrophe (&apos; or ')
+2. Replace curly/smart quotes (", ") with straight quotes
+3. Replace other commonly problematic characters
 
-- Replace `✓` (checkmark) with a simple text indicator
-- Replace `○` (circle) with a simple text indicator
+---
 
-### File to Modify
+### Files to Modify
 
-**`supabase/functions/generate-account-statement/index.ts`**
+#### 1. `supabase/functions/generate-receipt/index.ts`
 
-**Lines 523-529** - Replace the special characters in the Payment Summary section:
+**Lines 22-32** - Update the `escapeHtmlEntities` function:
 
-**Before:**
-```html
-<span class="paid">✓ Paid Orders (${paidCount}):</span>
-...
-<span class="pending">○ Pending Orders (${pendingCount}):</span>
+```typescript
+// Before (current - only handles superscripts and math symbols)
+const escapeHtmlEntities = (str: string): string => {
+  if (!str) return str;
+  return str
+    .replace(/²/g, '&sup2;')
+    .replace(/³/g, '&sup3;')
+    .replace(/°/g, '&deg;')
+    .replace(/±/g, '&plusmn;')
+    .replace(/×/g, '&times;')
+    .replace(/÷/g, '&divide;');
+};
+
+// After (extended to handle quotes and apostrophes)
+const escapeHtmlEntities = (str: string): string => {
+  if (!str) return str;
+  return str
+    // Handle curly/smart apostrophes
+    .replace(/'/g, "'")
+    .replace(/'/g, "'")
+    // Handle curly/smart quotes  
+    .replace(/"/g, '"')
+    .replace(/"/g, '"')
+    // Handle en/em dashes
+    .replace(/–/g, '-')
+    .replace(/—/g, '-')
+    // Handle ellipsis
+    .replace(/…/g, '...')
+    // Handle superscripts and math symbols
+    .replace(/²/g, '&sup2;')
+    .replace(/³/g, '&sup3;')
+    .replace(/°/g, '&deg;')
+    .replace(/±/g, '&plusmn;')
+    .replace(/×/g, '&times;')
+    .replace(/÷/g, '&divide;');
+};
 ```
 
-**After:**
-```html
-<span class="paid">[PAID] Orders (${paidCount}):</span>
-...
-<span class="pending">[PENDING] Orders (${pendingCount}):</span>
-```
+#### 2. `supabase/functions/generate-pdf-receipt/index.ts`
 
-Or alternatively, use simple ASCII-safe symbols with proper styling:
-```html
-<span class="paid"><span class="check-icon">&#10003;</span> Paid Orders (${paidCount}):</span>
-...
-<span class="pending"><span class="pending-icon">&#9675;</span> Pending Orders (${pendingCount}):</span>
-```
+**Lines 21-31** - Same update to the `escapeHtmlEntities` function
 
-### Recommended Approach
-Use simple text labels without special characters, which is cleaner and avoids encoding issues:
+---
 
-```html
-<div class="payment-row">
-  <span class="paid">Paid Orders (${paidCount}):</span>
-  <span class="paid">$${paidTotal.toFixed(2)}</span>
-</div>
-<div class="payment-row">
-  <span class="pending">Pending Orders (${pendingCount}):</span>
-  <span class="pending">$${pendingTotal.toFixed(2)}</span>
-</div>
-```
+### Technical Details
 
-### After Fix
-The Payment Summary will display cleanly:
-- **Paid Orders (1):** $60.00
-- **Pending Orders (0):** $0.00
+The characters causing issues:
+| Character | Unicode | Problem | Solution |
+|-----------|---------|---------|----------|
+| ' | U+2019 | Right single quote (curly apostrophe) | Replace with ' |
+| ' | U+2018 | Left single quote | Replace with ' |
+| " | U+201C | Left double quote | Replace with " |
+| " | U+201D | Right double quote | Replace with " |
+| – | U+2013 | En dash | Replace with - |
+| — | U+2014 | Em dash | Replace with - |
+| … | U+2026 | Ellipsis | Replace with ... |
 
 ### Deployment
-After the code change, the `generate-account-statement` edge function will need to be redeployed.
+After updating both files, the Edge Functions will need to be redeployed:
+- `generate-receipt`
+- `generate-pdf-receipt`
 
+### Expected Result
+After the fix, "Richie's Mix" will display correctly as "Richie's Mix" on all receipts.
