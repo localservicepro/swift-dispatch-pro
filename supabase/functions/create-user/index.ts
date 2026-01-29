@@ -81,7 +81,21 @@ serve(async (req) => {
 
     if (createUserError) {
       console.error('Auth error:', createUserError);
-      throw createUserError;
+      // Provide user-friendly error messages for common cases
+      let errorMessage = createUserError.message || 'Failed to create user';
+      if (createUserError.code === 'email_exists' || errorMessage.includes('already been registered')) {
+        errorMessage = 'A user with this email address already exists. Please use a different email.';
+      }
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: errorMessage 
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
     }
 
     console.log('User created successfully:', authData.user?.id);
