@@ -693,17 +693,21 @@ function generateReceiptHTML(data: any): string {
       border-top: 1px solid #000;
       padding-top: 15px;
     }
-    .disclaimer-title {
-      font-weight: bold;
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
     .disclaimer-text {
-      font-style: italic;
       font-size: 10px;
       line-height: 1.4;
       max-width: 500px;
       margin: 0 auto;
+    }
+    .signature-line {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 15px;
+      font-size: 11px;
+    }
+    .signature-field {
+      min-width: 150px;
     }
     
     @media print {
@@ -860,9 +864,12 @@ function generateReceiptHTML(data: any): string {
     
     <!-- Footer Disclaimer -->
     <div class="footer">
-      <div class="disclaimer-title">Delivery Times are indicative</div>
       <div class="disclaimer-text">
-        Delivery times are not guaranteed. We take no responsibility for damage, loss or injury caused to the person or property of the customer arising out of order, delivery of goods or installation of goods, beyond the purchase price of goods delivered.
+        Delivery times are indicative only. The driver's responsibility ceases at the kerbside. Should the driver be directed to enter the property, the purchaser assumes all risk for any damage to property or personal injury.
+      </div>
+      <div class="signature-line">
+        <span class="signature-field">Name ____________</span>
+        <span class="signature-field">Signature ____________</span>
       </div>
     </div>
   </div>
