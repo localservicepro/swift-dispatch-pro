@@ -60,13 +60,16 @@ const handler = async (req: Request): Promise<Response> => {
       .select("business_name, business_email, business_phone, business_address, abn")
       .single();
 
-    // Fetch orders for this customer in date range (including delivery_address for grouping)
-    const { data: orders, error: ordersError } = await supabase
+    // Fetch delivered orders for this customer (filter by delivery/pickup date)
+    const { data: allOrders, error: ordersError } = await supabase
       .from("orders")
       .select(`
         id,
         order_number,
         created_at,
+        delivery_date,
+        pickup_date,
+        delivery_method,
         status,
         products,
         subtotal,
@@ -79,17 +82,24 @@ const handler = async (req: Request): Promise<Response> => {
         profiles:admin_id(full_name)
       `)
       .eq("customer_id", customerId)
-      .gte("created_at", startDate)
-      .lte("created_at", endDate)
+      .eq("status", "delivered")
       .is("deleted_at", null)
-      .order("created_at", { ascending: true });
+      .order("delivery_date", { ascending: true });
 
     if (ordersError) {
       logStep("Orders fetch error", { error: ordersError, requestId });
       throw new Error("Failed to fetch orders");
     }
 
-    logStep("Fetched orders", { count: orders?.length || 0, requestId });
+    // Filter orders based on delivery_date or pickup_date within the date range
+    const orders = (allOrders || []).filter((order: any) => {
+      const orderDate = order.delivery_method === 'pickup' 
+        ? order.pickup_date 
+        : order.delivery_date;
+      return orderDate && orderDate >= startDate && orderDate <= endDate;
+    });
+
+    logStep("Fetched and filtered orders", { total: allOrders?.length || 0, filtered: orders.length, requestId });
 
     const statementHtml = generateStatementHTML({
       customer,
@@ -259,7 +269,11 @@ function generateStatementHTML(data: any): string {
     
     // Generate rows for this address
     const rows = addressOrders.map((order: any) => {
-      const orderDate = formatDateAU(order.created_at);
+      // Use delivery_date or pickup_date based on delivery_method
+      const fulfillmentDate = order.delivery_method === 'pickup' 
+        ? order.pickup_date 
+        : order.delivery_date;
+      const orderDate = fulfillmentDate ? formatDateAU(fulfillmentDate) : formatDateAU(order.created_at);
       const orderNumber = order.order_number || "";
       const creatorInitials = order.profiles?.full_name ? getInitials(order.profiles.full_name) : "";
       const displayOrderNumber = orderNumber + creatorInitials;
@@ -291,7 +305,7 @@ function generateStatementHTML(data: any): string {
         <table>
           <thead>
             <tr>
-              <th>Date</th>
+              <th>Delivery Date</th>
               <th>Order #</th>
               <th>Status</th>
               <th>Items</th>

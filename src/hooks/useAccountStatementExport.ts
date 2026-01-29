@@ -22,24 +22,31 @@ export function useAccountStatementExport({ customerId }: UseAccountStatementExp
     };
   }, [selectedMonth]);
 
-  // Fetch preview data (order count and total)
+  // Fetch preview data (order count and total) - only delivered orders
   const { data: previewData, isLoading: isLoadingPreview } = useQuery({
     queryKey: ["account-statement-preview", customerId, dateRange.startDate, dateRange.endDate],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, total_amount, payment_status")
+        .select("id, total_amount, payment_status, delivery_date, pickup_date, delivery_method")
         .eq("customer_id", customerId)
-        .gte("created_at", dateRange.startDate)
-        .lte("created_at", dateRange.endDate)
+        .eq("status", "delivered")
         .is("deleted_at", null);
 
       if (error) throw error;
 
-      const orderCount = data?.length || 0;
-      const totalAmount = data?.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0) || 0;
-      const paidAmount = data?.filter(o => o.payment_status === "paid")
-        .reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0) || 0;
+      // Filter by delivery_date or pickup_date based on delivery_method
+      const filteredData = data?.filter(order => {
+        const orderDate = order.delivery_method === 'pickup' 
+          ? order.pickup_date 
+          : order.delivery_date;
+        return orderDate && orderDate >= dateRange.startDate && orderDate <= dateRange.endDate;
+      }) || [];
+
+      const orderCount = filteredData.length;
+      const totalAmount = filteredData.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0);
+      const paidAmount = filteredData.filter(o => o.payment_status === "paid")
+        .reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0);
       const pendingAmount = totalAmount - paidAmount;
 
       return {
