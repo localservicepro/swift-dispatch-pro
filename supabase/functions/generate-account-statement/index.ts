@@ -60,7 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
       .select("business_name, business_email, business_phone, business_address, abn")
       .single();
 
-    // Fetch orders for this customer in date range
+    // Fetch orders for this customer in date range (including delivery_address for grouping)
     const { data: orders, error: ordersError } = await supabase
       .from("orders")
       .select(`
@@ -75,6 +75,7 @@ const handler = async (req: Request): Promise<Response> => {
         total_amount,
         payment_status,
         admin_id,
+        delivery_address,
         profiles:admin_id(full_name)
       `)
       .eq("customer_id", customerId)
@@ -234,30 +235,82 @@ function generateStatementHTML(data: any): string {
 
   const gstIncluded = totalAmount / 11;
 
-  // Generate order rows
-  const orderRows = orders.map((order: any) => {
-    const orderDate = formatDateAU(order.created_at);
-    const orderNumber = order.order_number || "";
-    const creatorInitials = order.profiles?.full_name ? getInitials(order.profiles.full_name) : "";
-    const displayOrderNumber = orderNumber + creatorInitials;
-    const status = formatStatus(order.status);
-    
-    // Parse products
-    const products = order.products || [];
-    const items = Array.isArray(products) ? products : [products];
-    const itemNames = items.map((p: any) => p.name || p.product_name || "Item").join(", ");
-    const units = items.map((p: any) => p.quantity || 1).join(", ");
-    const amount = Number(order.total_amount || 0).toFixed(2);
+  // Group orders by delivery address
+  const ordersByAddress: { [address: string]: any[] } = {};
+  orders.forEach((order: any) => {
+    const address = order.delivery_address || 'No Delivery Address';
+    if (!ordersByAddress[address]) {
+      ordersByAddress[address] = [];
+    }
+    ordersByAddress[address].push(order);
+  });
 
+  // Sort addresses alphabetically
+  const sortedAddresses = Object.keys(ordersByAddress).sort();
+
+  // Generate address-grouped sections
+  const addressSections = sortedAddresses.map(address => {
+    const addressOrders = ordersByAddress[address];
+    
+    // Calculate address subtotal
+    const addressSubtotal = addressOrders.reduce((sum: number, order: any) => 
+      sum + Number(order.total_amount || 0), 0
+    );
+    
+    // Generate rows for this address
+    const rows = addressOrders.map((order: any) => {
+      const orderDate = formatDateAU(order.created_at);
+      const orderNumber = order.order_number || "";
+      const creatorInitials = order.profiles?.full_name ? getInitials(order.profiles.full_name) : "";
+      const displayOrderNumber = orderNumber + creatorInitials;
+      const status = formatStatus(order.status);
+      
+      // Parse products
+      const products = order.products || [];
+      const items = Array.isArray(products) ? products : [products];
+      const itemNames = items.map((p: any) => p.name || p.product_name || "Item").join(", ");
+      const units = items.map((p: any) => p.quantity || 1).join(", ");
+      const amount = Number(order.total_amount || 0).toFixed(2);
+
+      return `
+        <tr>
+          <td>${orderDate}</td>
+          <td>${displayOrderNumber}</td>
+          <td><span class="status-badge status-${order.status}">${status}</span></td>
+          <td class="items-cell">${itemNames}</td>
+          <td class="text-center">${units}</td>
+          <td class="text-right">$${amount}</td>
+        </tr>`;
+    }).join("");
+    
     return `
-      <tr>
-        <td>${orderDate}</td>
-        <td>${displayOrderNumber}</td>
-        <td><span class="status-badge status-${order.status}">${status}</span></td>
-        <td class="items-cell">${itemNames}</td>
-        <td class="text-center">${units}</td>
-        <td class="text-right">$${amount}</td>
-      </tr>`;
+      <div class="address-section">
+        <div class="address-header">
+          <strong>Delivery Address:</strong> ${address}
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Order #</th>
+              <th>Status</th>
+              <th>Items</th>
+              <th class="text-center">Units</th>
+              <th class="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+          <tfoot>
+            <tr class="address-subtotal">
+              <td colspan="5" class="text-right"><strong>Address Subtotal:</strong></td>
+              <td class="text-right"><strong>$${addressSubtotal.toFixed(2)}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    `;
   }).join("");
 
   return `<!DOCTYPE html>
@@ -337,10 +390,21 @@ function generateStatementHTML(data: any): string {
     .info-value { flex: 1; }
     .accent { color: #C65D00; }
     
+    .address-section {
+      margin-bottom: 25px;
+    }
+    .address-header {
+      background: #e8f4e8;
+      padding: 8px 12px;
+      border-left: 4px solid #2e7d32;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+    
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 20px 0;
+      margin-bottom: 0;
     }
     th, td {
       padding: 8px;
@@ -359,6 +423,14 @@ function generateStatementHTML(data: any): string {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    
+    .address-subtotal {
+      background: #f9f9f9;
+    }
+    .address-subtotal td {
+      border-top: 2px solid #000;
+      font-weight: bold;
     }
     
     .status-badge {
@@ -472,21 +544,7 @@ function generateStatementHTML(data: any): string {
       </div>
     </div>
     
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Order #</th>
-          <th>Status</th>
-          <th>Items</th>
-          <th class="text-center">Units</th>
-          <th class="text-right">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${orders.length > 0 ? orderRows : '<tr><td colspan="6" style="text-align: center; padding: 20px;">No orders found for this period.</td></tr>'}
-      </tbody>
-    </table>
+    ${orders.length > 0 ? addressSections : '<p style="text-align: center; padding: 20px;">No orders found for this period.</p>'}
     
     <div class="totals-section">
       <div class="totals-grid">
