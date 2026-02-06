@@ -157,11 +157,42 @@ export function ProductSelectionStep({
 
     if (!error && data) {
       // Ensure images array exists for each product
-      const productsWithImages = data.map(product => ({
+      let processedProducts = data.map(product => ({
         ...product,
         images: Array.isArray(product.images) ? product.images : []
       }));
-      setProducts(productsWithImages);
+
+      // Apply relevance sorting when searching
+      if (debouncedSearchQuery) {
+        const searchLower = debouncedSearchQuery.toLowerCase().trim();
+        
+        const getRelevanceScore = (name: string) => {
+          if (name === searchLower) return 4;          // Exact match
+          if (name.startsWith(searchLower)) return 3;  // Starts with
+          if (name.includes(searchLower)) return 2;    // Contains in name
+          return 1;                                     // In description/SKU only
+        };
+        
+        processedProducts.sort((a, b) => {
+          const aName = a.name.toLowerCase();
+          const bName = b.name.toLowerCase();
+          const aScore = getRelevanceScore(aName);
+          const bScore = getRelevanceScore(bName);
+          
+          // Sort by relevance first, then stock, then name
+          if (aScore !== bScore) return bScore - aScore;
+          if (a.stock_quantity !== b.stock_quantity) return b.stock_quantity - a.stock_quantity;
+          return aName.localeCompare(bName);
+        });
+      } else {
+        // No search - sort by stock then name
+        processedProducts.sort((a, b) => {
+          if (a.stock_quantity !== b.stock_quantity) return b.stock_quantity - a.stock_quantity;
+          return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+        });
+      }
+      
+      setProducts(processedProducts);
     }
     setLoading(false);
   }, [debouncedSearchQuery, selectedCategory, stockFilter]);
