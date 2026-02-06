@@ -120,16 +120,43 @@ export function ProductsTabContent() {
     loadProducts();
   };
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = !searchQuery || 
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = selectedCategory === "all" || product.category_id === selectedCategory;
-    
-    return matchesSearch && matchesCategory;
-  });
+  const filteredProducts = (() => {
+    // First filter products
+    const filtered = products.filter(product => {
+      const matchesSearch = !searchQuery || 
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = selectedCategory === "all" || product.category_id === selectedCategory;
+      
+      return matchesSearch && matchesCategory;
+    });
+
+    // Then sort by relevance if there's a search query
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase().trim();
+      
+      const getRelevanceScore = (product: Product) => {
+        const name = product.name.toLowerCase();
+        if (name === searchLower) return 4;          // Exact name match
+        if (name.startsWith(searchLower)) return 3;  // Name starts with
+        if (name.includes(searchLower)) return 2;    // Name contains
+        return 1;                                     // In description/SKU only
+      };
+      
+      filtered.sort((a, b) => {
+        const aScore = getRelevanceScore(a);
+        const bScore = getRelevanceScore(b);
+        
+        // Sort by relevance first, then alphabetically by name
+        if (aScore !== bScore) return bScore - aScore;
+        return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+      });
+    }
+
+    return filtered;
+  })();
 
   return (
     <div className="space-y-6">
