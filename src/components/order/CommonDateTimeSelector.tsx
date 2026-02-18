@@ -51,7 +51,7 @@ export function CommonDateTimeSelector({
                 onSelect={onDateSelect}
                 disabled={isDateBeforeToday}
                 initialFocus
-                className="rounded-md border"
+                className="rounded-md border pointer-events-auto"
               />
             </PopoverContent>
           </Popover>

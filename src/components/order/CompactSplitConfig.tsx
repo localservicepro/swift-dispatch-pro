@@ -179,7 +179,7 @@ export function CompactSplitConfig({
                             onSelect={(date) => handleDateSelect(index, date)}
                             disabled={isDateBeforeToday}
                             initialFocus
-                            className="rounded-md border"
+                            className="rounded-md border pointer-events-auto"
                           />
                         </PopoverContent>
                       </Popover>
