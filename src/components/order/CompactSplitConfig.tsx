@@ -86,7 +86,8 @@ export function CompactSplitConfig({
   // Auto-calculate delivery fee when suburb changes
   useEffect(() => {
     splits.forEach(async (split, index) => {
-      const suburbId = split.deliverySuburbId || (split.sameAsBilling ? split.suburbId : null);
+      // Use deliverySuburbId first, then fall back to customer's suburb_id when sameAsBilling
+      const suburbId = split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id ? customer.suburb_id : null);
       if (suburbId && split.deliveryFee === undefined) {
         const suburbData = await fetchSuburbData(suburbId);
         if (suburbData) {
@@ -97,7 +98,7 @@ export function CompactSplitConfig({
         }
       }
     });
-  }, [splits.map(s => s.deliverySuburbId || s.suburbId).join(',')]);
+  }, [splits.map(s => s.deliverySuburbId || s.sameAsBilling).join(','), customer?.suburb_id]);
 
   return (
     <div className="space-y-3">
@@ -272,7 +273,7 @@ export function CompactSplitConfig({
                 )}
 
                 {/* Delivery Fee Display */}
-                {(split.deliverySuburbId || (split.sameAsBilling && split.suburbId)) && (
+                {(split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id)) && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <div className="flex justify-between items-center">
                       <Label className="text-xs font-medium flex items-center gap-1">

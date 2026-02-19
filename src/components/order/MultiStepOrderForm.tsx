@@ -76,6 +76,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setSelectedSuburbId,
     setManualDeliveryFee,
     isDeliveryFeeManuallySet,
+    setDeliveryFeeFromSplits,
     handleSuburbChange,
     clearDeliveryAddress,
     resetToCustomerAddress,
@@ -95,7 +96,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       }, 0);
       
       if (totalDeliveryFee !== deliveryFee) {
-        setManualDeliveryFee(totalDeliveryFee);
+        setDeliveryFeeFromSplits(totalDeliveryFee);
       }
     }
   }, [splits, orderType, deliveryMethod]);
