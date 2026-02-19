@@ -119,6 +119,12 @@ export function useOrderFormState() {
     setIsDeliveryFeeManuallySet(true);
   };
 
+  // Set delivery fee from split totals without marking it as manually set
+  const setDeliveryFeeFromSplits = (fee: number) => {
+    setManualDeliveryFee(fee);
+    setIsDeliveryFeeManuallySet(false);
+  };
+
   // Clear delivery address and reset to customer address
   const clearDeliveryAddress = () => {
     setDeliveryAddress("");
@@ -252,6 +258,7 @@ export function useOrderFormState() {
     setUseGlobalDeliveryAddress,
     setSelectedSuburbId,
     setManualDeliveryFee: handleManualDeliveryFeeChange,
+    setDeliveryFeeFromSplits,
     handleSuburbChange,
     getDeliveryFeeInfo,
     clearDeliveryAddress,
