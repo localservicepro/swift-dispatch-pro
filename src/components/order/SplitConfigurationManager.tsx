@@ -320,6 +320,7 @@ export function SplitConfigurationManager({
             splits={splits}
             cart={cart}
             onUpdateSplit={updateSplit}
+            onSplitsChange={onSplitsChange}
             isCommonDateMode={useSameDateForAll}
             customer={customer}
           />
