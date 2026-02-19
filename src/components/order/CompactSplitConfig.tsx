@@ -88,7 +88,7 @@ export function CompactSplitConfig({
     splits.forEach(async (split, index) => {
       // Use deliverySuburbId first, then fall back to customer's suburb_id when sameAsBilling
       const suburbId = split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id ? customer.suburb_id : null);
-      if (suburbId && split.deliveryFee === undefined) {
+      if (suburbId && (split.deliveryFee === undefined || split.deliveryFee === 0)) {
         const suburbData = await fetchSuburbData(suburbId);
         if (suburbData) {
           const deliveryFee = parseDeliveryRate(suburbData.delivery_rate);
