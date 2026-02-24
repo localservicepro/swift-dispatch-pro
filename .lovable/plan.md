@@ -1,57 +1,24 @@
 
 
-## Add Portal Access Toggle & Auto-Enable on PIN Generation
+## Add Search Filter and Fix Scroll in Bulk PIN Management Dialog
 
-### What Changes
-
-Two small improvements to the Bulk PIN Management dialog:
-
-1. **Auto-enable customer portal** -- already done in the edge function (line 174 sets `portal_access_enabled: true`). No backend change needed.
-
-2. **Add a "Portal Access" toggle column** in the table so admins can quickly enable/disable portal access per customer directly from this dialog.
-
----
+### Problem
+The Bulk PIN Management dialog shows 209 customers but has no search/filter input and the table may not scroll properly within the dialog's constrained height.
 
 ### Changes
 
-#### 1. `src/components/customer/BulkPinManagementDialog.tsx`
+#### `src/components/customer/BulkPinManagementDialog.tsx`
 
-- Add a new **"Portal Access"** column to the table between "PIN Status" and the checkbox column
-- Each row gets a `Switch` toggle showing whether `portal_access_enabled` is true/false
-- Toggling it calls `supabase.from('customers').update({ portal_access_enabled: value }).eq('id', customerId)` directly
-- Update the local state optimistically so the UI reflects the change immediately
-- Import `Switch` from `@/components/ui/switch`
+1. **Add a search input** above the table (below the action buttons) that filters customers by name, email, or company name
+2. **Add state** `searchTerm` and filter the displayed customers list using it
+3. **Ensure the ScrollArea** has a fixed max height so the table scrolls properly within the dialog
 
-The table columns become: Checkbox | Customer | Email | PIN Status | Portal Access (toggle)
-
-#### 2. No edge function changes needed
-
-The edge function already sets `portal_access_enabled: true` when generating PINs (line 174). This is working correctly.
-
----
+The search input will use the existing `Input` component with a `Search` icon from lucide-react. Filtering happens client-side since all customers are already loaded.
 
 ### Technical Details
 
-The toggle handler:
-```typescript
-const togglePortalAccess = async (customerId: string, enabled: boolean) => {
-  // Optimistic update
-  setCustomers(prev => prev.map(c => 
-    c.id === customerId ? { ...c, portal_access_enabled: enabled } : c
-  ));
-  
-  const { error } = await supabase
-    .from('customers')
-    .update({ portal_access_enabled: enabled, updated_at: new Date().toISOString() })
-    .eq('id', customerId);
-    
-  if (error) {
-    // Revert on failure
-    setCustomers(prev => prev.map(c => 
-      c.id === customerId ? { ...c, portal_access_enabled: !enabled } : c
-    ));
-    toast({ title: "Error", description: "Failed to update portal access", variant: "destructive" });
-  }
-};
-```
+- Add `searchTerm` state and an `Input` with placeholder "Search customers..."
+- Filter `customers` array by matching `searchTerm` against `company_name`, `business_name`, `first_name`, `last_name`, and `email`
+- The filtered list is used for rendering the table and for the "select all" checkbox logic
+- The ScrollArea already wraps the table but needs an explicit height constraint (e.g., `max-h-[400px]`) to ensure scrolling works
 
