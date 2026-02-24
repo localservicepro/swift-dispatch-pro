@@ -1390,6 +1390,57 @@ export type Database = {
           },
         ]
       }
+      portal_pin_webhooks: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          customer_email: string
+          customer_id: string
+          customer_name: string
+          id: string
+          is_regeneration: boolean
+          pin_code: string
+          pin_expires_at: string | null
+          updated_at: string
+          webhook_response: string | null
+          webhook_sent: boolean
+          webhook_sent_at: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          customer_email: string
+          customer_id: string
+          customer_name: string
+          id?: string
+          is_regeneration?: boolean
+          pin_code: string
+          pin_expires_at?: string | null
+          updated_at?: string
+          webhook_response?: string | null
+          webhook_sent?: boolean
+          webhook_sent_at?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          customer_email?: string
+          customer_id?: string
+          customer_name?: string
+          id?: string
+          is_regeneration?: boolean
+          pin_code?: string
+          pin_expires_at?: string | null
+          updated_at?: string
+          webhook_response?: string | null
+          webhook_sent?: boolean
+          webhook_sent_at?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       pricing_tiers: {
         Row: {
           created_at: string

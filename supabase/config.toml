@@ -39,3 +39,6 @@ verify_jwt = false
 
 [functions.bulk-generate-portal-pins]
 verify_jwt = false
+
+[functions.pin-webhook]
+verify_jwt = false
