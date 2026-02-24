@@ -1,41 +1,30 @@
 
 
-## Fix: New PIN Replaces Old PIN in Webhook Table (Security)
+## Fix: PIN Login Fails Because Portal Access Is Not Auto-Enabled
 
-### Problem
-When a PIN is regenerated for a customer, a new row is added to `portal_pin_webhooks` but the old row with the previous PIN remains. This means your webhook could pick up and send the old (now invalid) PIN, and the old plain-text PIN stays stored unnecessarily -- a security concern.
+### Root Cause
 
-### What the fix does
-Before inserting a new webhook record, **delete all previous unsent records** for that customer. This ensures:
-- Only the latest PIN exists in the webhook queue
-- Old PINs are not stored in plain text longer than needed
-- Your webhook will never send a stale/invalid PIN
+The database shows that customer Jay Tagab has `pin_enabled: true` but `portal_access_enabled: false`. The edge function logs confirm repeated failures: **"Portal access is not enabled"**.
 
-### Changes
+The `generate-portal-pin` function (used for single customer PIN generation/regeneration) updates `pin_enabled` to `true` but does **not** set `portal_access_enabled` to `true`. Only the `bulk-generate-portal-pins` function sets both. So when you regenerate a PIN from the customer card, the PIN is valid but portal access remains disabled, blocking login.
 
-**`supabase/functions/generate-portal-pin/index.ts`**
-- Before the webhook insert (line 155), add a delete statement to remove any existing unsent webhook records for the same `customer_id`
+### Fix
 
-**`supabase/functions/bulk-generate-portal-pins/index.ts`**
-- Same pattern before the webhook insert (line 191): delete previous unsent records for that customer before inserting the new one
+Update `supabase/functions/generate-portal-pin/index.ts` to include `portal_access_enabled: true` in the customer update (line 118-129), matching what `bulk-generate-portal-pins` already does.
 
-### Code pattern (both files)
-```typescript
-// Delete any previous unsent webhook records for this customer
-await supabase
-  .from('portal_pin_webhooks')
-  .delete()
-  .eq('customer_id', customer_id)
-  .eq('webhook_sent', false);
+```text
+Current (line 120-122):
+  portal_access_pin: hashedPin,
+  pin_enabled: true,
+  pin_created_at: ...
 
-// Then insert the new record
-await supabase.from('portal_pin_webhooks').insert({...});
+Fixed:
+  portal_access_pin: hashedPin,
+  pin_enabled: true,
+  portal_access_enabled: true,   // <-- add this
+  pin_created_at: ...
 ```
 
-### Security note
-The customer's actual PIN hash in the `customers` table is already replaced on regeneration, so the old PIN cannot be used to log in. This change ensures the webhook table also stays clean -- no stale plain-text PINs sitting around, and your external email sender always gets the correct current PIN.
-
-### Files changed
-- `supabase/functions/generate-portal-pin/index.ts`
-- `supabase/functions/bulk-generate-portal-pins/index.ts`
+### Files Changed
+- `supabase/functions/generate-portal-pin/index.ts` -- add `portal_access_enabled: true` to the customer update
 
