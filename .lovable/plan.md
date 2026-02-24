@@ -1,64 +1,79 @@
 
-## Fix Delivery Fee Not Calculating Properly
 
-### Problems Found
+## Auto-Generate Default PINs for Account Customers + Bulk Send Feature
 
-**Problem 1: Split orders always show $0 delivery fee**
-When splits are created with `sameAsBilling: true`, the code tries to look up the suburb using `split.suburbId`, but this property is never set on the split object. The customer's `suburb_id` should be used instead.
+### Overview
 
-**Problem 2: Single order delivery fee gets blocked after split order calculations**
-In `MultiStepOrderForm.tsx`, the effect that sums split delivery fees calls `setManualDeliveryFee()` which goes through `handleManualDeliveryFeeChange` -- this sets `isDeliveryFeeManuallySet = true`, which then blocks future auto-population for single orders.
+Add the ability to auto-generate PINs for all account customers who don't have one yet, and provide admin controls to send/resend PINs in bulk or selectively.
 
----
+### Changes Required
 
-### Fix 1: `src/components/order/CompactSplitConfig.tsx`
+#### 1. New Edge Function: `bulk-generate-portal-pins/index.ts`
 
-**Lines 86-100** - Fix the useEffect to use the customer's suburb_id when `sameAsBilling` is true, instead of the non-existent `split.suburbId`:
+A new edge function that accepts a list of customer IDs (or a flag for "all account customers without PINs") and:
+- For each customer: generates a secure 6-digit PIN, hashes it, saves to DB
+- Enables `portal_access_enabled` and `pin_enabled` if not already
+- Optionally sends the PIN email to each customer
+- Returns a summary of successes/failures
 
-```typescript
-useEffect(() => {
-  splits.forEach(async (split, index) => {
-    const suburbId = split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id ? customer.suburb_id : null);
-    if (suburbId && split.deliveryFee === undefined) {
-      const suburbData = await fetchSuburbData(suburbId);
-      if (suburbData) {
-        const deliveryFee = parseDeliveryRate(suburbData.delivery_rate);
-        if (deliveryFee > 0) {
-          onUpdateSplit(index, { deliveryFee });
-        }
-      }
-    }
-  });
-}, [splits.map(s => s.deliverySuburbId || s.suburbId).join(','), customer?.suburb_id]);
+Parameters:
+```json
+{
+  "customer_ids": ["uuid1", "uuid2"],  // optional - specific customers
+  "all_without_pins": true,             // optional - all account customers missing PINs
+  "send_emails": true                   // whether to email PINs to customers
+}
 ```
 
-Also fix **line 275** (delivery fee display condition) to use customer's suburb_id:
-```typescript
-{(split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id)) && (
+The function reuses the same PIN generation/hashing logic from `generate-portal-pin`. It processes customers sequentially to avoid PIN collisions.
+
+#### 2. New Component: `src/components/customer/BulkPinManagementDialog.tsx`
+
+A dialog accessible from the Customer Management header with:
+- **Stats summary**: X account customers total, Y already have PINs, Z need PINs
+- **"Generate All Missing PINs" button**: auto-generates PINs for all account customers who don't have one, enables portal access, and sends emails
+- **Customer table with checkboxes**: allows selecting specific customers to send/resend PINs to
+- **"Send Selected" button**: generates new PINs for selected customers and emails them
+- Progress indicator showing how many have been processed
+- Results summary showing successes and any failures
+
+#### 3. Update `src/components/customer/CustomerManagementHeader.tsx`
+
+Add a new "Bulk PIN Management" button (Key icon) next to the existing buttons that opens the `BulkPinManagementDialog`.
+
+#### 4. Update `supabase/config.toml`
+
+Add JWT verification setting for the new edge function:
+```toml
+[functions.bulk-generate-portal-pins]
+verify_jwt = false
 ```
 
-### Fix 2: `src/components/order/MultiStepOrderForm.tsx`
+### Technical Details
 
-**Lines 91-100** - Fix the split order delivery fee sum to avoid marking the fee as "manually set", which would block auto-population. Use the raw state setter instead of the handler:
+- The edge function validates the caller is an admin by checking the Authorization header
+- PINs are generated using `crypto.getRandomValues()` with weak-PIN rejection (same as existing)
+- Each PIN is SHA-256 hashed before storage (same as existing)
+- PIN uniqueness is checked against existing hashed PINs in the DB
+- Portal access (`portal_access_enabled`) is automatically enabled when a PIN is generated
+- Emails are sent via the existing `send-emails` function with the `portal-pin-created` template
+- The dialog fetches account customers with their PIN status to show actionable data
+- A progress bar updates as each customer is processed
 
-The current code calls `setManualDeliveryFee(totalDeliveryFee)` which triggers `handleManualDeliveryFeeChange` and sets `isDeliveryFeeManuallySet = true`. We need to expose a way to set the delivery fee without marking it as manual.
+### Data Flow
 
-### Fix 3: `src/components/order/hooks/useOrderFormState.ts`
-
-Add and expose a `setDeliveryFeeFromSplits` function that sets the fee without marking it as manually set:
-
-```typescript
-const setDeliveryFeeFromSplits = (fee: number) => {
-  setManualDeliveryFee(fee);
-  setIsDeliveryFeeManuallySet(false);
-};
+```text
+Admin clicks "Bulk PIN Management"
+  -> Dialog loads account customers list with PIN status
+  -> Admin clicks "Generate All" or selects specific customers
+  -> Frontend calls bulk-generate-portal-pins edge function
+  -> Edge function loops through customers:
+     1. Generate secure PIN
+     2. Hash PIN
+     3. Check uniqueness
+     4. Update customer record (pin, portal_access_enabled, etc.)
+     5. Optionally send email
+  -> Returns results summary
+  -> Dialog shows success/failure counts
 ```
 
-Then in `MultiStepOrderForm.tsx`, use `setDeliveryFeeFromSplits` instead of `setManualDeliveryFee` for the split total calculation.
-
----
-
-### Expected Result
-- Single orders: Selecting a suburb (e.g., Blackburn at $45) will correctly auto-populate the delivery fee
-- Split orders: Each split using "same as billing" will automatically fetch the customer's suburb delivery rate and show it (e.g., $45 for Blackburn)
-- The total delivery fee for split orders will correctly sum all split fees
