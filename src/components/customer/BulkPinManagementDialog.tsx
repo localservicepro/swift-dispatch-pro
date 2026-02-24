@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { Key, Send, RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail } from "lucide-react";
+import { Key, Send, RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -44,6 +45,20 @@ export function BulkPinManagementDialog({ open, onOpenChange }: BulkPinManagemen
   const [state, setState] = useState<ProcessingState>("idle");
   const [results, setResults] = useState<Results | null>(null);
   const [sendEmails, setSendEmails] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredCustomers = customers.filter(c => {
+    if (!searchTerm) return true;
+    const s = searchTerm.toLowerCase();
+    return (
+      c.company_name?.toLowerCase().includes(s) ||
+      c.business_name?.toLowerCase().includes(s) ||
+      c.first_name?.toLowerCase().includes(s) ||
+      c.last_name?.toLowerCase().includes(s) ||
+      c.email?.toLowerCase().includes(s) ||
+      `${c.first_name || ""} ${c.last_name || ""}`.toLowerCase().includes(s)
+    );
+  });
 
   const withPins = customers.filter(c => c.pin_enabled);
   const withoutPins = customers.filter(c => !c.pin_enabled);
@@ -84,10 +99,16 @@ export function BulkPinManagementDialog({ open, onOpenChange }: BulkPinManagemen
   };
 
   const toggleAll = () => {
-    if (selectedIds.size === customers.length) {
-      setSelectedIds(new Set());
+    const filteredIds = filteredCustomers.map(c => c.id);
+    const allSelected = filteredIds.every(id => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filteredIds.forEach(id => next.delete(id));
+        return next;
+      });
     } else {
-      setSelectedIds(new Set(customers.map(c => c.id)));
+      setSelectedIds(prev => new Set([...prev, ...filteredIds]));
     }
   };
 
@@ -250,14 +271,25 @@ export function BulkPinManagementDialog({ open, onOpenChange }: BulkPinManagemen
           </div>
         )}
 
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search customers..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
         {/* Customer table */}
-        <ScrollArea className="flex-1 min-h-0 border rounded-lg">
+        <ScrollArea className="max-h-[400px] border rounded-lg">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">
                   <Checkbox
-                    checked={selectedIds.size === customers.length && customers.length > 0}
+                    checked={selectedIds.size === filteredCustomers.length && filteredCustomers.length > 0}
                     onCheckedChange={toggleAll}
                   />
                 </TableHead>
@@ -274,14 +306,14 @@ export function BulkPinManagementDialog({ open, onOpenChange }: BulkPinManagemen
                     Loading customers...
                   </TableCell>
                 </TableRow>
-              ) : customers.length === 0 ? (
+              ) : filteredCustomers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    No account customers found
+                    {searchTerm ? "No customers match your search" : "No account customers found"}
                   </TableCell>
                 </TableRow>
               ) : (
-                customers.map((c) => (
+                filteredCustomers.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell>
                       <Checkbox
