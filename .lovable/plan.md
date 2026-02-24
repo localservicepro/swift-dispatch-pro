@@ -1,24 +1,19 @@
 
 
-## Add Search Filter and Fix Scroll in Bulk PIN Management Dialog
+## Fix: Customer Table Not Scrolling
 
 ### Problem
-The Bulk PIN Management dialog shows 209 customers but has no search/filter input and the table may not scroll properly within the dialog's constrained height.
+The `ScrollArea` wrapping the table cannot scroll because the `Table` component itself renders inside a `<div className="relative w-full overflow-auto">` wrapper (see `src/components/ui/table.tsx` line 9). This inner div handles its own overflow, preventing the outer `ScrollArea` from controlling the scroll.
 
-### Changes
+### Solution
 
-#### `src/components/customer/BulkPinManagementDialog.tsx`
+In `src/components/customer/BulkPinManagementDialog.tsx`, replace the `ScrollArea` + `Table` combination with a simple `div` that has `overflow-auto` and `max-h-[400px]`, and pass a className to the `Table` to remove its internal overflow wrapper. Alternatively, just use a plain scrollable div wrapping the table directly since `Table` already has overflow handling -- the fix is to put the height constraint on the Table's parent div.
 
-1. **Add a search input** above the table (below the action buttons) that filters customers by name, email, or company name
-2. **Add state** `searchTerm` and filter the displayed customers list using it
-3. **Ensure the ScrollArea** has a fixed max height so the table scrolls properly within the dialog
+Specifically:
+- Replace `<ScrollArea className="max-h-[400px] border rounded-lg">` with `<div className="max-h-[400px] overflow-auto border rounded-lg">`
+- Close with `</div>` instead of `</ScrollArea>`
+- This lets the browser's native scroll work with the table, avoiding the conflict between RadixUI ScrollArea and the Table's own overflow div
 
-The search input will use the existing `Input` component with a `Search` icon from lucide-react. Filtering happens client-side since all customers are already loaded.
-
-### Technical Details
-
-- Add `searchTerm` state and an `Input` with placeholder "Search customers..."
-- Filter `customers` array by matching `searchTerm` against `company_name`, `business_name`, `first_name`, `last_name`, and `email`
-- The filtered list is used for rendering the table and for the "select all" checkbox logic
-- The ScrollArea already wraps the table but needs an explicit height constraint (e.g., `max-h-[400px]`) to ensure scrolling works
+### File Changed
+- `src/components/customer/BulkPinManagementDialog.tsx` -- swap ScrollArea for a plain scrollable div
 
