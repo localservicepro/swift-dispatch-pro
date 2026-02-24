@@ -43,7 +43,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
 
     // Verify admin auth
     const authHeader = req.headers.get('Authorization');
@@ -53,11 +53,12 @@ serve(async (req) => {
       });
     }
 
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const token = authHeader.replace('Bearer ', '');
 
-    const { data: { user }, error: userError } = await authClient.auth.getUser();
+    // Use service role client for data operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
       console.error('Auth error:', userError?.message);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -67,8 +68,6 @@ serve(async (req) => {
 
     const userId = user.id;
 
-    // Use service role client for data operations
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check admin role
     const { data: roleData } = await supabase
