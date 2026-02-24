@@ -120,6 +120,7 @@ serve(async (req) => {
       .update({
         portal_access_pin: hashedPin,
         pin_enabled: true,
+        portal_access_enabled: true,
         pin_created_at: new Date().toISOString(),
         pin_expires_at: expiresAt.toISOString(),
         pin_failed_attempts: 0,
