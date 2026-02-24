@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { Key, Send, RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -120,6 +121,24 @@ export function BulkPinManagementDialog({ open, onOpenChange }: BulkPinManagemen
       toast({ title: "Error", description: err.message || "Failed to generate PINs", variant: "destructive" });
     } finally {
       setState("done");
+    }
+  };
+
+  const togglePortalAccess = async (customerId: string, enabled: boolean) => {
+    setCustomers(prev => prev.map(c =>
+      c.id === customerId ? { ...c, portal_access_enabled: enabled } : c
+    ));
+
+    const { error } = await supabase
+      .from('customers')
+      .update({ portal_access_enabled: enabled, updated_at: new Date().toISOString() })
+      .eq('id', customerId);
+
+    if (error) {
+      setCustomers(prev => prev.map(c =>
+        c.id === customerId ? { ...c, portal_access_enabled: !enabled } : c
+      ));
+      toast({ title: "Error", description: "Failed to update portal access", variant: "destructive" });
     }
   };
 
@@ -245,18 +264,19 @@ export function BulkPinManagementDialog({ open, onOpenChange }: BulkPinManagemen
                 <TableHead>Customer</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>PIN Status</TableHead>
+                <TableHead>Portal Access</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {state === "loading" ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                   <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     Loading customers...
                   </TableCell>
                 </TableRow>
               ) : customers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     No account customers found
                   </TableCell>
                 </TableRow>
@@ -283,6 +303,12 @@ export function BulkPinManagementDialog({ open, onOpenChange }: BulkPinManagemen
                       ) : (
                         <Badge variant="outline" className="text-xs">No PIN</Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={!!c.portal_access_enabled}
+                        onCheckedChange={(checked) => togglePortalAccess(c.id, checked)}
+                      />
                     </TableCell>
                   </TableRow>
                 ))
