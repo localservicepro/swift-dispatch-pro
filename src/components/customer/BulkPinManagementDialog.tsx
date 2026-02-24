@@ -283,7 +283,7 @@ export function BulkPinManagementDialog({ open, onOpenChange }: BulkPinManagemen
         </div>
 
         {/* Customer table */}
-        <ScrollArea className="max-h-[400px] border rounded-lg">
+        <div className="max-h-[400px] overflow-auto border rounded-lg">
           <Table>
             <TableHeader>
               <TableRow>
@@ -347,7 +347,7 @@ export function BulkPinManagementDialog({ open, onOpenChange }: BulkPinManagemen
               )}
             </TableBody>
           </Table>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
