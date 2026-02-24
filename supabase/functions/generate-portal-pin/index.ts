@@ -62,7 +62,7 @@ serve(async (req) => {
     // Get customer details
     const { data: customer, error: customerError } = await supabase
       .from('customers')
-      .select('id, first_name, last_name, email, portal_access_enabled')
+      .select('id, first_name, last_name, email, portal_access_enabled, company_name, business_name')
       .eq('id', customer_id)
       .single();
 
@@ -150,6 +150,21 @@ serve(async (req) => {
     if (emailError) {
       console.error('Error sending PIN email:', emailError);
       // Don't fail the whole operation if email fails
+    }
+
+    // Insert webhook record for external delivery
+    try {
+      await supabase.from('portal_pin_webhooks').insert({
+        customer_id,
+        customer_name: `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Customer',
+        customer_email: customer.email,
+        company_name: customer.company_name || customer.business_name || null,
+        pin_code: plainPin,
+        pin_expires_at: expiresAt.toISOString(),
+        is_regeneration: regenerate,
+      });
+    } catch (webhookErr) {
+      console.error('Error inserting PIN webhook record:', webhookErr);
     }
 
     // Log activity

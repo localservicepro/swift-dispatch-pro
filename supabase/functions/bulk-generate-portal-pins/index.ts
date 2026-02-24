@@ -91,7 +91,7 @@ serve(async (req) => {
     if (all_without_pins) {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, first_name, last_name, email, portal_access_enabled, pin_enabled')
+        .select('id, first_name, last_name, email, portal_access_enabled, pin_enabled, company_name, business_name')
         .eq('customer_type', 'account')
         .eq('is_active', true)
         .or('pin_enabled.is.null,pin_enabled.eq.false');
@@ -101,7 +101,7 @@ serve(async (req) => {
     } else if (customer_ids && customer_ids.length > 0) {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, first_name, last_name, email, portal_access_enabled, pin_enabled')
+        .select('id, first_name, last_name, email, portal_access_enabled, pin_enabled, company_name, business_name')
         .in('id', customer_ids)
         .eq('is_active', true);
 
@@ -187,6 +187,21 @@ serve(async (req) => {
             error: updateError.message,
           });
           continue;
+        }
+
+        // Insert webhook record for external delivery
+        try {
+          await supabase.from('portal_pin_webhooks').insert({
+            customer_id: customer.id,
+            customer_name: `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Customer',
+            customer_email: customer.email,
+            company_name: customer.company_name || customer.business_name || null,
+            pin_code: plainPin,
+            pin_expires_at: expiresAt.toISOString(),
+            is_regeneration: false,
+          });
+        } catch (webhookErr) {
+          console.error(`Webhook record insert failed for ${customer.id}:`, webhookErr);
         }
 
         // Send email if requested
