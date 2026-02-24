@@ -152,8 +152,14 @@ serve(async (req) => {
       // Don't fail the whole operation if email fails
     }
 
-    // Insert webhook record for external delivery
+    // Delete any previous unsent webhook records for this customer
     try {
+      await supabase
+        .from('portal_pin_webhooks')
+        .delete()
+        .eq('customer_id', customer_id)
+        .eq('webhook_sent', false);
+
       await supabase.from('portal_pin_webhooks').insert({
         customer_id,
         customer_name: `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Customer',
