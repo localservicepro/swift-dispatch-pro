@@ -3,12 +3,11 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { generateTimeSlots } from "@/utils/timeSlotUtils";
 import { isDateBeforeToday } from "@/utils/dateTimeUtils";
+import { TimeSlotSelector } from "./TimeSlotSelector";
 
 interface CommonDateTimeSelectorProps {
   commonDeliveryDate: string;
@@ -23,9 +22,6 @@ export function CommonDateTimeSelector({
   onDateSelect,
   onTimeChange
 }: CommonDateTimeSelectorProps) {
-  const timeSlots = generateTimeSlots();
-  const specialSlots = timeSlots.filter(s => ['urgent', 'asap', 'anytime'].includes(s.value));
-  const regularSlots = timeSlots.filter(s => !['urgent', 'asap', 'anytime'].includes(s.value));
   const selectedCommonDate = commonDeliveryDate ? new Date(commonDeliveryDate) : undefined;
 
   return (
@@ -61,28 +57,12 @@ export function CommonDateTimeSelector({
 
         <div>
           <Label className="text-xs font-medium mb-1 block">Common Time</Label>
-          <Select value={commonDeliveryTime} onValueChange={onTimeChange}>
-            <SelectTrigger className="h-8 text-xs bg-background">
-              <SelectValue placeholder="Select time..." />
-            </SelectTrigger>
-            <SelectContent className="bg-popover z-50">
-              <SelectGroup>
-                {specialSlots.map((slot) => (
-                  <SelectItem key={slot.value} value={slot.value} className="text-xs font-medium">
-                    {slot.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-              <SelectSeparator />
-              <SelectGroup>
-                {regularSlots.map((slot) => (
-                  <SelectItem key={slot.value} value={slot.value} className="text-xs">
-                    {slot.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <TimeSlotSelector
+            value={commonDeliveryTime}
+            onValueChange={onTimeChange}
+            placeholder="Select time..."
+            triggerClassName="h-8 text-xs"
+          />
         </div>
       </div>
     </div>
