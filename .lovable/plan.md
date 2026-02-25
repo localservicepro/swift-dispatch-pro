@@ -1,17 +1,31 @@
 
 
-## Fix: Select Dropdowns Not Scrollable
+## Fix: Add Scroll Buttons to Select Dropdowns
+
+The screenshot shows the dropdown displays items but has no visible scroll indicators. The `SelectContent` component is missing the `SelectScrollUpButton` and `SelectScrollDownButton` components that Radix UI uses to provide visible scroll affordance.
 
 ### Root Cause
-The `SelectPrimitive.Viewport` has `h-[var(--radix-select-trigger-height)]` applied when `position="popper"`. This constrains the viewport height to match the trigger button height (~40px), preventing any scrolling. The `overflow-auto` on the outer `Content` element has no effect because the inner `Viewport` doesn't grow beyond the trigger height.
-
-### Solution
-Change the Viewport from `h-[var(--radix-select-trigger-height)]` (fixed height) to `max-h-[300px]` with `overflow-y-auto`. This lets the viewport expand to fit content up to 300px, then scroll. The Content element keeps its existing styles.
+The `SelectContent` wrapper doesn't include the `ScrollUpButton` and `ScrollDownButton` children. While `overflow-y-auto` allows native scrolling, Radix Select is designed to use these dedicated scroll buttons for better UX and visibility. Additionally, the outer Content element has `overflow-auto` which may conflict with the Viewport's scrolling.
 
 ### Changes
 
 #### `src/components/ui/select.tsx`
-- Line 88: Replace `h-[var(--radix-select-trigger-height)]` with `max-h-[300px] overflow-y-auto` in the Viewport className for `position === "popper"`
+1. **Add `SelectScrollUpButton` before the Viewport** and **`SelectScrollDownButton` after the Viewport** inside `SelectContent` — these render chevron arrows at the top/bottom when there are more items to scroll to.
+2. **Change outer Content from `overflow-auto`** to `overflow-hidden` so only the Viewport handles scrolling, preventing double-scrollbar conflicts.
 
-This single change fixes scrolling for all Select dropdowns (Delivery Time, Driver, Truck Type, etc.).
+The updated `SelectContent` will look like:
+```tsx
+<SelectPrimitive.Content ... className="... overflow-hidden ...">
+  <SelectScrollUpButton />
+  <SelectPrimitive.Viewport ...>
+    {children}
+  </SelectPrimitive.Viewport>
+  <SelectScrollDownButton />
+</SelectPrimitive.Content>
+```
+
+This adds visible up/down chevron indicators when items overflow, making it clear the list is scrollable.
+
+### Files Changed
+- `src/components/ui/select.tsx`
 
