@@ -8,8 +8,15 @@
  * @param timeString - Time string in HH:MM:SS format
  * @returns Time string in HH:MM format, or empty string if invalid
  */
+const SPECIAL_TIME_VALUES = ['urgent', 'asap', 'anytime'];
+
 export const convertTimeToFormFormat = (timeString: string | null | undefined): string => {
   if (!timeString) return '';
+  
+  // Pass through special priority values unchanged
+  if (SPECIAL_TIME_VALUES.includes(timeString.toLowerCase())) {
+    return timeString.toLowerCase();
+  }
   
   try {
     // Handle both HH:MM:SS and HH:MM formats
@@ -31,6 +38,11 @@ export const convertTimeToFormFormat = (timeString: string | null | undefined): 
  */
 export const convertTimeToDbFormat = (timeString: string | null | undefined): string => {
   if (!timeString) return '';
+  
+  // Pass through special priority values unchanged
+  if (SPECIAL_TIME_VALUES.includes(timeString.toLowerCase())) {
+    return timeString.toLowerCase();
+  }
   
   try {
     // If already in HH:MM:SS format, return as is

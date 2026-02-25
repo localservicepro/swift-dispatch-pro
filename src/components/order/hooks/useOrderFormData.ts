@@ -308,6 +308,12 @@ export function useOrderFormData(order: Order) {
     const formatTimeForDB = (timeString: string) => {
       if (!timeString) return null;
       
+      // Pass through special priority values unchanged
+      const specialValues = ['urgent', 'asap', 'anytime'];
+      if (specialValues.includes(timeString.toLowerCase())) {
+        return timeString.toLowerCase();
+      }
+      
       // If already in HH:MM:SS format, return as is
       if (timeString.match(/^\d{2}:\d{2}:\d{2}$/)) {
         return timeString;
