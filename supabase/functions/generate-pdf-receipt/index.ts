@@ -617,6 +617,14 @@ function generateSimpleReceiptHTML(data: any): string {
         <span class="invoice-value accent">${invoiceDate}</span>
       </div>
       <div class="invoice-row">
+        <span class="invoice-label">Contact Name:</span>
+        <span class="invoice-value">${contactName || "N/A"}</span>
+      </div>
+      <div class="invoice-row">
+        <span class="invoice-label">Contact Phone:</span>
+        <span class="invoice-value">${contactPhone || "N/A"}</span>
+      </div>
+      <div class="invoice-row">
         <span class="invoice-label accent">Business Name:</span>
         <span class="invoice-value">${order.customer_name || order.customerName || ""}</span>
       </div>
@@ -706,16 +714,6 @@ function generateSimpleReceiptHTML(data: any): string {
         <div class="notes-box-label">Order notes:</div>
         <div class="notes-box-content">${paymentMethodDisplay ? `<strong>${paymentMethodDisplay}</strong><br>` : ""}${purchaseOrder ? `<strong>PO: ${purchaseOrder}</strong>` : ""}${(paymentMethodDisplay || purchaseOrder) && orderNotes ? "<br>" : ""}${orderNotes}</div>
       </div>
-    </div>
-    <div class="notes-section" style="margin-top: 10px;">
-      <div class="notes-box">
-        <div class="notes-box-label">Contact Info:</div>
-        <div class="notes-box-content">
-          <div><strong>Name:</strong> ${contactName || "N/A"}</div>
-          <div><strong>Phone:</strong> ${contactPhone || "N/A"}</div>
-        </div>
-      </div>
-      <div class="notes-box" style="visibility: hidden;"></div>
     </div>
     
     <div class="footer">
