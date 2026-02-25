@@ -1,9 +1,8 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Store, Clock } from "lucide-react";
-import { generateTimeSlots } from "@/utils/timeSlotUtils";
+import { TimeSlotSelector } from "./TimeSlotSelector";
 
 interface PickupSchedulerProps {
   pickupDate: string;
@@ -23,10 +22,6 @@ export function PickupScheduler({
   onPickupDateChange, 
   onPickupTimeChange 
 }: PickupSchedulerProps) {
-  const timeSlots = generateTimeSlots();
-  const specialSlots = timeSlots.filter(s => ['urgent', 'asap', 'anytime'].includes(s.value));
-  const regularSlots = timeSlots.filter(s => !['urgent', 'asap', 'anytime'].includes(s.value));
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
@@ -48,28 +43,11 @@ export function PickupScheduler({
           <Clock className="w-4 h-4" />
           Pickup Time *
         </Label>
-        <Select value={pickupTime} onValueChange={onPickupTimeChange}>
-          <SelectTrigger className="bg-background">
-            <SelectValue placeholder="Select time..." />
-          </SelectTrigger>
-          <SelectContent className="bg-popover z-50">
-            <SelectGroup>
-              {specialSlots.map((slot) => (
-                <SelectItem key={slot.value} value={slot.value} className="font-medium">
-                  {slot.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-            <SelectSeparator />
-            <SelectGroup>
-              {regularSlots.map((slot) => (
-                <SelectItem key={slot.value} value={slot.value}>
-                  {slot.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+        <TimeSlotSelector
+          value={pickupTime}
+          onValueChange={onPickupTimeChange}
+          placeholder="Select time..."
+        />
       </div>
     </div>
   );
