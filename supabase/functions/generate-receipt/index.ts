@@ -414,9 +414,10 @@ function generateReceiptHTML(data: any): string {
   const formatTimeRange = (time: string): string => {
     if (!time) return ''
     // Check for special time slots
-    if (time.toLowerCase() === 'urgent' || time.toLowerCase() === 'asap' || time.toLowerCase() === 'any time') {
-      return time
-    }
+    const timeLower = time.toLowerCase()
+    if (timeLower === 'urgent') return 'Urgent'
+    if (timeLower === 'asap') return 'ASAP'
+    if (timeLower === 'anytime' || timeLower === 'any time') return 'Any time'
     // Handle time range format "HH:MM - HH:MM"
     if (time.includes(' - ')) {
       const [start, end] = time.split(' - ')
