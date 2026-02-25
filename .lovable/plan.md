@@ -1,31 +1,90 @@
 
 
-## Fix: Add Scroll Buttons to Select Dropdowns
+## Redesign Time and Driver Selectors for Better Usability
 
-The screenshot shows the dropdown displays items but has no visible scroll indicators. The `SelectContent` component is missing the `SelectScrollUpButton` and `SelectScrollDownButton` components that Radix UI uses to provide visible scroll affordance.
+Based on your preferences: enhanced dropdown for time, searchable combobox for driver, balanced spacing.
 
-### Root Cause
-The `SelectContent` wrapper doesn't include the `ScrollUpButton` and `ScrollDownButton` children. While `overflow-y-auto` allows native scrolling, Radix Select is designed to use these dedicated scroll buttons for better UX and visibility. Additionally, the outer Content element has `overflow-auto` which may conflict with the Viewport's scrolling.
+### Problem
+The current Radix Select component has persistent scrolling issues. Despite multiple fixes, it remains difficult to navigate long lists of time slots and drivers. The core issue is that Radix Select's "popper" position mode fights against proper scrolling behavior.
 
-### Changes
+### Solution
 
-#### `src/components/ui/select.tsx`
-1. **Add `SelectScrollUpButton` before the Viewport** and **`SelectScrollDownButton` after the Viewport** inside `SelectContent` — these render chevron arrows at the top/bottom when there are more items to scroll to.
-2. **Change outer Content from `overflow-auto`** to `overflow-hidden` so only the Viewport handles scrolling, preventing double-scrollbar conflicts.
+#### 1. Time Selector — Enhanced Dropdown with Search and Sticky Sections
 
-The updated `SelectContent` will look like:
-```tsx
-<SelectPrimitive.Content ... className="... overflow-hidden ...">
-  <SelectScrollUpButton />
-  <SelectPrimitive.Viewport ...>
-    {children}
-  </SelectPrimitive.Viewport>
-  <SelectScrollDownButton />
-</SelectPrimitive.Content>
+Replace the Radix `Select` with a `Popover` + `Command` (cmdk) combo in `DeliveryScheduler`, `PickupScheduler`, and `CommonDateTimeSelector`. This gives us:
+
+- A search/filter input at the top to quickly find time slots
+- Sticky section headers ("Priority" and "Time Slots")
+- Visible scrollbar via the existing `CommandList` max-height scroll
+- Proper keyboard navigation
+
+```text
+┌─────────────────────────────┐
+│ 9:30 AM - 10:00 AM       ▼ │  ← Trigger button
+├─────────────────────────────┤
+│ 🔍 Search time...          │
+│─────────────────────────────│
+│ Priority                    │
+│   ⚡ Urgent                 │
+│   ⏰ ASAP                   │
+│   📅 Any time               │
+│─────────────────────────────│
+│ Time Slots                  │
+│   7:00 AM - 7:30 AM        │
+│   7:30 AM - 8:00 AM        │
+│   ...scrollable...          │
+│ ✓ 9:30 AM - 10:00 AM       │
+│   10:00 AM - 10:30 AM      │
+└─────────────────────────────┘
 ```
 
-This adds visible up/down chevron indicators when items overflow, making it clear the list is scrollable.
+**Files changed:**
+- New: `src/components/order/TimeSlotSelector.tsx` — reusable time picker component
+- Modified: `src/components/order/DeliveryScheduler.tsx` — use `TimeSlotSelector`
+- Modified: `src/components/order/PickupScheduler.tsx` — use `TimeSlotSelector`
+- Modified: `src/components/order/CommonDateTimeSelector.tsx` — use `TimeSlotSelector`
 
-### Files Changed
-- `src/components/ui/select.tsx`
+#### 2. Driver Selector — Searchable Combobox
+
+Replace the Radix `Select` with `Popover` + `Command` combobox pattern (same pattern used by `SuburbSelector`). This provides:
+
+- Type-to-search filtering by name or email
+- Grouped sections: "Drivers" and "Admins"
+- Role badges next to each name
+- Check mark for selected driver
+
+```text
+┌─────────────────────────────┐
+│ John Smith (Driver)       ⇅ │  ← Trigger button
+├─────────────────────────────┤
+│ 🔍 Search by name...       │
+│─────────────────────────────│
+│ Drivers                     │
+│ ✓ John Smith                │
+│   Jane Doe                  │
+│─────────────────────────────│
+│ Admins                      │
+│   Admin User                │
+│─────────────────────────────│
+│   No driver assigned        │
+└─────────────────────────────┘
+```
+
+**Files changed:**
+- Modified: `src/components/order/DriverSelector.tsx` — rewrite to use `Popover` + `Command`
+
+### Technical Details
+
+- Both components use the existing `Popover` + `Command` pattern already in the codebase (see `SuburbSelector.tsx`)
+- `CommandList` already has `max-h-[300px] overflow-y-auto` which provides reliable scrolling
+- No changes to `select.tsx` needed — we bypass the problematic Radix Select entirely for these specific use cases
+- The `TimeSlotSelector` component accepts `value`, `onValueChange`, and `placeholder` props for drop-in replacement
+- All three time slot consumers (`DeliveryScheduler`, `PickupScheduler`, `CommonDateTimeSelector`) will use the same shared component
+
+### Files Summary
+- **New:** `src/components/order/TimeSlotSelector.tsx`
+- **Modified:** `src/components/order/DeliveryScheduler.tsx`
+- **Modified:** `src/components/order/PickupScheduler.tsx`
+- **Modified:** `src/components/order/CommonDateTimeSelector.tsx`
+- **Modified:** `src/components/order/DriverSelector.tsx`
 
