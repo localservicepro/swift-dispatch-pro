@@ -1,90 +1,41 @@
 
 
-## Redesign Time and Driver Selectors for Better Usability
+## Fix: Scrolling Not Working in Time Slot and Driver Dropdowns
 
-Based on your preferences: enhanced dropdown for time, searchable combobox for driver, balanced spacing.
+### Root Cause
 
-### Problem
-The current Radix Select component has persistent scrolling issues. Despite multiple fixes, it remains difficult to navigate long lists of time slots and drivers. The core issue is that Radix Select's "popper" position mode fights against proper scrolling behavior.
+The `TimeSlotSelector` and `DriverSelector` dropdowns open inside a `Dialog` that has `overflow-y-auto` on its `DialogContent` (line 53 of `OrderManagementDialogs.tsx`). When the user tries to scroll inside the dropdown's `CommandList`, the scroll/wheel events bubble up through the DOM and get captured by the parent dialog's scroll container instead. This prevents the dropdown list from scrolling.
 
-### Solution
+Additionally, `DeliveryAddressStep.tsx` (line 165) still uses the old `Select` component for delivery time instead of the new `TimeSlotSelector` — this was missed in the previous update.
 
-#### 1. Time Selector — Enhanced Dropdown with Search and Sticky Sections
+### Fix
 
-Replace the Radix `Select` with a `Popover` + `Command` (cmdk) combo in `DeliveryScheduler`, `PickupScheduler`, and `CommonDateTimeSelector`. This gives us:
+#### 1. `src/components/order/TimeSlotSelector.tsx`
+Add `onWheel` with `stopPropagation()` on the `PopoverContent` to prevent scroll events from bubbling to the parent dialog. Also add `pointer-events-auto` to ensure the content is interactive inside overlays.
 
-- A search/filter input at the top to quickly find time slots
-- Sticky section headers ("Priority" and "Time Slots")
-- Visible scrollbar via the existing `CommandList` max-height scroll
-- Proper keyboard navigation
+#### 2. `src/components/order/DriverSelector.tsx`
+Same fix — add `onWheel` with `stopPropagation()` on the `PopoverContent`.
 
-```text
-┌─────────────────────────────┐
-│ 9:30 AM - 10:00 AM       ▼ │  ← Trigger button
-├─────────────────────────────┤
-│ 🔍 Search time...          │
-│─────────────────────────────│
-│ Priority                    │
-│   ⚡ Urgent                 │
-│   ⏰ ASAP                   │
-│   📅 Any time               │
-│─────────────────────────────│
-│ Time Slots                  │
-│   7:00 AM - 7:30 AM        │
-│   7:30 AM - 8:00 AM        │
-│   ...scrollable...          │
-│ ✓ 9:30 AM - 10:00 AM       │
-│   10:00 AM - 10:30 AM      │
-└─────────────────────────────┘
+#### 3. `src/components/ui/command.tsx`
+Add `onWheel` with `stopPropagation()` directly on the `CommandList` component as a defensive measure, so any `CommandList` inside a scrollable parent works correctly.
+
+#### 4. `src/components/order/DeliveryAddressStep.tsx`
+Replace the old `Select` component (lines 165-176) with the new `TimeSlotSelector` component for consistency and to fix scrolling there too.
+
+### Technical Detail
+
+The key change in each file is adding an `onWheel` handler:
+
+```tsx
+// On PopoverContent or CommandList
+onWheel={(e) => e.stopPropagation()}
 ```
 
-**Files changed:**
-- New: `src/components/order/TimeSlotSelector.tsx` — reusable time picker component
-- Modified: `src/components/order/DeliveryScheduler.tsx` — use `TimeSlotSelector`
-- Modified: `src/components/order/PickupScheduler.tsx` — use `TimeSlotSelector`
-- Modified: `src/components/order/CommonDateTimeSelector.tsx` — use `TimeSlotSelector`
+This stops the wheel event from reaching the `DialogContent`'s scroll container, allowing the dropdown's own `overflow-y-auto` to handle scrolling correctly.
 
-#### 2. Driver Selector — Searchable Combobox
-
-Replace the Radix `Select` with `Popover` + `Command` combobox pattern (same pattern used by `SuburbSelector`). This provides:
-
-- Type-to-search filtering by name or email
-- Grouped sections: "Drivers" and "Admins"
-- Role badges next to each name
-- Check mark for selected driver
-
-```text
-┌─────────────────────────────┐
-│ John Smith (Driver)       ⇅ │  ← Trigger button
-├─────────────────────────────┤
-│ 🔍 Search by name...       │
-│─────────────────────────────│
-│ Drivers                     │
-│ ✓ John Smith                │
-│   Jane Doe                  │
-│─────────────────────────────│
-│ Admins                      │
-│   Admin User                │
-│─────────────────────────────│
-│   No driver assigned        │
-└─────────────────────────────┘
-```
-
-**Files changed:**
-- Modified: `src/components/order/DriverSelector.tsx` — rewrite to use `Popover` + `Command`
-
-### Technical Details
-
-- Both components use the existing `Popover` + `Command` pattern already in the codebase (see `SuburbSelector.tsx`)
-- `CommandList` already has `max-h-[300px] overflow-y-auto` which provides reliable scrolling
-- No changes to `select.tsx` needed — we bypass the problematic Radix Select entirely for these specific use cases
-- The `TimeSlotSelector` component accepts `value`, `onValueChange`, and `placeholder` props for drop-in replacement
-- All three time slot consumers (`DeliveryScheduler`, `PickupScheduler`, `CommonDateTimeSelector`) will use the same shared component
-
-### Files Summary
-- **New:** `src/components/order/TimeSlotSelector.tsx`
-- **Modified:** `src/components/order/DeliveryScheduler.tsx`
-- **Modified:** `src/components/order/PickupScheduler.tsx`
-- **Modified:** `src/components/order/CommonDateTimeSelector.tsx`
-- **Modified:** `src/components/order/DriverSelector.tsx`
+### Files Changed
+- `src/components/order/TimeSlotSelector.tsx` — add `onWheel` stop propagation + `pointer-events-auto`
+- `src/components/order/DriverSelector.tsx` — add `onWheel` stop propagation + `pointer-events-auto`
+- `src/components/ui/command.tsx` — add `onWheel` stop propagation on `CommandList`
+- `src/components/order/DeliveryAddressStep.tsx` — replace old `Select` with `TimeSlotSelector`
 
