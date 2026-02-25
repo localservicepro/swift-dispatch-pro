@@ -140,7 +140,7 @@ export function DriverSelector({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+        <PopoverContent className="p-0 w-[--radix-popover-trigger-width] pointer-events-auto" align="start" onWheel={(e) => e.stopPropagation()}>
           <Command>
             <CommandInput placeholder="Search by name or email..." />
             <CommandList>
