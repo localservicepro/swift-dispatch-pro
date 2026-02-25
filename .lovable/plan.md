@@ -1,32 +1,23 @@
 
 
-## Fix: "ASAP" and "Any time" Not Showing on Printed Invoices
+## Change: Add Half-Hour Time Slots for Delivery
 
-### Root Cause
+### What changes
+The current time slots are 1-hour windows (e.g., 7:00 AM - 8:00 AM). The user wants 30-minute windows instead, running from 7:00-7:30 AM through 3:30-4:00 PM.
 
-In `supabase/functions/generate-receipt/index.ts` line 417, the special time slot check compares against `'any time'` (with a space), but the actual stored database value from `timeSlotUtils.ts` is `'anytime'` (no space). So the match fails and an empty string is returned, hiding the time on the invoice.
+### File changed
+**`src/utils/timeSlotUtils.ts`**
 
-Additionally, when `'asap'` or `'urgent'` do match, the function returns the raw lowercase value (e.g., `'asap'`) instead of a properly formatted label (e.g., `'ASAP'`).
-
-### Fix
-
-Update `supabase/functions/generate-receipt/index.ts` line 417-418 to:
-1. Match `'anytime'` (no space) in addition to the current values
-2. Return properly formatted display labels instead of raw values
+Change the end time calculation from +1 hour to +30 minutes:
 
 ```text
-Current (line 417-418):
-  if (time.toLowerCase() === 'urgent' || time.toLowerCase() === 'asap' || time.toLowerCase() === 'any time') {
-    return time
-  }
-
-Fixed:
-  const timeLower = time.toLowerCase()
-  if (timeLower === 'urgent') return 'Urgent'
-  if (timeLower === 'asap') return 'ASAP'
-  if (timeLower === 'anytime' || timeLower === 'any time') return 'Any time'
+Current: 7:00-8:00, 7:30-8:30, 8:00-9:00 ... (1-hour windows)
+New:     7:00-7:30, 7:30-8:00, 8:00-8:30 ... 3:30-4:00 (30-min windows)
 ```
 
-### Files changed
-- `supabase/functions/generate-receipt/index.ts` -- fix special time slot matching and formatting
+- Change end time from `hour + 1` to `startMinutes + 30`
+- Change the loop to stop at 15:30 (last slot: 3:30-4:00 PM) instead of 16:00
+- Keep special options (Urgent, ASAP, Any time) unchanged
+
+Also need to update `supabase/functions/generate-receipt/index.ts` `formatTimeRange` to handle 30-min slot values correctly on invoices (it already parses HH:MM format, so no change needed there).
 
