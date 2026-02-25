@@ -1,10 +1,9 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Clock } from "lucide-react";
 import { generateTimeSlots } from "@/utils/timeSlotUtils";
-import { cn } from "@/lib/utils";
 
 interface DeliverySchedulerProps {
   deliveryDate: string;
@@ -49,43 +48,28 @@ export function DeliveryScheduler({
           <Clock className="w-4 h-4" />
           Delivery Time *
         </Label>
-        <div className="border border-input rounded-md">
-          <ScrollArea className="h-[200px]">
-            <div className="p-1">
+        <Select value={deliveryTime} onValueChange={onDeliveryTimeChange}>
+          <SelectTrigger className="bg-background">
+            <SelectValue placeholder="Select time..." />
+          </SelectTrigger>
+          <SelectContent className="bg-popover z-50">
+            <SelectGroup>
               {specialSlots.map((slot) => (
-                <button
-                  key={slot.value}
-                  type="button"
-                  onClick={() => onDeliveryTimeChange(slot.value)}
-                  className={cn(
-                    "w-full text-left px-3 py-2 text-sm rounded-sm transition-colors font-medium",
-                    deliveryTime === slot.value
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
+                <SelectItem key={slot.value} value={slot.value} className="font-medium">
                   {slot.label}
-                </button>
+                </SelectItem>
               ))}
-              <div className="mx-2 my-1 h-px bg-border" />
+            </SelectGroup>
+            <SelectSeparator />
+            <SelectGroup>
               {regularSlots.map((slot) => (
-                <button
-                  key={slot.value}
-                  type="button"
-                  onClick={() => onDeliveryTimeChange(slot.value)}
-                  className={cn(
-                    "w-full text-left px-3 py-2 text-sm rounded-sm transition-colors",
-                    deliveryTime === slot.value
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
+                <SelectItem key={slot.value} value={slot.value}>
                   {slot.label}
-                </button>
+                </SelectItem>
               ))}
-            </div>
-          </ScrollArea>
-        </div>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );

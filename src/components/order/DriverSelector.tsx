@@ -2,11 +2,10 @@
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { User, AlertCircle, RefreshCw, Check } from "lucide-react";
+import { User, AlertCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 
 interface Driver {
   id: string;
@@ -102,60 +101,24 @@ export function DriverSelector({
         </div>
       )}
 
-      <div className="border border-input rounded-md">
-        <ScrollArea className="h-[250px]">
-          <div className="p-1">
-            {loadingDrivers ? (
-              <p className="text-sm text-muted-foreground p-3">Loading users...</p>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onDriverChange("unassigned")}
-                  className={cn(
-                    "w-full text-left px-3 py-2 text-sm rounded-sm transition-colors flex items-center justify-between",
-                    selectedDriverId === "unassigned" || !selectedDriverId
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <span>No driver assigned</span>
-                  {(selectedDriverId === "unassigned" || !selectedDriverId) && <Check className="w-4 h-4" />}
-                </button>
-                <div className="mx-2 my-1 h-px bg-border" />
-                {drivers.map((driver) => (
-                  <button
-                    key={driver.id}
-                    type="button"
-                    onClick={() => onDriverChange(driver.id)}
-                    className={cn(
-                      "w-full text-left px-3 py-2 text-sm rounded-sm transition-colors flex items-center justify-between",
-                      selectedDriverId === driver.id
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>{driver.full_name || driver.email}</span>
-                      <span className={cn(
-                        "text-xs px-1.5 py-0.5 rounded-full",
-                        selectedDriverId === driver.id
-                          ? "bg-primary-foreground/20 text-primary-foreground"
-                          : driver.role === 'driver' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-purple-100 text-purple-800'
-                      )}>
-                        {driver.role}
-                      </span>
-                    </div>
-                    {selectedDriverId === driver.id && <Check className="w-4 h-4" />}
-                  </button>
-                ))}
-              </>
-            )}
-          </div>
-        </ScrollArea>
-      </div>
+      <Select value={selectedDriverId || "unassigned"} onValueChange={onDriverChange} disabled={loadingDrivers}>
+        <SelectTrigger className="bg-background">
+          <SelectValue placeholder={loadingDrivers ? "Loading users..." : "Select driver..."} />
+        </SelectTrigger>
+        <SelectContent className="bg-popover z-50">
+          <SelectGroup>
+            <SelectItem value="unassigned">No driver assigned</SelectItem>
+          </SelectGroup>
+          <SelectSeparator />
+          <SelectGroup>
+            {drivers.map((driver) => (
+              <SelectItem key={driver.id} value={driver.id}>
+                {driver.full_name || driver.email} ({driver.role === 'driver' ? 'Driver' : 'Admin'})
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
 
       {!loadingDrivers && drivers.length > 0 && (
         <p className="text-sm text-muted-foreground">
