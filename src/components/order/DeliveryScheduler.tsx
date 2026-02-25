@@ -1,9 +1,10 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar, Clock } from "lucide-react";
 import { generateTimeSlots } from "@/utils/timeSlotUtils";
+import { cn } from "@/lib/utils";
 
 interface DeliverySchedulerProps {
   deliveryDate: string;
@@ -24,10 +25,11 @@ export function DeliveryScheduler({
   onDeliveryTimeChange 
 }: DeliverySchedulerProps) {
   const timeSlots = generateTimeSlots();
+  const specialSlots = timeSlots.filter(s => ['urgent', 'asap', 'anytime'].includes(s.value));
+  const regularSlots = timeSlots.filter(s => !['urgent', 'asap', 'anytime'].includes(s.value));
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Delivery Date */}
       <div className="space-y-2">
         <Label htmlFor="delivery_date" className="flex items-center gap-2">
           <Calendar className="w-4 h-4" />
@@ -42,24 +44,48 @@ export function DeliveryScheduler({
         />
       </div>
 
-      {/* Delivery Time */}
       <div className="space-y-2">
-        <Label htmlFor="delivery_time" className="flex items-center gap-2">
+        <Label className="flex items-center gap-2">
           <Clock className="w-4 h-4" />
           Delivery Time *
         </Label>
-        <Select value={deliveryTime} onValueChange={onDeliveryTimeChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select time slot" />
-          </SelectTrigger>
-          <SelectContent>
-            {timeSlots.map((slot) => (
-              <SelectItem key={slot.value} value={slot.value}>
-                {slot.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="border border-input rounded-md">
+          <ScrollArea className="h-[200px]">
+            <div className="p-1">
+              {specialSlots.map((slot) => (
+                <button
+                  key={slot.value}
+                  type="button"
+                  onClick={() => onDeliveryTimeChange(slot.value)}
+                  className={cn(
+                    "w-full text-left px-3 py-2 text-sm rounded-sm transition-colors font-medium",
+                    deliveryTime === slot.value
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  {slot.label}
+                </button>
+              ))}
+              <div className="mx-2 my-1 h-px bg-border" />
+              {regularSlots.map((slot) => (
+                <button
+                  key={slot.value}
+                  type="button"
+                  onClick={() => onDeliveryTimeChange(slot.value)}
+                  className={cn(
+                    "w-full text-left px-3 py-2 text-sm rounded-sm transition-colors",
+                    deliveryTime === slot.value
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  {slot.label}
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
       </div>
     </div>
   );

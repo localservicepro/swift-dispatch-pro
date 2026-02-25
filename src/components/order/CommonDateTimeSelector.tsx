@@ -3,9 +3,9 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Clock } from "lucide-react";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateTimeSlots } from "@/utils/timeSlotUtils";
 import { isDateBeforeToday } from "@/utils/dateTimeUtils";
@@ -24,6 +24,8 @@ export function CommonDateTimeSelector({
   onTimeChange
 }: CommonDateTimeSelectorProps) {
   const timeSlots = generateTimeSlots();
+  const specialSlots = timeSlots.filter(s => ['urgent', 'asap', 'anytime'].includes(s.value));
+  const regularSlots = timeSlots.filter(s => !['urgent', 'asap', 'anytime'].includes(s.value));
   const selectedCommonDate = commonDeliveryDate ? new Date(commonDeliveryDate) : undefined;
 
   return (
@@ -44,7 +46,7 @@ export function CommonDateTimeSelector({
                 {commonDeliveryDate ? format(new Date(commonDeliveryDate), 'PPP') : 'Select date'}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-white" align="start">
+            <PopoverContent className="w-auto p-0 bg-popover" align="start">
               <Calendar
                 mode="single"
                 selected={selectedCommonDate}
@@ -59,19 +61,43 @@ export function CommonDateTimeSelector({
 
         <div>
           <Label className="text-xs font-medium mb-1 block">Common Time</Label>
-          <Select value={commonDeliveryTime} onValueChange={onTimeChange}>
-            <SelectTrigger className="w-full h-8 text-xs">
-              <Clock className="mr-2 h-3 w-3" />
-              <SelectValue placeholder="Select time" />
-            </SelectTrigger>
-            <SelectContent className="bg-white">
-              {timeSlots.map((slot) => (
-                <SelectItem key={slot.value} value={slot.value}>
-                  {slot.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="border border-input rounded-md bg-background">
+            <ScrollArea className="h-[150px]">
+              <div className="p-0.5">
+                {specialSlots.map((slot) => (
+                  <button
+                    key={slot.value}
+                    type="button"
+                    onClick={() => onTimeChange(slot.value)}
+                    className={cn(
+                      "w-full text-left px-2 py-1.5 text-xs rounded-sm transition-colors font-medium",
+                      commonDeliveryTime === slot.value
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    {slot.label}
+                  </button>
+                ))}
+                <div className="mx-1 my-0.5 h-px bg-border" />
+                {regularSlots.map((slot) => (
+                  <button
+                    key={slot.value}
+                    type="button"
+                    onClick={() => onTimeChange(slot.value)}
+                    className={cn(
+                      "w-full text-left px-2 py-1.5 text-xs rounded-sm transition-colors",
+                      commonDeliveryTime === slot.value
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    {slot.label}
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
         </div>
       </div>
     </div>
