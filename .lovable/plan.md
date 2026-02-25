@@ -1,23 +1,33 @@
 
 
-## Change: Add Half-Hour Time Slots for Delivery
+## Replace Select Dropdowns with Scrollable Lists
 
-### What changes
-The current time slots are 1-hour windows (e.g., 7:00 AM - 8:00 AM). The user wants 30-minute windows instead, running from 7:00-7:30 AM through 3:30-4:00 PM.
+The user finds the current Select/dropdown UI for **Delivery Time** and **Driver Assignment** not user-friendly (as shown in the uploaded screenshots). The fix is to replace these dropdowns with always-visible, scrollable lists using the existing `ScrollArea` component.
 
-### File changed
-**`src/utils/timeSlotUtils.ts`**
+### Changes
 
-Change the end time calculation from +1 hour to +30 minutes:
+#### 1. `src/components/order/DeliveryScheduler.tsx`
+Replace the `Select` for delivery time with a `ScrollArea` containing a list of clickable time slot items. The selected item will be highlighted. Height capped at ~200px with scroll.
 
-```text
-Current: 7:00-8:00, 7:30-8:30, 8:00-9:00 ... (1-hour windows)
-New:     7:00-7:30, 7:30-8:00, 8:00-8:30 ... 3:30-4:00 (30-min windows)
-```
+#### 2. `src/components/order/PickupScheduler.tsx`
+Same change — replace the `Select` for pickup time with a scrollable list.
 
-- Change end time from `hour + 1` to `startMinutes + 30`
-- Change the loop to stop at 15:30 (last slot: 3:30-4:00 PM) instead of 16:00
-- Keep special options (Urgent, ASAP, Any time) unchanged
+#### 3. `src/components/order/DriverSelector.tsx`
+Replace the `Select` dropdown with a `ScrollArea` list showing drivers with role badges, highlighted selection, and the same refresh button.
 
-Also need to update `supabase/functions/generate-receipt/index.ts` `formatTimeRange` to handle 30-min slot values correctly on invoices (it already parses HH:MM format, so no change needed there).
+#### 4. `src/components/order/CommonDateTimeSelector.tsx`
+Replace the time `Select` with a compact scrollable list (smaller height to fit the compact layout).
+
+### Design
+- Each list item is a clickable row with hover and selected states
+- Selected item gets a highlighted background (blue for time, indigo for driver)
+- ScrollArea with a fixed max-height (~200px for time, ~250px for drivers)
+- Border around the scroll container matching existing card styles
+- Special time options (Urgent, ASAP, Any time) shown with a subtle separator
+
+### Files Changed
+- `src/components/order/DeliveryScheduler.tsx`
+- `src/components/order/PickupScheduler.tsx`
+- `src/components/order/DriverSelector.tsx`
+- `src/components/order/CommonDateTimeSelector.tsx`
 
