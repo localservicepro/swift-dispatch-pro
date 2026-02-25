@@ -379,7 +379,10 @@ function generateSimpleReceiptHTML(data: any): string {
     
     const [hours, minutes] = time.split(":");
     const startHour = parseInt(hours);
-    const endHour = startHour + 1;
+    const startMin = parseInt(minutes);
+    const endTotalMin = startMin + 30;
+    const endHour = startHour + Math.floor(endTotalMin / 60);
+    const endMin = endTotalMin % 60;
     
     const formatSingleTime = (h: number, m: string): string => {
       const ampm = h >= 12 ? "PM" : "AM";
@@ -387,7 +390,7 @@ function generateSimpleReceiptHTML(data: any): string {
       return `${hour12}:${m} ${ampm}`;
     };
     
-    return `${formatSingleTime(startHour, minutes)} - ${formatSingleTime(endHour, minutes)}`;
+    return `${formatSingleTime(startHour, minutes)} - ${formatSingleTime(endHour, endMin.toString().padStart(2, '0'))}`;
   };
   const deliveryTimeRaw = order.delivery_time || order.deliveryTime || "";
   const deliveryTime = deliveryTimeRaw ? formatTimeRange(deliveryTimeRaw) : "";

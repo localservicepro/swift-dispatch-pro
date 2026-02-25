@@ -430,12 +430,19 @@ function generateReceiptHTML(data: any): string {
       }
       return `${formatSingleTime(start)} - ${formatSingleTime(end)}`
     }
-    // Single time format
+    // Single time format - show 30-minute range
     const [hours, minutes] = time.split(':')
     const hour = parseInt(hours)
-    const ampm = hour >= 12 ? 'pm' : 'am'
-    const hour12 = hour % 12 || 12
-    return `${hour12}:${minutes}${ampm}`
+    const min = parseInt(minutes)
+    const endTotalMin = min + 30
+    const endHour = hour + Math.floor(endTotalMin / 60)
+    const endMin = endTotalMin % 60
+    const formatSingleTime = (h: number, m: string): string => {
+      const ampm = h >= 12 ? 'pm' : 'am'
+      const hour12 = h % 12 || 12
+      return `${hour12}:${m}${ampm}`
+    }
+    return `${formatSingleTime(hour, minutes)} - ${formatSingleTime(endHour, endMin.toString().padStart(2, '0'))}`
   }
   const deliveryTimeRaw = order.delivery_time || order.deliveryTime || ''
   const deliveryTimeFormatted = formatTimeRange(deliveryTimeRaw)
