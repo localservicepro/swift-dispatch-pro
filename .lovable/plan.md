@@ -1,21 +1,29 @@
 
 
-## Replace Scroll Arrows with Native Scrolling in Select Dropdowns
+## Move Contact Info on Invoice
 
-The current Radix `SelectContent` component uses `SelectScrollUpButton` and `SelectScrollDownButton` (the up/down chevron arrows) for navigation. The user wants standard native scrolling instead.
+Move the Contact Info from the bottom boxed section to the invoice details area, placing it between the "Tax Invoice No" row and the "Business Name" row, without any box border.
 
 ### Changes
 
-#### `src/components/ui/select.tsx`
-- Remove `<SelectScrollUpButton />` and `<SelectScrollDownButton />` from inside `SelectContent`
-- Change `overflow-hidden` to `overflow-auto` on the `SelectPrimitive.Content` so the dropdown scrolls natively
-- Alternatively, add `overflow-y-auto max-h-[300px]` to the `Viewport` to enable smooth scroll within the popover
+#### `supabase/functions/generate-pdf-receipt/index.ts`
 
-This is a single-file change to the shared UI component. All Select dropdowns (delivery time, driver, pickup time, etc.) will automatically inherit the native scroll behavior.
+1. **Remove** the bottom Contact Info section (lines 710-719) — the `notes-section` containing the Contact Info box and the hidden placeholder box.
 
-### Technical Detail
-The Radix Select `position="popper"` mode already constrains the dropdown height via `max-h-96`. By removing the scroll buttons and switching to `overflow-auto` on the viewport, the browser's native scrollbar appears instead of the arrow buttons.
+2. **Insert** contact info as plain `invoice-row` entries between the Tax Invoice No row (line 613-618) and the Business Name row (line 619-621):
+   ```html
+   <div class="invoice-row">
+     <span class="invoice-label">Contact Name:</span>
+     <span class="invoice-value">${contactName || "N/A"}</span>
+   </div>
+   <div class="invoice-row">
+     <span class="invoice-label">Contact Phone:</span>
+     <span class="invoice-value">${contactPhone || "N/A"}</span>
+   </div>
+   ```
+
+This removes the bordered box and places the contact details inline with the other invoice metadata, matching the style of the existing rows.
 
 ### Files Changed
-- `src/components/ui/select.tsx`
+- `supabase/functions/generate-pdf-receipt/index.ts` (edge function — will need redeployment)
 
