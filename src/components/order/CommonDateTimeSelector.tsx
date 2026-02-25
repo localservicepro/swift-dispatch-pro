@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -61,43 +61,28 @@ export function CommonDateTimeSelector({
 
         <div>
           <Label className="text-xs font-medium mb-1 block">Common Time</Label>
-          <div className="border border-input rounded-md bg-background">
-            <ScrollArea className="h-[150px]">
-              <div className="p-0.5">
+          <Select value={commonDeliveryTime} onValueChange={onTimeChange}>
+            <SelectTrigger className="h-8 text-xs bg-background">
+              <SelectValue placeholder="Select time..." />
+            </SelectTrigger>
+            <SelectContent className="bg-popover z-50">
+              <SelectGroup>
                 {specialSlots.map((slot) => (
-                  <button
-                    key={slot.value}
-                    type="button"
-                    onClick={() => onTimeChange(slot.value)}
-                    className={cn(
-                      "w-full text-left px-2 py-1.5 text-xs rounded-sm transition-colors font-medium",
-                      commonDeliveryTime === slot.value
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
+                  <SelectItem key={slot.value} value={slot.value} className="text-xs font-medium">
                     {slot.label}
-                  </button>
+                  </SelectItem>
                 ))}
-                <div className="mx-1 my-0.5 h-px bg-border" />
+              </SelectGroup>
+              <SelectSeparator />
+              <SelectGroup>
                 {regularSlots.map((slot) => (
-                  <button
-                    key={slot.value}
-                    type="button"
-                    onClick={() => onTimeChange(slot.value)}
-                    className={cn(
-                      "w-full text-left px-2 py-1.5 text-xs rounded-sm transition-colors",
-                      commonDeliveryTime === slot.value
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
+                  <SelectItem key={slot.value} value={slot.value} className="text-xs">
                     {slot.label}
-                  </button>
+                  </SelectItem>
                 ))}
-              </div>
-            </ScrollArea>
-          </div>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>
