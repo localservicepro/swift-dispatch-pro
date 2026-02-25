@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TimeSlotSelector } from '@/components/order/TimeSlotSelector';
 import { OrderAddressForm } from '@/components/order/OrderAddressForm';
 import { User, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -162,18 +162,11 @@ export function DeliveryAddressStep({
                   <Clock className="w-4 h-4" />
                   Delivery Time
                 </Label>
-                <Select value={deliveryTime} onValueChange={onDeliveryTimeChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select delivery time" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    {timeSlots.map((slot) => (
-                      <SelectItem key={slot.value} value={slot.value}>
-                        {slot.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <TimeSlotSelector
+                  value={deliveryTime}
+                  onValueChange={onDeliveryTimeChange}
+                  placeholder="Select delivery time"
+                />
               </div>
             </div>
           </div>

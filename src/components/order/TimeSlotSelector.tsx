@@ -55,7 +55,7 @@ export function TimeSlotSelector({
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className={cn("p-0 w-[--radix-popover-trigger-width]", className)} align="start">
+      <PopoverContent className={cn("p-0 w-[--radix-popover-trigger-width] pointer-events-auto", className)} align="start" onWheel={(e) => e.stopPropagation()}>
         <Command>
           <CommandInput placeholder="Search time..." />
           <CommandList>
