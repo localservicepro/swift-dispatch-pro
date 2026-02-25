@@ -1,41 +1,35 @@
 
 
-## Fix: Scrolling Not Working in Time Slot and Driver Dropdowns
+## Fix: Invoice Delivery Time Showing 1-Hour Range Instead of 30-Minute
 
-### Root Cause
+### Problem
+The time slots are 30-minute windows (e.g., 7:00 AM - 7:30 AM), but the database stores only the start time (e.g., `07:00`). The receipt functions then reconstruct the range incorrectly:
 
-The `TimeSlotSelector` and `DriverSelector` dropdowns open inside a `Dialog` that has `overflow-y-auto` on its `DialogContent` (line 53 of `OrderManagementDialogs.tsx`). When the user tries to scroll inside the dropdown's `CommandList`, the scroll/wheel events bubble up through the DOM and get captured by the parent dialog's scroll container instead. This prevents the dropdown list from scrolling.
-
-Additionally, `DeliveryAddressStep.tsx` (line 165) still uses the old `Select` component for delivery time instead of the new `TimeSlotSelector` — this was missed in the previous update.
+- **`generate-pdf-receipt/index.ts`** (line 382): Uses `endHour = startHour + 1`, producing a 1-hour range (7:00 AM - 8:00 AM)
+- **`generate-receipt/index.ts`** (line 433-438): For single time values, only shows the start time with no range at all
 
 ### Fix
 
-#### 1. `src/components/order/TimeSlotSelector.tsx`
-Add `onWheel` with `stopPropagation()` on the `PopoverContent` to prevent scroll events from bubbling to the parent dialog. Also add `pointer-events-auto` to ensure the content is interactive inside overlays.
+#### 1. `supabase/functions/generate-pdf-receipt/index.ts`
+Change the time range calculation from +1 hour to +30 minutes:
+- Replace `endHour = startHour + 1` with proper 30-minute addition that handles the minute rollover (e.g., 7:30 becomes 8:00)
 
-#### 2. `src/components/order/DriverSelector.tsx`
-Same fix — add `onWheel` with `stopPropagation()` on the `PopoverContent`.
-
-#### 3. `src/components/ui/command.tsx`
-Add `onWheel` with `stopPropagation()` directly on the `CommandList` component as a defensive measure, so any `CommandList` inside a scrollable parent works correctly.
-
-#### 4. `src/components/order/DeliveryAddressStep.tsx`
-Replace the old `Select` component (lines 165-176) with the new `TimeSlotSelector` component for consistency and to fix scrolling there too.
+#### 2. `supabase/functions/generate-receipt/index.ts`
+Update the single-time fallback (lines 433-438) to also calculate a 30-minute end time and display as a range, consistent with the PDF receipt.
 
 ### Technical Detail
 
-The key change in each file is adding an `onWheel` handler:
-
-```tsx
-// On PopoverContent or CommandList
-onWheel={(e) => e.stopPropagation()}
+Both functions will use the same logic:
+```
+startMinutes + 30 → if >= 60, increment hour and subtract 60
 ```
 
-This stops the wheel event from reaching the `DialogContent`'s scroll container, allowing the dropdown's own `overflow-y-auto` to handle scrolling correctly.
+For example:
+- `07:00` → 7:00 AM - 7:30 AM
+- `07:30` → 7:30 AM - 8:00 AM
+- `15:30` → 3:30 PM - 4:00 PM
 
 ### Files Changed
-- `src/components/order/TimeSlotSelector.tsx` — add `onWheel` stop propagation + `pointer-events-auto`
-- `src/components/order/DriverSelector.tsx` — add `onWheel` stop propagation + `pointer-events-auto`
-- `src/components/ui/command.tsx` — add `onWheel` stop propagation on `CommandList`
-- `src/components/order/DeliveryAddressStep.tsx` — replace old `Select` with `TimeSlotSelector`
+- `supabase/functions/generate-pdf-receipt/index.ts` — fix +1 hour to +30 minutes
+- `supabase/functions/generate-receipt/index.ts` — add 30-minute range to single time format
 
