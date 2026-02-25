@@ -1,29 +1,17 @@
 
 
-## Move Contact Info on Invoice
+## Fix: Select Dropdowns Not Scrollable
 
-Move the Contact Info from the bottom boxed section to the invoice details area, placing it between the "Tax Invoice No" row and the "Business Name" row, without any box border.
+### Root Cause
+The `SelectPrimitive.Viewport` has `h-[var(--radix-select-trigger-height)]` applied when `position="popper"`. This constrains the viewport height to match the trigger button height (~40px), preventing any scrolling. The `overflow-auto` on the outer `Content` element has no effect because the inner `Viewport` doesn't grow beyond the trigger height.
+
+### Solution
+Change the Viewport from `h-[var(--radix-select-trigger-height)]` (fixed height) to `max-h-[300px]` with `overflow-y-auto`. This lets the viewport expand to fit content up to 300px, then scroll. The Content element keeps its existing styles.
 
 ### Changes
 
-#### `supabase/functions/generate-pdf-receipt/index.ts`
+#### `src/components/ui/select.tsx`
+- Line 88: Replace `h-[var(--radix-select-trigger-height)]` with `max-h-[300px] overflow-y-auto` in the Viewport className for `position === "popper"`
 
-1. **Remove** the bottom Contact Info section (lines 710-719) — the `notes-section` containing the Contact Info box and the hidden placeholder box.
-
-2. **Insert** contact info as plain `invoice-row` entries between the Tax Invoice No row (line 613-618) and the Business Name row (line 619-621):
-   ```html
-   <div class="invoice-row">
-     <span class="invoice-label">Contact Name:</span>
-     <span class="invoice-value">${contactName || "N/A"}</span>
-   </div>
-   <div class="invoice-row">
-     <span class="invoice-label">Contact Phone:</span>
-     <span class="invoice-value">${contactPhone || "N/A"}</span>
-   </div>
-   ```
-
-This removes the bordered box and places the contact details inline with the other invoice metadata, matching the style of the existing rows.
-
-### Files Changed
-- `supabase/functions/generate-pdf-receipt/index.ts` (edge function — will need redeployment)
+This single change fixes scrolling for all Select dropdowns (Delivery Time, Driver, Truck Type, etc.).
 
