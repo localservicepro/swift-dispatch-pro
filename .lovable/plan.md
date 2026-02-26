@@ -1,35 +1,101 @@
 
 
-## Fix: Invoice Delivery Time Showing 1-Hour Range Instead of 30-Minute
+## Allow Drivers to Create Orders
 
-### Problem
-The time slots are 30-minute windows (e.g., 7:00 AM - 7:30 AM), but the database stores only the start time (e.g., `07:00`). The receipt functions then reconstruct the range incorrectly:
+### Overview
+Currently, only admins/super_admins can create orders. This change will let drivers create orders from their Driver Dashboard, reusing the existing `MultiStepOrderForm` component.
 
-- **`generate-pdf-receipt/index.ts`** (line 382): Uses `endHour = startHour + 1`, producing a 1-hour range (7:00 AM - 8:00 AM)
-- **`generate-receipt/index.ts`** (line 433-438): For single time values, only shows the start time with no range at all
+### Changes Required
 
-### Fix
+#### 1. Database: RLS Policy for Driver Order Insertion
+Add an INSERT policy on the `orders` table allowing drivers to insert orders. Also need INSERT policies on `order_items` for drivers.
 
-#### 1. `supabase/functions/generate-pdf-receipt/index.ts`
-Change the time range calculation from +1 hour to +30 minutes:
-- Replace `endHour = startHour + 1` with proper 30-minute addition that handles the minute rollover (e.g., 7:30 becomes 8:00)
+```sql
+-- Allow drivers to insert orders
+CREATE POLICY "Drivers can insert orders"
+ON public.orders
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = auth.uid() AND role = 'driver'
+  )
+);
 
-#### 2. `supabase/functions/generate-receipt/index.ts`
-Update the single-time fallback (lines 433-438) to also calculate a 30-minute end time and display as a range, consistent with the PDF receipt.
-
-### Technical Detail
-
-Both functions will use the same logic:
+-- Allow drivers to insert order items
+CREATE POLICY "Drivers can insert order items"
+ON public.order_items
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = auth.uid() AND role = 'driver'
+  )
+);
 ```
-startMinutes + 30 → if >= 60, increment hour and subtract 60
+
+Also need SELECT access to `payment_settings` for drivers (the order creation service reads it):
+
+```sql
+CREATE POLICY "Drivers can view payment settings"
+ON public.payment_settings
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = auth.uid() AND role = 'driver'
+  )
+);
 ```
 
-For example:
-- `07:00` → 7:00 AM - 7:30 AM
-- `07:30` → 7:30 AM - 8:00 AM
-- `15:30` → 3:30 PM - 4:00 PM
+#### 2. Frontend: Add "Create Order" Button to Driver Dashboard
+Add a "Create Order" button in the Driver Dashboard header area that opens a dialog containing the `MultiStepOrderForm`.
 
-### Files Changed
-- `supabase/functions/generate-pdf-receipt/index.ts` — fix +1 hour to +30 minutes
-- `supabase/functions/generate-receipt/index.ts` — add 30-minute range to single time format
+**File: `src/components/driver/DriverDashboard.tsx`**
+- Import `Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle` and `MultiStepOrderForm`
+- Add state for `isCreatingOrder` dialog
+- Add a "+" or "Create Order" button next to the settings icon
+- Render the dialog with `MultiStepOrderForm` inside
+- On order created, refresh the orders list and close the dialog
+
+#### 3. Order Creation Service: Handle Driver Context
+The `orderCreationService.ts` sets `admin_id` from the current user. When a driver creates an order, we should still capture who created it. The `admin_id` field will store the driver's user ID (as the creator), which is already the current behavior since it just uses `user?.id`.
+
+No changes needed here — the service already uses the authenticated user's ID.
+
+#### 4. Driver Access to Required Tables
+Drivers need SELECT access to tables used during order creation:
+- `customers` — already has a general authenticated read policy? Let me check... No, customers only allows admin ALL and self-view. Drivers need to search customers.
+- `products` / `product_categories` — drivers need to browse products.
+
+We'll need SELECT policies for drivers on:
+- `customers` (to search/select a customer)
+- `product_categories` (already has authenticated SELECT)
+- `products` (need to verify)
+
+Let me check the products table access.
+
+#### Summary of Changes
+
+**New Migration:**
+- Add INSERT policy on `orders` for drivers
+- Add INSERT policy on `order_items` for drivers  
+- Add SELECT policy on `payment_settings` for drivers
+- Add SELECT policy on `customers` for drivers (to search customers during order creation)
+
+**Modified Files:**
+- `src/components/driver/DriverDashboard.tsx` — add "Create Order" button + dialog with `MultiStepOrderForm`
+
+### Technical Details
+
+The `MultiStepOrderForm` is self-contained and handles the full order creation flow (customer search → product selection → delivery/pickup → payment → review). It uses `orderCreationService.ts` which inserts directly via Supabase client. The only barriers are RLS policies preventing drivers from inserting into `orders`/`order_items` and reading `customers`/`payment_settings`.
+
+The driver-created orders will appear in the admin pipeline as normal. The `admin_id` field will contain the driver's user ID, which serves as a record of who created the order.
+
+### Files Summary
+- **New migration**: RLS policies for driver order creation access
+- **Modified**: `src/components/driver/DriverDashboard.tsx` — add create order UI
 
