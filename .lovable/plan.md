@@ -1,35 +1,35 @@
 
 
-## Fix: Invoice Delivery Time Showing 1-Hour Range Instead of 30-Minute
+## Fix: `to_char(text, unknown)` Error on Pickup "Now" Orders
 
-### Problem
-The time slots are 30-minute windows (e.g., 7:00 AM - 7:30 AM), but the database stores only the start time (e.g., `07:00`). The receipt functions then reconstruct the range incorrectly:
+### Root Cause
 
-- **`generate-pdf-receipt/index.ts`** (line 382): Uses `endHour = startHour + 1`, producing a 1-hour range (7:00 AM - 8:00 AM)
-- **`generate-receipt/index.ts`** (line 433-438): For single time values, only shows the start time with no range at all
+The database trigger `populate_order_sms_webhook` (line in the function body) calls:
+```sql
+TO_CHAR(NEW.delivery_time, 'HH12:MI AM')
+```
+
+But `delivery_time` is a `text` column, not a `timestamp`. `TO_CHAR()` requires a timestamp/numeric argument. This works silently when `delivery_time` is `NULL` (returns NULL), but fails when a non-null text value is passed.
+
+When "Pick up now" is selected, the order status is set directly to `'delivered'`, which triggers the webhook function. If `delivery_time` contains any text value (even empty string `''`), `TO_CHAR` fails.
 
 ### Fix
 
-#### 1. `supabase/functions/generate-pdf-receipt/index.ts`
-Change the time range calculation from +1 hour to +30 minutes:
-- Replace `endHour = startHour + 1` with proper 30-minute addition that handles the minute rollover (e.g., 7:30 becomes 8:00)
+**Database migration** — Update the `populate_order_sms_webhook` function to handle `delivery_time` as text properly. Instead of calling `TO_CHAR()` on it, just pass the text value directly (since it's already stored as text like `"07:00"`):
 
-#### 2. `supabase/functions/generate-receipt/index.ts`
-Update the single-time fallback (lines 433-438) to also calculate a 30-minute end time and display as a range, consistent with the PDF receipt.
+```sql
+-- Replace:
+CASE 
+  WHEN NEW.delivery_time IS NOT NULL THEN TO_CHAR(NEW.delivery_time, 'HH12:MI AM')
+  ELSE NULL
+END
 
-### Technical Detail
-
-Both functions will use the same logic:
+-- With:
+NEW.delivery_time
 ```
-startMinutes + 30 → if >= 60, increment hour and subtract 60
-```
 
-For example:
-- `07:00` → 7:00 AM - 7:30 AM
-- `07:30` → 7:30 AM - 8:00 AM
-- `15:30` → 3:30 PM - 4:00 PM
+The `delivery_time` column already stores human-readable text values (e.g., `"07:00"`, `"14:30"`), so calling `TO_CHAR` on it is both unnecessary and incorrect.
 
 ### Files Changed
-- `supabase/functions/generate-pdf-receipt/index.ts` — fix +1 hour to +30 minutes
-- `supabase/functions/generate-receipt/index.ts` — add 30-minute range to single time format
+- Database migration to update `populate_order_sms_webhook` function — remove the `TO_CHAR()` call and use the text value directly
 
