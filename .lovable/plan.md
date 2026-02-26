@@ -1,27 +1,35 @@
 
 
-## Fix: Drivers Cannot See Customer Contacts
+## Fix: Invoice Delivery Time Showing 1-Hour Range Instead of 30-Minute
 
-### Root Cause
-The `customer_contacts` table has no RLS policy granting drivers SELECT access. Current policies only allow admins (ALL) and the customer themselves (SELECT/INSERT/UPDATE/DELETE on own contacts). When a driver creates an order and selects an account customer, the `ContactSelectionSection` queries `customer_contacts` but gets zero results due to RLS, triggering the "No contacts found for this company" message.
+### Problem
+The time slots are 30-minute windows (e.g., 7:00 AM - 7:30 AM), but the database stores only the start time (e.g., `07:00`). The receipt functions then reconstruct the range incorrectly:
+
+- **`generate-pdf-receipt/index.ts`** (line 382): Uses `endHour = startHour + 1`, producing a 1-hour range (7:00 AM - 8:00 AM)
+- **`generate-receipt/index.ts`** (line 433-438): For single time values, only shows the start time with no range at all
 
 ### Fix
-Add a single SELECT RLS policy on `customer_contacts` for drivers.
 
-**New Migration:**
-```sql
-CREATE POLICY "Drivers can view customer contacts"
-ON public.customer_contacts
-FOR SELECT
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM public.user_roles
-    WHERE user_id = auth.uid() AND role = 'driver'
-  )
-);
+#### 1. `supabase/functions/generate-pdf-receipt/index.ts`
+Change the time range calculation from +1 hour to +30 minutes:
+- Replace `endHour = startHour + 1` with proper 30-minute addition that handles the minute rollover (e.g., 7:30 becomes 8:00)
+
+#### 2. `supabase/functions/generate-receipt/index.ts`
+Update the single-time fallback (lines 433-438) to also calculate a 30-minute end time and display as a range, consistent with the PDF receipt.
+
+### Technical Detail
+
+Both functions will use the same logic:
+```
+startMinutes + 30 → if >= 60, increment hour and subtract 60
 ```
 
+For example:
+- `07:00` → 7:00 AM - 7:30 AM
+- `07:30` → 7:30 AM - 8:00 AM
+- `15:30` → 3:30 PM - 4:00 PM
+
 ### Files Changed
-- New migration file — one SELECT policy on `customer_contacts` for drivers
+- `supabase/functions/generate-pdf-receipt/index.ts` — fix +1 hour to +30 minutes
+- `supabase/functions/generate-receipt/index.ts` — add 30-minute range to single time format
 
