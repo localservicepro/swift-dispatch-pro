@@ -3,11 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { DeliveryCard } from "./DeliveryCard";
 import { NotificationSettings } from "./NotificationSettings";
-import { Truck, Package, Clock, CheckCircle, LogOut, User, Loader2, Settings } from "lucide-react";
+import { MultiStepOrderForm } from "@/components/order/MultiStepOrderForm";
+import { Truck, Package, Clock, CheckCircle, LogOut, User, Loader2, Settings, Plus } from "lucide-react";
 import { emailService } from "@/utils/emailService";
 import { useNotificationPermission } from "@/hooks/useNotificationPermission";
 import { browserNotificationService } from "@/utils/browserNotificationService";
@@ -22,6 +24,7 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const { toast } = useToast();
   const { signOut, signingOut } = useAuth();
   const { canNotify } = useNotificationPermission();
@@ -232,6 +235,15 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
           </div>
           <div className="flex items-center gap-2">
             <Button
+              variant="default"
+              size="sm"
+              onClick={() => setIsCreatingOrder(true)}
+              className="gap-1"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">New Order</span>
+            </Button>
+            <Button
               variant="ghost"
               size="icon"
               onClick={() => setShowSettings(!showSettings)}
@@ -312,6 +324,21 @@ export function DriverDashboard({ user, profile, onLogout }: DriverDashboardProp
           )}
         </div>
       </div>
+
+      {/* Create Order Dialog */}
+      <Dialog open={isCreatingOrder} onOpenChange={setIsCreatingOrder}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Order</DialogTitle>
+          </DialogHeader>
+          <MultiStepOrderForm 
+            onOrderCreated={() => {
+              setIsCreatingOrder(false);
+              fetchOrders();
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
