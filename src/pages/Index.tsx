@@ -6,7 +6,8 @@ import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { MobileHeader } from "@/components/MobileHeader";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { LogOut, Loader2 } from "lucide-react";
+import { LogOut, Loader2, BookOpen } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PersonalizedGreeting } from "@/components/PersonalizedGreeting";
 import { useNavigate, Outlet } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -60,6 +61,18 @@ const Index = () => {
             <PersonalizedGreeting profile={profile} />
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">{profile?.email}</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => navigate('/guide')}
+                  >
+                    <BookOpen className="w-5 h-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>SwiftDispatch Guide</TooltipContent>
+              </Tooltip>
               <Button 
                 variant="outline" 
                 size="sm" 
