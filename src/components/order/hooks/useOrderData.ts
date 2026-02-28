@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { isPhoneNumber, phoneSearchMatch } from "@/utils/phoneUtils";
+import { formatOrderNumber } from "@/utils/orderNumberFormatter";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -196,8 +197,10 @@ export function useFilteredOrders(orders: Order[], searchQuery: string, statusFi
           return phoneSearchMatch(order.customer_phone, searchQuery) ||
                  phoneSearchMatch(order.contact_phone, searchQuery);
         } else {
-          // Regular text search
-          return order.order_number.toLowerCase().includes(query) ||
+          // Regular text search - include formatted order number (with admin initials)
+          const displayOrderNumber = formatOrderNumber(order).toLowerCase();
+          return displayOrderNumber.includes(query) ||
+                 order.order_number.toLowerCase().includes(query) ||
                  order.customer_name.toLowerCase().includes(query) ||
                  (order.customer_phone && order.customer_phone.toLowerCase().includes(query)) ||
                  (order.purchase_order && order.purchase_order.toLowerCase().includes(query)) ||
