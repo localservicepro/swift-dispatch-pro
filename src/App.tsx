@@ -11,6 +11,7 @@ import DriverPortal from "./pages/DriverPortal";
 import CustomerPortal from "./pages/CustomerPortal";
 import PortalLogin from "./pages/PortalLogin";
 import Knowledgebase from "./pages/Knowledgebase";
+import SwiftDispatchGuide from "./pages/SwiftDispatchGuide";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
@@ -92,6 +93,7 @@ function AuthenticatedApp() {
         <Route path="suburbs" element={<SuburbManagement />} />
         <Route path="emails" element={<EmailManagement />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="guide" element={<SwiftDispatchGuide />} />
       </Route>
       <Route 
         path="/driver" 
