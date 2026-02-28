@@ -82,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
         profiles:admin_id(full_name)
       `)
       .eq("customer_id", customerId)
-      .eq("status", "delivered")
+      .in("status", ["delivered", "back_order"])
       .is("deleted_at", null)
       .order("delivery_date", { ascending: true });
 
@@ -277,6 +277,7 @@ function generateStatementHTML(data: any): string {
       const orderNumber = order.order_number || "";
       const creatorInitials = order.profiles?.full_name ? getInitials(order.profiles.full_name) : "";
       const displayOrderNumber = orderNumber + creatorInitials;
+      const backorderBadge = order.status === 'back_order' ? ' <span class="status-badge status-back_order">BACKORDER</span>' : '';
       const status = formatStatus(order.status);
       
       // Parse products
@@ -289,7 +290,7 @@ function generateStatementHTML(data: any): string {
       return `
         <tr>
           <td>${orderDate}</td>
-          <td>${displayOrderNumber}</td>
+          <td>${displayOrderNumber}${backorderBadge}</td>
           <td><span class="status-badge status-${order.status}">${status}</span></td>
           <td class="items-cell">${itemNames}</td>
           <td class="text-center">${units}</td>
@@ -458,7 +459,7 @@ function generateStatementHTML(data: any): string {
     .status-pending, .status-requested { background: #fff3cd; color: #856404; }
     .status-preparing, .status-loading, .status-en_route { background: #cce5ff; color: #004085; }
     .status-cancelled { background: #f8d7da; color: #721c24; }
-    .status-back_order { background: #e2e3e5; color: #383d41; }
+    .status-back_order { background: #fff3cd; color: #856404; }
     
     .totals-section {
       margin-top: 20px;
