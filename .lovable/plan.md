@@ -1,27 +1,23 @@
 
 
-## Add Missing Status Filters to Order Management
+## Clear Date/Time on Backorder Creation
 
-The `back_order` and `requested` statuses exist in the database enum and work in the Opportunity Pipeline, but the Order Management page's status filter dropdown is missing them. The data is already being fetched — it's just not filterable.
+Currently `backorderService.ts` copies the original order's `delivery_date` and `delivery_time` into the new backorder. Since backorders don't have a scheduled date yet, these should be set to `null`.
 
 ### Changes
 
-**File: `src/components/order/OrderSearchFilters.tsx`** (lines 76-81)
+**File: `src/components/order/services/backorderService.ts`** (lines 113-114)
 
-Add the missing status options to the status filter `<Select>`:
-
+Change:
+```typescript
+delivery_date: originalOrder.delivery_date,
+delivery_time: originalOrder.delivery_time,
 ```
-<SelectItem value="all">All Statuses</SelectItem>
-<SelectItem value="requested">Requested</SelectItem>
-<SelectItem value="preparing">Preparing</SelectItem>
-<SelectItem value="back_order">Back Order</SelectItem>
-<SelectItem value="loading">Loading</SelectItem>
-<SelectItem value="en_route">En Route</SelectItem>
-<SelectItem value="delivered">Delivered</SelectItem>
-<SelectItem value="ready_for_pickup">Ready for Pickup</SelectItem>
-<SelectItem value="pickup_scheduled">Pickup Scheduled</SelectItem>
-<SelectItem value="cancelled">Cancelled</SelectItem>
+To:
+```typescript
+delivery_date: null,
+delivery_time: null,
 ```
 
-This adds `requested`, `back_order`, `ready_for_pickup`, and `pickup_scheduled` to the dropdown. No other changes needed — the filtering logic in `useFilteredOrders` already matches on `order.status` directly.
+This ensures newly created backorders have no date/time pre-filled, making it clear they haven't been scheduled yet.
 
