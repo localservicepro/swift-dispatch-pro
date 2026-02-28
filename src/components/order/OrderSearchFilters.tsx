@@ -74,10 +74,14 @@ export function OrderSearchControls({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="requested">Requested</SelectItem>
             <SelectItem value="preparing">Preparing</SelectItem>
+            <SelectItem value="back_order">Back Order</SelectItem>
             <SelectItem value="loading">Loading</SelectItem>
             <SelectItem value="en_route">En Route</SelectItem>
             <SelectItem value="delivered">Delivered</SelectItem>
+            <SelectItem value="ready_for_pickup">Ready for Pickup</SelectItem>
+            <SelectItem value="pickup_scheduled">Pickup Scheduled</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
