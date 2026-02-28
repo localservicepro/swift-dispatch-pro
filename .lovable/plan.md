@@ -1,23 +1,25 @@
 
 
-## Clear Date/Time on Backorder Creation
+## Fix: "Move Items to Backorder" Button Triggering Form Submit
 
-Currently `backorderService.ts` copies the original order's `delivery_date` and `delivery_time` into the new backorder. Since backorders don't have a scheduled date yet, these should be set to `null`.
+### Root Cause
+The "Move Items to Backorder" button in `OrderEditSections.tsx` is rendered inside the `<form>` element from `OrderEditForm.tsx`. Since it doesn't have `type="button"`, it defaults to `type="submit"`, causing the entire order edit form to submit whenever the button is clicked.
 
-### Changes
+### Fix
 
-**File: `src/components/order/services/backorderService.ts`** (lines 113-114)
+**File: `src/components/order/OrderEditSections.tsx`** (line 89)
 
-Change:
-```typescript
-delivery_date: originalOrder.delivery_date,
-delivery_time: originalOrder.delivery_time,
+Add `type="button"` to the "Move Items to Backorder" button:
+
+```tsx
+<Button
+  type="button"
+  variant="outline"
+  size="sm"
+  onClick={() => setBackorderDialogOpen(true)}
+  className="border-orange-300 text-orange-700 hover:bg-orange-100"
+>
 ```
-To:
-```typescript
-delivery_date: null,
-delivery_time: null,
-```
 
-This ensures newly created backorders have no date/time pre-filled, making it clear they haven't been scheduled yet.
+This prevents the button from triggering the parent form's `onSubmit` handler.
 
