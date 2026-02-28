@@ -1,10 +1,11 @@
 
-import React from 'react';
-import { Calendar, Settings, User2, FileText, MessageSquare, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Calendar, Settings, User2, FileText, MessageSquare, AlertCircle, PackageX } from 'lucide-react';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { DriverSelector } from "./DriverSelector";
 import { OrderBasicInfoForm } from "./OrderBasicInfoForm";
 import { OrderPricingForm } from "./OrderPricingForm";
@@ -15,6 +16,7 @@ import { PickupScheduler } from "./PickupScheduler";
 import { ProductEditSection } from "./ProductEditSection";
 import { ContactSelectionSection } from "./ContactSelectionSection";
 import { OrderReturnsSection } from "./returns/OrderReturnsSection";
+import { MoveToBackorderDialog } from "./MoveToBackorderDialog";
 import { OrderFormData } from "./hooks/useOrderFormData";
 
 interface OrderEditSectionsProps {
@@ -59,6 +61,8 @@ export function OrderEditSections({
   calculationBreakdown,
   paymentSettings
 }: OrderEditSectionsProps) {
+  const [backorderDialogOpen, setBackorderDialogOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       <ProductEditSection
@@ -71,7 +75,37 @@ export function OrderEditSections({
       <OrderReturnsSection 
         orderId={orderId}
         onProcessReturn={() => {
-          // Refresh the form when returns are processed
+          window.location.reload();
+        }}
+      />
+
+      {/* Move to Backorder Section */}
+      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <PackageX className="w-5 h-5 text-orange-600" />
+            <h3 className="font-semibold text-orange-900">Backorder</h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setBackorderDialogOpen(true)}
+            className="border-orange-300 text-orange-700 hover:bg-orange-100"
+          >
+            Move Items to Backorder
+          </Button>
+        </div>
+        <p className="text-xs text-orange-600 mt-2">
+          Split selected items into a separate backorder for items that are out of stock or not needed yet.
+        </p>
+      </div>
+
+      <MoveToBackorderDialog
+        open={backorderDialogOpen}
+        onOpenChange={setBackorderDialogOpen}
+        orderId={orderId}
+        products={formData.products}
+        onBackorderCreated={() => {
           window.location.reload();
         }}
       />
