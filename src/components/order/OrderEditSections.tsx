@@ -87,6 +87,7 @@ export function OrderEditSections({
             <h3 className="font-semibold text-orange-900">Backorder</h3>
           </div>
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={() => setBackorderDialogOpen(true)}
