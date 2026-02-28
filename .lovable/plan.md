@@ -1,35 +1,58 @@
 
 
-## Fix: `to_char(text, unknown)` Error on Pickup "Now" Orders
+## Move Items to Backorder — Manual Selection
 
-### Root Cause
+### What This Does
+Adds a "Move to Backorder" action on any existing order. An admin selects specific items (and quantities) to move out of the current order into a new linked backorder. This covers scenarios like out-of-stock items, excess quantity the client doesn't need, or partial deliveries.
 
-The database trigger `populate_order_sms_webhook` (line in the function body) calls:
-```sql
-TO_CHAR(NEW.delivery_time, 'HH12:MI AM')
-```
+### How It Works
+1. Admin opens an order and clicks "Move to Backorder"
+2. A dialog shows all items in the order with checkboxes and quantity inputs
+3. Admin selects which items/quantities to move
+4. On confirm:
+   - Selected items are removed (or quantity reduced) from the original order
+   - A new linked order is created with status `back_order`, `is_split_order: true`, `master_order_id` pointing to the original
+   - Both orders' totals are recalculated
+5. On the monthly statement, orders with `back_order` status show a **BACKORDER** badge next to the order number
 
-But `delivery_time` is a `text` column, not a `timestamp`. `TO_CHAR()` requires a timestamp/numeric argument. This works silently when `delivery_time` is `NULL` (returns NULL), but fails when a non-null text value is passed.
+### Implementation
 
-When "Pick up now" is selected, the order status is set directly to `'delivered'`, which triggers the webhook function. If `delivery_time` contains any text value (even empty string `''`), `TO_CHAR` fails.
+#### 1. New Component: `MoveToBackorderDialog.tsx`
+- Shows a list of the order's products with checkboxes and editable quantity fields
+- Validates that at least one item is selected and quantities don't exceed original
+- On submit: calls a service function to split selected items into a new backorder
 
-### Fix
+#### 2. New Service: `backorderService.ts`
+- `moveItemsToBackorder(orderId, selectedItems)`:
+  - Fetches the original order
+  - Creates a new order with selected items, status `back_order`, linked via `master_order_id`
+  - Updates the original order's products JSON and recalculates subtotal/total
+  - If ALL items are moved, sets original order to `cancelled`
 
-**Database migration** — Update the `populate_order_sms_webhook` function to handle `delivery_time` as text properly. Instead of calling `TO_CHAR()` on it, just pass the text value directly (since it's already stored as text like `"07:00"`):
+#### 3. Update `OrderEditSections.tsx`
+- Add a "Move to Backorder" button in the order edit view (next to the Returns section)
+- Opens the `MoveToBackorderDialog`
 
-```sql
--- Replace:
-CASE 
-  WHEN NEW.delivery_time IS NOT NULL THEN TO_CHAR(NEW.delivery_time, 'HH12:MI AM')
-  ELSE NULL
-END
+#### 4. Update `OpportunityCard.tsx` / `OrderCard.tsx`
+- Add a quick-action button for "Move to Backorder" on order cards in the pipeline
 
--- With:
-NEW.delivery_time
-```
+#### 5. Update `generate-account-statement/index.ts`
+- Change query from `.eq("status", "delivered")` to `.in("status", ["delivered", "back_order"])` so backorder orders appear on statements
+- Add a BACKORDER badge next to order numbers with `back_order` status:
+  ```html
+  <span class="status-badge status-back_order">BACKORDER</span>
+  ```
 
-The `delivery_time` column already stores human-readable text values (e.g., `"07:00"`, `"14:30"`), so calling `TO_CHAR` on it is both unnecessary and incorrect.
+#### 6. Add `back_order` status styling in statement CSS
+- Add a CSS class for the backorder badge (e.g., orange/yellow background)
 
 ### Files Changed
-- Database migration to update `populate_order_sms_webhook` function — remove the `TO_CHAR()` call and use the text value directly
+- **New**: `src/components/order/MoveToBackorderDialog.tsx` — item selection dialog
+- **New**: `src/components/order/services/backorderService.ts` — split logic
+- **Edit**: `src/components/order/OrderEditSections.tsx` — add Move to Backorder button
+- **Edit**: `supabase/functions/generate-account-statement/index.ts` — include backorder orders + badge
+
+### Technical Detail
+- The `orders` table already has `is_split_order`, `master_order_id`, `split_number`, and `back_order` as a valid `order_status` enum value — no database migration needed
+- The backorder service will update the original order's `products` JSONB column in-place (removing/reducing moved items) and recalculate `subtotal` and `total_amount`
 
