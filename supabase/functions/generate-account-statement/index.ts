@@ -168,7 +168,7 @@ function generateStatementHTML(data: any): string {
 
   // Business details
   const businessName = businessSettings?.business_name || "Surrey Hills Garden Supplies";
-  const businessAddress = businessSettings?.business_address || "680 Canterbury Rd, Surrey Hills, 3127";
+  const businessAddress = businessSettings?.business_address || "680 Canterbury Road, Surrey Hills Vic. 3127";
   const businessPhone = businessSettings?.business_phone || "03 9890 3901";
   const businessEmail = businessSettings?.business_email || "sales@surreyhillsgardensupplies.com.au";
   const businessAbn = businessSettings?.abn || "44 788 796 653";
@@ -542,7 +542,7 @@ function generateStatementHTML(data: any): string {
       </div>
     </div>
     
-    <div class="statement-title">MONTHLY ACCOUNT STATEMENT</div>
+    <div class="statement-title">MONTHLY ACCOUNT</div>
     
     <div class="statement-info">
       <div class="info-row">
