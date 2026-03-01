@@ -153,10 +153,8 @@ export function useOpportunityData() {
       console.log('Opportunity orders mapped and sorted by delivery time:', sortedOrders);
       return sortedOrders;
     },
-    staleTime: 1000 * 60 * 2, // Consider data fresh for 2 minutes
+    staleTime: 1000 * 30, // Consider data fresh for 30 seconds
     gcTime: 1000 * 60 * 5, // Keep in cache for 5 minutes
-    refetchOnWindowFocus: false, // Don't refetch when tab regains focus
-    refetchOnMount: false, // Don't refetch every time component mounts
   });
 
   // Set up enhanced real-time subscription for pipeline updates

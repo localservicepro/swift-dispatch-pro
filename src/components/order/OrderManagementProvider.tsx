@@ -138,6 +138,8 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
         console.log('Real-time order update received:', payload);
 
         queryClient.invalidateQueries({ queryKey: ['orders'] });
+        queryClient.invalidateQueries({ queryKey: ['customer-orders'] });
+        queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] });
 
         if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
           const oldStatus = payload.old.status;

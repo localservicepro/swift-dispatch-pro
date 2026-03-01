@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ interface CustomerOrdersProps {
 
 export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const queryClient = useQueryClient();
   
   const { data: orders, isLoading } = useQuery({
     queryKey: ["customer-orders", customer.id],
@@ -31,6 +32,20 @@ export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
       return data;
     },
   });
+
+  // Real-time subscription for order updates
+  useEffect(() => {
+    const channel = supabase
+      .channel(`customer-orders-${customer.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `customer_id=eq.${customer.id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['customer-orders', customer.id] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [customer.id, queryClient]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
