@@ -53,14 +53,13 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Customer not found");
     }
 
-
     // Fetch business settings
     const { data: businessSettings } = await supabase
       .from("business_settings")
       .select("business_name, business_email, business_phone, business_address, abn")
       .single();
 
-    // Fetch delivered orders for this customer (filter by delivery/pickup date)
+    // Fetch delivered/back_order orders for this customer (filter by delivery/pickup date)
     const { data: allOrders, error: ordersError } = await supabase
       .from("orders")
       .select(`
@@ -101,6 +100,45 @@ const handler = async (req: Request): Promise<Response> => {
 
     logStep("Fetched and filtered orders", { total: allOrders?.length || 0, filtered: orders.length, requestId });
 
+    // Fetch ALL unpaid delivered orders for aging summary (not limited to date range)
+    const { data: allUnpaidOrders, error: unpaidError } = await supabase
+      .from("orders")
+      .select("id, total_amount, delivery_date, pickup_date, delivery_method, payment_status, status")
+      .eq("customer_id", customerId)
+      .eq("status", "delivered")
+      .eq("payment_status", "pending")
+      .is("deleted_at", null);
+
+    if (unpaidError) {
+      logStep("Unpaid orders fetch error", { error: unpaidError, requestId });
+    }
+
+    // Calculate aging buckets
+    const today = new Date();
+    const agingBuckets = { current: 0, over30: 0, over60: 0, over90: 0 };
+
+    (allUnpaidOrders || []).forEach((order: any) => {
+      const orderDate = order.delivery_method === 'pickup'
+        ? order.pickup_date
+        : order.delivery_date;
+      if (!orderDate) return;
+
+      const daysOld = Math.floor((today.getTime() - new Date(orderDate).getTime()) / (1000 * 60 * 60 * 24));
+      const amount = Number(order.total_amount || 0);
+
+      if (daysOld > 90) {
+        agingBuckets.over90 += amount;
+      } else if (daysOld > 60) {
+        agingBuckets.over60 += amount;
+      } else if (daysOld > 30) {
+        agingBuckets.over30 += amount;
+      } else {
+        agingBuckets.current += amount;
+      }
+    });
+
+    const agingTotal = agingBuckets.current + agingBuckets.over30 + agingBuckets.over60 + agingBuckets.over90;
+
     const statementHtml = generateStatementHTML({
       customer,
       orders: orders || [],
@@ -108,6 +146,8 @@ const handler = async (req: Request): Promise<Response> => {
       startDate,
       endDate,
       requestId,
+      agingBuckets,
+      agingTotal,
     });
 
     logStep("Statement HTML generated", { size: statementHtml.length, requestId });
@@ -164,7 +204,7 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 function generateStatementHTML(data: any): string {
-  const { customer, orders, businessSettings, startDate, endDate, requestId } = data;
+  const { customer, orders, businessSettings, startDate, endDate, requestId, agingBuckets, agingTotal } = data;
 
   // Business details
   const businessName = businessSettings?.business_name || "Surrey Hills Garden Supplies";
@@ -187,7 +227,7 @@ function generateStatementHTML(data: any): string {
   };
 
   // Get month/year for statement period
-  const getStatementPeriod = (start: string, end: string): string => {
+  const getStatementPeriod = (start: string, _end: string): string => {
     const startDate = new Date(start);
     const months = ["January", "February", "March", "April", "May", "June", 
                     "July", "August", "September", "October", "November", "December"];
@@ -218,7 +258,7 @@ function generateStatementHTML(data: any): string {
     return statusMap[status] || status;
   };
 
-  // Calculate totals
+  // Calculate totals - EXCLUDE back_order from financial totals
   let ordersSubtotal = 0;
   let totalDeliveryFees = 0;
   let totalAdjustments = 0;
@@ -227,8 +267,16 @@ function generateStatementHTML(data: any): string {
   let pendingTotal = 0;
   let paidCount = 0;
   let pendingCount = 0;
+  let backOrderTotal = 0;
+  let backOrderCount = 0;
 
   orders.forEach((order: any) => {
+    if (order.status === 'back_order') {
+      backOrderTotal += Number(order.total_amount || 0);
+      backOrderCount++;
+      return; // Skip back orders from financial totals
+    }
+
     ordersSubtotal += Number(order.subtotal || 0);
     totalDeliveryFees += Number(order.delivery_fee || 0);
     totalAdjustments += Number(order.adjustments || 0);
@@ -262,14 +310,13 @@ function generateStatementHTML(data: any): string {
   const addressSections = sortedAddresses.map(address => {
     const addressOrders = ordersByAddress[address];
     
-    // Calculate address subtotal
-    const addressSubtotal = addressOrders.reduce((sum: number, order: any) => 
-      sum + Number(order.total_amount || 0), 0
-    );
+    // Calculate address subtotal (only delivered, not back_order)
+    const addressSubtotal = addressOrders
+      .filter((o: any) => o.status !== 'back_order')
+      .reduce((sum: number, order: any) => sum + Number(order.total_amount || 0), 0);
     
     // Generate rows for this address
     const rows = addressOrders.map((order: any) => {
-      // Use delivery_date or pickup_date based on delivery_method
       const fulfillmentDate = order.delivery_method === 'pickup' 
         ? order.pickup_date 
         : order.delivery_date;
@@ -277,7 +324,8 @@ function generateStatementHTML(data: any): string {
       const orderNumber = order.order_number || "";
       const creatorInitials = order.profiles?.full_name ? getInitials(order.profiles.full_name) : "";
       const displayOrderNumber = orderNumber + creatorInitials;
-      const backorderBadge = order.status === 'back_order' ? ' <span class="status-badge status-back_order">BACKORDER</span>' : '';
+      const isBackOrder = order.status === 'back_order';
+      const backorderBadge = isBackOrder ? ' <span class="status-badge status-back_order">BACKORDER</span>' : '';
       const status = formatStatus(order.status);
       
       // Parse products
@@ -287,14 +335,19 @@ function generateStatementHTML(data: any): string {
       const units = items.map((p: any) => p.quantity || 1).join(", ");
       const amount = Number(order.total_amount || 0).toFixed(2);
 
+      // Back orders show amount struck through
+      const amountDisplay = isBackOrder
+        ? `<span class="back-order-amount">$${amount}</span>`
+        : `$${amount}`;
+
       return `
-        <tr>
+        <tr class="${isBackOrder ? 'back-order-row' : ''}">
           <td>${orderDate}</td>
           <td>${displayOrderNumber}${backorderBadge}</td>
           <td><span class="status-badge status-${order.status}">${status}</span></td>
           <td class="items-cell">${itemNames}</td>
           <td class="text-center">${units}</td>
-          <td class="text-right">$${amount}</td>
+          <td class="text-right">${amountDisplay}</td>
         </tr>`;
     }).join("");
     
@@ -327,6 +380,13 @@ function generateStatementHTML(data: any): string {
       </div>
     `;
   }).join("");
+
+  // Back order note if any exist
+  const backOrderNote = backOrderCount > 0
+    ? `<div class="back-order-note">
+        <strong>Note:</strong> ${backOrderCount} back order(s) totalling $${backOrderTotal.toFixed(2)} are listed above for reference but are <strong>not included</strong> in the totals below. These will be charged upon delivery.
+       </div>`
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -448,6 +508,22 @@ function generateStatementHTML(data: any): string {
       font-weight: bold;
     }
     
+    .back-order-row {
+      background: #fffbe6;
+    }
+    .back-order-amount {
+      text-decoration: line-through;
+      color: #999;
+    }
+    .back-order-note {
+      margin: 15px 0;
+      padding: 10px 15px;
+      background: #fffbe6;
+      border: 1px solid #f0e68c;
+      border-left: 4px solid #daa520;
+      font-size: 11px;
+    }
+    
     .status-badge {
       padding: 2px 8px;
       border-radius: 4px;
@@ -511,6 +587,40 @@ function generateStatementHTML(data: any): string {
     .paid { color: #155724; }
     .pending { color: #C65D00; }
     
+    .aging-section {
+      margin-top: 25px;
+    }
+    .aging-title {
+      font-weight: bold;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .aging-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 2px solid #000;
+    }
+    .aging-table th {
+      background: #333;
+      color: #fff;
+      padding: 10px 12px;
+      text-align: center;
+      border: 1px solid #000;
+      font-size: 12px;
+    }
+    .aging-table td {
+      padding: 10px 12px;
+      text-align: center;
+      border: 1px solid #000;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .aging-table .aging-total {
+      background: #f5f5f5;
+      font-size: 14px;
+      color: #C65D00;
+    }
+    
     .footer {
       margin-top: 30px;
       text-align: center;
@@ -561,6 +671,8 @@ function generateStatementHTML(data: any): string {
     
     ${orders.length > 0 ? addressSections : '<p style="text-align: center; padding: 20px;">No orders found for this period.</p>'}
     
+    ${backOrderNote}
+    
     <div class="totals-section">
       <div class="totals-grid">
         <div class="totals-table">
@@ -598,6 +710,30 @@ function generateStatementHTML(data: any): string {
         <span class="pending">Pending Orders (${pendingCount}):</span>
         <span class="pending">$${pendingTotal.toFixed(2)}</span>
       </div>
+    </div>
+    
+    <div class="aging-section">
+      <div class="aging-title">Account Aging Summary</div>
+      <table class="aging-table">
+        <thead>
+          <tr>
+            <th>Current</th>
+            <th>Over 30 Days</th>
+            <th>Over 60 Days</th>
+            <th>Over 90 Days</th>
+            <th>Total Due</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>$${agingBuckets.current.toFixed(2)}</td>
+            <td>$${agingBuckets.over30.toFixed(2)}</td>
+            <td>$${agingBuckets.over60.toFixed(2)}</td>
+            <td>$${agingBuckets.over90.toFixed(2)}</td>
+            <td class="aging-total">$${agingTotal.toFixed(2)}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
     
     <div class="footer">
