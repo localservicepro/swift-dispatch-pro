@@ -347,7 +347,7 @@ function generateStatementHTML(data: any): string {
     ` : '<div class="no-orders">No orders found for this period.</div>'}
 
     <div class="aging-section">
-      <div class="aging-title">Account Aging Summary</div>
+      <div class="aging-title">Account Summary</div>
       <table class="aging-table">
         <thead>
           <tr>
