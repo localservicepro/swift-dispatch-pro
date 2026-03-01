@@ -587,6 +587,85 @@ const knowledgebaseData: KnowledgebaseItem[] = [
     category: "Troubleshooting",
     tags: ["issues", "problems", "solutions", "help"],
     role: "all"
+  },
+
+  // Back Orders & Statements
+  {
+    id: "backorders-statements",
+    title: "Back Orders & Account Statements",
+    content: `
+**What is a Back Order?**
+A back order is when a customer has ordered items that haven't been delivered yet. The order stays in "Back Order" status until those items are ready to go out.
+
+**Why Does This Matter for Statements?**
+Monthly account statements **only include delivered orders**. If an order is still marked as "Back Order", it won't appear on any statement — the customer won't be charged for items they haven't received yet.
+
+**The Problem: Mixed Orders**
+Sometimes you deliver *some* items from an order but not all. For example:
+- Customer orders 10 bags of Sand and 5 bags of Gravel
+- You deliver the 10 bags of Sand today, but Gravel is out of stock
+
+If you leave the whole order as "Back Order", **none of it** appears on the statement — even the Sand that was delivered. If you mark the whole order as "Delivered", the customer gets charged for Gravel they never received.
+
+**The Solution: Move Items to Backorder**
+You need to split the order so the delivered items are separated from the back-ordered items.
+
+**Step-by-Step:**
+1. Open the order in Order Management
+2. Scroll down and click **"Move Items to Backorder"**
+3. Tick the items that have **not** been delivered (e.g. Gravel)
+4. Set the quantity for each item
+5. Click **"Move to Backorder"**
+
+**What Happens Next:**
+- The **original order** keeps only the delivered items (Sand) with the correct total — mark it as "Delivered" and it appears on this month's statement
+- A **new back-order** is created for the remaining items (Gravel) — it stays off statements until you deliver it and change its status to "Delivered"
+
+**Key Rule:** Always split before marking an order as delivered if some items are still outstanding. This keeps statements accurate.
+    `,
+    category: "Order Management",
+    tags: ["backorder", "back order", "statement", "split", "delivered", "account"],
+    role: "admin"
+  },
+  {
+    id: "account-summary-explained",
+    title: "Account Summary Explained",
+    content: `
+**What is the Account Summary?**
+When you generate an account statement, you'll see an **Account Summary** section at the top with aging buckets. This tells you how long invoices have been outstanding.
+
+**The Buckets:**
+
+| Bucket | Meaning |
+|--------|---------|
+| **Current** | Unpaid orders delivered in the last 30 days |
+| **Over 30 Days** | Unpaid orders delivered 31–60 days ago |
+| **Over 60 Days** | Unpaid orders delivered 61–90 days ago |
+| **Over 90 Days** | Unpaid orders delivered more than 90 days ago |
+| **Total Due** | The sum of all buckets above |
+
+**How It's Calculated:**
+- The system looks at the **delivery date** of each unpaid order
+- It counts how many days between the delivery date and today
+- It places the order amount into the correct aging bucket
+- Only **delivered** orders with **pending** payment are included
+
+**Important Notes:**
+- The Account Summary shows **all** unpaid delivered orders across the customer's entire history — not just the month you selected for the statement
+- If an order was delivered 45 days ago and is still unpaid, it appears in "Over 30 Days"
+- Once an order is marked as **paid**, it drops out of the summary
+- Back orders are **never** included in the summary because they haven't been delivered
+
+**Example:**
+A customer has three unpaid orders:
+- Order delivered 10 days ago ($500) → **Current**
+- Order delivered 40 days ago ($300) → **Over 30 Days**
+- Order delivered 95 days ago ($200) → **Over 90 Days**
+- **Total Due** = $1,000
+    `,
+    category: "Payment Management",
+    tags: ["account", "summary", "aging", "statement", "current", "overdue", "balance"],
+    role: "admin"
   }
 ];
 
