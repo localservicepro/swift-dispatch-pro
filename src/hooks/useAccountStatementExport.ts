@@ -22,15 +22,15 @@ export function useAccountStatementExport({ customerId }: UseAccountStatementExp
     };
   }, [selectedMonth]);
 
-  // Fetch preview data (order count and total) - only delivered orders
+  // Fetch preview data (order count and total) - delivered + back_order, but only delivered in totals
   const { data: previewData, isLoading: isLoadingPreview } = useQuery({
     queryKey: ["account-statement-preview", customerId, dateRange.startDate, dateRange.endDate],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, total_amount, payment_status, delivery_date, pickup_date, delivery_method")
+        .select("id, total_amount, payment_status, delivery_date, pickup_date, delivery_method, status")
         .eq("customer_id", customerId)
-        .eq("status", "delivered")
+        .in("status", ["delivered", "back_order"])
         .is("deleted_at", null);
 
       if (error) throw error;
@@ -44,8 +44,11 @@ export function useAccountStatementExport({ customerId }: UseAccountStatementExp
       }) || [];
 
       const orderCount = filteredData.length;
-      const totalAmount = filteredData.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0);
-      const paidAmount = filteredData.filter(o => o.payment_status === "paid")
+      
+      // Only count delivered orders in financial totals (exclude back_order)
+      const deliveredOrders = filteredData.filter(o => o.status === 'delivered');
+      const totalAmount = deliveredOrders.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0);
+      const paidAmount = deliveredOrders.filter(o => o.payment_status === "paid")
         .reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0);
       const pendingAmount = totalAmount - paidAmount;
 
