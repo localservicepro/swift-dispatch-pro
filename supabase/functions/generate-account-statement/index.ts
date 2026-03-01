@@ -60,7 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from("orders")
       .select(`
         id, order_number, created_at, delivery_date, pickup_date,
-        delivery_method, status, total_amount, payment_status
+        delivery_method, status, total_amount, payment_status, delivery_address
       `)
       .eq("customer_id", customerId)
       .eq("status", "delivered")
@@ -169,35 +169,60 @@ function generateStatementHTML(data: any): string {
 
   // Build rows with running balance - exclude back_order
   const deliveredOrders = orders.filter((o: any) => o.status !== 'back_order');
+
+  // Group orders by delivery address
+  const addressGroups: Record<string, any[]> = {};
+  deliveredOrders.forEach((order: any) => {
+    const addr = order.delivery_address || "No Address";
+    if (!addressGroups[addr]) addressGroups[addr] = [];
+    addressGroups[addr].push(order);
+  });
+
   let runningBalance = 0;
-  const tableRows = deliveredOrders.map((order: any) => {
-    const fulfillmentDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
-    const dateStr = fulfillmentDate ? formatDateAU(fulfillmentDate) : formatDateAU(order.created_at);
-    const invoiceNo = order.order_number || "";
-    const amount = Number(order.total_amount || 0);
-    const isPaid = order.payment_status === "paid";
+  const addressSections = Object.entries(addressGroups).map(([address, groupOrders]) => {
+    const rows = groupOrders.map((order: any) => {
+      const fulfillmentDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
+      const dateStr = fulfillmentDate ? formatDateAU(fulfillmentDate) : formatDateAU(order.created_at);
+      const invoiceNo = order.order_number || "";
+      const amount = Number(order.total_amount || 0);
+      const isPaid = order.payment_status === "paid";
 
-    let chargesCol = "";
-    let paymentsCol = "";
+      let chargesCol = "";
+      let paymentsCol = "";
 
-    if (isPaid) {
-      // Show charge and payment on same row (net zero effect on balance)
-      chargesCol = `$${amount.toFixed(2)}`;
-      paymentsCol = `$${amount.toFixed(2)}`;
-      // Balance unchanged
-    } else {
-      chargesCol = `$${amount.toFixed(2)}`;
-      paymentsCol = "";
-      runningBalance += amount;
-    }
+      if (isPaid) {
+        chargesCol = `$${amount.toFixed(2)}`;
+        paymentsCol = `$${amount.toFixed(2)}`;
+      } else {
+        chargesCol = `$${amount.toFixed(2)}`;
+        paymentsCol = "";
+        runningBalance += amount;
+      }
 
-    return `<tr>
-      <td>${dateStr}</td>
-      <td>${invoiceNo}</td>
-      <td class="text-right">${chargesCol}</td>
-      <td class="text-right">${paymentsCol}</td>
-      <td class="text-right">$${runningBalance.toFixed(2)}</td>
-    </tr>`;
+      return `<tr>
+        <td>${dateStr}</td>
+        <td>${invoiceNo}</td>
+        <td class="text-right">${chargesCol}</td>
+        <td class="text-right">${paymentsCol}</td>
+        <td class="text-right">$${runningBalance.toFixed(2)}</td>
+      </tr>`;
+    }).join("");
+
+    return `<div class="address-group">
+      <div class="address-header">${address}</div>
+      <table class="statement-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Invoice No.</th>
+            <th class="text-right">Charges</th>
+            <th class="text-right">Payments</th>
+            <th class="text-right">Balance Due</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
   }).join("");
 
   // Totals
@@ -236,6 +261,9 @@ function generateStatementHTML(data: any): string {
 
     .period-info { margin: 10px 0 15px; font-size: 11px; }
 
+    .address-group { margin-bottom: 20px; }
+    .address-header { font-weight: bold; font-size: 12px; padding: 6px 0 4px; border-bottom: 1px solid #999; margin-bottom: 0; }
+
     table.statement-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
     table.statement-table th {
       background: #e8e8e8; font-weight: bold; padding: 6px 8px;
@@ -244,12 +272,11 @@ function generateStatementHTML(data: any): string {
     }
     table.statement-table td { padding: 5px 8px; border-bottom: 1px solid #ddd; font-size: 11px; }
     table.statement-table .text-right { text-align: right; }
-    table.statement-table tfoot td {
-      font-weight: bold; border-top: 2px solid #000; padding: 6px 8px;
-    }
-    table.statement-table tfoot .grand-total td {
-      font-size: 13px; border-top: 2px solid #000;
-    }
+
+    .totals-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    .totals-table td { font-weight: bold; padding: 6px 8px; border-top: 2px solid #000; font-size: 11px; }
+    .totals-table .grand-total td { font-size: 13px; border-top: 2px solid #000; }
+    .totals-table .text-right { text-align: right; }
 
     .aging-section { margin-top: 25px; }
     .aging-title { font-weight: bold; font-size: 12px; margin-bottom: 8px; }
@@ -301,20 +328,10 @@ function generateStatementHTML(data: any): string {
     </div>
 
     ${deliveredOrders.length > 0 ? `
-    <table class="statement-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Invoice No.</th>
-          <th class="text-right">Charges</th>
-          <th class="text-right">Payments</th>
-          <th class="text-right">Balance Due</th>
-        </tr>
-      </thead>
+    ${addressSections}
+
+    <table class="totals-table">
       <tbody>
-        ${tableRows}
-      </tbody>
-      <tfoot>
         <tr>
           <td colspan="2"><strong>Totals</strong></td>
           <td class="text-right">$${totalCharges.toFixed(2)}</td>
@@ -325,7 +342,7 @@ function generateStatementHTML(data: any): string {
           <td colspan="4" class="text-right" style="color: #C65D00;">BALANCE DUE:</td>
           <td class="text-right" style="color: #C65D00; font-size: 14px;">$${runningBalance.toFixed(2)}</td>
         </tr>
-      </tfoot>
+      </tbody>
     </table>
     ` : '<div class="no-orders">No orders found for this period.</div>'}
 
