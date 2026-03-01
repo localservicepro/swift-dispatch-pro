@@ -129,7 +129,8 @@ export function useOrderData() {
           )
         `)
         .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(5000);
 
       if (ordersError) {
         console.error('Error fetching orders:', ordersError);
