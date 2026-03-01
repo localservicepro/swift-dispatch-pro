@@ -1,34 +1,33 @@
 
 
-## Account Statement: Back Orders Not Charged + Aging Summary Box
+## Problem Analysis
 
-### Problem
-Currently, back orders are included in the totals and charged on the statement. They should be listed for visibility but **excluded from the charged totals**. Additionally, an aging summary box (Current, Over 30 Days, Over 60 Days, Over 90 Days, Total Due) is needed at the bottom, matching the reference image.
+There are **two distinct caching issues** causing the status not to reflect after marking an order as delivered in Order Management:
 
-### Changes
+### 1. Opportunity Pipeline - Stale Cache
+The `useOpportunityData` hook has aggressive caching settings:
+- `staleTime: 2 minutes`
+- `refetchOnWindowFocus: false`
+- `refetchOnMount: false`
 
-**File: `supabase/functions/generate-account-statement/index.ts`**
+While it has a real-time subscription that should catch changes, the `orderStatusService.ts` (used by Order Management) does a direct `.update()` on the orders table. The real-time subscription in `useOpportunityData` should detect this, but the debounced invalidation (500ms delay) combined with `staleTime: 2min` means if the user switches tabs quickly, they may see stale data. More critically, `refetchOnMount: false` means navigating to the pipeline view won't refetch even if data is stale.
 
-1. **Separate back order amounts from totals** - Back orders will still appear in the order list (with their BACKORDER badge) but their amounts will be excluded from Subtotal, Delivery Fees, Adjustments, and Total Due. Back order amounts will show as $0.00 in the Amount column or be listed separately with a "Back Order Total" deduction line.
+### 2. Customer Order History - No Cache Invalidation
+The `customer-orders` query key is **never invalidated** anywhere in the codebase when an order status changes. The real-time subscription in `OrderManagementProvider` only invalidates `['orders']`, and the one in `useOpportunityData` only invalidates `['opportunity-orders']` and `['orders']`. Neither touches `['customer-orders']`.
 
-2. **Add aging summary box** - Fetch ALL unpaid delivered orders for this customer (not just the selected month) to calculate:
-   - **Current**: Unpaid orders from the current statement month
-   - **Over 30 Days**: Unpaid orders 30-60 days old
-   - **Over 60 Days**: Unpaid orders 60-90 days old
-   - **Over 90 Days**: Unpaid orders older than 90 days
-   - **Total Due**: Sum of all aging buckets
+### Fix
 
-   This requires an additional query to fetch all historical unpaid orders across all months.
+**File: `src/components/opportunity/useOpportunityData.ts`**
+- Remove `refetchOnMount: false` so the pipeline always shows fresh data when navigated to
+- Reduce `staleTime` to something shorter (e.g., 30 seconds)
 
-3. **HTML/CSS** - Add a styled aging table at the bottom matching the reference image layout (bordered cells, bold headers).
+**File: `src/components/order/OrderManagementProvider.tsx`**
+- In the real-time subscription handler, also invalidate `['customer-orders']` when an order status changes
 
-**File: `src/hooks/useAccountStatementExport.ts`**
+**File: `src/components/customer/CustomerOrders.tsx`**
+- Add a real-time subscription to listen for order changes and refetch, OR simply set `refetchOnWindowFocus: true` (default) to ensure fresh data when the user navigates back
 
-4. **Keep preview aligned** - Update the preview query to also use `.in("status", ["delivered", "back_order"])` but only count delivered orders in the total amount (back orders shown as count only, not in dollar totals).
-
-### Technical Detail
-
-- In the totals calculation loop, orders with `status === 'back_order'` will be skipped for financial totals but still rendered in the table
-- Back order rows will show the amount struck through or as "$0.00" to clearly indicate they are not charged
-- The aging query will look at all unpaid orders regardless of date range, grouped by age buckets based on delivery/pickup date relative to today
+These changes ensure that:
+- The opportunity pipeline always shows the latest status when viewed
+- Customer order history reflects status updates made from Order Management
 
