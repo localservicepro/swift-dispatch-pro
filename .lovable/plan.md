@@ -1,36 +1,42 @@
 
 
-## Group Statement Rows by Delivery Address
+## Plan: Add Back Orders & Account Statements Documentation to Knowledge Base
 
-### What changes
-**File: `supabase/functions/generate-account-statement/index.ts`**
+Add two new articles to the existing Knowledgebase page explaining how back orders work with account statements and why splitting is important.
 
-1. **Include `delivery_address` in the order query** (line 62) — add it to the select fields.
+### Changes
 
-2. **Group orders by address** — After filtering delivered orders, group them by `delivery_address`. Orders with no address go under a "No Address" group.
+**File: `src/pages/Knowledgebase.tsx`**
 
-3. **Render address-grouped tables** — For each unique address, output:
-   - A bold address header row (e.g., "**12 Smith St, Blackburn VIC 3130**")
-   - The same 5-column table rows (Date, Invoice No., Charges, Payments, Balance Due) for orders at that address
-   - The running balance continues across all address groups (not reset per address)
+Add two new knowledgebase entries to the `knowledgebaseData` array:
 
-4. **Keep everything else the same** — Totals row, Balance Due, Aging Summary, Payment Info footer all remain unchanged.
+1. **"Back Orders & Account Statements"** (under Order Management category)
+   - Explains what back orders are and why they are excluded from statements
+   - Explains that only "delivered" orders appear on monthly statements
+   - Describes the problem: an order with mixed delivered and back-ordered items
+   - Explains the solution: use "Move Items to Backorder" to split the order
+   - Step-by-step workflow for the team
 
-### Layout example
-```text
-Statement Period: March 2026
+2. **"Account Summary Explained"** (under Payment Management category)
+   - Explains what the Account Summary boxes mean (Current, Over 30, Over 60, Over 90, Total Due)
+   - How each bucket is calculated (days since delivery date)
+   - Clarifies it shows ALL unpaid delivered orders, not just the selected month
 
-  12 Smith Street, Blackburn VIC 3130
-  ─────────────────────────────────────────────────
-  Date       Invoice No.    Charges    Payments    Balance Due
-  03/03/2026 ORD-082514-B   $65.00                $65.00
+### Content Preview
 
-  45 High Street, Glen Iris VIC 3146
-  ─────────────────────────────────────────────────
-  Date       Invoice No.    Charges    Payments    Balance Due
-  04/03/2026 ORD-240293     $245.00               $310.00
+**Article 1 — Back Orders & Account Statements:**
+- Back orders are items a customer ordered but haven't been delivered yet
+- Monthly statements only include delivered orders
+- If an order has some items delivered and some not, you must split it
+- How to split: Open order → scroll to "Move Items to Backorder" → select items → confirm
+- Result: original order shows only delivered items with correct total; back-order items become a separate order that will appear on a future statement once delivered
 
-  Totals                    $310.00    $0.00
-                                    BALANCE DUE:   $310.00
-```
+**Article 2 — Account Summary Explained:**
+- Current = unpaid orders delivered in the last 30 days
+- Over 30 Days = unpaid orders delivered 31–60 days ago
+- Over 60 Days = unpaid orders delivered 61–90 days ago
+- Over 90 Days = unpaid orders delivered 91+ days ago
+- Total Due = sum of all buckets = customer's total outstanding balance
+
+Both articles will be tagged appropriately and searchable from the Knowledge Base sidebar.
 
