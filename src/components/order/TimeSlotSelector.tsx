@@ -30,8 +30,9 @@ export function TimeSlotSelector({
 }: TimeSlotSelectorProps) {
   const [open, setOpen] = useState(false);
   const timeSlots = generateTimeSlots();
-  const specialSlots = timeSlots.filter(s => ['urgent', 'asap', 'anytime'].includes(s.value));
-  const regularSlots = timeSlots.filter(s => !['urgent', 'asap', 'anytime'].includes(s.value));
+  const prioritySlots = timeSlots.filter(s => s.group === 'priority');
+  const thirtyMinSlots = timeSlots.filter(s => s.group === '30min');
+  const oneHourSlots = timeSlots.filter(s => s.group === '1hour');
 
   const selectedSlot = timeSlots.find(s => s.value === value);
 
@@ -61,14 +62,11 @@ export function TimeSlotSelector({
           <CommandList>
             <CommandEmpty>No time slot found.</CommandEmpty>
             <CommandGroup heading="Priority">
-              {specialSlots.map((slot) => (
+              {prioritySlots.map((slot) => (
                 <CommandItem
                   key={slot.value}
                   value={slot.label}
-                  onSelect={() => {
-                    onValueChange(slot.value);
-                    setOpen(false);
-                  }}
+                  onSelect={() => { onValueChange(slot.value); setOpen(false); }}
                   className="flex items-center gap-2 py-2"
                 >
                   {specialIcons[slot.value]}
@@ -78,15 +76,27 @@ export function TimeSlotSelector({
               ))}
             </CommandGroup>
             <CommandSeparator />
-            <CommandGroup heading="Time Slots">
-              {regularSlots.map((slot) => (
+            <CommandGroup heading="30-Minute Windows">
+              {thirtyMinSlots.map((slot) => (
                 <CommandItem
                   key={slot.value}
                   value={slot.label}
-                  onSelect={() => {
-                    onValueChange(slot.value);
-                    setOpen(false);
-                  }}
+                  onSelect={() => { onValueChange(slot.value); setOpen(false); }}
+                  className="flex items-center gap-2 py-2"
+                >
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span>{slot.label}</span>
+                  <Check className={cn("ml-auto h-4 w-4", value === slot.value ? "opacity-100" : "opacity-0")} />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="1-Hour Windows">
+              {oneHourSlots.map((slot) => (
+                <CommandItem
+                  key={slot.value}
+                  value={slot.label}
+                  onSelect={() => { onValueChange(slot.value); setOpen(false); }}
                   className="flex items-center gap-2 py-2"
                 >
                   <Clock className="w-3.5 h-3.5 text-muted-foreground" />
