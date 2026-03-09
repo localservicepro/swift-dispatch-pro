@@ -13,8 +13,12 @@ export const generateTimeSlots = (): TimeSlot[] => {
   timeSlots.push({ value: 'asap', label: 'ASAP', group: 'priority' });
   timeSlots.push({ value: 'anytime', label: 'Any time', group: 'priority' });
 
-  // 30-Minute Windows
-  const thirtyMinStarts = ['07:00', '07:30', '08:00', '08:30', '09:00', '09:30'];
+  // 30-Minute Windows (7:00 AM to 3:30-4:00 PM)
+  const thirtyMinStarts = [
+    '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
+    '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30'
+  ];
   for (const start of thirtyMinStarts) {
     const [h, m] = start.split(':').map(Number);
     const endMin = m + 30;
@@ -27,10 +31,13 @@ export const generateTimeSlots = (): TimeSlot[] => {
 
     timeSlots.push({ value: start, label: `${startDisplay} - ${endDisplay}`, group: '30min' });
   }
-  timeSlots.push({ value: 'upto-4pm', label: 'Up to 4:00 PM', group: '30min' });
 
-  // 1-Hour Windows
-  const oneHourStarts = ['07:00', '07:30', '08:00', '08:30', '09:00', '09:30'];
+  // 1-Hour Windows (7:00 AM to 3:00-4:00 PM)
+  const oneHourStarts = [
+    '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
+    '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+    '13:00', '13:30', '14:00', '14:30', '15:00'
+  ];
   for (const start of oneHourStarts) {
     const [h, m] = start.split(':').map(Number);
     const endMin = m + 60;
@@ -43,7 +50,6 @@ export const generateTimeSlots = (): TimeSlot[] => {
 
     timeSlots.push({ value: `1h-${start}`, label: `${startDisplay} - ${endDisplay}`, group: '1hour' });
   }
-  timeSlots.push({ value: 'upto-3pm-4pm', label: 'Up to 3:00 PM - 4:00 PM', group: '1hour' });
 
   return timeSlots;
 };
