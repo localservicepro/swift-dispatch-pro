@@ -1,42 +1,34 @@
 
 
-## Plan: Add Back Orders & Account Statements Documentation to Knowledge Base
+## Plan: Update Delivery Time Slots to Include Both 30-min and 1-hour Windows
 
-Add two new articles to the existing Knowledgebase page explaining how back orders work with account statements and why splitting is important.
+### What Changes
 
-### Changes
+**File: `src/utils/timeSlotUtils.ts`**
 
-**File: `src/pages/Knowledgebase.tsx`**
+Update the `generateTimeSlots` function to produce two groups of time slots:
 
-Add two new knowledgebase entries to the `knowledgebaseData` array:
+1. **30-Minute Windows** (7:00–9:30am range, plus "up to 4:00pm"):
+   - 7:00–7:30am, 7:30–8:00am, 8:00–8:30am, 8:30–9:00am, 9:00–9:30am
+   - A final option: "Up to 4:00pm"
 
-1. **"Back Orders & Account Statements"** (under Order Management category)
-   - Explains what back orders are and why they are excluded from statements
-   - Explains that only "delivered" orders appear on monthly statements
-   - Describes the problem: an order with mixed delivered and back-ordered items
-   - Explains the solution: use "Move Items to Backorder" to split the order
-   - Step-by-step workflow for the team
+2. **1-Hour Windows** (7:00–10:30am range, plus "up to 3:00–4:00pm"):
+   - 7:00–8:00am, 7:30–8:30am, 8:00–9:00am, 8:30–9:30am, 9:00–10:00am, 9:30–10:30am
+   - A final option: "Up to 3:00pm–4:00pm"
 
-2. **"Account Summary Explained"** (under Payment Management category)
-   - Explains what the Account Summary boxes mean (Current, Over 30, Over 60, Over 90, Total Due)
-   - How each bucket is calculated (days since delivery date)
-   - Clarifies it shows ALL unpaid delivered orders, not just the selected month
+- Keep the existing special priority options (Urgent, ASAP, Any time) unchanged at the top
+- Add a `group` property to each time slot so the selector can display them in separate sections
 
-### Content Preview
+**File: `src/components/order/TimeSlotSelector.tsx`**
 
-**Article 1 — Back Orders & Account Statements:**
-- Back orders are items a customer ordered but haven't been delivered yet
-- Monthly statements only include delivered orders
-- If an order has some items delivered and some not, you must split it
-- How to split: Open order → scroll to "Move Items to Backorder" → select items → confirm
-- Result: original order shows only delivered items with correct total; back-order items become a separate order that will appear on a future statement once delivered
+Update to render three groups instead of two:
+- **Priority** — Urgent, ASAP, Any time (unchanged)
+- **30-Minute Windows** — the short slots
+- **1-Hour Windows** — the longer slots
 
-**Article 2 — Account Summary Explained:**
-- Current = unpaid orders delivered in the last 30 days
-- Over 30 Days = unpaid orders delivered 31–60 days ago
-- Over 60 Days = unpaid orders delivered 61–90 days ago
-- Over 90 Days = unpaid orders delivered 91+ days ago
-- Total Due = sum of all buckets = customer's total outstanding balance
+Each group separated by a `CommandSeparator`.
 
-Both articles will be tagged appropriately and searchable from the Knowledge Base sidebar.
+### Backward Compatibility
+
+Existing orders that stored time values like `"07:00"` or `"08:30"` will still match and display correctly since the values remain the same format. The new "up to" slots will use distinct string values (e.g., `"upto-4pm"`, `"upto-3pm-4pm"`).
 
