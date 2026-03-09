@@ -8,7 +8,7 @@
  * @param timeString - Time string in HH:MM:SS format
  * @returns Time string in HH:MM format, or empty string if invalid
  */
-const SPECIAL_TIME_VALUES = ['urgent', 'asap', 'anytime'];
+const SPECIAL_TIME_VALUES = ['urgent', 'asap', 'anytime', 'upto-4pm', 'upto-3pm-4pm'];
 
 export const convertTimeToFormFormat = (timeString: string | null | undefined): string => {
   if (!timeString) return '';
