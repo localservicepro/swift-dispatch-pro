@@ -26,6 +26,8 @@ interface PaymentSettingsData {
   stripe_webhook_secret?: string;
   stripe_mode: string;
   stripe_connection_status: string;
+  delivery_markup_type: string;
+  delivery_markup_value: number;
 }
 
 interface PaymentSettingsProps {
