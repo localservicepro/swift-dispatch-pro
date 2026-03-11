@@ -1285,6 +1285,8 @@ export type Database = {
           created_at: string
           currency: string
           default_delivery_fee: number
+          delivery_markup_type: string
+          delivery_markup_value: number
           gst_enabled: boolean
           gst_label: string
           gst_rate: number
@@ -1306,6 +1308,8 @@ export type Database = {
           created_at?: string
           currency?: string
           default_delivery_fee?: number
+          delivery_markup_type?: string
+          delivery_markup_value?: number
           gst_enabled?: boolean
           gst_label?: string
           gst_rate?: number
@@ -1327,6 +1331,8 @@ export type Database = {
           created_at?: string
           currency?: string
           default_delivery_fee?: number
+          delivery_markup_type?: string
+          delivery_markup_value?: number
           gst_enabled?: boolean
           gst_label?: string
           gst_rate?: number
