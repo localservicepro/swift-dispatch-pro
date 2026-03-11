@@ -92,24 +92,15 @@ export function useOrderFormState() {
     }
   };
 
-  // Suburb change handler with auto-population
+  // Suburb change handler with auto-population (uses markup-aware calculation)
   const handleSuburbChange = (suburbId: string, suburb?: any) => {
     setSelectedSuburbId(suburbId);
     
-    // Auto-populate delivery fee if not manually set and we have suburb data
     if (suburb && !isDeliveryFeeManuallySet && deliveryMethod === "delivery") {
-      // Parse delivery rate directly from suburb data
-      const deliveryRate = suburb.delivery_rate || '';
-      const cleanedRate = deliveryRate.replace(/[AU$\s]/gi, '').trim();
-      const fee = parseFloat(cleanedRate);
-      
-      if (!isNaN(fee) && fee > 0) {
+      autoPopulateDeliveryFee(suburbId, (fee: number) => {
         setManualDeliveryFee(fee);
-        setIsDeliveryFeeManuallySet(false); // Mark as auto-populated
-        
-        // Show toast notification
-        autoPopulateDeliveryFee(suburbId, () => {}); // Just for the toast notification
-      }
+        setIsDeliveryFeeManuallySet(false);
+      });
     }
   };
 
