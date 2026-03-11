@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -6,6 +6,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 
 interface Suburb {
   id: string;
@@ -26,6 +27,7 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange, label = "Subu
   const [suburbs, setSuburbs] = useState<Suburb[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const { data: paymentSettings } = usePaymentSettings();
 
   useEffect(() => {
     fetchSuburbs();
@@ -50,6 +52,21 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange, label = "Subu
     }
   };
 
+  const parseRate = useCallback((deliveryRate: string): number => {
+    if (!deliveryRate) return 0;
+    const cleaned = deliveryRate.replace(/[AU$\s]/gi, '').trim();
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+  }, []);
+
+  const getEffectiveRate = useCallback((baseRate: number): number => {
+    if (!paymentSettings) return baseRate;
+    const markup = paymentSettings.delivery_markup_value || 0;
+    if (markup <= 0) return baseRate;
+    if (paymentSettings.delivery_markup_type === 'fixed') return baseRate + markup;
+    return baseRate + (baseRate * markup / 100);
+  }, [paymentSettings]);
+
   const handleSuburbChange = (suburbId: string) => {
     const selectedSuburb = suburbs.find(s => s.id === suburbId);
     console.log('Suburb selected:', selectedSuburb);
@@ -61,7 +78,9 @@ export function SuburbSelector({ selectedSuburbId, onSuburbChange, label = "Subu
 
   const getSuburbLabel = (suburb: Suburb) => {
     const distanceText = suburb.distance_km ? `, ${suburb.distance_km}km` : '';
-    return `${suburb.postcode}, ${suburb.name}${distanceText} - ${suburb.delivery_rate} (estimate)`;
+    const baseRate = parseRate(suburb.delivery_rate);
+    const effectiveRate = getEffectiveRate(baseRate);
+    return `${suburb.postcode}, ${suburb.name}${distanceText} - $${effectiveRate.toFixed(2)} (estimate)`;
   };
 
   const getDisplayValue = () => {
