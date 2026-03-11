@@ -25,7 +25,25 @@ export function SuburbTable({ suburbs, onEdit, onRefresh }: SuburbTableProps) {
   const [selectedSuburbs, setSelectedSuburbs] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { data: paymentSettings } = usePaymentSettings();
 
+  const parseRate = (rate: string): number => {
+    if (!rate) return 0;
+    const cleaned = rate.replace(/[AU$\s]/gi, '').trim();
+    return parseFloat(cleaned) || 0;
+  };
+
+  const getEffectiveRate = useCallback((baseRateStr: string): { base: number; effective: number; hasMarkup: boolean } => {
+    const base = parseRate(baseRateStr);
+    if (!paymentSettings || !paymentSettings.delivery_markup_value || paymentSettings.delivery_markup_value <= 0) {
+      return { base, effective: base, hasMarkup: false };
+    }
+    const markup = paymentSettings.delivery_markup_value;
+    const effective = paymentSettings.delivery_markup_type === 'fixed'
+      ? base + markup
+      : base + (base * markup / 100);
+    return { base, effective, hasMarkup: true };
+  }, [paymentSettings]);
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedSuburbs(suburbs.map(s => s.id));
