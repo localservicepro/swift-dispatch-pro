@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Edit, Trash2, MoreHorizontal, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { usePaymentSettings } from '@/hooks/usePaymentSettings';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +25,25 @@ export function SuburbTable({ suburbs, onEdit, onRefresh }: SuburbTableProps) {
   const [selectedSuburbs, setSelectedSuburbs] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { data: paymentSettings } = usePaymentSettings();
 
+  const parseRate = (rate: string): number => {
+    if (!rate) return 0;
+    const cleaned = rate.replace(/[AU$\s]/gi, '').trim();
+    return parseFloat(cleaned) || 0;
+  };
+
+  const getEffectiveRate = useCallback((baseRateStr: string): { base: number; effective: number; hasMarkup: boolean } => {
+    const base = parseRate(baseRateStr);
+    if (!paymentSettings || !paymentSettings.delivery_markup_value || paymentSettings.delivery_markup_value <= 0) {
+      return { base, effective: base, hasMarkup: false };
+    }
+    const markup = paymentSettings.delivery_markup_value;
+    const effective = paymentSettings.delivery_markup_type === 'fixed'
+      ? base + markup
+      : base + (base * markup / 100);
+    return { base, effective, hasMarkup: true };
+  }, [paymentSettings]);
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedSuburbs(suburbs.map(s => s.id));
@@ -202,7 +221,19 @@ export function SuburbTable({ suburbs, onEdit, onRefresh }: SuburbTableProps) {
                     <TableCell className="font-medium">{suburb.name}</TableCell>
                     <TableCell>{suburb.state}</TableCell>
                     <TableCell>{suburb.postcode}</TableCell>
-                    <TableCell>${suburb.delivery_rate}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const { base, effective, hasMarkup } = getEffectiveRate(suburb.delivery_rate);
+                        return (
+                          <div>
+                            <span className="font-medium">${effective.toFixed(2)}</span>
+                            {hasMarkup && (
+                              <span className="text-xs text-muted-foreground ml-1">(base ${base.toFixed(2)})</span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell>
                       {suburb.distance_km ? `${suburb.distance_km}km` : '-'}
                     </TableCell>

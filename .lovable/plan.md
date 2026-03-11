@@ -1,22 +1,42 @@
 
 
-## Plan: Show Marked-Up Delivery Rates in Suburb Table
+## Plan: Add Back Orders & Account Statements Documentation to Knowledge Base
 
-### Problem
-The suburb table displays raw `delivery_rate` values from the database. When a delivery markup is configured in Payment Settings (e.g., +$5 fixed), the table does not reflect the final rate customers will be charged.
+Add two new articles to the existing Knowledgebase page explaining how back orders work with account statements and why splitting is important.
 
 ### Changes
 
-**`src/components/suburb/SuburbTable.tsx`**
-- Import `usePaymentSettings` hook
-- Calculate the effective delivery rate by applying the markup (percentage or fixed) to each suburb's base rate
-- Display the effective rate in the table, with a small indicator showing the original base rate when markup is active
-- Parse the delivery rate string (strip `AU$` prefix) to apply numeric markup, then format back for display
+**File: `src/pages/Knowledgebase.tsx`**
 
-### Example
-With $5 fixed markup:
-- Abbotsford base rate `$AU$60` → displays as `$AU$65` (with subtle note showing base $60)
+Add two new knowledgebase entries to the `knowledgebaseData` array:
 
-### Files Modified
-1. `src/components/suburb/SuburbTable.tsx` — apply markup to displayed delivery rates
+1. **"Back Orders & Account Statements"** (under Order Management category)
+   - Explains what back orders are and why they are excluded from statements
+   - Explains that only "delivered" orders appear on monthly statements
+   - Describes the problem: an order with mixed delivered and back-ordered items
+   - Explains the solution: use "Move Items to Backorder" to split the order
+   - Step-by-step workflow for the team
+
+2. **"Account Summary Explained"** (under Payment Management category)
+   - Explains what the Account Summary boxes mean (Current, Over 30, Over 60, Over 90, Total Due)
+   - How each bucket is calculated (days since delivery date)
+   - Clarifies it shows ALL unpaid delivered orders, not just the selected month
+
+### Content Preview
+
+**Article 1 — Back Orders & Account Statements:**
+- Back orders are items a customer ordered but haven't been delivered yet
+- Monthly statements only include delivered orders
+- If an order has some items delivered and some not, you must split it
+- How to split: Open order → scroll to "Move Items to Backorder" → select items → confirm
+- Result: original order shows only delivered items with correct total; back-order items become a separate order that will appear on a future statement once delivered
+
+**Article 2 — Account Summary Explained:**
+- Current = unpaid orders delivered in the last 30 days
+- Over 30 Days = unpaid orders delivered 31–60 days ago
+- Over 60 Days = unpaid orders delivered 61–90 days ago
+- Over 90 Days = unpaid orders delivered 91+ days ago
+- Total Due = sum of all buckets = customer's total outstanding balance
+
+Both articles will be tagged appropriately and searchable from the Knowledge Base sidebar.
 
