@@ -57,10 +57,10 @@ export function useCustomerDialogActions(
       }
     } else {
       // Standard validation for all other customer types
-      if (!formData.first_name || !formData.last_name || !formData.email) {
+      if (!formData.first_name || !formData.last_name) {
         toast({
           title: "Error",
-          description: "First name, last name, and email are required",
+          description: "First name and last name are required",
           variant: "destructive",
         });
         return;
