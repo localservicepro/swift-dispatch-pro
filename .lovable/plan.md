@@ -1,42 +1,33 @@
 
 
-## Plan: Add Back Orders & Account Statements Documentation to Knowledge Base
+## Plan: Fix Delivery Fee Not Applying Markup in Order Creation
 
-Add two new articles to the existing Knowledgebase page explaining how back orders work with account statements and why splitting is important.
+### Problem
+In `src/components/order/hooks/useOrderFormState.ts`, the `handleSuburbChange` function (line 96-114) parses the raw `delivery_rate` from the suburb and sets it directly as the delivery fee — **bypassing the markup calculation entirely**. The `autoPopulateDeliveryFee` from the hook is called only for the toast notification but its calculated fee is never used.
 
-### Changes
+So with a $5 fixed markup: base rate $50 → should be $55, but the form sets $50.
 
-**File: `src/pages/Knowledgebase.tsx`**
+### Fix
 
-Add two new knowledgebase entries to the `knowledgebaseData` array:
+**`src/components/order/hooks/useOrderFormState.ts`** — Update `handleSuburbChange` to use the markup-aware calculation from `useDeliveryFeeCalculation` hook instead of raw parsing:
 
-1. **"Back Orders & Account Statements"** (under Order Management category)
-   - Explains what back orders are and why they are excluded from statements
-   - Explains that only "delivered" orders appear on monthly statements
-   - Describes the problem: an order with mixed delivered and back-ordered items
-   - Explains the solution: use "Move Items to Backorder" to split the order
-   - Step-by-step workflow for the team
+- Instead of manually parsing `suburb.delivery_rate` and setting it directly, call `autoPopulateDeliveryFee` with a callback that actually sets the fee
+- Remove the duplicate manual parsing logic (lines 101-112)
+- The `autoPopulateDeliveryFee` already applies markup via `applyMarkup()` and shows a toast — just wire it up properly
 
-2. **"Account Summary Explained"** (under Payment Management category)
-   - Explains what the Account Summary boxes mean (Current, Over 30, Over 60, Over 90, Total Due)
-   - How each bucket is calculated (days since delivery date)
-   - Clarifies it shows ALL unpaid delivered orders, not just the selected month
+```typescript
+const handleSuburbChange = (suburbId: string, suburb?: any) => {
+  setSelectedSuburbId(suburbId);
+  
+  if (suburb && !isDeliveryFeeManuallySet && deliveryMethod === "delivery") {
+    autoPopulateDeliveryFee(suburbId, (fee: number) => {
+      setManualDeliveryFee(fee);
+      setIsDeliveryFeeManuallySet(false);
+    });
+  }
+};
+```
 
-### Content Preview
-
-**Article 1 — Back Orders & Account Statements:**
-- Back orders are items a customer ordered but haven't been delivered yet
-- Monthly statements only include delivered orders
-- If an order has some items delivered and some not, you must split it
-- How to split: Open order → scroll to "Move Items to Backorder" → select items → confirm
-- Result: original order shows only delivered items with correct total; back-order items become a separate order that will appear on a future statement once delivered
-
-**Article 2 — Account Summary Explained:**
-- Current = unpaid orders delivered in the last 30 days
-- Over 30 Days = unpaid orders delivered 31–60 days ago
-- Over 60 Days = unpaid orders delivered 61–90 days ago
-- Over 90 Days = unpaid orders delivered 91+ days ago
-- Total Due = sum of all buckets = customer's total outstanding balance
-
-Both articles will be tagged appropriately and searchable from the Knowledge Base sidebar.
+### Files Modified
+1. `src/components/order/hooks/useOrderFormState.ts` — fix `handleSuburbChange` to use markup-aware fee calculation
 
