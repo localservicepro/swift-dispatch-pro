@@ -80,7 +80,9 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
     default_delivery_fee: 0.00,
     gst_enabled: true,
     stripe_mode: 'test',
-    stripe_connection_status: 'not_configured'
+    stripe_connection_status: 'not_configured',
+    delivery_markup_type: 'percentage',
+    delivery_markup_value: 0
   });
 
   // Update form data when settings are loaded
