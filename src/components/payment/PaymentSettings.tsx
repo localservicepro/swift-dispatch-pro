@@ -465,6 +465,64 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
                 </p>
               </div>
 
+              {/* Delivery Markup */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Delivery Markup</h3>
+                <p className="text-sm text-muted-foreground">
+                  Apply a markup on top of all suburb-based delivery fees
+                </p>
+
+                <div className="space-y-2">
+                  <Label>Markup Type</Label>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="markup_percentage"
+                        name="delivery_markup_type"
+                        value="percentage"
+                        checked={formData.delivery_markup_type === 'percentage'}
+                        onChange={(e) => setFormData({...formData, delivery_markup_type: e.target.value})}
+                      />
+                      <Label htmlFor="markup_percentage">Percentage (%)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="markup_fixed"
+                        name="delivery_markup_type"
+                        value="fixed"
+                        checked={formData.delivery_markup_type === 'fixed'}
+                        onChange={(e) => setFormData({...formData, delivery_markup_type: e.target.value})}
+                      />
+                      <Label htmlFor="markup_fixed">Fixed Amount ($)</Label>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="delivery_markup_value">
+                    Markup Value {formData.delivery_markup_type === 'percentage' ? '(%)' : '($)'}
+                  </Label>
+                  <Input
+                    id="delivery_markup_value"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.delivery_markup_value}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      delivery_markup_value: parseFloat(e.target.value) || 0
+                    })}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formData.delivery_markup_type === 'percentage'
+                      ? `E.g. 10% markup on a $50 delivery fee = $55`
+                      : `E.g. $5 markup on a $50 delivery fee = $55`}
+                  </p>
+                </div>
+              </div>
+
               {/* General Settings */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">General Settings</h3>

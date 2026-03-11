@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 
 interface SuburbDeliveryData {
   id: string;
@@ -18,20 +19,32 @@ export function useDeliveryFeeCalculation() {
   const [suburb, setSuburb] = useState<SuburbDeliveryData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { data: paymentSettings } = usePaymentSettings();
 
   /**
    * Parse delivery rate string to numeric value
-   * Handles formats like "AU$40", "$40", "40.00", "40", etc.
    */
   const parseDeliveryRate = useCallback((deliveryRate: string): number => {
     if (!deliveryRate) return 0;
-    
-    // Remove currency symbols and whitespace
     const cleaned = deliveryRate.replace(/[AU$\s]/gi, '').trim();
     const numericValue = parseFloat(cleaned);
-    
     return isNaN(numericValue) ? 0 : numericValue;
   }, []);
+
+  /**
+   * Apply delivery markup from payment settings
+   */
+  const applyMarkup = useCallback((baseFee: number): number => {
+    if (!paymentSettings) return baseFee;
+    const markupValue = paymentSettings.delivery_markup_value || 0;
+    if (markupValue <= 0) return baseFee;
+
+    if (paymentSettings.delivery_markup_type === 'fixed') {
+      return baseFee + markupValue;
+    }
+    // percentage
+    return baseFee + (baseFee * markupValue / 100);
+  }, [paymentSettings]);
 
   /**
    * Fetch suburb data by ID
@@ -69,12 +82,13 @@ export function useDeliveryFeeCalculation() {
   }, []);
 
   /**
-   * Get auto-populated delivery fee from current suburb
+   * Get auto-populated delivery fee from current suburb (with markup)
    */
   const getAutoDeliveryFee = useCallback((): number => {
     if (!suburb) return 0;
-    return parseDeliveryRate(suburb.delivery_rate);
-  }, [suburb, parseDeliveryRate]);
+    const baseFee = parseDeliveryRate(suburb.delivery_rate);
+    return applyMarkup(baseFee);
+  }, [suburb, parseDeliveryRate, applyMarkup]);
 
   /**
    * Auto-populate delivery fee and show toast notification
@@ -85,16 +99,18 @@ export function useDeliveryFeeCalculation() {
   ) => {
     fetchSuburbData(suburbId).then(suburbData => {
       if (suburbData) {
-        const fee = parseDeliveryRate(suburbData.delivery_rate);
+        const baseFee = parseDeliveryRate(suburbData.delivery_rate);
+        const fee = applyMarkup(baseFee);
         
         if (fee > 0) {
           onDeliveryFeeChange(fee, true);
           
           const distanceText = suburbData.distance_km ? ` (${suburbData.distance_km}km away)` : '';
+          const markupText = baseFee !== fee ? ` (incl. markup)` : '';
           
           toast({
             title: "Delivery Fee Auto-Populated",
-            description: `Set to $${fee.toFixed(2)} based on ${suburbData.name} delivery rate${distanceText}`,
+            description: `Set to $${fee.toFixed(2)} based on ${suburbData.name} delivery rate${distanceText}${markupText}`,
             duration: 3000,
           });
         } else {
@@ -102,7 +118,7 @@ export function useDeliveryFeeCalculation() {
         }
       }
     });
-  }, [fetchSuburbData, parseDeliveryRate, toast]);
+  }, [fetchSuburbData, parseDeliveryRate, applyMarkup, toast]);
 
   /**
    * Get delivery fee info for display
@@ -110,7 +126,8 @@ export function useDeliveryFeeCalculation() {
   const getDeliveryFeeInfo = useCallback(() => {
     if (!suburb) return null;
     
-    const fee = parseDeliveryRate(suburb.delivery_rate);
+    const baseFee = parseDeliveryRate(suburb.delivery_rate);
+    const fee = applyMarkup(baseFee);
     const distanceText = suburb.distance_km ? ` (${suburb.distance_km}km)` : '';
     
     return {
@@ -122,7 +139,7 @@ export function useDeliveryFeeCalculation() {
       distance: suburb.distance_km,
       displayText: `${suburb.name}${distanceText} - $${fee.toFixed(2)}`
     };
-  }, [suburb, parseDeliveryRate]);
+  }, [suburb, parseDeliveryRate, applyMarkup]);
 
   return {
     suburb,
