@@ -19,6 +19,8 @@ interface PaymentSettings {
   stripe_mode: string;
   stripe_connection_status: string;
   stripe_last_tested_at?: string;
+  delivery_markup_type: string;
+  delivery_markup_value: number;
 }
 
 export function usePaymentSettings() {
