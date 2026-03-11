@@ -102,7 +102,9 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
         stripe_live_secret_key: settings.stripe_live_secret_key || '',
         stripe_webhook_secret: settings.stripe_webhook_secret || '',
         stripe_mode: settings.stripe_mode || 'test',
-        stripe_connection_status: settings.stripe_connection_status || 'not_configured'
+        stripe_connection_status: settings.stripe_connection_status || 'not_configured',
+        delivery_markup_type: settings.delivery_markup_type || 'percentage',
+        delivery_markup_value: settings.delivery_markup_value || 0
       });
     }
   }, [settings]);
