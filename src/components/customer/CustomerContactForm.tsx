@@ -87,13 +87,12 @@ export function CustomerContactForm({ formData, customerType, entityType, onForm
       </div>
 
       <div>
-        <Label htmlFor="email">{getFieldLabel('Email')}</Label>
+        <Label htmlFor="email">Email</Label>
         <Input
           id="email"
           type="email"
           value={formData.email}
           onChange={(e) => onFormDataChange({ email: e.target.value })}
-          required={!isAccountBusiness}
         />
       </div>
 

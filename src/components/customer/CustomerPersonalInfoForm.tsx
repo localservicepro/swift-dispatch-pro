@@ -43,7 +43,6 @@ export function CustomerPersonalInfoForm({ formData, onFormDataChange }: Custome
           type="email"
           value={formData.email}
           onChange={(e) => onFormDataChange({ email: e.target.value })}
-          required
         />
       </div>
 
