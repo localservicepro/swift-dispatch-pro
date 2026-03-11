@@ -221,7 +221,19 @@ export function SuburbTable({ suburbs, onEdit, onRefresh }: SuburbTableProps) {
                     <TableCell className="font-medium">{suburb.name}</TableCell>
                     <TableCell>{suburb.state}</TableCell>
                     <TableCell>{suburb.postcode}</TableCell>
-                    <TableCell>${suburb.delivery_rate}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const { base, effective, hasMarkup } = getEffectiveRate(suburb.delivery_rate);
+                        return (
+                          <div>
+                            <span className="font-medium">${effective.toFixed(2)}</span>
+                            {hasMarkup && (
+                              <span className="text-xs text-muted-foreground ml-1">(base ${base.toFixed(2)})</span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell>
                       {suburb.distance_km ? `${suburb.distance_km}km` : '-'}
                     </TableCell>
