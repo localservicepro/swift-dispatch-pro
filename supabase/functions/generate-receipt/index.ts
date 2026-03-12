@@ -430,11 +430,18 @@ function generateReceiptHTML(data: any): string {
       }
       return `${formatSingleTime(start)} - ${formatSingleTime(end)}`
     }
-    // Single time format - show 30-minute range
-    const [hours, minutes] = time.split(':')
+    // Detect 1-hour slot prefix
+    let isOneHourSlot = false
+    let timeStr = time
+    if (timeStr.startsWith('1h-')) {
+      timeStr = timeStr.substring(3)
+      isOneHourSlot = true
+    }
+    // Single time format - show 30-minute or 60-minute range
+    const [hours, minutes] = timeStr.split(':')
     const hour = parseInt(hours)
     const min = parseInt(minutes)
-    const endTotalMin = min + 30
+    const endTotalMin = min + (isOneHourSlot ? 60 : 30)
     const endHour = hour + Math.floor(endTotalMin / 60)
     const endMin = endTotalMin % 60
     const formatSingleTime = (h: number, m: string): string => {

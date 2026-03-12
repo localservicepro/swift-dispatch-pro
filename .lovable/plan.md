@@ -1,32 +1,42 @@
 
 
-## Plan: Fix 1-Hour Time Slot Parsing in Receipts
+## Plan: Add Back Orders & Account Statements Documentation to Knowledge Base
 
-### Problem
-When a 1-hour window like "8:00 AM - 9:00 AM" is selected, the stored value is `1h-08:00`. Receipt generation functions split on `:` without stripping the `1h-` prefix, causing `parseInt("1h-08")` to return `1` — resulting in "1:00 AM - 1:30 AM" on receipts.
+Add two new articles to the existing Knowledgebase page explaining how back orders work with account statements and why splitting is important.
 
-### Root Cause
-Three locations parse time values without handling the `1h-` prefix:
-1. `supabase/functions/generate-receipt/index.ts` — `formatTimeRange()` (line ~434)
-2. `supabase/functions/generate-pdf-receipt/index.ts` — `formatTimeRange()` (line ~380)
-3. `src/utils/dateTimeUtils.ts` — `formatDeliveryTime()` (line ~24)
+### Changes
 
-### Fix
-In all three `formatTimeRange`/`formatDeliveryTime` functions, detect the `1h-` prefix, strip it, and use a 60-minute window instead of 30-minute:
+**File: `src/pages/Knowledgebase.tsx`**
 
-```typescript
-// Before splitting on ":", detect 1-hour prefix
-let isOneHourSlot = false;
-if (time.startsWith('1h-')) {
-  time = time.substring(3); // strip "1h-"
-  isOneHourSlot = true;
-}
-// ... existing parsing ...
-const endTotalMin = min + (isOneHourSlot ? 60 : 30);
-```
+Add two new knowledgebase entries to the `knowledgebaseData` array:
 
-### Files Modified
-1. `supabase/functions/generate-receipt/index.ts` — handle `1h-` prefix in `formatTimeRange`
-2. `supabase/functions/generate-pdf-receipt/index.ts` — handle `1h-` prefix in `formatTimeRange`
-3. `src/utils/dateTimeUtils.ts` — handle `1h-` prefix in `formatDeliveryTime`
+1. **"Back Orders & Account Statements"** (under Order Management category)
+   - Explains what back orders are and why they are excluded from statements
+   - Explains that only "delivered" orders appear on monthly statements
+   - Describes the problem: an order with mixed delivered and back-ordered items
+   - Explains the solution: use "Move Items to Backorder" to split the order
+   - Step-by-step workflow for the team
+
+2. **"Account Summary Explained"** (under Payment Management category)
+   - Explains what the Account Summary boxes mean (Current, Over 30, Over 60, Over 90, Total Due)
+   - How each bucket is calculated (days since delivery date)
+   - Clarifies it shows ALL unpaid delivered orders, not just the selected month
+
+### Content Preview
+
+**Article 1 — Back Orders & Account Statements:**
+- Back orders are items a customer ordered but haven't been delivered yet
+- Monthly statements only include delivered orders
+- If an order has some items delivered and some not, you must split it
+- How to split: Open order → scroll to "Move Items to Backorder" → select items → confirm
+- Result: original order shows only delivered items with correct total; back-order items become a separate order that will appear on a future statement once delivered
+
+**Article 2 — Account Summary Explained:**
+- Current = unpaid orders delivered in the last 30 days
+- Over 30 Days = unpaid orders delivered 31–60 days ago
+- Over 60 Days = unpaid orders delivered 61–90 days ago
+- Over 90 Days = unpaid orders delivered 91+ days ago
+- Total Due = sum of all buckets = customer's total outstanding balance
+
+Both articles will be tagged appropriately and searchable from the Knowledge Base sidebar.
 
