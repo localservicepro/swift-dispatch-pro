@@ -377,10 +377,18 @@ function generateSimpleReceiptHTML(data: any): string {
     if (time === 'asap') return 'ASAP';
     if (time === 'anytime') return 'Any time';
     
-    const [hours, minutes] = time.split(":");
+    // Detect 1-hour slot prefix
+    let isOneHourSlot = false;
+    let timeStr = time;
+    if (timeStr.startsWith('1h-')) {
+      timeStr = timeStr.substring(3);
+      isOneHourSlot = true;
+    }
+    
+    const [hours, minutes] = timeStr.split(":");
     const startHour = parseInt(hours);
     const startMin = parseInt(minutes);
-    const endTotalMin = startMin + 30;
+    const endTotalMin = startMin + (isOneHourSlot ? 60 : 30);
     const endHour = startHour + Math.floor(endTotalMin / 60);
     const endMin = endTotalMin % 60;
     

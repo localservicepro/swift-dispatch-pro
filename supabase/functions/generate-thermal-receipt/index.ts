@@ -348,11 +348,30 @@ function generateThermalReceiptHTML(data: any): string {
   // Format delivery time (convert 24h to 12h format) - support both naming conventions
   const formatTime = (time: string): string => {
     if (!time) return ''
-    const [hours, minutes] = time.split(':')
+    // Handle special time values
+    const timeLower = time.toLowerCase()
+    if (timeLower === 'urgent') return 'Urgent'
+    if (timeLower === 'asap') return 'ASAP'
+    if (timeLower === 'anytime' || timeLower === 'any time') return 'Any time'
+    // Detect 1-hour slot prefix
+    let isOneHourSlot = false
+    let timeStr = time
+    if (timeStr.startsWith('1h-')) {
+      timeStr = timeStr.substring(3)
+      isOneHourSlot = true
+    }
+    const [hours, minutes] = timeStr.split(':')
     const hour = parseInt(hours)
-    const ampm = hour >= 12 ? 'PM' : 'AM'
-    const hour12 = hour % 12 || 12
-    return `${hour12}:${minutes} ${ampm}`
+    const min = parseInt(minutes)
+    const endTotalMin = min + (isOneHourSlot ? 60 : 30)
+    const endHour = hour + Math.floor(endTotalMin / 60)
+    const endMin = endTotalMin % 60
+    const formatSingleTime = (h: number, m: string): string => {
+      const ampm = h >= 12 ? 'PM' : 'AM'
+      const hour12 = h % 12 || 12
+      return `${hour12}:${m} ${ampm}`
+    }
+    return `${formatSingleTime(hour, minutes)} - ${formatSingleTime(endHour, endMin.toString().padStart(2, '0'))}`
   }
   const deliveryTimeRaw = order.delivery_time || order.deliveryTime || ''
   const deliveryTime = deliveryTimeRaw ? formatTime(deliveryTimeRaw) : ''

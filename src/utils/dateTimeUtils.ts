@@ -20,19 +20,36 @@ export const formatDeliveryTime = (timeString: string | null | undefined): strin
   if (!timeString) return '';
   
   try {
+    // Handle special time values
+    const timeLower = timeString.toLowerCase();
+    if (timeLower === 'urgent') return 'Urgent';
+    if (timeLower === 'asap') return 'ASAP';
+    if (timeLower === 'anytime' || timeLower === 'any time') return 'Any time';
+    
+    // Detect 1-hour slot prefix
+    let isOneHourSlot = false;
+    let timeStr = timeString;
+    if (timeStr.startsWith('1h-')) {
+      timeStr = timeStr.substring(3);
+      isOneHourSlot = true;
+    }
+    
     // Handle both HH:mm and HH:mm:ss formats
-    const timeParts = timeString.split(':');
+    const timeParts = timeStr.split(':');
     const hours = parseInt(timeParts[0]);
     const minutes = parseInt(timeParts[1]);
     
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
+    const endTotalMin = minutes + (isOneHourSlot ? 60 : 30);
+    const endHour = hours + Math.floor(endTotalMin / 60);
+    const endMin = endTotalMin % 60;
     
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+    const formatSingleTime = (h: number, m: number): string => {
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const hour12 = h % 12 || 12;
+      return `${hour12}:${m.toString().padStart(2, '0')} ${ampm}`;
+    };
+    
+    return `${formatSingleTime(hours, minutes)} - ${formatSingleTime(endHour, endMin)}`;
   } catch (error) {
     console.error('Error formatting delivery time:', error);
     return '';
