@@ -1,42 +1,34 @@
 
 
-## Plan: Add Back Orders & Account Statements Documentation to Knowledge Base
+## Plan: Make Phone Number the Only Required Field for New Customer Creation in Order Flow
 
-Add two new articles to the existing Knowledgebase page explaining how back orders work with account statements and why splitting is important.
+### What the User Wants
+Per the PDF workflow: the team types a phone number in the search bar. If no customer is found, they click "+ New Customer". The phone number should auto-populate, and they should be able to click "Create Customer" immediately with just the phone number. All other fields (name, email, address, suburb) can be filled in later as the order progresses.
 
 ### Changes
 
-**File: `src/pages/Knowledgebase.tsx`**
+**File: `src/components/order/CustomerSearchStep.tsx`**
 
-Add two new knowledgebase entries to the `knowledgebaseData` array:
+1. **Auto-populate phone from search query** — When the user clicks "+ New Customer", if the search query looks like a phone number (using existing `isPhoneNumber` utility), pre-fill the `phone` field in the new customer form.
 
-1. **"Back Orders & Account Statements"** (under Order Management category)
-   - Explains what back orders are and why they are excluded from statements
-   - Explains that only "delivered" orders appear on monthly statements
-   - Describes the problem: an order with mixed delivered and back-ordered items
-   - Explains the solution: use "Move Items to Backorder" to split the order
-   - Step-by-step workflow for the team
+2. **Change validation (lines 293-336)** — Replace the current validation logic in `createCustomer()`:
+   - Only require `phone` for all non-account-business customers
+   - Remove the requirement for `first_name`, `last_name`, `email`, and `full_address`
+   - Keep account-business validation (company name required) as-is
 
-2. **"Account Summary Explained"** (under Payment Management category)
-   - Explains what the Account Summary boxes mean (Current, Over 30, Over 60, Over 90, Total Due)
-   - How each bucket is calculated (days since delivery date)
-   - Clarifies it shows ALL unpaid delivered orders, not just the selected month
+3. **Update form labels** — Change the UI to reflect the new requirements:
+   - Phone label: `"Phone *"` (required)
+   - First Name, Last Name, Email: remove the `*` indicators and `required` attributes
+   - Full Address: remove the `*` from label, remove `required` prop
+   - Suburb: remove the `*` from label
 
-### Content Preview
+4. **Update database insert (lines 338-354)** — The `full_address` field is typed as non-nullable in the interface. Set it to empty string `''` when not provided so the insert doesn't fail.
 
-**Article 1 — Back Orders & Account Statements:**
-- Back orders are items a customer ordered but haven't been delivered yet
-- Monthly statements only include delivered orders
-- If an order has some items delivered and some not, you must split it
-- How to split: Open order → scroll to "Move Items to Backorder" → select items → confirm
-- Result: original order shows only delivered items with correct total; back-order items become a separate order that will appear on a future statement once delivered
+### What Stays the Same
+- The Customer Management dialog (separate from order flow) keeps its current validation
+- Account-business logic remains unchanged
+- All fields remain visible and fillable — they're just not required anymore
 
-**Article 2 — Account Summary Explained:**
-- Current = unpaid orders delivered in the last 30 days
-- Over 30 Days = unpaid orders delivered 31–60 days ago
-- Over 60 Days = unpaid orders delivered 61–90 days ago
-- Over 90 Days = unpaid orders delivered 91+ days ago
-- Total Due = sum of all buckets = customer's total outstanding balance
-
-Both articles will be tagged appropriately and searchable from the Knowledge Base sidebar.
+### Files Modified
+1. `src/components/order/CustomerSearchStep.tsx` — validation, labels, auto-populate phone from search
 
