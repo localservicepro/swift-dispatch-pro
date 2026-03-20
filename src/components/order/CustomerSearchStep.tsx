@@ -728,18 +728,17 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
 
                   <div>
                     <GoogleAddressAutocomplete
-                      label="Full Address *"
+                      label="Full Address"
                       value={newCustomer.full_address}
                       onChange={(value) => setNewCustomer({...newCustomer, full_address: value})}
                       onAddressSelect={handleNewCustomerAddressSelect}
                       placeholder="Start typing the address..."
-                      required
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="suburb">Suburb *</Label>
+                      <Label htmlFor="suburb">Suburb</Label>
                       <Select value={newCustomer.suburb_id} onValueChange={(value) => setNewCustomer({...newCustomer, suburb_id: value})}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select suburb" />
