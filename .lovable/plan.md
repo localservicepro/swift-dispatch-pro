@@ -1,24 +1,45 @@
 
-
-## Plan: Tighten Phone Number Search Matching
+## Plan: Fix Order Phone Search to Support Progressive Prefix Matching
 
 ### Problem
-The `phoneSearchMatch` function in `src/utils/phoneUtils.ts` uses overly loose partial matching. It checks if the search term digits are contained anywhere in the stored number OR if the stored number digits are contained in the search term (lines 71-74). This causes unrelated customers to appear — for example, a customer whose phone shares even a few digits with the search query will match.
+The current shared phone search logic is too restrictive for order lookup:
 
-### Changes
+- Typing `04` still works because it falls through to the generic text search
+- Once the input looks like a phone number (`043`, `0438`, etc.), the app switches to `phoneSearchMatch()`
+- `phoneSearchMatch()` currently only allows:
+  - exact match, or
+  - partial match from the end via `endsWith(...)`
 
-**File: `src/utils/phoneUtils.ts`**
+That means searching from the start of a phone number like `0438...` stops working until the full number is entered.
 
-Tighten the `phoneSearchMatch` function:
+### What to Change
 
-1. **Remove reverse partial match** (line 74: `normalizedSearch.includes(normalizedStored)`) — a stored phone being a substring of the search term is not meaningful and causes false positives
-2. **Only allow partial match from the end** — change `normalizedStored.includes(normalizedSearch)` to check that the stored number **ends with** the search digits. This supports the common use case of typing the last few digits of a phone number
-3. **Require minimum 4 digits** for partial matching to avoid overly broad matches on short inputs
-4. Apply the same logic to the country-code-stripped variants
+**1. Update `src/utils/phoneUtils.ts`**
+Refine `phoneSearchMatch()` so partial phone searches support:
 
-### Result
-Searching `04010101010` will only match customers whose phone number ends with those digits (or matches exactly), eliminating false positives from unrelated businesses.
+- exact match
+- prefix match from the start of the number (`startsWith`)
+- suffix match from the end (`endsWith`) for last-digits lookup
+- no loose middle-string matching (`includes`) to avoid false positives
 
-### Files Modified
-1. `src/utils/phoneUtils.ts` — tighten `phoneSearchMatch` partial matching logic
+Keep a minimum digit threshold for partial matching so short inputs don’t return too many unrelated results.
 
+### Why This Fix
+This keeps the earlier false-positive fix intact while restoring the expected workflow:
+
+- `043` → matches numbers starting with `043`
+- `0438` → matches numbers starting with `0438`
+- full number → exact match
+- last 4+ digits → still supported if staff search from the end
+
+### Scope
+Because `phoneSearchMatch()` is shared, this improvement will make phone searching behave more naturally in:
+- Order Management
+- Customer search flows
+- Payment search flows
+
+### Files to Modify
+1. `src/utils/phoneUtils.ts` — update `phoneSearchMatch()` partial-match behavior from end-only to start-or-end matching
+
+### Expected Result
+Searching phone numbers in Orders will progressively narrow results as users type from the beginning of the phone number, instead of only matching at 2 digits or the full number.
