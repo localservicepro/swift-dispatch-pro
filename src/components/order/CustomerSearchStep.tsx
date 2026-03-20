@@ -305,11 +305,11 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
         return;
       }
     } else {
-    // Standard validation for all other customer types
-      if (!newCustomer.first_name || !newCustomer.last_name || !newCustomer.email) {
+      // Phone is the only required field for non-account-business customers
+      if (!newCustomer.phone || newCustomer.phone.trim() === '') {
         toast({
           title: "Error",
-          description: "First name, last name, and email are required",
+          description: "Phone number is required",
           variant: "destructive",
         });
         return;
@@ -323,16 +323,6 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
         });
         return;
       }
-    }
-
-    // Address validation (required for all customers)
-    if (!newCustomer.full_address || newCustomer.full_address.trim() === '') {
-      toast({
-        title: "Error",
-        description: "Address is required for all customers",
-        variant: "destructive",
-      });
-      return;
     }
 
     const customerData = {
