@@ -305,11 +305,11 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
         return;
       }
     } else {
-    // Standard validation for all other customer types
-      if (!newCustomer.first_name || !newCustomer.last_name || !newCustomer.email) {
+      // Phone is the only required field for non-account-business customers
+      if (!newCustomer.phone || newCustomer.phone.trim() === '') {
         toast({
           title: "Error",
-          description: "First name, last name, and email are required",
+          description: "Phone number is required",
           variant: "destructive",
         });
         return;
@@ -323,16 +323,6 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
         });
         return;
       }
-    }
-
-    // Address validation (required for all customers)
-    if (!newCustomer.full_address || newCustomer.full_address.trim() === '') {
-      toast({
-        title: "Error",
-        description: "Address is required for all customers",
-        variant: "destructive",
-      });
-      return;
     }
 
     const customerData = {
@@ -578,7 +568,12 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
                 />
               </div>
               <Button
-                onClick={() => setShowCreateForm(true)}
+                onClick={() => {
+                  if (isPhoneNumber(searchQuery)) {
+                    setNewCustomer(prev => ({ ...prev, phone: searchQuery }));
+                  }
+                  setShowCreateForm(true);
+                }}
                 variant="outline"
                 className="flex items-center gap-2"
               >
@@ -693,66 +688,57 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
                     )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="first_name">
-                          First Name {!isAccountBusiness && '*'}
-                        </Label>
+                        <Label htmlFor="first_name">First Name</Label>
                         <Input
                           id="first_name"
                           value={newCustomer.first_name}
                           onChange={(e) => setNewCustomer({...newCustomer, first_name: e.target.value})}
-                          required={!isAccountBusiness}
                         />
                       </div>
                       <div>
-                        <Label htmlFor="last_name">
-                          Last Name {!isAccountBusiness && '*'}
-                        </Label>
+                        <Label htmlFor="last_name">Last Name</Label>
                         <Input
                           id="last_name"
                           value={newCustomer.last_name}
                           onChange={(e) => setNewCustomer({...newCustomer, last_name: e.target.value})}
-                          required={!isAccountBusiness}
                         />
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="email">
-                      Email {!isAccountBusiness && '*'}
-                    </Label>
+                    <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       value={newCustomer.email}
                       onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
-                      required={!isAccountBusiness}
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="phone">Phone</Label>
+                    <Label htmlFor="phone">Phone *</Label>
                     <Input
                       id="phone"
                       value={newCustomer.phone}
                       onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
+                      required
                     />
                   </div>
 
                   <div>
                     <GoogleAddressAutocomplete
-                      label="Full Address *"
+                      label="Full Address"
                       value={newCustomer.full_address}
                       onChange={(value) => setNewCustomer({...newCustomer, full_address: value})}
                       onAddressSelect={handleNewCustomerAddressSelect}
                       placeholder="Start typing the address..."
-                      required
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="suburb">Suburb *</Label>
+                      <Label htmlFor="suburb">Suburb</Label>
                       <Select value={newCustomer.suburb_id} onValueChange={(value) => setNewCustomer({...newCustomer, suburb_id: value})}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select suburb" />
