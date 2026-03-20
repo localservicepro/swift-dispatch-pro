@@ -578,7 +578,12 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
                 />
               </div>
               <Button
-                onClick={() => setShowCreateForm(true)}
+                onClick={() => {
+                  if (isPhoneNumber(searchQuery)) {
+                    setNewCustomer(prev => ({ ...prev, phone: searchQuery }));
+                  }
+                  setShowCreateForm(true);
+                }}
                 variant="outline"
                 className="flex items-center gap-2"
               >
