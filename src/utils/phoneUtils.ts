@@ -67,15 +67,20 @@ export function phoneSearchMatch(storedPhone: string | null, searchTerm: string)
   // Direct match
   if (normalizedStored === normalizedSearch) return true;
   
-  // Partial match — only allow endsWith, and require at least 4 digits
-  if (normalizedSearch.length >= 4 && normalizedStored.endsWith(normalizedSearch)) return true;
+  // Partial match — allow startsWith (progressive typing) and endsWith (last-digits lookup)
+  // Require at least 4 digits for partial matching to avoid overly broad results
+  if (normalizedSearch.length >= 4 && (
+    normalizedStored.startsWith(normalizedSearch) || normalizedStored.endsWith(normalizedSearch)
+  )) return true;
   
   // Handle cases where one number has country code and other doesn't
   const storedWithoutCountry = normalizedStored.startsWith('61') ? '0' + normalizedStored.substring(2) : normalizedStored;
   const searchWithoutCountry = normalizedSearch.startsWith('61') ? '0' + normalizedSearch.substring(2) : normalizedSearch;
   
   if (storedWithoutCountry === searchWithoutCountry) return true;
-  if (searchWithoutCountry.length >= 4 && storedWithoutCountry.endsWith(searchWithoutCountry)) return true;
+  if (searchWithoutCountry.length >= 4 && (
+    storedWithoutCountry.startsWith(searchWithoutCountry) || storedWithoutCountry.endsWith(searchWithoutCountry)
+  )) return true;
   
   return false;
 }
