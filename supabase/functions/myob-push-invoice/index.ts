@@ -11,7 +11,6 @@ const MYOB_API_BASE = "https://api.myob.com/accountright";
 interface LineItem {
   orderNumber: string;
   description: string;
-  accountNumber: string;
   amount: number;
   date: string;
   taxCode: string;
