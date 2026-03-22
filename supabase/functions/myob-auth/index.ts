@@ -58,7 +58,7 @@ serve(async (req: Request) => {
       }
 
       case "save-credentials": {
-        const { clientId, clientSecret, companyFileId, companyFileUsername, companyFilePassword, defaultAccountNumber } = body;
+        const { clientId, clientSecret, companyFileId, companyFileUsername, companyFilePassword } = body;
 
         // Check if settings exist
         const { data: existing } = await supabase.from("myob_settings").select("id").limit(1).single();
