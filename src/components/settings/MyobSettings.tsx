@@ -61,7 +61,6 @@ export function MyobSettings() {
           companyFileId,
           companyFileUsername,
           companyFilePassword,
-          defaultAccountNumber: defaultAccount,
         },
       });
       if (error) throw error;
