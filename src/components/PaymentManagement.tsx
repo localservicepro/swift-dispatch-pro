@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Receipt, Bell, Settings, RefreshCw, Send } from "lucide-react";
+import { Loader2, Bell, Settings, RefreshCw, Send } from "lucide-react";
 import { useRealTimePayments } from "@/hooks/useRealTimePayments";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PaymentSearchFilters } from "@/components/payment/PaymentSearchFilters";
@@ -38,7 +38,7 @@ interface PaymentOrder {
 
 export function PaymentManagement() {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
-  const [generatingInvoices, setGeneratingInvoices] = useState<string[]>([]);
+  const [singleMyobOrder, setSingleMyobOrder] = useState<PaymentOrder | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [showSettings, setShowSettings] = useState(false);
   const [showMyobDialog, setShowMyobDialog] = useState(false);
@@ -137,152 +137,6 @@ export function PaymentManagement() {
     return payment.customer_name || 'Unknown Customer';
   };
 
-  const generateAndSendInvoice = async (orderId: string) => {
-    if (generatingInvoices.includes(orderId)) return;
-    setGeneratingInvoices(prev => [...prev, orderId]);
-    try {
-      const order = payments.find(p => p.id === orderId);
-      if (!order) throw new Error('Order not found');
-      console.log('Starting invoice generation for order:', order.order_number);
-
-      // Check if invoice already exists for this order
-      const {
-        data: existingInvoice,
-        error: checkError
-      } = await supabase.from('invoices').select('id').eq('order_id', orderId).maybeSingle();
-      if (checkError) {
-        console.error('Error checking existing invoice:', checkError);
-        throw new Error(`Failed to check existing invoice: ${checkError.message}`);
-      }
-      if (existingInvoice) {
-        throw new Error('Invoice already exists for this order');
-      }
-
-      // Generate unique invoice number
-      const invoiceNumber = `INV-${order.order_number}-${Date.now()}`;
-      const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-      // Create invoice record using calculated total
-      const calculatedTotal = calculateDisplayTotal(order);
-      const {
-        data: invoice,
-        error: invoiceError
-      } = await supabase.from('invoices').insert({
-        invoice_number: invoiceNumber,
-        order_id: orderId,
-        customer_email: order.customer_email || `${getCustomerDisplayName(order).toLowerCase().replace(' ', '.')}@example.com`,
-        amount: calculatedTotal,
-        currency: 'USD',
-        status: 'pending',
-        due_date: dueDate
-      }).select().single();
-      if (invoiceError) {
-        console.error('Invoice creation error:', invoiceError);
-        throw new Error(`Failed to create invoice: ${invoiceError.message}`);
-      }
-      console.log('Invoice created:', invoice.id);
-
-      // Create payment session
-      const {
-        data: paymentData,
-        error: paymentError
-      } = await supabase.functions.invoke('create-invoice-payment', {
-        body: {
-          invoiceId: invoice.id
-        }
-      });
-      if (paymentError) {
-        console.error('Payment session error:', paymentError);
-        // Clean up the invoice if payment session creation fails
-        await supabase.from('invoices').delete().eq('id', invoice.id);
-        throw new Error(`Failed to create payment session: ${paymentError.message}`);
-      }
-      if (!paymentData.success) {
-        console.error('Payment session failed:', paymentData);
-        // Clean up the invoice if payment session creation fails
-        await supabase.from('invoices').delete().eq('id', invoice.id);
-        throw new Error(paymentData.error || 'Failed to create payment session');
-      }
-      console.log('Payment session created:', paymentData.sessionId);
-
-      // Parse products for email
-      let orderItems = [];
-      if (Array.isArray(order.products)) {
-        orderItems = order.products.map(item => ({
-          name: item.name || item.product_name || 'Product',
-          quantity: item.quantity || 1,
-          price: item.price || item.unit_price || 0
-        }));
-      } else if (order.products && typeof order.products === 'object') {
-        orderItems = [{
-          name: order.products.name || 'Product',
-          quantity: order.products.quantity || 1,
-          price: order.products.price || order.total_amount
-        }];
-      } else {
-        orderItems = [{
-          name: 'Order Items',
-          quantity: 1,
-          price: order.subtotal || order.total_amount - (order.delivery_fee || 0)
-        }];
-      }
-
-      // Send invoice email with payment link
-      const {
-        error: emailError
-      } = await supabase.functions.invoke('send-emails', {
-        body: {
-          type: 'invoice',
-          data: {
-            customerName: getCustomerDisplayName(order),
-            customerEmail: order.customer_email || `${getCustomerDisplayName(order).toLowerCase().replace(' ', '.')}@example.com`,
-            orderNumber: order.order_number,
-            invoiceNumber: invoiceNumber,
-            orderItems: orderItems,
-            subtotal: order.subtotal || calculatedTotal - (order.delivery_fee || 0),
-            deliveryFee: order.delivery_fee || 0,
-            totalAmount: calculatedTotal,
-            dueDate: new Date(dueDate).toLocaleDateString(),
-            paymentStatus: 'Pending',
-            paymentUrl: paymentData.paymentUrl
-          }
-        }
-      });
-      if (emailError) {
-        console.error('Email sending error:', emailError);
-        toast({
-          title: "Invoice Created",
-          description: `Invoice ${invoiceNumber} was created but email failed to send. Payment link is available in the system.`,
-          variant: "destructive"
-        });
-      } else {
-        // Update payment status to "invoiced" when email is sent successfully
-        await updatePaymentStatus(orderId, 'invoiced');
-        toast({
-          title: "Invoice Generated & Sent",
-          description: `Invoice ${invoiceNumber} sent to ${getCustomerDisplayName(order)} with payment link`,
-          action: <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="w-4 h-4 mr-1" />
-              Refresh
-            </Button>
-        });
-      }
-
-      // Refresh data
-      queryClient.invalidateQueries({
-        queryKey: ['payment-orders']
-      });
-    } catch (error: any) {
-      console.error('Error generating invoice:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to generate and send invoice. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setGeneratingInvoices(prev => prev.filter(id => id !== orderId));
-    }
-  };
 
   const updatePaymentStatus = async (orderId: string, newStatus: string) => {
     try {
@@ -392,6 +246,17 @@ export function PaymentManagement() {
         selectedOrders={payments.filter(p => selectedPayments.includes(p.id)) as any}
         onSuccess={() => {
           setSelectedPayments([]);
+          queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
+        }}
+      />
+
+      {/* Single Order MYOB Dialog */}
+      <MyobBatchInvoiceDialog
+        open={!!singleMyobOrder}
+        onOpenChange={(open) => { if (!open) setSingleMyobOrder(null); }}
+        selectedOrders={singleMyobOrder ? [singleMyobOrder as any] : []}
+        onSuccess={() => {
+          setSingleMyobOrder(null);
           queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
         }}
       />
@@ -517,9 +382,9 @@ export function PaymentManagement() {
                       size="sm"
                       showLabel={true}
                     />
-                    <Button size="sm" variant="outline" onClick={() => generateAndSendInvoice(payment.id)} disabled={generatingInvoices.includes(payment.id)} className="flex items-center gap-2">
-                      {generatingInvoices.includes(payment.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
-                      {generatingInvoices.includes(payment.id) ? "Generating..." : "Generate Invoice"}
+                    <Button size="sm" variant="outline" onClick={() => setSingleMyobOrder(payment as any)} className="flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50">
+                      <Send className="w-4 h-4" />
+                      Send to MYOB
                     </Button>
                     
                     
