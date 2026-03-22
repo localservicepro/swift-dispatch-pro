@@ -243,6 +243,9 @@ export function Settings() {
         </CardContent>
       </Card>
 
+      {/* MYOB Integration */}
+      <MyobSettings />
+
       {/* Activity Log */}
       <ActivityLog />
 

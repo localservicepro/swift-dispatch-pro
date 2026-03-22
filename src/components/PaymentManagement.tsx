@@ -42,10 +42,29 @@ export function PaymentManagement() {
   const [generatingInvoices, setGeneratingInvoices] = useState<string[]>([]);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [showSettings, setShowSettings] = useState(false);
+  const [showMyobDialog, setShowMyobDialog] = useState(false);
+  const [myobConnected, setMyobConnected] = useState(false);
   const {
     toast
   } = useToast();
   const queryClient = useQueryClient();
+
+  // Check MYOB connection status
+  useEffect(() => {
+    const checkMyob = async () => {
+      try {
+        const { data } = await supabase.functions.invoke("myob-auth", {
+          body: { action: "get-settings" },
+        });
+        if (data?.settings?.connection_status === "connected" || data?.settings?.connection_status === "configured") {
+          setMyobConnected(true);
+        }
+      } catch {
+        // MYOB not configured, that's fine
+      }
+    };
+    checkMyob();
+  }, []);
 
   // Set up real-time payment updates
   useRealTimePayments(update => {
