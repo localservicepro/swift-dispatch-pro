@@ -24,7 +24,6 @@ export function MyobSettings() {
   const [companyFileId, setCompanyFileId] = useState("");
   const [companyFileUsername, setCompanyFileUsername] = useState("");
   const [companyFilePassword, setCompanyFilePassword] = useState("");
-  const [defaultAccount, setDefaultAccount] = useState("4-1010");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
