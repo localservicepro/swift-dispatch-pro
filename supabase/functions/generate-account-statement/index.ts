@@ -183,7 +183,7 @@ function generateStatementHTML(data: any): string {
     const rows = groupOrders.map((order: any) => {
       const fulfillmentDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
       const dateStr = fulfillmentDate ? formatDateAU(fulfillmentDate) : formatDateAU(order.created_at);
-      const invoiceNo = (order.order_number || "").replace(/^ORD-/i, "");
+      const invoiceNo = order.myob_invoice_number || (order.order_number || "").replace(/^ORD-/i, "");
       const amount = Number(order.total_amount || 0);
       const isPaid = order.payment_status === "paid";
 

@@ -484,7 +484,18 @@ export function PaymentManagement() {
             Last updated: {lastUpdateTime.toLocaleTimeString()}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
+          {myobConnected && (
+            <Button
+              onClick={() => setShowMyobDialog(true)}
+              variant="outline"
+              disabled={selectedPayments.length === 0}
+              className="flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+            >
+              <Send className="w-4 h-4" />
+              Batch Invoice to MYOB ({selectedPayments.length})
+            </Button>
+          )}
           <Button onClick={sendBatchInvoices} variant="outline" disabled={selectedPayments.length === 0 || selectedPayments.some(id => sendingInvoices.includes(id))} className="flex items-center gap-2">
             {selectedPayments.some(id => sendingInvoices.includes(id)) && <Loader2 className="w-4 h-4 animate-spin" />}
             Batch Invoice ({selectedPayments.length})
@@ -495,6 +506,17 @@ export function PaymentManagement() {
           </Button>
         </div>
       </div>
+
+      {/* MYOB Batch Invoice Dialog */}
+      <MyobBatchInvoiceDialog
+        open={showMyobDialog}
+        onOpenChange={setShowMyobDialog}
+        selectedOrders={payments.filter(p => selectedPayments.includes(p.id)) as any}
+        onSuccess={() => {
+          setSelectedPayments([]);
+          queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
+        }}
+      />
 
       {/* Payment Settings Modal */}
       <PaymentSettings isOpen={showSettings} onClose={() => setShowSettings(false)} />
