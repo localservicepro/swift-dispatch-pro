@@ -234,17 +234,6 @@ export function MyobBatchInvoiceDialog({ open, onOpenChange, selectedOrders, onS
                         <span className="text-xs">{item.description}</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {editingIndex === idx ? (
-                        <Input
-                          value={item.accountNumber}
-                          onChange={(e) => updateLineItem(idx, "accountNumber", e.target.value)}
-                          className="h-8 text-xs w-20"
-                        />
-                      ) : (
-                        <span className="text-xs">{item.accountNumber}</span>
-                      )}
-                    </TableCell>
                     <TableCell className="text-right">
                       {editingIndex === idx ? (
                         <Input
