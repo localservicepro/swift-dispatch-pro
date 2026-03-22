@@ -370,34 +370,6 @@ export function PaymentManagement() {
     }
   };
 
-  const sendBatchInvoices = async () => {
-    if (selectedPayments.length === 0) {
-      toast({
-        title: "No Selection",
-        description: "Please select orders to send batch invoices",
-        variant: "destructive"
-      });
-      return;
-    }
-    setSendingInvoices(prev => [...prev, ...selectedPayments]);
-    try {
-      const promises = selectedPayments.map(orderId => sendInvoice(orderId));
-      await Promise.all(promises);
-      toast({
-        title: "Batch Invoices Sent",
-        description: `${selectedPayments.length} invoices have been sent`
-      });
-      setSelectedPayments([]);
-    } catch (error: any) {
-      console.error('Error sending batch invoices:', error);
-      toast({
-        title: "Error",
-        description: "Some invoices failed to send. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setSendingInvoices(prev => prev.filter(id => !selectedPayments.includes(id)));
-    }
   };
 
   const updatePaymentStatus = async (orderId: string, newStatus: string) => {
