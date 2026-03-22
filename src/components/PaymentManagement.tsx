@@ -38,7 +38,7 @@ interface PaymentOrder {
 
 export function PaymentManagement() {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
-  const [generatingInvoices, setGeneratingInvoices] = useState<string[]>([]);
+  const [singleMyobOrder, setSingleMyobOrder] = useState<PaymentOrder | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [showSettings, setShowSettings] = useState(false);
   const [showMyobDialog, setShowMyobDialog] = useState(false);
