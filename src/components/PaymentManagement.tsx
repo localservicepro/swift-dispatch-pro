@@ -250,6 +250,17 @@ export function PaymentManagement() {
         }}
       />
 
+      {/* Single Order MYOB Dialog */}
+      <MyobBatchInvoiceDialog
+        open={!!singleMyobOrder}
+        onOpenChange={(open) => { if (!open) setSingleMyobOrder(null); }}
+        selectedOrders={singleMyobOrder ? [singleMyobOrder as any] : []}
+        onSuccess={() => {
+          setSingleMyobOrder(null);
+          queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
+        }}
+      />
+
       {/* Payment Settings Modal */}
       <PaymentSettings isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
