@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Receipt, Bell, Settings, RefreshCw } from "lucide-react";
+import { Loader2, Receipt, Bell, Settings, RefreshCw, Send } from "lucide-react";
 import { useRealTimePayments } from "@/hooks/useRealTimePayments";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PaymentSearchFilters } from "@/components/payment/PaymentSearchFilters";
@@ -14,6 +14,7 @@ import { usePaymentFilters } from "@/hooks/usePaymentFilters";
 import { PurchaseOrderDisplay } from "@/components/order/PurchaseOrderDisplay";
 import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 import { ReceiptButton } from "@/components/ui/receipt-button";
+import { MyobBatchInvoiceDialog } from "@/components/payment/MyobBatchInvoiceDialog";
 
 interface PaymentOrder {
   id: string;
@@ -41,10 +42,29 @@ export function PaymentManagement() {
   const [generatingInvoices, setGeneratingInvoices] = useState<string[]>([]);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [showSettings, setShowSettings] = useState(false);
+  const [showMyobDialog, setShowMyobDialog] = useState(false);
+  const [myobConnected, setMyobConnected] = useState(false);
   const {
     toast
   } = useToast();
   const queryClient = useQueryClient();
+
+  // Check MYOB connection status
+  useEffect(() => {
+    const checkMyob = async () => {
+      try {
+        const { data } = await supabase.functions.invoke("myob-auth", {
+          body: { action: "get-settings" },
+        });
+        if (data?.settings?.connection_status === "connected" || data?.settings?.connection_status === "configured") {
+          setMyobConnected(true);
+        }
+      } catch {
+        // MYOB not configured, that's fine
+      }
+    };
+    checkMyob();
+  }, []);
 
   // Set up real-time payment updates
   useRealTimePayments(update => {
@@ -464,7 +484,18 @@ export function PaymentManagement() {
             Last updated: {lastUpdateTime.toLocaleTimeString()}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
+          {myobConnected && (
+            <Button
+              onClick={() => setShowMyobDialog(true)}
+              variant="outline"
+              disabled={selectedPayments.length === 0}
+              className="flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+            >
+              <Send className="w-4 h-4" />
+              Batch Invoice to MYOB ({selectedPayments.length})
+            </Button>
+          )}
           <Button onClick={sendBatchInvoices} variant="outline" disabled={selectedPayments.length === 0 || selectedPayments.some(id => sendingInvoices.includes(id))} className="flex items-center gap-2">
             {selectedPayments.some(id => sendingInvoices.includes(id)) && <Loader2 className="w-4 h-4 animate-spin" />}
             Batch Invoice ({selectedPayments.length})
@@ -475,6 +506,17 @@ export function PaymentManagement() {
           </Button>
         </div>
       </div>
+
+      {/* MYOB Batch Invoice Dialog */}
+      <MyobBatchInvoiceDialog
+        open={showMyobDialog}
+        onOpenChange={setShowMyobDialog}
+        selectedOrders={payments.filter(p => selectedPayments.includes(p.id)) as any}
+        onSuccess={() => {
+          setSelectedPayments([]);
+          queryClient.invalidateQueries({ queryKey: ['payment-orders'] });
+        }}
+      />
 
       {/* Payment Settings Modal */}
       <PaymentSettings isOpen={showSettings} onClose={() => setShowSettings(false)} />

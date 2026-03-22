@@ -42,3 +42,9 @@ verify_jwt = false
 
 [functions.pin-webhook]
 verify_jwt = false
+
+[functions.myob-auth]
+verify_jwt = false
+
+[functions.myob-push-invoice]
+verify_jwt = false

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ActivityLog } from "./settings/ActivityLog";
 import { EmailSettingsDialog } from "./EmailSettingsDialog";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { MyobSettings } from "./settings/MyobSettings";
 export function Settings() {
   const { settings, loading, saving, saveSettings } = useBusinessSettings();
   const [notifications, setNotifications] = useState({
@@ -241,6 +242,9 @@ export function Settings() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* MYOB Integration */}
+      <MyobSettings />
 
       {/* Activity Log */}
       <ActivityLog />

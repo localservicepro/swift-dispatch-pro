@@ -59,7 +59,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: allOrders, error: ordersError } = await supabase
       .from("orders")
       .select(`
-        id, order_number, created_at, delivery_date, pickup_date,
+        id, order_number, myob_invoice_number, created_at, delivery_date, pickup_date,
         delivery_method, status, total_amount, payment_status, delivery_address
       `)
       .eq("customer_id", customerId)
@@ -183,7 +183,7 @@ function generateStatementHTML(data: any): string {
     const rows = groupOrders.map((order: any) => {
       const fulfillmentDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
       const dateStr = fulfillmentDate ? formatDateAU(fulfillmentDate) : formatDateAU(order.created_at);
-      const invoiceNo = (order.order_number || "").replace(/^ORD-/i, "");
+      const invoiceNo = order.myob_invoice_number || (order.order_number || "").replace(/^ORD-/i, "");
       const amount = Number(order.total_amount || 0);
       const isPaid = order.payment_status === "paid";
 
