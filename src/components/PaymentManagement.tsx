@@ -370,7 +370,6 @@ export function PaymentManagement() {
     }
   };
 
-  };
 
   const updatePaymentStatus = async (orderId: string, newStatus: string) => {
     try {
