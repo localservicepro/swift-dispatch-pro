@@ -823,6 +823,54 @@ export type Database = {
           },
         ]
       }
+      myob_settings: {
+        Row: {
+          access_token: string | null
+          client_id: string | null
+          client_secret: string | null
+          company_file_id: string | null
+          company_file_password: string | null
+          company_file_username: string | null
+          connection_status: string
+          created_at: string
+          default_account_number: string
+          id: string
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          client_id?: string | null
+          client_secret?: string | null
+          company_file_id?: string | null
+          company_file_password?: string | null
+          company_file_username?: string | null
+          connection_status?: string
+          created_at?: string
+          default_account_number?: string
+          id?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          client_id?: string | null
+          client_secret?: string | null
+          company_file_id?: string | null
+          company_file_password?: string | null
+          company_file_username?: string | null
+          connection_status?: string
+          created_at?: string
+          default_account_number?: string
+          id?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
@@ -1065,6 +1113,7 @@ export type Database = {
           id: string
           is_split_order: boolean | null
           master_order_id: string | null
+          myob_invoice_number: string | null
           order_notes: string | null
           order_number: string
           payment_date: string | null
@@ -1125,6 +1174,7 @@ export type Database = {
           id?: string
           is_split_order?: boolean | null
           master_order_id?: string | null
+          myob_invoice_number?: string | null
           order_notes?: string | null
           order_number: string
           payment_date?: string | null
@@ -1185,6 +1235,7 @@ export type Database = {
           id?: string
           is_split_order?: boolean | null
           master_order_id?: string | null
+          myob_invoice_number?: string | null
           order_notes?: string | null
           order_number?: string
           payment_date?: string | null
