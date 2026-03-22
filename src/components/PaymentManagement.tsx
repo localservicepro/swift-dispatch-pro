@@ -38,33 +38,14 @@ interface PaymentOrder {
 
 export function PaymentManagement() {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
-  const [sendingInvoices, setSendingInvoices] = useState<string[]>([]);
   const [generatingInvoices, setGeneratingInvoices] = useState<string[]>([]);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [showSettings, setShowSettings] = useState(false);
   const [showMyobDialog, setShowMyobDialog] = useState(false);
-  const [myobConnected, setMyobConnected] = useState(false);
   const {
     toast
   } = useToast();
   const queryClient = useQueryClient();
-
-  // Check MYOB connection status
-  useEffect(() => {
-    const checkMyob = async () => {
-      try {
-        const { data } = await supabase.functions.invoke("myob-auth", {
-          body: { action: "get-settings" },
-        });
-        if (data?.settings?.connection_status === "connected" || data?.settings?.connection_status === "configured") {
-          setMyobConnected(true);
-        }
-      } catch {
-        // MYOB not configured, that's fine
-      }
-    };
-    checkMyob();
-  }, []);
 
   // Set up real-time payment updates
   useRealTimePayments(update => {
@@ -303,103 +284,6 @@ export function PaymentManagement() {
     }
   };
 
-  const sendInvoice = async (orderId: string) => {
-    if (sendingInvoices.includes(orderId)) return;
-    setSendingInvoices(prev => [...prev, orderId]);
-    try {
-      const order = payments.find(p => p.id === orderId);
-      if (!order) throw new Error('Order not found');
-
-      // Parse products from the order
-      let orderItems = [];
-      if (Array.isArray(order.products)) {
-        orderItems = order.products.map(item => ({
-          name: item.name || item.product_name || 'Product',
-          quantity: item.quantity || 1,
-          price: item.price || item.unit_price || 0
-        }));
-      } else if (order.products && typeof order.products === 'object') {
-        orderItems = [{
-          name: order.products.name || 'Product',
-          quantity: order.products.quantity || 1,
-          price: order.products.price || order.total_amount
-        }];
-      } else {
-        orderItems = [{
-          name: 'Order Items',
-          quantity: 1,
-          price: order.subtotal || order.total_amount - (order.delivery_fee || 0)
-        }];
-      }
-      const {
-        error
-      } = await supabase.functions.invoke('send-emails', {
-        body: {
-          type: 'invoice',
-          data: {
-            customerName: getCustomerDisplayName(order),
-            customerEmail: order.customer_email || `${getCustomerDisplayName(order).toLowerCase().replace(' ', '.')}@example.com`,
-            orderNumber: order.order_number,
-            invoiceNumber: `INV-${order.order_number}`,
-            orderItems: orderItems,
-            subtotal: order.subtotal || calculateDisplayTotal(order) - (order.delivery_fee || 0),
-            deliveryFee: order.delivery_fee || 0,
-            totalAmount: calculateDisplayTotal(order),
-            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-            paymentStatus: order.payment_status
-          }
-        }
-      });
-      if (error) throw error;
-
-      // Update payment status to "invoiced" when simple invoice is sent successfully
-      await updatePaymentStatus(orderId, 'invoiced');
-      toast({
-        title: "Invoice Sent",
-        description: `Invoice for ${order.order_number} has been sent to ${getCustomerDisplayName(order)}`
-      });
-    } catch (error: any) {
-      console.error('Error sending invoice:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send invoice. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setSendingInvoices(prev => prev.filter(id => id !== orderId));
-    }
-  };
-
-  const sendBatchInvoices = async () => {
-    if (selectedPayments.length === 0) {
-      toast({
-        title: "No Selection",
-        description: "Please select orders to send batch invoices",
-        variant: "destructive"
-      });
-      return;
-    }
-    setSendingInvoices(prev => [...prev, ...selectedPayments]);
-    try {
-      const promises = selectedPayments.map(orderId => sendInvoice(orderId));
-      await Promise.all(promises);
-      toast({
-        title: "Batch Invoices Sent",
-        description: `${selectedPayments.length} invoices have been sent`
-      });
-      setSelectedPayments([]);
-    } catch (error: any) {
-      console.error('Error sending batch invoices:', error);
-      toast({
-        title: "Error",
-        description: "Some invoices failed to send. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setSendingInvoices(prev => prev.filter(id => !selectedPayments.includes(id)));
-    }
-  };
-
   const updatePaymentStatus = async (orderId: string, newStatus: string) => {
     try {
       const {
@@ -485,8 +369,7 @@ export function PaymentManagement() {
           </p>
         </div>
         <div className="flex gap-3 flex-wrap">
-          {myobConnected && (
-            <Button
+          <Button
               onClick={() => setShowMyobDialog(true)}
               variant="outline"
               disabled={selectedPayments.length === 0}
@@ -495,11 +378,6 @@ export function PaymentManagement() {
               <Send className="w-4 h-4" />
               Batch Invoice to MYOB ({selectedPayments.length})
             </Button>
-          )}
-          <Button onClick={sendBatchInvoices} variant="outline" disabled={selectedPayments.length === 0 || selectedPayments.some(id => sendingInvoices.includes(id))} className="flex items-center gap-2">
-            {selectedPayments.some(id => sendingInvoices.includes(id)) && <Loader2 className="w-4 h-4 animate-spin" />}
-            Batch Invoice ({selectedPayments.length})
-          </Button>
           <Button onClick={() => setShowSettings(true)} variant="outline" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
             Settings
