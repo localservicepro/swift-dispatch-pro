@@ -485,8 +485,7 @@ export function PaymentManagement() {
           </p>
         </div>
         <div className="flex gap-3 flex-wrap">
-          {myobConnected && (
-            <Button
+          <Button
               onClick={() => setShowMyobDialog(true)}
               variant="outline"
               disabled={selectedPayments.length === 0}
@@ -495,11 +494,6 @@ export function PaymentManagement() {
               <Send className="w-4 h-4" />
               Batch Invoice to MYOB ({selectedPayments.length})
             </Button>
-          )}
-          <Button onClick={sendBatchInvoices} variant="outline" disabled={selectedPayments.length === 0 || selectedPayments.some(id => sendingInvoices.includes(id))} className="flex items-center gap-2">
-            {selectedPayments.some(id => sendingInvoices.includes(id)) && <Loader2 className="w-4 h-4 animate-spin" />}
-            Batch Invoice ({selectedPayments.length})
-          </Button>
           <Button onClick={() => setShowSettings(true)} variant="outline" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
             Settings
