@@ -59,7 +59,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: allOrders, error: ordersError } = await supabase
       .from("orders")
       .select(`
-        id, order_number, created_at, delivery_date, pickup_date,
+        id, order_number, myob_invoice_number, created_at, delivery_date, pickup_date,
         delivery_method, status, total_amount, payment_status, delivery_address
       `)
       .eq("customer_id", customerId)
