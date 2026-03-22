@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Receipt, Bell, Settings, RefreshCw } from "lucide-react";
+import { Loader2, Receipt, Bell, Settings, RefreshCw, Send } from "lucide-react";
 import { useRealTimePayments } from "@/hooks/useRealTimePayments";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PaymentSearchFilters } from "@/components/payment/PaymentSearchFilters";
@@ -14,6 +14,7 @@ import { usePaymentFilters } from "@/hooks/usePaymentFilters";
 import { PurchaseOrderDisplay } from "@/components/order/PurchaseOrderDisplay";
 import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 import { ReceiptButton } from "@/components/ui/receipt-button";
+import { MyobBatchInvoiceDialog } from "@/components/payment/MyobBatchInvoiceDialog";
 
 interface PaymentOrder {
   id: string;
