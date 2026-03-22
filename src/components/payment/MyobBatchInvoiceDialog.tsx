@@ -201,7 +201,6 @@ export function MyobBatchInvoiceDialog({ open, onOpenChange, selectedOrders, onS
                 <TableRow>
                   <TableHead className="w-24">Date</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead className="w-24">Account</TableHead>
                   <TableHead className="w-28 text-right">Amount</TableHead>
                   <TableHead className="w-20">Tax</TableHead>
                   <TableHead className="w-12"></TableHead>
