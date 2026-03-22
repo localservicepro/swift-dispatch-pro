@@ -371,9 +371,9 @@ export function PaymentManagement() {
                       size="sm"
                       showLabel={true}
                     />
-                    <Button size="sm" variant="outline" onClick={() => generateAndSendInvoice(payment.id)} disabled={generatingInvoices.includes(payment.id)} className="flex items-center gap-2">
-                      {generatingInvoices.includes(payment.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
-                      {generatingInvoices.includes(payment.id) ? "Generating..." : "Generate Invoice"}
+                    <Button size="sm" variant="outline" onClick={() => setSingleMyobOrder(payment as any)} className="flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50">
+                      <Send className="w-4 h-4" />
+                      Send to MYOB
                     </Button>
                     
                     
