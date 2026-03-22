@@ -29,7 +29,6 @@ interface PaymentOrder {
 interface LineItem {
   orderNumber: string;
   description: string;
-  accountNumber: string;
   amount: number;
   date: string;
   taxCode: string;
