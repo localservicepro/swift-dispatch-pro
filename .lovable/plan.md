@@ -1,33 +1,26 @@
 
 
-## Plan: Remove Default Account Number from MYOB Settings
+## Plan: Replace "Generate Invoice" Button with "Send to MYOB"
+
+### Overview
+Replace the per-order "Generate Invoice" button with a "Send to MYOB" button that opens the same `MyobBatchInvoiceDialog` pre-loaded with just that single order — reusing the existing MYOB push logic.
 
 ### Changes
 
-**1. `src/components/settings/MyobSettings.tsx`**
-- Remove the `defaultAccount` state variable and its input field
-- Remove `defaultAccountNumber` from the `saveCredentials` payload
+**File: `src/components/PaymentManagement.tsx`**
 
-**2. `src/components/payment/PaymentSettings.tsx`**
-- No changes needed (doesn't reference default account)
+1. **Replace the "Generate Invoice" button** (line 520-523) with a "Send to MYOB" button that:
+   - Sets a temporary state for the single order to send
+   - Opens `MyobBatchInvoiceDialog` with just that one order
 
-**3. `supabase/functions/myob-auth/index.ts`**
-- Remove `defaultAccountNumber` from the save-credentials handler (stop writing it)
+2. **Add state** for single-order MYOB send: `singleMyobOrder` state to hold the order when clicking per-row button
 
-**4. `supabase/functions/myob-push-invoice/index.ts`**
-- Remove the default account lookup logic (lines ~167-178 that fetch account by `default_account_number`)
-- Instead, let MYOB use its own default account mapping, or skip the `Account` field on invoice lines so MYOB assigns automatically
+3. **Add second `MyobBatchInvoiceDialog`** instance (or reuse existing one by dynamically switching between batch-selected and single-order modes)
 
-**5. `src/components/payment/MyobBatchInvoiceDialog.tsx`**
-- Remove the "Account No." column from the editable line items if it references the default account
-- Or keep it but don't pre-fill from settings
+4. **Remove `generateAndSendInvoice` function** and related `generatingInvoices` state — no longer needed since all invoicing goes through MYOB dialog
 
-### Database
-- No migration needed — the `default_account_number` column can stay in `myob_settings` (unused, has a default value)
-
-### Files Modified
-1. `src/components/settings/MyobSettings.tsx`
-2. `supabase/functions/myob-auth/index.ts`
-3. `supabase/functions/myob-push-invoice/index.ts`
-4. `src/components/payment/MyobBatchInvoiceDialog.tsx` (if applicable)
+### Result
+- Single order: click "Send to MYOB" → opens preview dialog with 1 order → push to MYOB
+- Multiple orders: select checkboxes → "Batch Invoice to MYOB" → opens preview dialog → push to MYOB
+- Same MYOB flow for both, consistent experience
 
