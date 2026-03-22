@@ -89,7 +89,6 @@ export function MyobBatchInvoiceDialog({ open, onOpenChange, selectedOrders, onS
         orderId: order.id,
         orderNumber: order.order_number,
         description: formatOrderDescription(order),
-        accountNumber: "4-1010",
         amount: Number(order.total_amount || 0),
         date: order.delivery_date || new Date().toISOString().split("T")[0],
         taxCode: "GST",
