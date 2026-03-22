@@ -79,7 +79,6 @@ serve(async (req: Request) => {
             company_file_id: companyFileId,
             company_file_username: companyFileUsername,
             company_file_password: companyFilePassword,
-            default_account_number: defaultAccountNumber || "4-1010",
             connection_status: "configured",
           });
         }

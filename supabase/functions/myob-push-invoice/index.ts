@@ -208,10 +208,6 @@ serve(async (req: Request) => {
         Total: item.amount,
         TaxCode: taxUID ? { UID: taxUID } : undefined,
       };
-      // Use item-specific account or default
-      if (accountUID) {
-        line.Account = { UID: accountUID };
-      }
       return line;
     });
 

@@ -168,15 +168,6 @@ export function MyobSettings() {
               placeholder="Company File GUID"
             />
           </div>
-          <div>
-            <Label htmlFor="myob-default-account">Default Account Number</Label>
-            <Input
-              id="myob-default-account"
-              value={defaultAccount}
-              onChange={(e) => setDefaultAccount(e.target.value)}
-              placeholder="e.g. 4-1010"
-            />
-          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
