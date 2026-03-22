@@ -121,7 +121,6 @@ export function MyobBatchInvoiceDialog({ open, onOpenChange, selectedOrders, onS
           lineItems: lineItems.map((item) => ({
             orderNumber: item.orderNumber,
             description: item.description,
-            accountNumber: item.accountNumber,
             amount: item.amount,
             date: item.date,
             taxCode: item.taxCode,
