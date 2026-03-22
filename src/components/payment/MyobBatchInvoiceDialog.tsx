@@ -278,7 +278,7 @@ export function MyobBatchInvoiceDialog({ open, onOpenChange, selectedOrders, onS
                 ))}
                 {/* Total Row */}
                 <TableRow className="font-semibold bg-muted/50">
-                  <TableCell colSpan={3} className="text-right">Total (GST Inclusive)</TableCell>
+                  <TableCell colSpan={2} className="text-right">Total (GST Inclusive)</TableCell>
                   <TableCell className="text-right">${totalAmount.toFixed(2)}</TableCell>
                   <TableCell colSpan={2}></TableCell>
                 </TableRow>
