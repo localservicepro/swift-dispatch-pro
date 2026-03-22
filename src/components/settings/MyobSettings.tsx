@@ -41,7 +41,6 @@ export function MyobSettings() {
       if (error) throw error;
       if (data?.settings) {
         setSettings(data.settings);
-        setDefaultAccount(data.settings.default_account_number || "4-1010");
         setCompanyFileId(data.settings.company_file_id || "");
       }
     } catch (err: any) {
