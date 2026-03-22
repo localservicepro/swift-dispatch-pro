@@ -11,7 +11,6 @@ const MYOB_API_BASE = "https://api.myob.com/accountright";
 interface LineItem {
   orderNumber: string;
   description: string;
-  accountNumber: string;
   amount: number;
   date: string;
   taxCode: string;
@@ -199,21 +198,7 @@ serve(async (req: Request) => {
       }
     }
 
-    // Get account UID
-    const defaultAccount = myobSettings.default_account_number || "4-1010";
-    const accountRes = await fetch(
-      `${companyFileUrl}/GeneralLedger/Account?$filter=DisplayID eq '${defaultAccount}'`,
-      { headers }
-    );
-    let accountUID = "";
-    if (accountRes.ok) {
-      const accountData = await accountRes.json();
-      if (accountData.Items?.length > 0) {
-        accountUID = accountData.Items[0].UID;
-      }
-    }
-
-    // Build invoice lines
+    // Build invoice lines (no account specified — MYOB uses customer's default)
     const invoiceLines = lineItems.map((item) => {
       const taxUID = item.taxCode === "FRE" ? freTaxCodeUID : gstTaxCodeUID;
       const line: any = {
@@ -222,10 +207,6 @@ serve(async (req: Request) => {
         Total: item.amount,
         TaxCode: taxUID ? { UID: taxUID } : undefined,
       };
-      // Use item-specific account or default
-      if (accountUID) {
-        line.Account = { UID: accountUID };
-      }
       return line;
     });
 

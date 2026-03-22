@@ -29,7 +29,6 @@ interface PaymentOrder {
 interface LineItem {
   orderNumber: string;
   description: string;
-  accountNumber: string;
   amount: number;
   date: string;
   taxCode: string;
@@ -90,7 +89,6 @@ export function MyobBatchInvoiceDialog({ open, onOpenChange, selectedOrders, onS
         orderId: order.id,
         orderNumber: order.order_number,
         description: formatOrderDescription(order),
-        accountNumber: "4-1010",
         amount: Number(order.total_amount || 0),
         date: order.delivery_date || new Date().toISOString().split("T")[0],
         taxCode: "GST",
@@ -123,7 +121,6 @@ export function MyobBatchInvoiceDialog({ open, onOpenChange, selectedOrders, onS
           lineItems: lineItems.map((item) => ({
             orderNumber: item.orderNumber,
             description: item.description,
-            accountNumber: item.accountNumber,
             amount: item.amount,
             date: item.date,
             taxCode: item.taxCode,
@@ -204,7 +201,6 @@ export function MyobBatchInvoiceDialog({ open, onOpenChange, selectedOrders, onS
                 <TableRow>
                   <TableHead className="w-24">Date</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead className="w-24">Account</TableHead>
                   <TableHead className="w-28 text-right">Amount</TableHead>
                   <TableHead className="w-20">Tax</TableHead>
                   <TableHead className="w-12"></TableHead>
@@ -236,17 +232,6 @@ export function MyobBatchInvoiceDialog({ open, onOpenChange, selectedOrders, onS
                         />
                       ) : (
                         <span className="text-xs">{item.description}</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingIndex === idx ? (
-                        <Input
-                          value={item.accountNumber}
-                          onChange={(e) => updateLineItem(idx, "accountNumber", e.target.value)}
-                          className="h-8 text-xs w-20"
-                        />
-                      ) : (
-                        <span className="text-xs">{item.accountNumber}</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -293,7 +278,7 @@ export function MyobBatchInvoiceDialog({ open, onOpenChange, selectedOrders, onS
                 ))}
                 {/* Total Row */}
                 <TableRow className="font-semibold bg-muted/50">
-                  <TableCell colSpan={3} className="text-right">Total (GST Inclusive)</TableCell>
+                  <TableCell colSpan={2} className="text-right">Total (GST Inclusive)</TableCell>
                   <TableCell className="text-right">${totalAmount.toFixed(2)}</TableCell>
                   <TableCell colSpan={2}></TableCell>
                 </TableRow>

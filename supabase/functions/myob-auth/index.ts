@@ -58,7 +58,7 @@ serve(async (req: Request) => {
       }
 
       case "save-credentials": {
-        const { clientId, clientSecret, companyFileId, companyFileUsername, companyFilePassword, defaultAccountNumber } = body;
+        const { clientId, clientSecret, companyFileId, companyFileUsername, companyFilePassword } = body;
 
         // Check if settings exist
         const { data: existing } = await supabase.from("myob_settings").select("id").limit(1).single();
@@ -70,7 +70,6 @@ serve(async (req: Request) => {
             company_file_id: companyFileId,
             company_file_username: companyFileUsername,
             company_file_password: companyFilePassword,
-            default_account_number: defaultAccountNumber || "4-1010",
             connection_status: "configured",
           }).eq("id", existing.id);
         } else {
@@ -80,7 +79,6 @@ serve(async (req: Request) => {
             company_file_id: companyFileId,
             company_file_username: companyFileUsername,
             company_file_password: companyFilePassword,
-            default_account_number: defaultAccountNumber || "4-1010",
             connection_status: "configured",
           });
         }

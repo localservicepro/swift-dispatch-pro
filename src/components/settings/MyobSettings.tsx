@@ -24,7 +24,6 @@ export function MyobSettings() {
   const [companyFileId, setCompanyFileId] = useState("");
   const [companyFileUsername, setCompanyFileUsername] = useState("");
   const [companyFilePassword, setCompanyFilePassword] = useState("");
-  const [defaultAccount, setDefaultAccount] = useState("4-1010");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -42,7 +41,6 @@ export function MyobSettings() {
       if (error) throw error;
       if (data?.settings) {
         setSettings(data.settings);
-        setDefaultAccount(data.settings.default_account_number || "4-1010");
         setCompanyFileId(data.settings.company_file_id || "");
       }
     } catch (err: any) {
@@ -63,7 +61,6 @@ export function MyobSettings() {
           companyFileId,
           companyFileUsername,
           companyFilePassword,
-          defaultAccountNumber: defaultAccount,
         },
       });
       if (error) throw error;
@@ -169,15 +166,6 @@ export function MyobSettings() {
               value={companyFileId}
               onChange={(e) => setCompanyFileId(e.target.value)}
               placeholder="Company File GUID"
-            />
-          </div>
-          <div>
-            <Label htmlFor="myob-default-account">Default Account Number</Label>
-            <Input
-              id="myob-default-account"
-              value={defaultAccount}
-              onChange={(e) => setDefaultAccount(e.target.value)}
-              placeholder="e.g. 4-1010"
             />
           </div>
         </div>
