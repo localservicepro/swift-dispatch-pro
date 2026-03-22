@@ -643,10 +643,7 @@ export function PaymentManagement() {
                       {generatingInvoices.includes(payment.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
                       {generatingInvoices.includes(payment.id) ? "Generating..." : "Generate Invoice"}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => sendInvoice(payment.id)} disabled={sendingInvoices.includes(payment.id)} className="flex items-center gap-2">
-                      {sendingInvoices.includes(payment.id) && <Loader2 className="w-4 h-4 animate-spin" />}
-                      {sendingInvoices.includes(payment.id) ? "Sending..." : "Send Simple Invoice"}
-                    </Button>
+                    
                     
                     <Select onValueChange={value => updatePaymentStatus(payment.id, value)}>
                       <SelectTrigger className="w-32">
