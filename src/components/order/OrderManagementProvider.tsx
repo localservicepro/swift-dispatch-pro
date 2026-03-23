@@ -142,22 +142,41 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
         queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] });
 
         if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
-          const oldStatus = payload.old.status;
-          const newStatus = payload.new.status;
+          // Detect soft delete (deleted_at changed from null to a value)
+          if (payload.new.deleted_at && !payload.old.deleted_at) {
+            try {
+              const { data: sheetsSettings } = await supabase
+                .from('google_sheets_settings')
+                .select('sync_enabled, spreadsheet_id')
+                .limit(1)
+                .single();
+              
+              if (sheetsSettings?.sync_enabled && sheetsSettings?.spreadsheet_id) {
+                supabase.functions.invoke('google-sheets-sync', {
+                  body: { action: 'delete-single', order_number: payload.new.order_number },
+                }).catch(err => console.error('Google Sheets delete-sync error:', err));
+              }
+            } catch (err) {
+              console.error('Failed to sync deletion to Google Sheets:', err);
+            }
+          } else {
+            const oldStatus = payload.old.status;
+            const newStatus = payload.new.status;
 
-          if (oldStatus !== newStatus) {
-            toast({
-              title: "Order Status Updated",
-              description: `Order ${payload.new.order_number} changed from ${oldStatus} to ${newStatus}`
-            });
+            if (oldStatus !== newStatus) {
+              toast({
+                title: "Order Status Updated",
+                description: `Order ${payload.new.order_number} changed from ${oldStatus} to ${newStatus}`
+              });
 
-            // Only send email notification when order status changes to loading
-            if (newStatus === 'loading') {
-              try {
-                const driverName = payload.new.driver_name;
-                await emailService.sendOrderStatusUpdate(payload.new.id, oldStatus, newStatus, driverName);
-              } catch (error) {
-                console.error('Failed to send status update email:', error);
+              // Only send email notification when order status changes to loading
+              if (newStatus === 'loading') {
+                try {
+                  const driverName = payload.new.driver_name;
+                  await emailService.sendOrderStatusUpdate(payload.new.id, oldStatus, newStatus, driverName);
+                } catch (error) {
+                  console.error('Failed to send status update email:', error);
+                }
               }
             }
           }
@@ -170,8 +189,8 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
           });
         }
 
-        // Auto-sync to Google Sheets if enabled
-        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        // Auto-sync to Google Sheets if enabled (for non-delete updates and inserts)
+        if ((payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && !payload.new.deleted_at))) {
           try {
             const { data: sheetsSettings } = await supabase
               .from('google_sheets_settings')

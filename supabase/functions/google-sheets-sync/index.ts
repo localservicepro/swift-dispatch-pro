@@ -103,7 +103,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, orders, order_id } = await req.json();
+    const { action, orders, order_id, order_number } = await req.json();
 
     // Get settings
     const { data: settings, error: settingsError } = await supabase
@@ -262,6 +262,57 @@ serve(async (req) => {
         .eq('id', settings.id);
 
       return new Response(JSON.stringify({ success: true, synced: ordersList.length }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'delete-single') {
+      if (!order_number) throw new Error('order_number is required for delete-single');
+      
+      if (!order_number) throw new Error('order_number is required for delete-single');
+
+      // Get sheet ID for batchUpdate
+      const sheetMetaRes = await fetch(`${SHEETS_API}/${spreadsheetId}?fields=sheets.properties`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const sheetMeta = await sheetMetaRes.json();
+      const targetSheet = sheetMeta.sheets?.find((s: any) => s.properties?.title === sheetName);
+      const sheetId = targetSheet?.properties?.sheetId ?? 0;
+
+      // Find the row with this order number
+      const allRes = await fetch(
+        `${SHEETS_API}/${spreadsheetId}/values/${sheetName}!A:A`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const allData = await allRes.json();
+      const rows = allData.values || [];
+      const rowIndex = rows.findIndex((r: string[]) => r[0] === order_number);
+
+      if (rowIndex <= 0) {
+        return new Response(JSON.stringify({ success: true, message: 'Row not found, nothing to delete' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Delete the row using batchUpdate
+      await fetch(`${SHEETS_API}/${spreadsheetId}:batchUpdate`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [{
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: 'ROWS',
+                startIndex: rowIndex,
+                endIndex: rowIndex + 1,
+              },
+            },
+          }],
+        }),
+      });
+
+      return new Response(JSON.stringify({ success: true, deleted_order: order_number }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
