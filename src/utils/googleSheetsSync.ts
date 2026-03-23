@@ -2,31 +2,17 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Shared Google Sheets bulk sync helper.
- * Fetches all non-deleted orders from DB and invokes the same
- * 'sync-bulk' action that the manual "Sync to Sheets" button uses.
+ * Invokes the edge function's 'sync-bulk' action which fetches orders
+ * server-side with proper customer joins (for company_name).
  *
  * @param silent - If true, errors are only logged (no throw). Default: true.
- * @returns { success: boolean, synced?: number, error?: string }
  */
 export async function syncAllOrdersToSheets(silent = true): Promise<{ success: boolean; synced?: number; error?: string }> {
   try {
-    // Fetch all non-deleted orders (same query the button would use)
-    const { data: orders, error: fetchErr } = await supabase
-      .from('orders')
-      .select('*')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
-
-    if (fetchErr) {
-      console.error('[Google Sheets] Failed to fetch orders for bulk sync:', fetchErr);
-      if (!silent) throw fetchErr;
-      return { success: false, error: fetchErr.message };
-    }
-
-    console.log(`[Google Sheets] Bulk syncing ${orders?.length ?? 0} orders...`);
+    console.log('[Google Sheets] Triggering bulk sync (server-side fetch)...');
 
     const { data, error } = await supabase.functions.invoke('google-sheets-sync', {
-      body: { action: 'sync-bulk', orders },
+      body: { action: 'sync-bulk' },
     });
 
     if (error) {
