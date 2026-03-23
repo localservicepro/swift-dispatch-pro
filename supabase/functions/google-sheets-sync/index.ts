@@ -147,12 +147,29 @@ serve(async (req) => {
     if (action === 'sync-single') {
       let orderData = orders?.[0];
       if (!orderData && order_id) {
-        const { data: fetchedOrder } = await supabase
-          .from('orders')
-          .select('*, customers(company_name, business_name)')
-          .eq('id', order_id)
-          .is('deleted_at', null)
-          .single();
+        // Wait 1s for DB transaction to commit (real-time fires early)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const fetchOrder = async () => {
+          const { data, error } = await supabase
+            .from('orders')
+            .select('*, customers(company_name, business_name)')
+            .eq('id', order_id)
+            .is('deleted_at', null)
+            .maybeSingle();
+          if (error) console.error('Order fetch error:', error);
+          return data;
+        };
+
+        let fetchedOrder = await fetchOrder();
+        
+        // Retry once after another 1s if not found
+        if (!fetchedOrder) {
+          console.log('Order not found on first attempt, retrying in 1s...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          fetchedOrder = await fetchOrder();
+        }
+
         if (fetchedOrder) {
           orderData = {
             ...fetchedOrder,
@@ -162,7 +179,10 @@ serve(async (req) => {
         }
       }
 
-      if (!orderData) throw new Error('No order data provided');
+      if (!orderData) {
+        console.error('No order data found for order_id:', order_id);
+        throw new Error('No order data provided');
+      }
 
       // Check if header exists
       const headerRes = await fetch(
