@@ -1,0 +1,1 @@
+ALTER TABLE public.google_sheets_settings ADD COLUMN IF NOT EXISTS active_monthly_tab text;

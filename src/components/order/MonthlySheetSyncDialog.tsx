@@ -20,6 +20,7 @@ import {
 import { Loader2, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { syncMonthlyOrdersToSheets } from "@/utils/googleSheetsSync";
+import { supabase } from "@/integrations/supabase/client";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -58,9 +59,16 @@ export function MonthlySheetSyncDialog({ open, onOpenChange }: MonthlySheetSyncD
         tabName.trim(),
         false
       );
+
+      // Save the tab name as the active monthly tab for auto-sync
+      await supabase
+        .from('google_sheets_settings')
+        .update({ active_monthly_tab: tabName.trim() } as any)
+        .not('id', 'is', null);
+
       toast({
         title: "Monthly Sync Complete",
-        description: `${result.synced} orders synced to "${tabName}" tab`,
+        description: `${result.synced} orders synced to "${tabName}" tab. New orders will auto-sync to this tab.`,
       });
       onOpenChange(false);
     } catch (error: any) {
@@ -82,7 +90,7 @@ export function MonthlySheetSyncDialog({ open, onOpenChange }: MonthlySheetSyncD
             Monthly Sheets Sync
           </DialogTitle>
           <DialogDescription>
-            Sync orders for a specific month to a separate sheet tab.
+            Sync orders for a specific month to a separate sheet tab. New orders will auto-sync to this tab.
           </DialogDescription>
         </DialogHeader>
 
@@ -120,7 +128,7 @@ export function MonthlySheetSyncDialog({ open, onOpenChange }: MonthlySheetSyncD
             <Label>Sheet Tab Name</Label>
             <Input value={tabName} onChange={(e) => setTabName(e.target.value)} placeholder="e.g. March 2026" />
             <p className="text-xs text-muted-foreground">
-              This tab will be created in your spreadsheet if it doesn't exist.
+              New orders will automatically sync to this tab after syncing.
             </p>
           </div>
         </div>

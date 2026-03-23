@@ -165,10 +165,19 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         });
       }
 
-      // Auto-sync all orders to Google Sheets using the same bulk path as the manual button
-      syncAllOrdersToSheets().then(r => {
-        if (r.success) console.log(`[Google Sheets] Auto bulk sync after order creation – ${r.synced} orders`);
-      });
+      // Auto-sync new order to the active monthly tab in Google Sheets
+      if (result.orderId) {
+        syncSingleOrderToSheets(result.orderId).then(r => {
+          if (r.success) console.log(`[Google Sheets] Auto sync-single after order creation`);
+        });
+      } else if (result.orderIds && result.orderIds.length > 0) {
+        // Split orders: sync each one
+        result.orderIds.forEach((id: string) => {
+          syncSingleOrderToSheets(id).then(r => {
+            if (r.success) console.log(`[Google Sheets] Auto sync-single for split order ${id}`);
+          });
+        });
+      }
 
       toast({
         title: "Success!",
