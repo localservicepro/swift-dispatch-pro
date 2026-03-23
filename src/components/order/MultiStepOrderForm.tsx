@@ -164,6 +164,20 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         });
       }
 
+      if (result.type === "single" && result.orderId) {
+        supabase.functions.invoke("google-sheets-sync", {
+          body: { action: "sync-single", order_id: result.orderId },
+        }).catch((err) => console.error("Google Sheets form fallback sync error:", err));
+      }
+
+      if (result.type === "split" && Array.isArray(result.orders)) {
+        result.orders.forEach((createdOrder: any) => {
+          supabase.functions.invoke("google-sheets-sync", {
+            body: { action: "sync-single", order_id: createdOrder.id },
+          }).catch((err) => console.error("Google Sheets form fallback sync error:", err));
+        });
+      }
+
       toast({
         title: "Success!",
         description: `Order ${result.orderNumber} created successfully`,
