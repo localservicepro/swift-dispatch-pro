@@ -774,6 +774,9 @@ export type Database = {
         Row: {
           connection_status: string
           created_at: string
+          google_access_token: string | null
+          google_refresh_token: string | null
+          google_token_expires_at: string | null
           id: string
           last_synced_at: string | null
           service_account_email: string | null
@@ -785,6 +788,9 @@ export type Database = {
         Insert: {
           connection_status?: string
           created_at?: string
+          google_access_token?: string | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
           id?: string
           last_synced_at?: string | null
           service_account_email?: string | null
@@ -796,6 +802,9 @@ export type Database = {
         Update: {
           connection_status?: string
           created_at?: string
+          google_access_token?: string | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
           id?: string
           last_synced_at?: string | null
           service_account_email?: string | null
