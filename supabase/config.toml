@@ -51,3 +51,6 @@ verify_jwt = false
 
 [functions.google-sheets-sync]
 verify_jwt = false
+
+[functions.google-sheets-auth]
+verify_jwt = false

@@ -6,65 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Google Sheets API helpers
-async function getAccessToken(serviceAccountKey: any): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  const header = { alg: "RS256", typ: "JWT" };
-  const claim = {
-    iss: serviceAccountKey.client_email,
-    scope: "https://www.googleapis.com/auth/spreadsheets",
-    aud: "https://oauth2.googleapis.com/token",
-    exp: now + 3600,
-    iat: now,
-  };
-
-  const encoder = new TextEncoder();
-  const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const claimB64 = btoa(JSON.stringify(claim)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const unsignedToken = `${headerB64}.${claimB64}`;
-
-  // Import the private key
-  const pemContent = serviceAccountKey.private_key
-    .replace(/-----BEGIN PRIVATE KEY-----/, '')
-    .replace(/-----END PRIVATE KEY-----/, '')
-    .replace(/\n/g, '');
-  const binaryKey = Uint8Array.from(atob(pemContent), c => c.charCodeAt(0));
-
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    binaryKey,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    key,
-    encoder.encode(unsignedToken)
-  );
-
-  const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-
-  const jwt = `${unsignedToken}.${signatureB64}`;
-
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
-  });
-
-  if (!tokenResponse.ok) {
-    const err = await tokenResponse.text();
-    throw new Error(`Failed to get access token: ${err}`);
-  }
-
-  const tokenData = await tokenResponse.json();
-  return tokenData.access_token;
-}
-
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
+const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
 const HEADER_ROW = [
   "Order #", "PO", "Date", "Customer", "Company", "Phone", "Address",
@@ -100,19 +43,62 @@ function orderToRow(order: any): string[] {
   ];
 }
 
+async function getValidAccessToken(supabase: any, settings: any): Promise<string> {
+  const now = new Date();
+  const expiresAt = settings.google_token_expires_at ? new Date(settings.google_token_expires_at) : null;
+
+  // If token is still valid (with 5 min buffer), use it
+  if (settings.google_access_token && expiresAt && expiresAt > new Date(now.getTime() + 5 * 60 * 1000)) {
+    return settings.google_access_token;
+  }
+
+  // Token expired or about to expire — refresh it
+  if (!settings.google_refresh_token) {
+    throw new Error('Google account not connected. Please connect your Google account in Settings.');
+  }
+
+  const clientId = Deno.env.get('GOOGLE_SHEETS_CLIENT_ID');
+  const clientSecret = Deno.env.get('GOOGLE_SHEETS_CLIENT_SECRET');
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Google OAuth credentials not configured');
+  }
+
+  const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: settings.google_refresh_token,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  const tokenData = await tokenRes.json();
+  if (!tokenRes.ok || !tokenData.access_token) {
+    throw new Error('Failed to refresh Google access token. Please reconnect your Google account.');
+  }
+
+  const newExpiresAt = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000).toISOString();
+
+  await supabase
+    .from('google_sheets_settings')
+    .update({
+      google_access_token: tokenData.access_token,
+      google_token_expires_at: newExpiresAt,
+    })
+    .eq('id', settings.id);
+
+  return tokenData.access_token;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const serviceAccountKeyRaw = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
-    if (!serviceAccountKeyRaw) {
-      throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY secret is not configured');
-    }
-
-    const serviceAccountKey = JSON.parse(serviceAccountKeyRaw);
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -134,12 +120,11 @@ serve(async (req) => {
       throw new Error('Spreadsheet ID not configured');
     }
 
-    const accessToken = await getAccessToken(serviceAccountKey);
+    const accessToken = await getValidAccessToken(supabase, settings);
     const spreadsheetId = settings.spreadsheet_id;
     const sheetName = settings.sheet_name || 'Orders';
 
     if (action === 'test-connection') {
-      // Try to read the sheet
       const res = await fetch(`${SHEETS_API}/${spreadsheetId}?fields=properties.title`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -151,7 +136,7 @@ serve(async (req) => {
 
       await supabase
         .from('google_sheets_settings')
-        .update({ connection_status: 'connected', service_account_email: serviceAccountKey.client_email })
+        .update({ connection_status: 'connected' })
         .eq('id', settings.id);
 
       return new Response(JSON.stringify({ success: true, title: data.properties?.title }), {
@@ -160,7 +145,6 @@ serve(async (req) => {
     }
 
     if (action === 'sync-single') {
-      // Fetch the order with customer info
       let orderData = orders?.[0];
       if (!orderData && order_id) {
         const { data: fetchedOrder } = await supabase
@@ -178,9 +162,7 @@ serve(async (req) => {
         }
       }
 
-      if (!orderData) {
-        throw new Error('No order data provided');
-      }
+      if (!orderData) throw new Error('No order data provided');
 
       // Check if header exists
       const headerRes = await fetch(
@@ -190,7 +172,6 @@ serve(async (req) => {
       const headerData = await headerRes.json();
 
       if (!headerData.values || headerData.values.length === 0) {
-        // Write header
         await fetch(`${SHEETS_API}/${spreadsheetId}/values/${sheetName}!A1:S1?valueInputOption=RAW`, {
           method: 'PUT',
           headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -210,7 +191,6 @@ serve(async (req) => {
       const row = orderToRow(orderData);
 
       if (existingRowIndex > 0) {
-        // Update existing row
         const rowNum = existingRowIndex + 1;
         await fetch(
           `${SHEETS_API}/${spreadsheetId}/values/${sheetName}!A${rowNum}:S${rowNum}?valueInputOption=RAW`,
@@ -221,7 +201,6 @@ serve(async (req) => {
           }
         );
       } else {
-        // Append new row
         await fetch(
           `${SHEETS_API}/${spreadsheetId}/values/${sheetName}!A:S:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
           {
@@ -232,7 +211,6 @@ serve(async (req) => {
         );
       }
 
-      // Update last synced
       await supabase
         .from('google_sheets_settings')
         .update({ last_synced_at: new Date().toISOString() })
@@ -259,10 +237,8 @@ serve(async (req) => {
         }));
       }
 
-      // Clear sheet and write header + all data
       const allRows = [HEADER_ROW, ...ordersList.map(orderToRow)];
 
-      // Clear existing data
       await fetch(
         `${SHEETS_API}/${spreadsheetId}/values/${sheetName}!A:S:clear`,
         {
@@ -271,7 +247,6 @@ serve(async (req) => {
         }
       );
 
-      // Write all data
       await fetch(
         `${SHEETS_API}/${spreadsheetId}/values/${sheetName}!A1?valueInputOption=RAW`,
         {
