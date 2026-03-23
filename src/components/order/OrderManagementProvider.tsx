@@ -190,26 +190,8 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
           });
         }
 
-        // Auto-sync to Google Sheets if enabled (for non-delete updates and inserts)
-        if ((payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && !payload.new.deleted_at))) {
-          try {
-            const { data: sheetsSettings, error: sheetsErr2 } = await supabase
-              .from('google_sheets_settings')
-              .select('sync_enabled, spreadsheet_id')
-              .limit(1)
-              .maybeSingle();
-            if (sheetsErr2) console.error('Sheets settings error (sync):', sheetsErr2);
-            console.log('Google Sheets auto-sync check:', { sheetsSettings, eventType: payload.eventType, orderId: payload.new.id });
-            
-            if (sheetsSettings?.sync_enabled && sheetsSettings?.spreadsheet_id) {
-              supabase.functions.invoke('google-sheets-sync', {
-                body: { action: 'sync-single', order_id: payload.new.id },
-              }).catch(err => console.error('Google Sheets auto-sync error:', err));
-            }
-          } catch (err) {
-            console.error('Failed to check Google Sheets settings:', err);
-          }
-        }
+        // Real-time auto-sync for INSERT/UPDATE is now handled by the order creation flow
+        // using syncAllOrdersToSheets(). Keeping real-time only for delete sync above.
       })
       .subscribe();
 

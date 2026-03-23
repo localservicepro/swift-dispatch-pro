@@ -2,9 +2,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DeletedOrdersDialog } from "./DeletedOrdersDialog";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { FileSpreadsheet, Loader2 } from "lucide-react";
+import { syncAllOrdersToSheets } from "@/utils/googleSheetsSync";
 
 interface OrderManagementHeaderProps {
   onCreateOrder: () => void;
@@ -18,12 +18,8 @@ export function OrderManagementHeader({ onCreateOrder, filteredOrders }: OrderMa
   const handleSyncToSheets = async () => {
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('google-sheets-sync', {
-        body: { action: 'sync-bulk', orders: filteredOrders },
-      });
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Sync failed');
-      toast({ title: "Synced to Google Sheets", description: `${data.synced} orders synced successfully` });
+      const result = await syncAllOrdersToSheets(false);
+      toast({ title: "Synced to Google Sheets", description: `${result.synced} orders synced successfully` });
     } catch (error: any) {
       toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
     } finally {
