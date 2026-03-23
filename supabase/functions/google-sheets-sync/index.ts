@@ -214,14 +214,26 @@ serve(async (req) => {
         `${SHEETS_API}/${spreadsheetId}/values/${encodedTab}!A1:S1`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
+      if (!headerRes.ok) {
+        const errText = await headerRes.text();
+        console.error(`[sync-single] Header check failed (${headerRes.status}):`, errText);
+        throw new Error(`Header check failed: ${errText}`);
+      }
       const headerData = await headerRes.json();
+      console.log(`[sync-single] Header check OK, has values: ${!!(headerData.values?.length)}`);
 
       if (!headerData.values || headerData.values.length === 0) {
-        await fetch(`${SHEETS_API}/${spreadsheetId}/values/${encodedTab}!A1:S1?valueInputOption=RAW`, {
+        const headerWriteRes = await fetch(`${SHEETS_API}/${spreadsheetId}/values/${encodedTab}!A1:S1?valueInputOption=RAW`, {
           method: 'PUT',
           headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ values: [HEADER_ROW] }),
         });
+        if (!headerWriteRes.ok) {
+          const errText = await headerWriteRes.text();
+          console.error(`[sync-single] Header write failed (${headerWriteRes.status}):`, errText);
+          throw new Error(`Header write failed: ${errText}`);
+        }
+        console.log('[sync-single] Header row written');
       }
 
       // Find existing row by order number
@@ -229,15 +241,21 @@ serve(async (req) => {
         `${SHEETS_API}/${spreadsheetId}/values/${encodedTab}!A:A`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
+      if (!allRes.ok) {
+        const errText = await allRes.text();
+        console.error(`[sync-single] Column A fetch failed (${allRes.status}):`, errText);
+        throw new Error(`Column A fetch failed: ${errText}`);
+      }
       const allData = await allRes.json();
       const rows = allData.values || [];
       const existingRowIndex = rows.findIndex((r: string[]) => r[0] === orderData.order_number);
+      console.log(`[sync-single] Order ${orderData.order_number} existing row index: ${existingRowIndex}, total rows: ${rows.length}`);
 
       const row = orderToRow(orderData);
 
       if (existingRowIndex > 0) {
         const rowNum = existingRowIndex + 1;
-        await fetch(
+        const updateRes = await fetch(
           `${SHEETS_API}/${spreadsheetId}/values/${encodedTab}!A${rowNum}:S${rowNum}?valueInputOption=RAW`,
           {
             method: 'PUT',
@@ -245,8 +263,14 @@ serve(async (req) => {
             body: JSON.stringify({ values: [row] }),
           }
         );
+        if (!updateRes.ok) {
+          const errText = await updateRes.text();
+          console.error(`[sync-single] Row update failed (${updateRes.status}):`, errText);
+          throw new Error(`Row update failed: ${errText}`);
+        }
+        console.log(`[sync-single] Updated existing row ${rowNum}`);
       } else {
-        await fetch(
+        const appendRes = await fetch(
           `${SHEETS_API}/${spreadsheetId}/values/${encodedTab}!A:S:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
           {
             method: 'POST',
@@ -254,7 +278,15 @@ serve(async (req) => {
             body: JSON.stringify({ values: [row] }),
           }
         );
+        if (!appendRes.ok) {
+          const errText = await appendRes.text();
+          console.error(`[sync-single] Row append failed (${appendRes.status}):`, errText);
+          throw new Error(`Row append failed: ${errText}`);
+        }
+        console.log(`[sync-single] Appended new row`);
       }
+
+      console.log(`[sync-single] Successfully synced order ${orderData.order_number} to tab "${targetSheet}"`);
 
       await supabase
         .from('google_sheets_settings')
