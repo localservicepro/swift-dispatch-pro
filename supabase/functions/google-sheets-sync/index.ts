@@ -267,8 +267,7 @@ serve(async (req) => {
     }
 
     if (action === 'delete-single') {
-      const { order_number } = await req.json().catch(() => ({}));
-      const orderNum = order_number || (await req.json()).order_number;
+      if (!order_number) throw new Error('order_number is required for delete-single');
       
       if (!order_number) throw new Error('order_number is required for delete-single');
 
