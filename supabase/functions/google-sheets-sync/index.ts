@@ -184,15 +184,40 @@ serve(async (req) => {
         throw new Error('No order data provided');
       }
 
+      // Use active_monthly_tab if set, otherwise fall back to default sheet
+      const targetSheet = settings.active_monthly_tab || sheetName;
+      console.log(`[sync-single] Targeting sheet tab: "${targetSheet}"`);
+
+      // Ensure the target tab exists (if it's not the default)
+      if (targetSheet !== sheetName) {
+        const sheetMetaRes2 = await fetch(`${SHEETS_API}/${spreadsheetId}?fields=sheets.properties`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const sheetMeta2 = await sheetMetaRes2.json();
+        const tabExists2 = sheetMeta2.sheets?.some((s: any) => s.properties?.title === targetSheet);
+
+        if (!tabExists2) {
+          await fetch(`${SHEETS_API}/${spreadsheetId}:batchUpdate`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              requests: [{ addSheet: { properties: { title: targetSheet } } }],
+            }),
+          });
+        }
+      }
+
+      const encodedTab = encodeURIComponent(targetSheet);
+
       // Check if header exists
       const headerRes = await fetch(
-        `${SHEETS_API}/${spreadsheetId}/values/${sheetName}!A1:S1`,
+        `${SHEETS_API}/${spreadsheetId}/values/${encodedTab}!A1:S1`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const headerData = await headerRes.json();
 
       if (!headerData.values || headerData.values.length === 0) {
-        await fetch(`${SHEETS_API}/${spreadsheetId}/values/${sheetName}!A1:S1?valueInputOption=RAW`, {
+        await fetch(`${SHEETS_API}/${spreadsheetId}/values/${encodedTab}!A1:S1?valueInputOption=RAW`, {
           method: 'PUT',
           headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ values: [HEADER_ROW] }),
@@ -201,7 +226,7 @@ serve(async (req) => {
 
       // Find existing row by order number
       const allRes = await fetch(
-        `${SHEETS_API}/${spreadsheetId}/values/${sheetName}!A:A`,
+        `${SHEETS_API}/${spreadsheetId}/values/${encodedTab}!A:A`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const allData = await allRes.json();
@@ -213,7 +238,7 @@ serve(async (req) => {
       if (existingRowIndex > 0) {
         const rowNum = existingRowIndex + 1;
         await fetch(
-          `${SHEETS_API}/${spreadsheetId}/values/${sheetName}!A${rowNum}:S${rowNum}?valueInputOption=RAW`,
+          `${SHEETS_API}/${spreadsheetId}/values/${encodedTab}!A${rowNum}:S${rowNum}?valueInputOption=RAW`,
           {
             method: 'PUT',
             headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -222,7 +247,7 @@ serve(async (req) => {
         );
       } else {
         await fetch(
-          `${SHEETS_API}/${spreadsheetId}/values/${sheetName}!A:S:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+          `${SHEETS_API}/${spreadsheetId}/values/${encodedTab}!A:S:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
           {
             method: 'POST',
             headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },

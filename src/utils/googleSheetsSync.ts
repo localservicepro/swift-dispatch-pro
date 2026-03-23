@@ -1,32 +1,26 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Shared Google Sheets bulk sync helper.
- * Invokes the edge function's 'sync-bulk' action which fetches orders
- * server-side with proper customer joins (for company_name).
+ * Sync a single order to the active monthly tab in Google Sheets.
  */
-export async function syncAllOrdersToSheets(silent = true): Promise<{ success: boolean; synced?: number; error?: string }> {
+export async function syncSingleOrderToSheets(orderId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log('[Google Sheets] Triggering bulk sync (server-side fetch)...');
+    console.log(`[Google Sheets] Syncing single order ${orderId} to active monthly tab...`);
     const { data, error } = await supabase.functions.invoke('google-sheets-sync', {
-      body: { action: 'sync-bulk' },
+      body: { action: 'sync-single', order_id: orderId },
     });
     if (error) {
-      console.error('[Google Sheets] Bulk sync edge-function error:', error);
-      if (!silent) throw error;
+      console.error('[Google Sheets] sync-single error:', error);
       return { success: false, error: error.message };
     }
     if (!data?.success) {
-      const msg = data?.error || 'Sync failed';
-      console.error('[Google Sheets] Bulk sync returned failure:', msg);
-      if (!silent) throw new Error(msg);
-      return { success: false, error: msg };
+      console.error('[Google Sheets] sync-single failed:', data?.error);
+      return { success: false, error: data?.error || 'Sync failed' };
     }
-    console.log(`[Google Sheets] Bulk sync complete – ${data.synced} orders synced`);
-    return { success: true, synced: data.synced };
+    console.log(`[Google Sheets] Single order synced successfully`);
+    return { success: true };
   } catch (err: any) {
-    console.error('[Google Sheets] Unexpected bulk sync error:', err);
-    if (!silent) throw err;
+    console.error('[Google Sheets] Unexpected sync-single error:', err);
     return { success: false, error: err.message };
   }
 }

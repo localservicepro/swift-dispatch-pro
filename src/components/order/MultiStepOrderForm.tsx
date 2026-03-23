@@ -16,7 +16,7 @@ import { ProgressIndicator } from "./ProgressIndicator";
 import { OrderCustomerHeader } from "./OrderCustomerHeader";
 import { createSingleOrder, createSplitOrder } from "./services/orderCreationService";
 import { useOrderFormState } from "./hooks/useOrderFormState";
-import { syncAllOrdersToSheets } from "@/utils/googleSheetsSync";
+import { syncSingleOrderToSheets } from "@/utils/googleSheetsSync";
 
 interface MultiStepOrderFormProps {
   onOrderCreated?: () => void;
@@ -165,10 +165,19 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         });
       }
 
-      // Auto-sync all orders to Google Sheets using the same bulk path as the manual button
-      syncAllOrdersToSheets().then(r => {
-        if (r.success) console.log(`[Google Sheets] Auto bulk sync after order creation – ${r.synced} orders`);
-      });
+      // Auto-sync new order to the active monthly tab in Google Sheets
+      if (result.orderId) {
+        syncSingleOrderToSheets(result.orderId).then(r => {
+          if (r.success) console.log(`[Google Sheets] Auto sync-single after order creation`);
+        });
+      } else if (result.orders && result.orders.length > 0) {
+        // Split orders: sync each one
+        result.orders.forEach((order: any) => {
+          syncSingleOrderToSheets(order.id).then(r => {
+            if (r.success) console.log(`[Google Sheets] Auto sync-single for split order ${order.id}`);
+          });
+        });
+      }
 
       toast({
         title: "Success!",

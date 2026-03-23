@@ -772,6 +772,7 @@ export type Database = {
       }
       google_sheets_settings: {
         Row: {
+          active_monthly_tab: string | null
           connection_status: string
           created_at: string
           google_access_token: string | null
@@ -786,6 +787,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_monthly_tab?: string | null
           connection_status?: string
           created_at?: string
           google_access_token?: string | null
@@ -800,6 +802,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_monthly_tab?: string | null
           connection_status?: string
           created_at?: string
           google_access_token?: string | null
