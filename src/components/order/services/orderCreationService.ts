@@ -3,25 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Customer, CartItem, SelectedContact } from "../types";
 import { serializeCartItemsWithFormatting } from "./orderFormattingService";
 
-// Fire-and-forget Google Sheets sync after order creation
-async function syncOrderToGoogleSheets(orderId: string, orderNumber: string) {
-  try {
-    console.log(`[Google Sheets] Auto-syncing order ${orderNumber} (${orderId})...`);
-
-    const { data, error } = await supabase.functions.invoke('google-sheets-sync', {
-      body: { action: 'sync-single', order_id: orderId },
-    });
-
-    if (error) {
-      console.error(`[Google Sheets] Failed to sync order ${orderNumber}:`, error);
-      return;
-    }
-
-    console.log(`[Google Sheets] Order ${orderNumber} synced successfully:`, data);
-  } catch (err) {
-    console.error(`[Google Sheets] Error syncing order ${orderNumber}:`, err);
-  }
-}
+// Google Sheets sync is now handled centrally via syncAllOrdersToSheets in @/utils/googleSheetsSync.ts
 
 // Interface for creating single orders
 interface CreateSingleOrderParams {
