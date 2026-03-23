@@ -1,26 +1,36 @@
 
 
-## Plan: Fix Google Sheets OAuth Redirect URI Mismatch
+## Plan: Delete Orders from Google Sheets on Soft Delete
 
-### Problem
-The redirect URI uses `?action=callback` as a query parameter, which can cause matching issues with Google OAuth. The URI must match exactly between Google Console and the code.
+### Overview
+When an order is soft-deleted, also remove its row from the Google Sheet (if sync is enabled). Add a `delete-single` action to the `google-sheets-sync` edge function and call it from the client after successful deletion.
 
-### Fix
+### Changes
 
-**File: `supabase/functions/google-sheets-auth/index.ts`**
+**1. `supabase/functions/google-sheets-sync/index.ts`** — Add `delete-single` action
+- Accepts `order_number` parameter
+- Reads all values from column A to find the row with that order number
+- Deletes that row using the Sheets `batchUpdate` API (`deleteDimension` request)
 
-1. Change the redirect URI from:
-   `${supabaseUrl}/functions/v1/google-sheets-auth?action=callback`
-   to:
-   `${supabaseUrl}/functions/v1/google-sheets-auth`
+**2. `src/components/order/hooks/useOrderActions.ts`** — After successful soft delete, call the edge function
+- After `soft_delete_order` RPC succeeds, check if Google Sheets sync is enabled
+- If enabled, invoke `google-sheets-sync` with `action: 'delete-single'` and the order number
+- Fire-and-forget (don't block on it, just log errors)
+- Same for group deletion — delete each order number in the group
 
-2. Update the action detection logic: if the request has a `code` or `error` query parameter, treat it as a callback. Otherwise, parse `action` from POST body as before.
+**3. `src/components/order/OrderManagementProvider.tsx`** — Handle DELETE via real-time
+- The existing real-time subscription listens for `UPDATE` events (soft delete is an UPDATE setting `deleted_at`)
+- Add logic: if `payload.new.deleted_at` is set and `payload.old.deleted_at` was null, trigger delete from Google Sheets
+- This serves as a fallback for deletions from other places (e.g., opportunity pipeline)
 
-### Google Console Update
-After this change, update your **Authorised redirect URI** in Google Cloud Console to:
-`https://wntcxbxitsanbyrtfhwv.supabase.co/functions/v1/google-sheets-auth`
-(remove the `?action=callback` part)
+### How the Sheet Delete Works
+```text
+1. Fetch column A values from sheet
+2. Find row index where value matches order_number
+3. Use batchUpdate deleteDimension to remove that row
+```
 
 ### Files Modified
-1. `supabase/functions/google-sheets-auth/index.ts` — simplify redirect URI and callback detection
+1. `supabase/functions/google-sheets-sync/index.ts` — add `delete-single` action
+2. `src/components/order/OrderManagementProvider.tsx` — trigger sheet delete on soft-delete detection via real-time
 
