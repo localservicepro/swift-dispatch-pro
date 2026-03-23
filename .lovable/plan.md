@@ -1,26 +1,25 @@
 
 
-## Plan: Replace "Generate Invoice" Button with "Send to MYOB"
+## Plan: Show Company/Business Name in Customer Orders Title
 
-### Overview
-Replace the per-order "Generate Invoice" button with a "Send to MYOB" button that opens the same `MyobBatchInvoiceDialog` pre-loaded with just that single order — reusing the existing MYOB push logic.
+### Problem
+The Customer Orders page title always shows `{first_name} {last_name} - Orders`, even for business/account customers where the company name should be displayed instead.
 
-### Changes
+### Change
 
-**File: `src/components/PaymentManagement.tsx`**
+**File: `src/components/customer/CustomerOrders.tsx`** (line 76-78)
 
-1. **Replace the "Generate Invoice" button** (line 520-523) with a "Send to MYOB" button that:
-   - Sets a temporary state for the single order to send
-   - Opens `MyobBatchInvoiceDialog` with just that one order
+Update the title logic to prioritize company/business name:
+- If `customer.company_name` exists → show company name
+- Else if `customer.business_name` exists → show business name
+- Else fallback to `{first_name} {last_name}`
 
-2. **Add state** for single-order MYOB send: `singleMyobOrder` state to hold the order when clicking per-row button
+This matches the same display logic used in `orderFormattingService.ts` and `OrderCard.tsx`.
 
-3. **Add second `MyobBatchInvoiceDialog`** instance (or reuse existing one by dynamically switching between batch-selected and single-order modes)
+### Example Result
+- "2 Men and a Shovel - Orders" (instead of "Andrew 0490 137 937 - Orders")
+- Contact name shown as subtitle below if different from company name
 
-4. **Remove `generateAndSendInvoice` function** and related `generatingInvoices` state — no longer needed since all invoicing goes through MYOB dialog
-
-### Result
-- Single order: click "Send to MYOB" → opens preview dialog with 1 order → push to MYOB
-- Multiple orders: select checkboxes → "Batch Invoice to MYOB" → opens preview dialog → push to MYOB
-- Same MYOB flow for both, consistent experience
+### Files Modified
+1. `src/components/customer/CustomerOrders.tsx` — update title display logic
 
