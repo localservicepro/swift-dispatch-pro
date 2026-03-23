@@ -11,6 +11,7 @@ import { ActivityLog } from "./settings/ActivityLog";
 import { EmailSettingsDialog } from "./EmailSettingsDialog";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { MyobSettings } from "./settings/MyobSettings";
+import { GoogleSheetsSettings } from "./settings/GoogleSheetsSettings";
 export function Settings() {
   const { settings, loading, saving, saveSettings } = useBusinessSettings();
   const [notifications, setNotifications] = useState({
@@ -245,6 +246,9 @@ export function Settings() {
 
       {/* MYOB Integration */}
       <MyobSettings />
+
+      {/* Google Sheets Integration */}
+      <GoogleSheetsSettings />
 
       {/* Activity Log */}
       <ActivityLog />

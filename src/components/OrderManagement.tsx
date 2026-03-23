@@ -36,7 +36,7 @@ function OrderManagementContent() {
     console.error('Orders query error:', error);
     return (
       <div className="space-y-6">
-        <OrderManagementHeader onCreateOrder={() => setIsCreating(true)} />
+        <OrderManagementHeader onCreateOrder={() => setIsCreating(true)} filteredOrders={[]} />
         
         <Card>
           <CardContent className="p-6">
@@ -52,7 +52,7 @@ function OrderManagementContent() {
 
   return (
     <div className="space-y-6">
-      <OrderManagementHeader onCreateOrder={() => setIsCreating(true)} />
+      <OrderManagementHeader onCreateOrder={() => setIsCreating(true)} filteredOrders={filteredOrders} />
 
       <OrderManagementDialogs />
 

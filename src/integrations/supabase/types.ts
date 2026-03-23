@@ -770,6 +770,42 @@ export type Database = {
         }
         Relationships: []
       }
+      google_sheets_settings: {
+        Row: {
+          connection_status: string
+          created_at: string
+          id: string
+          last_synced_at: string | null
+          service_account_email: string | null
+          sheet_name: string
+          spreadsheet_id: string | null
+          sync_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          connection_status?: string
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          service_account_email?: string | null
+          sheet_name?: string
+          spreadsheet_id?: string | null
+          sync_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          connection_status?: string
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          service_account_email?: string | null
+          sheet_name?: string
+          spreadsheet_id?: string | null
+          sync_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           amount: number
