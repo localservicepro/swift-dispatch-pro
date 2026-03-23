@@ -6,27 +6,18 @@ import { serializeCartItemsWithFormatting } from "./orderFormattingService";
 // Fire-and-forget Google Sheets sync after order creation
 async function syncOrderToGoogleSheets(orderId: string, orderNumber: string) {
   try {
-    const { data: sheetSettings } = await supabase
-      .from('google_sheets_settings')
-      .select('sync_enabled, spreadsheet_id, connection_status')
-      .single();
-
-    if (!sheetSettings?.sync_enabled || !sheetSettings?.spreadsheet_id || sheetSettings?.connection_status !== 'connected') {
-      console.log(`[Google Sheets] Sync skipped for order ${orderNumber} - not enabled/configured`);
-      return;
-    }
-
     console.log(`[Google Sheets] Auto-syncing order ${orderNumber} (${orderId})...`);
-    
+
     const { data, error } = await supabase.functions.invoke('google-sheets-sync', {
       body: { action: 'sync-single', order_id: orderId },
     });
 
     if (error) {
       console.error(`[Google Sheets] Failed to sync order ${orderNumber}:`, error);
-    } else {
-      console.log(`[Google Sheets] Order ${orderNumber} synced successfully:`, data);
+      return;
     }
+
+    console.log(`[Google Sheets] Order ${orderNumber} synced successfully:`, data);
   } catch (err) {
     console.error(`[Google Sheets] Error syncing order ${orderNumber}:`, err);
   }

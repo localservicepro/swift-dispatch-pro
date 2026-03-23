@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CustomerSearchStep } from "./CustomerSearchStep";
 import { ProductSelectionStep } from "./ProductSelectionStep";
@@ -160,6 +161,20 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           deliveryNotes,
           purchaseOrder,
           orderTotals
+        });
+      }
+
+      if (result.type === "single" && result.orderId) {
+        supabase.functions.invoke("google-sheets-sync", {
+          body: { action: "sync-single", order_id: result.orderId },
+        }).catch((err) => console.error("Google Sheets form fallback sync error:", err));
+      }
+
+      if (result.type === "split" && Array.isArray(result.orders)) {
+        result.orders.forEach((createdOrder: any) => {
+          supabase.functions.invoke("google-sheets-sync", {
+            body: { action: "sync-single", order_id: createdOrder.id },
+          }).catch((err) => console.error("Google Sheets form fallback sync error:", err));
         });
       }
 
