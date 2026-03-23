@@ -1,77 +1,85 @@
 
-## Plan: Make New Orders Auto-Sync to Google Sheets Reliably
+## Plan: Reuse the Exact “Sync to Sheets” Trigger After Order Creation
 
-### What’s actually wrong
-Yes, auto-sync can be done. The current setup is fragile because **new-order sync depends on the browser’s real-time subscription inside `OrderManagementProvider`**.
+### What’s happening now
+The button and auto-sync are not using the same path:
 
-That means:
-- the sync only happens if that React provider is mounted and receives the INSERT event
-- if the event is missed, nothing calls `google-sheets-sync`
-- manual sync works because the edge function itself is fine
-- delete sync can still appear to work because it is triggered through a different user flow and update event timing
+- **Manual button** in `OrderManagementHeader.tsx` calls:
+  - `google-sheets-sync` with `action: 'sync-bulk'`
+  - and passes `filteredOrders`
+- **New order creation** currently calls:
+  - `google-sheets-sync` with `action: 'sync-single'`
+  - from multiple places (`orderCreationService`, `MultiStepOrderForm`, and `OrderManagementProvider` fallback)
 
-So the main issue is **where the sync is triggered**, not whether Google Sheets sync is possible.
+So manual sync works because it does a **full sheet rebuild**, while auto-sync tries to do a **single-row append/update** path that has been unreliable.
 
-### Fix approach
-Move the “new order” sync trigger to the **order creation path itself**, instead of relying only on front-end real-time.
+### Change to make
+Make new-order auto-sync use the **same bulk sync flow as the button**.
 
-### Changes
-1. **`src/components/order/services/orderCreationService.ts`**
-   - After a successful `createSingleOrder`, check `google_sheets_settings`
-   - If sync is enabled and a spreadsheet is configured, immediately invoke:
-     - `google-sheets-sync` with `action: 'sync-single'`
-     - pass the newly created `order.id`
-   - Keep it non-blocking for the user flow, but log failures clearly
+### Implementation approach
+1. **Create one shared client helper** for Google Sheets sync
+   - Centralize the logic currently inside `handleSyncToSheets`
+   - Support:
+     - `syncAllOrdersToSheets(orders)`
+     - optional silent/background mode for auto-sync
+   - This avoids having different code paths for manual vs auto
 
-2. **Handle split orders too**
-   - In `createSplitOrder`, ensure all created orders are synced
-   - Best approach:
-     - either invoke `sync-single` for each created order id
-     - or invoke one `sync-bulk` for the created group if that is easier with the returned data structure
-   - This avoids split orders partially missing from Sheets
+2. **Trigger bulk sync after successful order creation**
+   - In `MultiStepOrderForm.tsx`, after order creation succeeds and before/around refresh/close flow:
+     - fetch the latest non-deleted orders list
+     - invoke the shared bulk sync helper with that fresh list
+   - Do this for both:
+     - single orders
+     - split orders
 
-3. **Keep `OrderManagementProvider.tsx` real-time sync as a fallback**
-   - Do not remove it yet
-   - Let it remain for edits / external changes / backup sync behavior
-   - But new-order creation should no longer depend on it
+3. **Stop relying on `sync-single` for creation**
+   - Remove new-order creation dependence on:
+     - `orderCreationService.ts` auto `sync-single`
+     - `MultiStepOrderForm.tsx` fallback `sync-single`
+   - Keep real-time logic only as a fallback for updates/deletes if needed, but not as the primary creation sync path
 
-4. **Add stronger logging**
-   - Log when order creation triggers a Google Sheets sync
-   - Log order id / order number / sync enabled state
-   - This makes future debugging much easier
+4. **Keep the button behavior unchanged**
+   - The visible “Sync to Sheets” button should keep using the same shared helper
+   - Result: button click and new-order creation both hit the same `sync-bulk` behavior
 
-### Why this will fix it
+### Why this should fix it
 Right now:
+
 ```text
-Create order
-  -> save to DB
-  -> hope browser realtime receives INSERT
-  -> maybe call google-sheets-sync
+New order created
+  -> tries sync-single
+  -> sometimes misses / fails / diverges from button behavior
 ```
 
-Planned flow:
+Planned:
+
 ```text
-Create order
-  -> save to DB
-  -> immediately call google-sheets-sync from order creation service
-  -> sheet updates without needing manual button click
+New order created
+  -> fetch current orders
+  -> run same bulk sync used by “Sync to Sheets” button
+  -> sheet matches exactly what manual sync would produce
 ```
 
-That makes creation sync behave much more like a guaranteed action instead of an optional listener side effect.
+That means if the button works, auto-sync after creation should work the same way too.
 
-### Files to modify
+### Files to update
+- `src/components/order/OrderManagementHeader.tsx`
+- `src/components/order/MultiStepOrderForm.tsx`
 - `src/components/order/services/orderCreationService.ts`
-- possibly `src/components/order/OrderManagementProvider.tsx` (logging / keep fallback only)
+- optionally `src/components/order/OrderManagementProvider.tsx` to reduce duplicate creation sync attempts
+
+### Technical notes
+- Prefer fetching fresh orders from DB before the bulk sync instead of using stale local state
+- Keep bulk sync non-blocking or lightly handled so order creation still feels fast
+- Show success/failure toast only for manual button clicks; background auto-sync should log errors quietly unless you want visible alerts
 
 ### Expected result
-- New single orders auto-sync to Google Sheets immediately
-- Split orders also sync automatically
-- Manual “Sync to Sheets” remains available as a bulk recovery tool
-- Delete sync continues to work as it already does
+- Clicking **Sync to Sheets** and creating a new order both trigger the same full-sheet sync behavior
+- New single orders and split orders appear in Google Sheets without needing manual sync
+- Delete behavior can remain as-is since it already works
 
 ### Validation
-After implementation:
-1. Create a normal order and confirm it appears in Google Sheets without clicking the manual button
-2. Create a split order and confirm all related rows appear
-3. Delete an order and confirm the row is removed
-4. Check edge function logs if any sync call fails
+1. Create a new normal order and confirm Sheets updates without pressing the button
+2. Create a split order and confirm all rows appear
+3. Press the manual button afterward and confirm it produces no unexpected differences
+4. Check logs if bulk sync fails in the background
