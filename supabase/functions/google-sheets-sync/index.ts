@@ -337,6 +337,80 @@ serve(async (req) => {
       });
     }
 
+    if (action === 'sync-monthly') {
+      if (!year || !month || !sheet_name) {
+        throw new Error('year, month, and sheet_name are required for sync-monthly');
+      }
+
+      const startDate = new Date(year, month - 1, 1).toISOString();
+      const endDate = new Date(year, month, 1).toISOString();
+
+      const { data: monthlyOrders, error: fetchErr } = await supabase
+        .from('orders')
+        .select('*, customers!orders_customer_id_fkey(company_name, business_name)')
+        .is('deleted_at', null)
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .order('created_at', { ascending: false })
+        .limit(10000);
+
+      if (fetchErr) {
+        throw new Error(`Failed to fetch orders: ${fetchErr.message}`);
+      }
+
+      const ordersList = (monthlyOrders || []).map((o: any) => ({
+        ...o,
+        company_name: o.customers?.company_name,
+        business_name: o.customers?.business_name,
+      }));
+
+      // Ensure the tab exists
+      const sheetMetaRes = await fetch(`${SHEETS_API}/${spreadsheetId}?fields=sheets.properties`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const sheetMeta = await sheetMetaRes.json();
+      const tabExists = sheetMeta.sheets?.some((s: any) => s.properties?.title === sheet_name);
+
+      if (!tabExists) {
+        await fetch(`${SHEETS_API}/${spreadsheetId}:batchUpdate`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requests: [{ addSheet: { properties: { title: sheet_name } } }],
+          }),
+        });
+      }
+
+      // Clear and write
+      const allRows = [HEADER_ROW, ...ordersList.map(orderToRow)];
+
+      await fetch(
+        `${SHEETS_API}/${spreadsheetId}/values/${sheet_name}!A:S:clear`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        }
+      );
+
+      await fetch(
+        `${SHEETS_API}/${spreadsheetId}/values/${sheet_name}!A1?valueInputOption=RAW`,
+        {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: allRows }),
+        }
+      );
+
+      await supabase
+        .from('google_sheets_settings')
+        .update({ last_synced_at: new Date().toISOString() })
+        .eq('id', settings.id);
+
+      return new Response(JSON.stringify({ success: true, synced: ordersList.length }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     throw new Error(`Unknown action: ${action}`);
   } catch (error) {
     console.error('Google Sheets sync error:', error);
