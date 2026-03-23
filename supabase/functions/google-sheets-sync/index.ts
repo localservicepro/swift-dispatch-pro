@@ -103,7 +103,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, orders, order_id } = await req.json();
+    const { action, orders, order_id, order_number } = await req.json();
 
     // Get settings
     const { data: settings, error: settingsError } = await supabase
