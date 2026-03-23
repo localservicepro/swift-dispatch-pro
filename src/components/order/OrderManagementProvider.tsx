@@ -145,11 +145,12 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
           // Detect soft delete (deleted_at changed from null to a value)
           if (payload.new.deleted_at && !payload.old.deleted_at) {
             try {
-              const { data: sheetsSettings } = await supabase
+              const { data: sheetsSettings, error: sheetsErr } = await supabase
                 .from('google_sheets_settings')
                 .select('sync_enabled, spreadsheet_id')
                 .limit(1)
-                .single();
+                .maybeSingle();
+              if (sheetsErr) console.error('Sheets settings error (delete):', sheetsErr);
               
               if (sheetsSettings?.sync_enabled && sheetsSettings?.spreadsheet_id) {
                 supabase.functions.invoke('google-sheets-sync', {
@@ -192,11 +193,13 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
         // Auto-sync to Google Sheets if enabled (for non-delete updates and inserts)
         if ((payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && !payload.new.deleted_at))) {
           try {
-            const { data: sheetsSettings } = await supabase
+            const { data: sheetsSettings, error: sheetsErr2 } = await supabase
               .from('google_sheets_settings')
               .select('sync_enabled, spreadsheet_id')
               .limit(1)
-              .single();
+              .maybeSingle();
+            if (sheetsErr2) console.error('Sheets settings error (sync):', sheetsErr2);
+            console.log('Google Sheets auto-sync check:', { sheetsSettings, eventType: payload.eventType, orderId: payload.new.id });
             
             if (sheetsSettings?.sync_enabled && sheetsSettings?.spreadsheet_id) {
               supabase.functions.invoke('google-sheets-sync', {
