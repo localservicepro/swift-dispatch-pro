@@ -153,7 +153,7 @@ serve(async (req) => {
         const fetchOrder = async () => {
           const { data, error } = await supabase
             .from('orders')
-            .select('*, customers(company_name, business_name)')
+            .select('*, customers!orders_customer_id_fkey(company_name, business_name)')
             .eq('id', order_id)
             .is('deleted_at', null)
             .maybeSingle();
