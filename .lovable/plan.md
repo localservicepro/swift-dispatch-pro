@@ -1,22 +1,49 @@
 
 
-## Plan: Fix Missing Company Names in Google Sheets
+## Plan: Monthly Google Sheets Sync with Tab Selection Dialog
 
-### Root Cause
-The client-side `syncAllOrdersToSheets()` fetches orders with `.select('*')` and passes them to the edge function. Since `company_name` and `business_name` live on the `customers` table (not `orders`), these fields are always empty.
+### What you'll get
+A dialog that lets you pick a month/year and a sheet tab name, then syncs only that month's orders to that specific tab in Google Sheets. This way each month gets its own tab (like "March 2026", "April 2026" in your screenshot).
 
-The edge function already has a fallback: when **no orders are passed**, it fetches them server-side with the proper customer join. But because the client always passes orders, that fallback never runs.
+### Changes
 
-### Fix
-Stop passing orders from the client. Let the edge function fetch them server-side with the customer join it already has.
+**1. Create `src/components/order/MonthlySheetSyncDialog.tsx`**
+- Dialog with:
+  - Month/year picker (dropdown selectors for month and year)
+  - Sheet tab name input (auto-populated as "Month Year", e.g. "March 2026", editable)
+  - Sync button
+- On submit: calls `syncMonthlyOrdersToSheets(year, month, tabName)`
 
-**File: `src/utils/googleSheetsSync.ts`**
-- Remove the client-side orders fetch
-- Invoke the edge function with just `{ action: 'sync-bulk' }` (no orders payload)
-- The edge function's existing code at line 246-258 will handle fetching orders with `customers!orders_customer_id_fkey(company_name, business_name)`
+**2. Update `src/utils/googleSheetsSync.ts`**
+- Add `syncMonthlyOrdersToSheets(year, month, sheetTabName, silent)` function
+- Invokes edge function with `action: 'sync-monthly'`, passing `year`, `month`, and `sheet_name` override
 
-This is a one-line change that fixes the company column for all sync paths (manual button and auto-sync after order creation).
+**3. Update `supabase/functions/google-sheets-sync/index.ts`**
+- Add `sync-monthly` action:
+  - Accepts `year`, `month`, `sheet_name` parameters
+  - Filters orders by `created_at` within that month range
+  - Uses the provided `sheet_name` instead of the default tab
+  - Creates the tab if it doesn't exist (via Sheets API `addSheet` request)
+  - Clears and writes header + filtered orders to that tab
 
-### Files Modified
-1. `src/utils/googleSheetsSync.ts` — remove client-side fetch, pass no orders
+**4. Update `src/components/order/OrderManagementHeader.tsx`**
+- Add a button or dropdown option to open the monthly sync dialog
+- Keep existing "Sync to Sheets" button for full sync
+
+### How it works
+```text
+User clicks "Monthly Sync" → Dialog opens
+  → Select month: March 2026
+  → Tab name auto-fills: "March 2026" (editable)
+  → Click Sync
+  → Edge function filters orders WHERE created_at in March 2026
+  → Creates/clears "March 2026" tab in spreadsheet
+  → Writes filtered orders to that tab
+```
+
+### Files to create/modify
+1. `src/components/order/MonthlySheetSyncDialog.tsx` (new)
+2. `src/utils/googleSheetsSync.ts` (add monthly helper)
+3. `supabase/functions/google-sheets-sync/index.ts` (add `sync-monthly` action)
+4. `src/components/order/OrderManagementHeader.tsx` (add dialog trigger)
 
