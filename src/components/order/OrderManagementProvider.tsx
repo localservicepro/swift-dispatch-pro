@@ -169,6 +169,25 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
             description: `Order ${payload.new.order_number} has been created`
           });
         }
+
+        // Auto-sync to Google Sheets if enabled
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          try {
+            const { data: sheetsSettings } = await supabase
+              .from('google_sheets_settings')
+              .select('sync_enabled, spreadsheet_id')
+              .limit(1)
+              .single();
+            
+            if (sheetsSettings?.sync_enabled && sheetsSettings?.spreadsheet_id) {
+              supabase.functions.invoke('google-sheets-sync', {
+                body: { action: 'sync-single', order_id: payload.new.id },
+              }).catch(err => console.error('Google Sheets auto-sync error:', err));
+            }
+          } catch (err) {
+            console.error('Failed to check Google Sheets settings:', err);
+          }
+        }
       })
       .subscribe();
 

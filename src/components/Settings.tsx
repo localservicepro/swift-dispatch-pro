@@ -247,6 +247,9 @@ export function Settings() {
       {/* MYOB Integration */}
       <MyobSettings />
 
+      {/* Google Sheets Integration */}
+      <GoogleSheetsSettings />
+
       {/* Activity Log */}
       <ActivityLog />
 

@@ -52,7 +52,7 @@ function OrderManagementContent() {
 
   return (
     <div className="space-y-6">
-      <OrderManagementHeader onCreateOrder={() => setIsCreating(true)} />
+      <OrderManagementHeader onCreateOrder={() => setIsCreating(true)} filteredOrders={filteredOrders} />
 
       <OrderManagementDialogs />
 

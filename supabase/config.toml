@@ -48,3 +48,6 @@ verify_jwt = false
 
 [functions.myob-push-invoice]
 verify_jwt = false
+
+[functions.google-sheets-sync]
+verify_jwt = false
