@@ -145,11 +145,12 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
           // Detect soft delete (deleted_at changed from null to a value)
           if (payload.new.deleted_at && !payload.old.deleted_at) {
             try {
-              const { data: sheetsSettings } = await supabase
+              const { data: sheetsSettings, error: sheetsErr } = await supabase
                 .from('google_sheets_settings')
                 .select('sync_enabled, spreadsheet_id')
                 .limit(1)
-                .single();
+                .maybeSingle();
+              if (sheetsErr) console.error('Sheets settings error (delete):', sheetsErr);
               
               if (sheetsSettings?.sync_enabled && sheetsSettings?.spreadsheet_id) {
                 supabase.functions.invoke('google-sheets-sync', {
