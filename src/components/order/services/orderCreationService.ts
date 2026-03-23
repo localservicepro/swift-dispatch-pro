@@ -448,6 +448,11 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
 
     console.log('Split orders created successfully:', orders);
 
+    // Auto-sync all created orders to Google Sheets (fire-and-forget)
+    for (const createdOrder of orders) {
+      syncOrderToGoogleSheets(createdOrder.id, createdOrder.order_number);
+    }
+
     return {
       type: 'split' as const,
       orderNumber: masterOrder.order_number,
