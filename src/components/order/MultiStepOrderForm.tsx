@@ -170,11 +170,11 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         syncSingleOrderToSheets(result.orderId).then(r => {
           if (r.success) console.log(`[Google Sheets] Auto sync-single after order creation`);
         });
-      } else if (result.orderIds && result.orderIds.length > 0) {
+      } else if (result.orders && result.orders.length > 0) {
         // Split orders: sync each one
-        result.orderIds.forEach((id: string) => {
-          syncSingleOrderToSheets(id).then(r => {
-            if (r.success) console.log(`[Google Sheets] Auto sync-single for split order ${id}`);
+        result.orders.forEach((order: any) => {
+          syncSingleOrderToSheets(order.id).then(r => {
+            if (r.success) console.log(`[Google Sheets] Auto sync-single for split order ${order.id}`);
           });
         });
       }
