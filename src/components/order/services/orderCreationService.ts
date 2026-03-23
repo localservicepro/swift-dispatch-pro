@@ -181,6 +181,9 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
 
     console.log('Single order created successfully:', order);
 
+    // Auto-sync to Google Sheets (fire-and-forget)
+    syncOrderToGoogleSheets(order.id, order.order_number);
+
     return {
       type: 'single' as const,
       orderNumber: order.order_number,
