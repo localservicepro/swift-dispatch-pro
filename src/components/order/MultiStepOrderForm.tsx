@@ -16,7 +16,7 @@ import { ProgressIndicator } from "./ProgressIndicator";
 import { OrderCustomerHeader } from "./OrderCustomerHeader";
 import { createSingleOrder, createSplitOrder } from "./services/orderCreationService";
 import { useOrderFormState } from "./hooks/useOrderFormState";
-import { syncAllOrdersToSheets } from "@/utils/googleSheetsSync";
+import { syncSingleOrderToSheets } from "@/utils/googleSheetsSync";
 
 interface MultiStepOrderFormProps {
   onOrderCreated?: () => void;
