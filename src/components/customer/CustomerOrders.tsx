@@ -74,8 +74,11 @@ export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-slate-800">
-              {customer.first_name} {customer.last_name} - Orders
+              {customer.company_name || customer.business_name || `${customer.first_name} ${customer.last_name}`} - Orders
             </h1>
+            {(customer.company_name || customer.business_name) && customer.first_name && (
+              <p className="text-sm text-slate-500">Contact: {customer.first_name} {customer.last_name}</p>
+            )}
             <p className="text-slate-600">{customer.email}</p>
           </div>
         </div>
