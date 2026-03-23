@@ -3,6 +3,35 @@ import { supabase } from "@/integrations/supabase/client";
 import { Customer, CartItem, SelectedContact } from "../types";
 import { serializeCartItemsWithFormatting } from "./orderFormattingService";
 
+// Fire-and-forget Google Sheets sync after order creation
+async function syncOrderToGoogleSheets(orderId: string, orderNumber: string) {
+  try {
+    const { data: sheetSettings } = await supabase
+      .from('google_sheets_settings')
+      .select('sync_enabled, spreadsheet_id, connection_status')
+      .single();
+
+    if (!sheetSettings?.sync_enabled || !sheetSettings?.spreadsheet_id || sheetSettings?.connection_status !== 'connected') {
+      console.log(`[Google Sheets] Sync skipped for order ${orderNumber} - not enabled/configured`);
+      return;
+    }
+
+    console.log(`[Google Sheets] Auto-syncing order ${orderNumber} (${orderId})...`);
+    
+    const { data, error } = await supabase.functions.invoke('google-sheets-sync', {
+      body: { action: 'sync-single', order_id: orderId },
+    });
+
+    if (error) {
+      console.error(`[Google Sheets] Failed to sync order ${orderNumber}:`, error);
+    } else {
+      console.log(`[Google Sheets] Order ${orderNumber} synced successfully:`, data);
+    }
+  } catch (err) {
+    console.error(`[Google Sheets] Error syncing order ${orderNumber}:`, err);
+  }
+}
+
 // Interface for creating single orders
 interface CreateSingleOrderParams {
   customer: Customer;
@@ -151,6 +180,9 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
     }
 
     console.log('Single order created successfully:', order);
+
+    // Auto-sync to Google Sheets (fire-and-forget)
+    syncOrderToGoogleSheets(order.id, order.order_number);
 
     return {
       type: 'single' as const,
@@ -415,6 +447,11 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
     }
 
     console.log('Split orders created successfully:', orders);
+
+    // Auto-sync all created orders to Google Sheets (fire-and-forget)
+    for (const createdOrder of orders) {
+      syncOrderToGoogleSheets(createdOrder.id, createdOrder.order_number);
+    }
 
     return {
       type: 'split' as const,
