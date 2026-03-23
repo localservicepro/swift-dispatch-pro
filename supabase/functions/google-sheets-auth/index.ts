@@ -28,11 +28,14 @@ serve(async (req) => {
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  const redirectUri = `${supabaseUrl}/functions/v1/google-sheets-auth?action=callback`;
+  const redirectUri = `${supabaseUrl}/functions/v1/google-sheets-auth`;
 
   try {
     const url = new URL(req.url);
-    const action = url.searchParams.get('action') || (req.method === 'POST' ? (await req.json()).action : null);
+    
+    // Detect OAuth callback by presence of code or error params
+    const isCallback = url.searchParams.has('code') || url.searchParams.has('error');
+    const action = isCallback ? 'callback' : (req.method === 'POST' ? (await req.json()).action : url.searchParams.get('action'));
 
     if (action === 'authorize') {
       const authUrl = new URL(GOOGLE_AUTH_URL);
