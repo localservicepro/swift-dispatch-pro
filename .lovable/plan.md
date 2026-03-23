@@ -1,36 +1,28 @@
 
 
-## Plan: Delete Orders from Google Sheets on Soft Delete
+## Plan: Fix Google Sheets Auto-Sync for New Orders
 
-### Overview
-When an order is soft-deleted, also remove its row from the Google Sheet (if sync is enabled). Add a `delete-single` action to the `google-sheets-sync` edge function and call it from the client after successful deletion.
+### Root Cause
+The edge function's `sync-single` action fetches the order using `.single()`, which throws on errors rather than returning null gracefully. When the query fails (e.g., timing, join issues), `orderData` stays undefined and the function throws "No order data provided." There's no error logging on the fetch itself, so failures are silent.
 
-### Changes
+### Fix
 
-**1. `supabase/functions/google-sheets-sync/index.ts`** — Add `delete-single` action
-- Accepts `order_number` parameter
-- Reads all values from column A to find the row with that order number
-- Deletes that row using the Sheets `batchUpdate` API (`deleteDimension` request)
+**File: `supabase/functions/google-sheets-sync/index.ts`** (lines 147-165)
 
-**2. `src/components/order/hooks/useOrderActions.ts`** — After successful soft delete, call the edge function
-- After `soft_delete_order` RPC succeeds, check if Google Sheets sync is enabled
-- If enabled, invoke `google-sheets-sync` with `action: 'delete-single'` and the order number
-- Fire-and-forget (don't block on it, just log errors)
-- Same for group deletion — delete each order number in the group
+1. Replace `.single()` with `.maybeSingle()` to avoid throwing on edge cases
+2. Add error logging for the fetch query so we can see why it fails
+3. Add a small retry with delay (1 second) for INSERT events — the real-time event may fire before the transaction is fully visible to the service role client
 
-**3. `src/components/order/OrderManagementProvider.tsx`** — Handle DELETE via real-time
-- The existing real-time subscription listens for `UPDATE` events (soft delete is an UPDATE setting `deleted_at`)
-- Add logic: if `payload.new.deleted_at` is set and `payload.old.deleted_at` was null, trigger delete from Google Sheets
-- This serves as a fallback for deletions from other places (e.g., opportunity pipeline)
-
-### How the Sheet Delete Works
 ```text
-1. Fetch column A values from sheet
-2. Find row index where value matches order_number
-3. Use batchUpdate deleteDimension to remove that row
+sync-single flow (fixed):
+  1. Receive order_id
+  2. Wait 1s (gives DB time to commit)
+  3. Fetch order with .maybeSingle()
+  4. Log any fetch errors
+  5. If still no data, retry once after another 1s
+  6. Proceed with sync or return graceful error
 ```
 
 ### Files Modified
-1. `supabase/functions/google-sheets-sync/index.ts` — add `delete-single` action
-2. `src/components/order/OrderManagementProvider.tsx` — trigger sheet delete on soft-delete detection via real-time
+1. `supabase/functions/google-sheets-sync/index.ts` — improve fetch resilience and add logging
 
