@@ -2,8 +2,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DeletedOrdersDialog } from "./DeletedOrdersDialog";
+import { MonthlySheetSyncDialog } from "./MonthlySheetSyncDialog";
 import { useToast } from "@/hooks/use-toast";
-import { FileSpreadsheet, Loader2 } from "lucide-react";
+import { FileSpreadsheet, Loader2, Calendar } from "lucide-react";
 import { syncAllOrdersToSheets } from "@/utils/googleSheetsSync";
 
 interface OrderManagementHeaderProps {
