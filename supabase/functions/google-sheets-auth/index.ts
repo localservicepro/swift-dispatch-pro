@@ -57,10 +57,6 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    
-    // Detect OAuth callback by presence of code or error params
-    const isCallback = url.searchParams.has('code') || url.searchParams.has('error');
     const action = isCallback ? 'callback' : (req.method === 'POST' ? (await req.json()).action : url.searchParams.get('action'));
 
     if (action === 'authorize') {
