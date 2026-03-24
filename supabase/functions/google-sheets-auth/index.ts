@@ -19,6 +19,7 @@ serve(async (req) => {
   const clientSecret = Deno.env.get('GOOGLE_SHEETS_CLIENT_SECRET');
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
   if (!clientId || !clientSecret) {
     return new Response(JSON.stringify({ error: 'Google OAuth credentials not configured' }), {
@@ -29,6 +30,31 @@ serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
   const redirectUri = `${supabaseUrl}/functions/v1/google-sheets-auth`;
+
+  // Check if this is an OAuth callback (no auth needed for callbacks)
+  const url = new URL(req.url);
+  const isCallback = url.searchParams.has('code') || url.searchParams.has('error');
+
+  // Authenticate the caller for non-callback requests
+  if (!isCallback) {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: claimsData, error: claimsError } = await authClient.auth.getUser();
+    if (claimsError || !claimsData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  }
 
   try {
     const url = new URL(req.url);
