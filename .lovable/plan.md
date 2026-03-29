@@ -1,29 +1,20 @@
 
 
-## Plan: Fix Silent Failures in Google Sheets sync-single
+## Fix: Customer Name Display for Trade and Residential Types
 
-### Diagnosis
-The edge function logs confirm `sync-single` IS being called and reaching the `[sync-single] Targeting sheet tab: "March 2026"` log. No errors are logged. But the Google Sheets API responses (header check, row find, append/update) are **never checked or logged**. If the Sheets API returns an error (e.g., permission issue, quota exceeded, bad range), it fails silently.
+### Problem
+The `getCustomerDisplayName` function (in `orderFormattingService.ts`) returns `business_name` before checking `first_name`/`last_name` for ALL customer types. Trade and residential customers that happen to have a `business_name` field populated (often with placeholder/junk data like ".", "..", "*") display those values instead of the customer's actual name.
 
-### Fix
-Add response checking and error logging for every Google Sheets API call in the `sync-single` action, then redeploy the edge function.
+### Solution
+Reorder the logic so that `first_name`/`last_name` is checked BEFORE `business_name` for non-account customers. Only account customers should prioritize company/business names.
 
-**File: `supabase/functions/google-sheets-sync/index.ts`**
+### File Change: `src/components/order/services/orderFormattingService.ts`
 
-In the `sync-single` block (lines ~210-260), after each `fetch` to the Sheets API:
-1. Log the HTTP status and response body if not OK for:
-   - Header check (`GET ...!A1:S1`)
-   - Header write (`PUT ...!A1:S1`)
-   - Column A fetch (`GET ...!A:A`)
-   - Row update (`PUT ...!A{n}:S{n}`)
-   - Row append (`POST ...!A:S:append`)
-2. Add a success log at the end: `[sync-single] Successfully synced order {order_number} to tab "{targetSheet}"`
+Updated logic:
+1. Account customers with `company_name` → show company name (unchanged)
+2. **All customers**: check `first_name` + `last_name` first
+3. Then fall back to `business_name`, then `company_name`
+4. Final fallback: "Customer"
 
-This will reveal what's actually failing in the Sheets API interaction.
-
-### Redeploy
-After updating the code, redeploy the `google-sheets-sync` edge function.
-
-### Files Modified
-1. `supabase/functions/google-sheets-sync/index.ts` — add Sheets API response logging in sync-single
+This ensures trade and residential customers always show their personal name when available, while account customers still prioritize their company name.
 
