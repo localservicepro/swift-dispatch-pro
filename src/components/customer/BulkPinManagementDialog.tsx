@@ -163,8 +163,7 @@ export function BulkPinManagementDialog({ open, onOpenChange }: BulkPinManagemen
     }
   };
 
-  const customerName = (c: Customer) =>
-    c.company_name || c.business_name || `${c.first_name || ""} ${c.last_name || ""}`.trim() || "Unknown";
+  const customerName = (c: Customer) => getCustomerDisplayName(c as any);
 
   const isExpired = (date: string | null) => {
     if (!date) return false;

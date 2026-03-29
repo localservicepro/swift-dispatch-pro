@@ -3,34 +3,54 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Customer = Database['public']['Tables']['customers']['Row'];
 
+/** Returns true if the value is only punctuation/symbols (junk placeholder data) */
+const isJunkValue = (val: string | null | undefined): boolean => {
+  if (!val) return true;
+  const trimmed = val.trim();
+  if (!trimmed) return true;
+  // Matches strings that are only made of *, ., -, _, or whitespace
+  return /^[*.\-_\s]+$/.test(trimmed);
+};
+
+const clean = (val: string | null | undefined): string | null => {
+  return isJunkValue(val) ? null : val!.trim();
+};
+
 export const getCustomerDisplayName = (customer: Customer): string => {
-  const personalName = [customer.first_name, customer.last_name]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
+  const firstName = clean(customer.first_name);
+  const lastName = clean(customer.last_name);
+  const companyName = clean(customer.company_name);
+  const businessName = clean(customer.business_name);
+
+  const personalName = [firstName, lastName].filter(Boolean).join(' ').trim();
 
   // For account customers, prioritize company name
-  if (customer.customer_type === 'account' && customer.company_name) {
-    return customer.company_name;
+  if (customer.customer_type === 'account' && companyName) {
+    return companyName;
   }
 
-  // Individual customers should always show their personal name first
+  // Non-account customers (residential, trade) — always prefer personal name
+  if (customer.customer_type !== 'account' && personalName) {
+    return personalName;
+  }
+
+  // Individual entity type — prefer personal name
   if (customer.entity_type === 'individual' && personalName) {
     return personalName;
   }
 
-  // For all other non-account customers, still prefer a personal name when available
+  // General fallback: personal name first
   if (personalName) {
     return personalName;
   }
 
   // Fallback to business/company names
-  if (customer.business_name) {
-    return customer.business_name;
+  if (businessName) {
+    return businessName;
   }
 
-  if (customer.company_name) {
-    return customer.company_name;
+  if (companyName) {
+    return companyName;
   }
 
   return 'Customer';

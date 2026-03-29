@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAccountStatementExport } from "@/hooks/useAccountStatementExport";
+import { getCustomerDisplayName } from "@/components/order/services/orderFormattingService";
 
 interface AccountStatementExportDialogProps {
   open: boolean;
@@ -39,8 +40,7 @@ export function AccountStatementExportDialog({
     generateStatement,
   } = useAccountStatementExport({ customerId: customer.id });
 
-  const customerName = customer.company_name || customer.business_name || 
-    `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
+  const customerName = getCustomerDisplayName(customer as any);
 
   const handlePrevMonth = () => {
     setSelectedMonth(subMonths(selectedMonth, 1));

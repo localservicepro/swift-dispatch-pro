@@ -244,18 +244,16 @@ export class ReceiptService {
   }
 
   private static getCustomerDisplayName(orderData: any): string {
-    // Prioritize company name for account customers
-    if (orderData.customers?.company_name) {
-      return orderData.customers.company_name;
-    }
-    
-    // Fall back to business name for business customers
-    if (orderData.customers?.business_name) {
-      return orderData.customers.business_name;
-    }
-    
-    // Use customer name as final fallback
-    return orderData.customer_name || 'Unknown Customer';
+    const isJunk = (val: string | null | undefined): boolean => {
+      if (!val) return true;
+      return /^[*.\-_\s]+$/.test(val.trim());
+    };
+
+    const companyName = !isJunk(orderData.customers?.company_name) ? orderData.customers.company_name : null;
+    const businessName = !isJunk(orderData.customers?.business_name) ? orderData.customers.business_name : null;
+    const customerName = !isJunk(orderData.customer_name) ? orderData.customer_name : null;
+
+    return companyName || businessName || customerName || 'Unknown Customer';
   }
 
   private static parseOrderItems(products: any): Array<{

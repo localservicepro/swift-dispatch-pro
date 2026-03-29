@@ -12,6 +12,7 @@ import { CustomerContactsManager } from "./CustomerContactsManager";
 import { CustomerDashboardAnalytics } from "./CustomerDashboardAnalytics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDistanceToNow } from "date-fns";
+import { getCustomerDisplayName } from "@/components/order/services/orderFormattingService";
 
 export function CustomerPortalDashboard() {
   const { signOut, user } = useAuth();
@@ -83,7 +84,7 @@ export function CustomerPortalDashboard() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Customer Portal</h1>
             <p className="text-sm text-muted-foreground">
-              Welcome, {customer?.company_name || customer?.business_name || `${customer?.first_name} ${customer?.last_name}`}
+              Welcome, {customer ? getCustomerDisplayName(customer as any) : 'Customer'}
             </p>
           </div>
           <Button 

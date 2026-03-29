@@ -12,6 +12,7 @@ import { ContactSelector } from "@/components/customer/ContactSelector";
 import { GoogleAddressAutocomplete } from "@/components/ui/google-address-autocomplete";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCustomerDisplayName } from "@/components/order/services/orderFormattingService";
 
 interface CustomerOrderCreateProps {
   customer: any;
@@ -104,7 +105,7 @@ export function CustomerOrderCreate({ customer, onClose, onSuccess }: CustomerOr
 
       const { error } = await supabase.from('orders').insert([{
         customer_id: customer.id,
-        customer_name: customer.company_name || customer.business_name || `${customer.first_name} ${customer.last_name}`,
+        customer_name: getCustomerDisplayName(customer),
         customer_phone: customer.phone || '',
         customer_address: customer.full_address,
         
