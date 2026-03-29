@@ -394,13 +394,20 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
   };
 
   const getCustomerDisplayName = (customer: Customer) => {
+    const personalName = [customer.first_name, customer.last_name]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
     if (customer.customer_type === 'account' && customer.company_name) {
       return customer.company_name;
     }
-    if (customer.first_name && customer.last_name) {
-      return `${customer.first_name} ${customer.last_name}`;
+
+    if (customer.entity_type === 'individual' && personalName) {
+      return personalName;
     }
-    return customer.company_name || customer.business_name || 'Unknown Customer';
+
+    return personalName || customer.business_name || customer.company_name || 'Unknown Customer';
   };
 
   const getCustomerSubtitle = (customer: Customer) => {

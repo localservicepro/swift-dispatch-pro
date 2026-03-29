@@ -111,34 +111,51 @@ export function OrderReviewStep({
 
   // Determine display name and company info
   const getDisplayInfo = () => {
-    // Check for company name (account customers)
-    if (customer.company_name) {
+    const personalName = [customer.first_name, customer.last_name]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
+    if (customer.customer_type === 'account' && customer.company_name) {
       return {
         displayName: customer.company_name,
-        contactInfo: customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : null,
+        contactInfo: personalName || null,
         isCompany: true
       };
     }
-    
-    // Check for business name (business customers)
-    if (customer.business_name) {
+
+    if (customer.entity_type === 'individual' && personalName) {
       return {
-        displayName: customer.business_name,
-        contactInfo: customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : null,
-        isCompany: true
-      };
-    }
-    
-    // Default to customer name if available
-    if (customer.first_name && customer.last_name) {
-      return {
-        displayName: `${customer.first_name} ${customer.last_name}`,
+        displayName: personalName,
         contactInfo: null,
         isCompany: false
       };
     }
-    
-    // Final fallback
+
+    if (customer.business_name) {
+      return {
+        displayName: customer.business_name,
+        contactInfo: personalName || null,
+        isCompany: true
+      };
+    }
+
+    if (customer.company_name) {
+      return {
+        displayName: customer.company_name,
+        contactInfo: personalName || null,
+        isCompany: true
+      };
+    }
+
+    if (personalName) {
+      return {
+        displayName: personalName,
+        contactInfo: null,
+        isCompany: false
+      };
+    }
+
     return {
       displayName: 'Customer',
       contactInfo: null,
