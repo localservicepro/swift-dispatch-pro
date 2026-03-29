@@ -11,6 +11,7 @@ import { Key, Send, RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail, Search 
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { getCustomerDisplayName } from "@/components/order/services/orderFormattingService";
 
 interface Customer {
   id: string;
@@ -163,8 +164,7 @@ export function BulkPinManagementDialog({ open, onOpenChange }: BulkPinManagemen
     }
   };
 
-  const customerName = (c: Customer) =>
-    c.company_name || c.business_name || `${c.first_name || ""} ${c.last_name || ""}`.trim() || "Unknown";
+  const customerName = (c: Customer) => getCustomerDisplayName(c as any);
 
   const isExpired = (date: string | null) => {
     if (!date) return false;

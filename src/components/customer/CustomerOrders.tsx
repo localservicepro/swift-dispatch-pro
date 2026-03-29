@@ -9,6 +9,7 @@ import { ArrowLeft, Package, Calendar, DollarSign, FileText } from "lucide-react
 import { format } from "date-fns";
 import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 import { AccountStatementExportDialog } from "./AccountStatementExportDialog";
+import { getCustomerDisplayName } from "@/components/order/services/orderFormattingService";
 
 interface CustomerOrdersProps {
   customer: any;
@@ -74,7 +75,7 @@ export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-slate-800">
-              {customer.company_name || customer.business_name || `${customer.first_name} ${customer.last_name}`} - Orders
+              {getCustomerDisplayName(customer)} - Orders
             </h1>
             {(customer.company_name || customer.business_name) && customer.first_name && (
               <p className="text-sm text-slate-500">Contact: {customer.first_name} {customer.last_name}</p>
