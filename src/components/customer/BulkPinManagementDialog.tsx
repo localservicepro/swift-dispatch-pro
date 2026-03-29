@@ -11,6 +11,7 @@ import { Key, Send, RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail, Search 
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { getCustomerDisplayName } from "@/components/order/services/orderFormattingService";
 
 interface Customer {
   id: string;
