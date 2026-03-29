@@ -4,22 +4,21 @@ import type { Database } from '@/integrations/supabase/types';
 type Customer = Database['public']['Tables']['customers']['Row'];
 
 export const getCustomerDisplayName = (customer: Customer): string => {
-  // For account customers with company name
+  // For account customers, prioritize company/business name
   if (customer.customer_type === 'account' && customer.company_name) {
     return customer.company_name;
   }
   
-  // For business customers with business name
-  if (customer.business_name) {
-    return customer.business_name;
-  }
-  
-  // For customers with first and last name
+  // For all other types, prioritize personal name first
   if (customer.first_name && customer.last_name) {
     return `${customer.first_name} ${customer.last_name}`;
   }
   
-  // Fallback to company name if no personal names
+  // Fallback to business name, then company name
+  if (customer.business_name) {
+    return customer.business_name;
+  }
+  
   if (customer.company_name) {
     return customer.company_name;
   }
