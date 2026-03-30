@@ -48,10 +48,10 @@ export function useCustomerDialogActions(
       }
     } else {
       // Standard validation for all other customer types
-      if (!formData.first_name || !formData.last_name) {
+      if (!formData.first_name?.trim()) {
         toast({
           title: "Error",
-          description: "First name and last name are required",
+          description: "First name is required",
           variant: "destructive",
         });
         return;

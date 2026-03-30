@@ -59,7 +59,6 @@ export function CustomerAddressForm({
           value={formData.full_address}
           onChange={(e) => handleOfficeAddressChange(e.target.value)}
           placeholder="Enter office or business address..."
-          required
         />
         <p className="text-xs text-gray-500 mt-1">
           This is your office/business address for billing and contact purposes.
@@ -84,7 +83,6 @@ export function CustomerAddressForm({
           onChange={(value) => onFormDataChange({ delivery_address: value })}
           onAddressSelect={handleDeliveryAddressSelect}
           placeholder={formData.full_address ? "Same as office address" : "Start typing delivery address..."}
-          required
           showMapButton={true}
           showValidation={true}
         />

@@ -49,8 +49,10 @@ export function CustomerContactForm({ formData, customerType, entityType, onForm
     return 'e.g. Owner, Director';
   };
   
-  const getFieldLabel = (baseLabel: string) => {
-    return isAccountBusiness ? baseLabel : `${baseLabel} *`;
+  const getFieldLabel = (fieldName: string, baseLabel: string) => {
+    if (isAccountBusiness) return baseLabel;
+    if (fieldName === 'first_name') return `${baseLabel} *`;
+    return baseLabel;
   };
   
   return (
@@ -67,7 +69,7 @@ export function CustomerContactForm({ formData, customerType, entityType, onForm
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="first_name">{getFieldLabel('First Name')}</Label>
+          <Label htmlFor="first_name">{getFieldLabel('first_name', 'First Name')}</Label>
           <Input
             id="first_name"
             value={formData.first_name}
@@ -76,12 +78,11 @@ export function CustomerContactForm({ formData, customerType, entityType, onForm
           />
         </div>
         <div>
-          <Label htmlFor="last_name">{getFieldLabel('Last Name')}</Label>
+          <Label htmlFor="last_name">{getFieldLabel('last_name', 'Last Name')}</Label>
           <Input
             id="last_name"
             value={formData.last_name}
             onChange={(e) => onFormDataChange({ last_name: e.target.value })}
-            required={!isAccountBusiness}
           />
         </div>
       </div>
