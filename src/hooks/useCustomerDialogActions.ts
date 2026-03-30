@@ -35,15 +35,6 @@ export function useCustomerDialogActions(
     // Check if this is an Account Business entity
     const isAccountBusiness = formData.customer_type === 'account' && formData.entity_type === 'business';
     
-    // Address validation (required for all customers)
-    if (!formData.full_address || formData.full_address.trim() === '') {
-      toast({
-        title: "Error",
-        description: "Address is required for all customers",
-        variant: "destructive",
-      });
-      return;
-    }
 
     // Validation for Account Business entities
     if (isAccountBusiness) {
