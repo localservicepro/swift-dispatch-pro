@@ -1,11 +1,13 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { isPhoneNumber, phoneSearchMatch } from "@/utils/phoneUtils";
 import { formatOrderNumber } from "@/utils/orderNumberFormatter";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
+
+const PAGE_SIZE = 50;
 
 // Helper function to extract initials from full name
 const getInitials = (fullName: string | null | undefined): string => {
@@ -63,122 +65,141 @@ interface Order {
   admin_initials?: string;
 }
 
+async function fetchOrdersPage(pageParam: number) {
+  const from = pageParam * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  const { data: ordersData, error: ordersError } = await supabase
+    .from('orders')
+    .select(`
+      id,
+      order_number,
+      purchase_order,
+      customer_name,
+      customer_phone,
+      customer_address,
+      delivery_address,
+      products,
+      products_formatted,
+      total_amount,
+      status,
+      payment_status,
+      payment_date,
+      payment_method,
+      driver_id,
+      created_at,
+      delivery_date,
+      delivery_time,
+      special_instructions,
+      customer_id,
+      delivery_fee,
+      subtotal,
+      adjustments,
+      truck_type,
+      truck_id,
+      order_notes,
+      delivery_notes,
+      driver_name,
+      truck_registration,
+      truck_type_display,
+      delivery_suburb_id,
+      delivery_method,
+      deleted_at,
+      contact_id,
+      contact_name,
+      contact_email,
+      contact_phone,
+      admin_id,
+      customers!orders_customer_id_fkey(
+        id,
+        suburb_id,
+        company_name,
+        business_name,
+        customer_type,
+        suburbs(id, name, state, postcode)
+      ),
+      delivery_suburbs:suburbs!orders_delivery_suburb_id_fkey(
+        id, name, state, postcode
+      ),
+      delivered_status:delivery_status_updates!delivery_status_updates_order_id_fkey(
+        created_at
+      ),
+      admin_profile:profiles!orders_admin_id_fkey(
+        full_name
+      )
+    `)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (ordersError) {
+    console.error('Error fetching orders:', ordersError);
+    throw ordersError;
+  }
+
+  const mappedOrders = ordersData?.map(order => {
+    const customerSuburbData = order.customers?.suburbs;
+    const customerSuburbId = order.customers?.suburb_id;
+    const deliverySuburbData = order.delivery_suburbs;
+
+    const deliveredAt = order.status === 'delivered' && order.delivered_status?.length > 0
+      ? order.delivered_status[order.delivered_status.length - 1].created_at
+      : null;
+
+    const adminInitials = getInitials(order.admin_profile?.full_name);
+
+    return {
+      ...order,
+      suburb_id: customerSuburbId || null,
+      suburb_name: customerSuburbData?.name || null,
+      suburb_state: customerSuburbData?.state || null,
+      suburb_postcode: customerSuburbData?.postcode || null,
+      delivery_suburb_id: order.delivery_suburb_id || null,
+      delivery_suburb_name: deliverySuburbData?.name || null,
+      delivery_suburb_state: deliverySuburbData?.state || null,
+      delivery_suburb_postcode: deliverySuburbData?.postcode || null,
+      company_name: order.customers?.company_name || null,
+      business_name: order.customers?.business_name || null,
+      customer_type: order.customers?.customer_type || null,
+      driver_name: order.driver_name || 'Not Assigned',
+      truck_registration: order.truck_registration || null,
+      truck_type_display: order.truck_type_display || null,
+      delivered_at: deliveredAt,
+      admin_initials: adminInitials
+    };
+  }) || [];
+
+  return mappedOrders;
+}
+
 export function useOrderData() {
-  const { data: orders = [], isLoading, error, refetch } = useQuery({
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['orders'],
-    queryFn: async () => {
-      console.log('Fetching orders from database with delivery suburb information...');
-
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          order_number,
-          purchase_order,
-          customer_name,
-          customer_phone,
-          customer_address,
-          delivery_address,
-          products,
-          products_formatted,
-          total_amount,
-          status,
-          payment_status,
-          payment_date,
-          payment_method,
-          driver_id,
-          created_at,
-          delivery_date,
-          delivery_time,
-          special_instructions,
-          customer_id,
-          delivery_fee,
-          subtotal,
-          adjustments,
-          truck_type,
-          truck_id,
-          order_notes,
-          delivery_notes,
-          driver_name,
-          truck_registration,
-          truck_type_display,
-          delivery_suburb_id,
-          delivery_method,
-          deleted_at,
-          contact_id,
-          contact_name,
-          contact_email,
-          contact_phone,
-          admin_id,
-          customers!orders_customer_id_fkey(
-            id,
-            suburb_id,
-            company_name,
-            business_name,
-            customer_type,
-            suburbs(id, name, state, postcode)
-          ),
-          delivery_suburbs:suburbs!orders_delivery_suburb_id_fkey(
-            id, name, state, postcode
-          ),
-          delivered_status:delivery_status_updates!delivery_status_updates_order_id_fkey(
-            created_at
-          ),
-          admin_profile:profiles!orders_admin_id_fkey(
-            full_name
-          )
-        `)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(5000);
-
-      if (ordersError) {
-        console.error('Error fetching orders:', ordersError);
-        throw ordersError;
+    queryFn: ({ pageParam }) => fetchOrdersPage(pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      // If we got a full page, there may be more
+      if (lastPage.length === PAGE_SIZE) {
+        return lastPageParam + 1;
       }
-
-      console.log('Raw orders data:', ordersData);
-
-      const mappedOrders = ordersData?.map(order => {
-        const customerSuburbData = order.customers?.suburbs;
-        const customerSuburbId = order.customers?.suburb_id;
-        const deliverySuburbData = order.delivery_suburbs;
-        
-        // Find the most recent delivery completion timestamp
-        const deliveredAt = order.status === 'delivered' && order.delivered_status?.length > 0 
-          ? order.delivered_status[order.delivered_status.length - 1].created_at 
-          : null;
-
-        // Extract admin initials from profile
-        const adminInitials = getInitials(order.admin_profile?.full_name);
-
-        return {
-          ...order,
-          suburb_id: customerSuburbId || null,
-          suburb_name: customerSuburbData?.name || null,
-          suburb_state: customerSuburbData?.state || null,
-          suburb_postcode: customerSuburbData?.postcode || null,
-          delivery_suburb_id: order.delivery_suburb_id || null,
-          delivery_suburb_name: deliverySuburbData?.name || null,
-          delivery_suburb_state: deliverySuburbData?.state || null,
-          delivery_suburb_postcode: deliverySuburbData?.postcode || null,
-          company_name: order.customers?.company_name || null,
-          business_name: order.customers?.business_name || null,
-          customer_type: order.customers?.customer_type || null,
-          driver_name: order.driver_name || 'Not Assigned',
-          truck_registration: order.truck_registration || null,
-          truck_type_display: order.truck_type_display || null,
-          delivered_at: deliveredAt,
-          admin_initials: adminInitials
-        };
-      }) || [];
-
-      console.log('Final mapped orders with delivery suburb information:', mappedOrders);
-      return mappedOrders;
-    }
+      return undefined;
+    },
   });
 
-  return { orders, isLoading, error, refetch };
+  // Flatten all pages into a single array
+  const orders = useMemo(() => {
+    return data?.pages.flat() || [];
+  }, [data]);
+
+  return { orders, isLoading, error, refetch, fetchNextPage, hasNextPage: !!hasNextPage, isFetchingNextPage };
 }
 
 export function useFilteredOrders(orders: Order[], searchQuery: string, statusFilter: string, paymentStatusFilter?: string) {
@@ -194,11 +215,9 @@ export function useFilteredOrders(orders: Order[], searchQuery: string, statusFi
       
       filtered = filtered.filter(order => {
         if (isPhoneSearch) {
-          // Enhanced phone number search for customer and contact phones
           return phoneSearchMatch(order.customer_phone, searchQuery) ||
                  phoneSearchMatch(order.contact_phone, searchQuery);
         } else {
-          // Regular text search - include formatted order number (with admin initials)
           const displayOrderNumber = formatOrderNumber(order).toLowerCase();
           return displayOrderNumber.includes(query) ||
                  order.order_number.toLowerCase().includes(query) ||

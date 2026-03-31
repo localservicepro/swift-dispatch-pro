@@ -94,6 +94,9 @@ function OrderManagementContent() {
             onStatusUpdate={updateOrderStatus}
             onNotesEdit={handleNotesEdit}
             onPaymentStatusUpdate={refetch}
+            fetchNextPage={fetchNextPage}
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
           />
         </CardContent>
       </Card>

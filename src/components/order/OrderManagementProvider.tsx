@@ -230,6 +230,11 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
     error,
     filteredOrders,
     
+    // Pagination
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    
     // Actions
     updateOrderStatus,
     handleDeleteOrder,
