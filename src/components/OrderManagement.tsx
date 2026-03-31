@@ -25,7 +25,10 @@ function OrderManagementContent() {
     setDeletingOrder,
     updateOrderStatus,
     setEditingNotes,
-    refetch
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
   } = useOrderManagement();
 
   const handleNotesEdit = (order: any) => {
