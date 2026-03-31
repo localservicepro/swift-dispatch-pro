@@ -65,6 +65,11 @@ interface OrderManagementContextType {
   error: any;
   filteredOrders: Order[];
   
+  // Pagination
+  fetchNextPage: () => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  
   // Actions
   updateOrderStatus: (orderId: string, newStatus: OrderStatus, currentOrder: Order) => void;
   handleDeleteOrder: (orderId: string, deleteType: 'single' | 'group') => Promise<void>;
@@ -102,7 +107,7 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
   const queryClient = useQueryClient();
 
   // Use custom hooks for data and actions
-  const { orders, isLoading, error, refetch } = useOrderData();
+  const { orders, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useOrderData();
   const { updateOrderStatus, handleDeleteOrder: handleDeleteOrderAction } = useOrderActions(refetch);
   const filteredOrders = useFilteredOrders(orders, searchQuery, statusFilter, paymentStatusFilter);
 
@@ -224,6 +229,11 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
     isLoading,
     error,
     filteredOrders,
+    
+    // Pagination
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     
     // Actions
     updateOrderStatus,

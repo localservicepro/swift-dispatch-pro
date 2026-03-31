@@ -25,7 +25,10 @@ function OrderManagementContent() {
     setDeletingOrder,
     updateOrderStatus,
     setEditingNotes,
-    refetch
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
   } = useOrderManagement();
 
   const handleNotesEdit = (order: any) => {
@@ -91,6 +94,9 @@ function OrderManagementContent() {
             onStatusUpdate={updateOrderStatus}
             onNotesEdit={handleNotesEdit}
             onPaymentStatusUpdate={refetch}
+            fetchNextPage={fetchNextPage}
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
           />
         </CardContent>
       </Card>

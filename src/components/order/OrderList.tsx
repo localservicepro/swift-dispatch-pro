@@ -51,6 +51,9 @@ interface OrderListProps {
   onStatusUpdate: (orderId: string, newStatus: OrderStatus, currentOrder: Order) => void;
   onNotesEdit: (order: Order) => void;
   onPaymentStatusUpdate?: () => void;
+  fetchNextPage?: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
 }
 
 export function OrderList({ 
@@ -62,7 +65,10 @@ export function OrderList({
   onDelete,
   onStatusUpdate,
   onNotesEdit,
-  onPaymentStatusUpdate
+  onPaymentStatusUpdate,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage
 }: OrderListProps) {
   if (isLoading) {
     return (
@@ -103,6 +109,25 @@ export function OrderList({
           onPaymentStatusUpdate={onPaymentStatusUpdate}
         />
       ))}
+      {hasNextPage && (
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            onClick={() => fetchNextPage?.()}
+            disabled={isFetchingNextPage}
+            className="min-w-[200px]"
+          >
+            {isFetchingNextPage ? (
+              <span className="flex items-center gap-2">
+                <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
+                Loading more...
+              </span>
+            ) : (
+              "Load More Orders"
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
