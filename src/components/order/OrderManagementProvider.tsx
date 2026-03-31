@@ -107,7 +107,7 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
   const queryClient = useQueryClient();
 
   // Use custom hooks for data and actions
-  const { orders, isLoading, error, refetch } = useOrderData();
+  const { orders, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useOrderData();
   const { updateOrderStatus, handleDeleteOrder: handleDeleteOrderAction } = useOrderActions(refetch);
   const filteredOrders = useFilteredOrders(orders, searchQuery, statusFilter, paymentStatusFilter);
 
