@@ -65,6 +65,11 @@ interface OrderManagementContextType {
   error: any;
   filteredOrders: Order[];
   
+  // Pagination
+  fetchNextPage: () => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  
   // Actions
   updateOrderStatus: (orderId: string, newStatus: OrderStatus, currentOrder: Order) => void;
   handleDeleteOrder: (orderId: string, deleteType: 'single' | 'group') => Promise<void>;
