@@ -29,13 +29,14 @@ export const getCustomerDisplayName = (customer: Customer): string => {
     return companyName;
   }
 
-  // Non-account customers (residential, trade) — always prefer personal name
-  if (customer.customer_type !== 'account' && personalName) {
-    return personalName;
+  // For any business entity type, prioritize company/business name
+  if (customer.entity_type === 'business') {
+    if (companyName) return companyName;
+    if (businessName) return businessName;
   }
 
-  // Individual entity type — prefer personal name
-  if (customer.entity_type === 'individual' && personalName) {
+  // Individual entity type or non-business — prefer personal name
+  if (personalName) {
     return personalName;
   }
 
