@@ -1,22 +1,13 @@
 
 
-## Show business name for trade/residential customers with business entity type
+## Show contact name on business customer cards
 
 ### Problem
-When a trade customer has `entity_type = 'business'` and a `company_name` or `business_name` (e.g. "Ficorilli Landscapes"), the display name logic ignores it and shows the personal name ("Adrian Ficorilli") instead. This makes it confusing when searching by business name — the search matches but the card shows a different name.
+When viewing trade customers with business entity type, the card shows the business name (e.g., "1ST CLASS CONCRETE PAVING") but doesn't display the personal contact name. The `getCustomerSubtitle` function exists in `CustomerCard.tsx` but is never rendered.
 
 ### Fix
-Update `getCustomerDisplayName` in `src/components/order/services/orderFormattingService.ts` to prioritize company/business name for any customer with `entity_type === 'business'`, not just account customers.
+In `src/components/customer/CustomerCard.tsx`, render the contact name subtitle below the business display name. For business entity customers with a first/last name on file, show "Contact: First Last" under the title. The `getCustomerSubtitle` function already handles this logic — it just needs to be displayed.
 
-**Current logic (line 28-35):**
-- Account + company name → show company name
-- Non-account → always show personal name
-
-**New logic:**
-- Account + company name → show company name
-- Any entity_type "business" + company/business name → show company/business name
-- Otherwise → show personal name
-
-### File to change
-- `src/components/order/services/orderFormattingService.ts` — reorder the priority in `getCustomerDisplayName` so business entity types show their company name regardless of customer type
+### Change
+**`src/components/customer/CustomerCard.tsx`** — After the display name `<h3>` (line 70-72), add a line showing the subtitle text when the customer is a business entity with a personal name on record.
 
