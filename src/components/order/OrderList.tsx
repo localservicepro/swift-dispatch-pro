@@ -51,6 +51,9 @@ interface OrderListProps {
   onStatusUpdate: (orderId: string, newStatus: OrderStatus, currentOrder: Order) => void;
   onNotesEdit: (order: Order) => void;
   onPaymentStatusUpdate?: () => void;
+  fetchNextPage?: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
 }
 
 export function OrderList({ 
