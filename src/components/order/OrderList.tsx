@@ -65,7 +65,10 @@ export function OrderList({
   onDelete,
   onStatusUpdate,
   onNotesEdit,
-  onPaymentStatusUpdate
+  onPaymentStatusUpdate,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage
 }: OrderListProps) {
   if (isLoading) {
     return (
