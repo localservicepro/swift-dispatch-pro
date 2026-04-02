@@ -19,8 +19,8 @@ export function CustomerCard({
   const [isContactsExpanded, setIsContactsExpanded] = useState(false);
   const getCustomerSubtitle = (customer: any) => {
     if (customer.entity_type === 'business' && customer.company_name) {
-      if (customer.first_name && customer.last_name) {
-        return `Primary Contact: ${customer.first_name} ${customer.last_name}`;
+      if (customer.first_name || customer.last_name) {
+        return `Primary Contact: ${[customer.first_name, customer.last_name].filter(Boolean).join(' ')}`;
       }
       return customer.email || 'No contact details';
     }
@@ -70,9 +70,9 @@ export function CustomerCard({
             <h3 className="font-semibold text-lg">
               {getCustomerDisplayName(customer)}
             </h3>
-            {customer.entity_type === 'business' && customer.first_name && customer.last_name && (
+            {customer.entity_type === 'business' && (customer.first_name || customer.last_name) && (
               <span className="text-sm text-muted-foreground">
-                Contact: {customer.first_name} {customer.last_name}
+                Contact: {[customer.first_name, customer.last_name].filter(Boolean).join(' ')}
               </span>
             )}
             <Badge className={getCustomerTypeColor(customer.customer_type)}>
