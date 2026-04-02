@@ -1,13 +1,23 @@
 
 
-## Show contact name on business customer cards
+## Show contact name for business customers with partial names
 
 ### Problem
-When viewing trade customers with business entity type, the card shows the business name (e.g., "1ST CLASS CONCRETE PAVING") but doesn't display the personal contact name. The `getCustomerSubtitle` function exists in `CustomerCard.tsx` but is never rendered.
+The contact subtitle only appears when both `first_name` AND `last_name` exist. Many trade/business customers only have one name field filled in (or neither), so they show no contact info.
 
 ### Fix
-In `src/components/customer/CustomerCard.tsx`, render the contact name subtitle below the business display name. For business entity customers with a first/last name on file, show "Contact: First Last" under the title. The `getCustomerSubtitle` function already handles this logic — it just needs to be displayed.
+**`src/components/customer/CustomerCard.tsx`** — Change the condition to show the contact line when *either* `first_name` or `last_name` is present, and display whichever is available.
 
-### Change
-**`src/components/customer/CustomerCard.tsx`** — After the display name `<h3>` (line 70-72), add a line showing the subtitle text when the customer is a business entity with a personal name on record.
+```tsx
+{customer.entity_type === 'business' && (customer.first_name || customer.last_name) && (
+  <span className="text-sm text-muted-foreground">
+    Contact: {[customer.first_name, customer.last_name].filter(Boolean).join(' ')}
+  </span>
+)}
+```
+
+Also update the same logic in the `getCustomerSubtitle` function for consistency.
+
+### Scope
+Single file change: `src/components/customer/CustomerCard.tsx`
 
