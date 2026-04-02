@@ -19,8 +19,8 @@ export function CustomerCard({
   const [isContactsExpanded, setIsContactsExpanded] = useState(false);
   const getCustomerSubtitle = (customer: any) => {
     if (customer.entity_type === 'business' && customer.company_name) {
-      if (customer.first_name && customer.last_name) {
-        return `Primary Contact: ${customer.first_name} ${customer.last_name}`;
+      if (customer.first_name || customer.last_name) {
+        return `Primary Contact: ${[customer.first_name, customer.last_name].filter(Boolean).join(' ')}`;
       }
       return customer.email || 'No contact details';
     }
