@@ -138,7 +138,7 @@ async function fetchOrdersPage(pageParam: number, filters: OrderFilters) {
 
   // Apply server-side status filter
   if (filters.statusFilter && filters.statusFilter !== 'all') {
-    query = query.eq('status', filters.statusFilter);
+    query = query.eq('status', filters.statusFilter as OrderStatus);
   }
 
   // Apply server-side payment status filter
