@@ -8,6 +8,7 @@ import { ReturnStatusBadge } from "./returns/ReturnStatusBadge";
 import { OrderReturnDialog } from "./returns/OrderReturnDialog";
 import { ReceiptButton } from "@/components/ui/receipt-button";
 import { MapPin, Truck, Edit3, Trash2, Building, User, Calendar, ShoppingBag, RotateCcw } from "lucide-react";
+import { cleanDisplayName } from "./services/orderFormattingService";
 import { Database } from "@/integrations/supabase/types";
 import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
 import { formatDeliveredDate } from "@/utils/dateTimeUtils";
