@@ -1,36 +1,28 @@
 
 
-## Fix junk/null customer name display in Orders
+## Fix: Order search doesn't find customers by company/business name
 
 ### Problem
-Two display issues visible in the screenshots:
-1. **Order card shows `***`** as customer name — junk placeholder data stored in `customer_name` field is not being filtered
-2. **"Ahmed null"** appears in both the order card contact line and the Edit Order header — the literal string "null" was concatenated as a last name when it was actually null
+Searching "nature" in Order Management returns 0 results, even though "Natures Best Landscapes" exists as a customer with orders. The server-side search only looks at columns on the `orders` table (`customer_name`, `order_number`, `customer_phone`, `purchase_order`, `contact_phone`, `contact_name`). Business/company names are stored on the `customers` table, which the `.or()` filter cannot reach.
 
-### Root Cause
-- The `getDisplayInfo()` function in `OrderCard.tsx` does not apply the same junk-value filtering (`isJunkValue`) that exists in `orderFormattingService.ts`
-- The `OrderEditHeader.tsx` displays `customerName` directly without filtering
-- The `customer_name` field stored in orders sometimes contains junk values like `***` or names with literal "null"
+### Solution
+Use a Supabase database function (RPC) or a **text search column** approach. The simplest reliable fix is to add `delivery_address` and also do a **two-step search**:
+
+1. When searching, first query the `customers` table for matching `company_name`, `business_name`, `first_name`, or `last_name`
+2. Collect matching customer IDs
+3. Expand the orders query to include `customer_id.in.(matched_ids)` in the `.or()` clause
 
 ### Plan
 
-**1. Create a shared name-cleaning utility**
-Extract the `isJunkValue`/`clean` logic from `orderFormattingService.ts` into a reusable helper, or simply import and reuse it.
+**File: `src/components/order/hooks/useOrderData.ts`**
 
-**2. Fix `OrderCard.tsx` — `getDisplayInfo()` (lines 122-163)**
-- Apply junk filtering to `customer_name`, `company_name`, `business_name`, and `contact_name`
-- Filter out literal "null" strings and clean "Ahmed null" → "Ahmed"
-- When `customer_name` is junk (like `***`), fall back to contact_name or company/business name
+- Add a preliminary query: when a search term exists, first search the `customers` table for matching `company_name.ilike`, `business_name.ilike`, `first_name.ilike`, `last_name.ilike`
+- Collect the IDs of matching customers
+- In the orders query `.or()`, append `customer_id.in.(id1,id2,...)` alongside the existing column filters
+- If no customer matches are found, keep the existing order-column-only search (no change in behavior)
 
-**3. Fix `OrderEditHeader.tsx` — display name (line 16, 29)**
-- Apply the same junk/null cleaning to `customerName` and `companyName` before display
-- Clean literal "null" from concatenated names (e.g., "Ahmed null" → "Ahmed")
-
-**4. Fix contact info line in `OrderCard.tsx` (line 286)**
-- Apply cleaning to `contactInfo` so "Ahmed null" displays as "Ahmed"
+This approach requires no database migrations and works within existing RLS policies.
 
 ### Files to modify
-- `src/components/order/services/orderFormattingService.ts` — export `isJunkValue`/`clean` helpers
-- `src/components/order/OrderCard.tsx` — apply cleaning in `getDisplayInfo()`
-- `src/components/order/OrderEditHeader.tsx` — apply cleaning to displayed names
+- `src/components/order/hooks/useOrderData.ts` — add customer pre-search and expand `.or()` filter
 
