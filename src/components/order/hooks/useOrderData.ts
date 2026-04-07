@@ -70,6 +70,17 @@ interface OrderFilters {
   paymentStatusFilter?: string;
 }
 
+async function fetchMatchingCustomerIds(searchTerm: string): Promise<string[]> {
+  const { data } = await supabase
+    .from('customers')
+    .select('id')
+    .or(
+      `company_name.ilike.%${searchTerm}%,business_name.ilike.%${searchTerm}%,first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`
+    )
+    .limit(200);
+  return data?.map(c => c.id) || [];
+}
+
 async function fetchOrdersPage(pageParam: number, filters: OrderFilters) {
   const from = pageParam * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -146,13 +157,20 @@ async function fetchOrdersPage(pageParam: number, filters: OrderFilters) {
     query = query.eq('payment_status', filters.paymentStatusFilter);
   }
 
-  // Apply server-side search filter using ilike/or
+  // Apply server-side search filter — also searches customer company/business names
   if (filters.searchQuery && filters.searchQuery.trim()) {
     const q = filters.searchQuery.trim();
-    // Use or() for searching across multiple columns
-    query = query.or(
-      `order_number.ilike.%${q}%,customer_name.ilike.%${q}%,customer_phone.ilike.%${q}%,purchase_order.ilike.%${q}%,contact_phone.ilike.%${q}%,contact_name.ilike.%${q}%`
-    );
+
+    // Pre-search customers table for company_name / business_name matches
+    const matchedCustomerIds = await fetchMatchingCustomerIds(q);
+
+    let orFilter = `order_number.ilike.%${q}%,customer_name.ilike.%${q}%,customer_phone.ilike.%${q}%,purchase_order.ilike.%${q}%,contact_phone.ilike.%${q}%,contact_name.ilike.%${q}%,delivery_address.ilike.%${q}%`;
+
+    if (matchedCustomerIds.length > 0) {
+      orFilter += `,customer_id.in.(${matchedCustomerIds.join(',')})`;
+    }
+
+    query = query.or(orFilter);
   }
 
   query = query.range(from, to);
