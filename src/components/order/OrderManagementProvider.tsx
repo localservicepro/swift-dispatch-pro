@@ -106,10 +106,15 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Use custom hooks for data and actions
-  const { orders, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useOrderData();
+  // Use custom hooks for data and actions - filters are applied server-side
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const { orders, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useOrderData({
+    searchQuery: debouncedSearch,
+    statusFilter,
+    paymentStatusFilter,
+  });
   const { updateOrderStatus, handleDeleteOrder: handleDeleteOrderAction } = useOrderActions(refetch);
-  const filteredOrders = useFilteredOrders(orders, searchQuery, statusFilter, paymentStatusFilter);
+  const filteredOrders = orders;
 
   // Clear all filters
   const clearFilters = () => {
