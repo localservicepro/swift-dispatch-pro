@@ -1,23 +1,36 @@
 
 
-## Show contact name for business customers with partial names
+## Fix junk/null customer name display in Orders
 
 ### Problem
-The contact subtitle only appears when both `first_name` AND `last_name` exist. Many trade/business customers only have one name field filled in (or neither), so they show no contact info.
+Two display issues visible in the screenshots:
+1. **Order card shows `***`** as customer name — junk placeholder data stored in `customer_name` field is not being filtered
+2. **"Ahmed null"** appears in both the order card contact line and the Edit Order header — the literal string "null" was concatenated as a last name when it was actually null
 
-### Fix
-**`src/components/customer/CustomerCard.tsx`** — Change the condition to show the contact line when *either* `first_name` or `last_name` is present, and display whichever is available.
+### Root Cause
+- The `getDisplayInfo()` function in `OrderCard.tsx` does not apply the same junk-value filtering (`isJunkValue`) that exists in `orderFormattingService.ts`
+- The `OrderEditHeader.tsx` displays `customerName` directly without filtering
+- The `customer_name` field stored in orders sometimes contains junk values like `***` or names with literal "null"
 
-```tsx
-{customer.entity_type === 'business' && (customer.first_name || customer.last_name) && (
-  <span className="text-sm text-muted-foreground">
-    Contact: {[customer.first_name, customer.last_name].filter(Boolean).join(' ')}
-  </span>
-)}
-```
+### Plan
 
-Also update the same logic in the `getCustomerSubtitle` function for consistency.
+**1. Create a shared name-cleaning utility**
+Extract the `isJunkValue`/`clean` logic from `orderFormattingService.ts` into a reusable helper, or simply import and reuse it.
 
-### Scope
-Single file change: `src/components/customer/CustomerCard.tsx`
+**2. Fix `OrderCard.tsx` — `getDisplayInfo()` (lines 122-163)**
+- Apply junk filtering to `customer_name`, `company_name`, `business_name`, and `contact_name`
+- Filter out literal "null" strings and clean "Ahmed null" → "Ahmed"
+- When `customer_name` is junk (like `***`), fall back to contact_name or company/business name
+
+**3. Fix `OrderEditHeader.tsx` — display name (line 16, 29)**
+- Apply the same junk/null cleaning to `customerName` and `companyName` before display
+- Clean literal "null" from concatenated names (e.g., "Ahmed null" → "Ahmed")
+
+**4. Fix contact info line in `OrderCard.tsx` (line 286)**
+- Apply cleaning to `contactInfo` so "Ahmed null" displays as "Ahmed"
+
+### Files to modify
+- `src/components/order/services/orderFormattingService.ts` — export `isJunkValue`/`clean` helpers
+- `src/components/order/OrderCard.tsx` — apply cleaning in `getDisplayInfo()`
+- `src/components/order/OrderEditHeader.tsx` — apply cleaning to displayed names
 
