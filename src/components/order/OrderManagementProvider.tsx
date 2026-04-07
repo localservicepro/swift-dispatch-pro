@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { emailService } from "@/utils/emailService";
-import { useOrderData, useFilteredOrders } from "./hooks/useOrderData";
+import { useOrderData } from "./hooks/useOrderData";
 import { useOrderActions } from "./hooks/useOrderActions";
 import { Database } from "@/integrations/supabase/types";
 
