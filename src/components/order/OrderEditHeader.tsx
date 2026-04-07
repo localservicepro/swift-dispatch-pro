@@ -3,6 +3,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { PurchaseOrderDisplay } from './PurchaseOrderDisplay';
 import { formatOrderNumber } from '@/utils/orderNumberFormatter';
+import { cleanDisplayName } from './services/orderFormattingService';
 
 interface OrderEditHeaderProps {
   orderNumber: string;
@@ -13,7 +14,9 @@ interface OrderEditHeaderProps {
 }
 
 export function OrderEditHeader({ orderNumber, purchaseOrder, customerName, customerType, companyName }: OrderEditHeaderProps) {
-  const displayName = customerType === 'account' && companyName ? companyName : customerName;
+  const cleanedCompany = cleanDisplayName(companyName);
+  const cleanedCustomer = cleanDisplayName(customerName);
+  const displayName = customerType === 'account' && cleanedCompany ? cleanedCompany : (cleanedCustomer || cleanedCompany || 'Customer');
   return (
     <div className="space-y-2 pb-4 border-b">
       <div className="flex items-center gap-3">
