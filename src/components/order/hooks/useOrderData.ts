@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
-import { isPhoneNumber, phoneSearchMatch } from "@/utils/phoneUtils";
 import { formatOrderNumber } from "@/utils/orderNumberFormatter";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -16,7 +15,7 @@ const getInitials = (fullName: string | null | undefined): string => {
   return parts.map(p => p.charAt(0).toUpperCase()).join("");
 };
 
-interface Order {
+export interface Order {
   id: string;
   order_number: string;
   purchase_order?: string;
@@ -65,11 +64,17 @@ interface Order {
   admin_initials?: string;
 }
 
-async function fetchOrdersPage(pageParam: number) {
+interface OrderFilters {
+  searchQuery?: string;
+  statusFilter?: string;
+  paymentStatusFilter?: string;
+}
+
+async function fetchOrdersPage(pageParam: number, filters: OrderFilters) {
   const from = pageParam * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const { data: ordersData, error: ordersError } = await supabase
+  let query = supabase
     .from('orders')
     .select(`
       id,
@@ -129,8 +134,30 @@ async function fetchOrdersPage(pageParam: number) {
       )
     `)
     .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .range(from, to);
+    .order('created_at', { ascending: false });
+
+  // Apply server-side status filter
+  if (filters.statusFilter && filters.statusFilter !== 'all') {
+    query = query.eq('status', filters.statusFilter);
+  }
+
+  // Apply server-side payment status filter
+  if (filters.paymentStatusFilter && filters.paymentStatusFilter !== 'all') {
+    query = query.eq('payment_status', filters.paymentStatusFilter);
+  }
+
+  // Apply server-side search filter using ilike/or
+  if (filters.searchQuery && filters.searchQuery.trim()) {
+    const q = filters.searchQuery.trim();
+    // Use or() for searching across multiple columns
+    query = query.or(
+      `order_number.ilike.%${q}%,customer_name.ilike.%${q}%,customer_phone.ilike.%${q}%,purchase_order.ilike.%${q}%,contact_phone.ilike.%${q}%,contact_name.ilike.%${q}%`
+    );
+  }
+
+  query = query.range(from, to);
+
+  const { data: ordersData, error: ordersError } = await query;
 
   if (ordersError) {
     console.error('Error fetching orders:', ordersError);
@@ -172,7 +199,7 @@ async function fetchOrdersPage(pageParam: number) {
   return mappedOrders;
 }
 
-export function useOrderData() {
+export function useOrderData(filters: OrderFilters = {}) {
   const {
     data,
     isLoading,
@@ -182,11 +209,10 @@ export function useOrderData() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['orders'],
-    queryFn: ({ pageParam }) => fetchOrdersPage(pageParam),
+    queryKey: ['orders', filters.searchQuery || '', filters.statusFilter || 'all', filters.paymentStatusFilter || 'all'],
+    queryFn: ({ pageParam }) => fetchOrdersPage(pageParam, filters),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _allPages, lastPageParam) => {
-      // If we got a full page, there may be more
       if (lastPage.length === PAGE_SIZE) {
         return lastPageParam + 1;
       }
@@ -202,46 +228,7 @@ export function useOrderData() {
   return { orders, isLoading, error, refetch, fetchNextPage, hasNextPage: !!hasNextPage, isFetchingNextPage };
 }
 
-export function useFilteredOrders(orders: Order[], searchQuery: string, statusFilter: string, paymentStatusFilter?: string) {
-  const filteredOrders = useMemo(() => {
-    let filtered = orders;
-
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      
-      // Check if search term is a phone number
-      const isPhoneSearch = isPhoneNumber(searchQuery);
-      
-      filtered = filtered.filter(order => {
-        if (isPhoneSearch) {
-          return phoneSearchMatch(order.customer_phone, searchQuery) ||
-                 phoneSearchMatch(order.contact_phone, searchQuery);
-        } else {
-          const displayOrderNumber = formatOrderNumber(order).toLowerCase();
-          return displayOrderNumber.includes(query) ||
-                 order.order_number.toLowerCase().includes(query) ||
-                 order.customer_name.toLowerCase().includes(query) ||
-                 (order.customer_phone && order.customer_phone.toLowerCase().includes(query)) ||
-                 (order.purchase_order && order.purchase_order.toLowerCase().includes(query)) ||
-                 (order.company_name && order.company_name.toLowerCase().includes(query)) ||
-                 (order.business_name && order.business_name.toLowerCase().includes(query));
-        }
-      });
-    }
-
-    // Apply status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(order => order.status === statusFilter);
-    }
-
-    // Apply payment status filter
-    if (paymentStatusFilter && paymentStatusFilter !== "all") {
-      filtered = filtered.filter(order => order.payment_status === paymentStatusFilter);
-    }
-
-    return filtered;
-  }, [orders, searchQuery, statusFilter, paymentStatusFilter]);
-
-  return filteredOrders;
+// Keep for backward compat but now it's a no-op pass-through since filtering is server-side
+export function useFilteredOrders(orders: Order[], _searchQuery: string, _statusFilter: string, _paymentStatusFilter?: string) {
+  return orders;
 }
