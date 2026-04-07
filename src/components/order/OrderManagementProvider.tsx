@@ -1,5 +1,6 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
