@@ -120,43 +120,34 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
 
   // Determine display name and company info
   const getDisplayInfo = () => {
+    const cleanCompany = cleanDisplayName(order.company_name);
+    const cleanBusiness = cleanDisplayName(order.business_name);
+    const cleanContact = cleanDisplayName(order.contact_name);
+    const cleanCustomer = cleanDisplayName(order.customer_name);
+
+    const resolveContact = () => cleanContact || cleanCustomer;
+
     // Check for company name (account customers)
-    if (order.company_name) {
-      // Prioritize contact_name if available, otherwise fall back to customer_name
-      const contactName = order.contact_name || order.customer_name;
-      const hasValidContact = contactName && 
-        contactName !== 'null null' && 
-        contactName.trim() !== '' &&
-        contactName !== 'null' &&
-        contactName !== 'undefined';
-      
+    if (cleanCompany) {
       return {
-        displayName: order.company_name,
-        contactInfo: hasValidContact ? contactName : null,
+        displayName: cleanCompany,
+        contactInfo: resolveContact(),
         isCompany: true
       };
     }
     
     // Check for business name (business customers)
-    if (order.business_name) {
-      // Prioritize contact_name if available, otherwise fall back to customer_name
-      const contactName = order.contact_name || order.customer_name;
-      const hasValidContact = contactName && 
-        contactName !== 'null null' && 
-        contactName.trim() !== '' &&
-        contactName !== 'null' &&
-        contactName !== 'undefined';
-      
+    if (cleanBusiness) {
       return {
-        displayName: order.business_name,
-        contactInfo: hasValidContact ? contactName : null,
+        displayName: cleanBusiness,
+        contactInfo: resolveContact(),
         isCompany: true
       };
     }
     
-    // Default to contact name if available, otherwise customer name
+    // Default — prefer contact name, then customer name, then fallbacks
     return {
-      displayName: order.contact_name || order.customer_name,
+      displayName: cleanContact || cleanCustomer || cleanCompany || cleanBusiness || 'Customer',
       contactInfo: null,
       isCompany: false
     };

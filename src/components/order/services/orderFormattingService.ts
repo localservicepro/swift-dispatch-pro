@@ -4,7 +4,7 @@ import type { Database } from '@/integrations/supabase/types';
 type Customer = Database['public']['Tables']['customers']['Row'];
 
 /** Returns true if the value is only punctuation/symbols (junk placeholder data) */
-const isJunkValue = (val: string | null | undefined): boolean => {
+export const isJunkValue = (val: string | null | undefined): boolean => {
   if (!val) return true;
   const trimmed = val.trim();
   if (!trimmed) return true;
@@ -12,8 +12,16 @@ const isJunkValue = (val: string | null | undefined): boolean => {
   return /^[*.\-_\s]+$/.test(trimmed);
 };
 
-const clean = (val: string | null | undefined): string | null => {
+export const clean = (val: string | null | undefined): string | null => {
   return isJunkValue(val) ? null : val!.trim();
+};
+
+/** Cleans a name string by removing literal "null" words and junk values */
+export const cleanDisplayName = (val: string | null | undefined): string | null => {
+  if (!val) return null;
+  // Remove literal "null" / "undefined" words
+  const cleaned = val.replace(/\b(null|undefined)\b/gi, '').trim();
+  return isJunkValue(cleaned) ? null : cleaned;
 };
 
 export const getCustomerDisplayName = (customer: Customer): string => {
