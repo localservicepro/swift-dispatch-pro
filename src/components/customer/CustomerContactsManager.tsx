@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -326,12 +327,12 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
         </div>
       )}
 
-      {isAddingContact && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Add New Contact</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <Dialog open={isAddingContact} onOpenChange={(open) => { if (!open) setIsAddingContact(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Contact</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="new_first_name">First Name</Label>
@@ -376,22 +377,22 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
                 placeholder="e.g. Manager, Coordinator, Assistant"
               />
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleAddContact}>Add Contact</Button>
+            <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setIsAddingContact(false)}>
                 Cancel
               </Button>
+              <Button onClick={handleAddContact}>Add Contact</Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {editingContact && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Edit Contact</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <Dialog open={!!editingContact} onOpenChange={(open) => { if (!open) handleCancelEdit(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Contact</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="edit_first_name">First Name</Label>
@@ -436,15 +437,15 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
                 placeholder="e.g. Manager, Coordinator, Assistant"
               />
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleUpdateContact}>Update Contact</Button>
+            <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={handleCancelEdit}>
                 Cancel
               </Button>
+              <Button onClick={handleUpdateContact}>Update Contact</Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
