@@ -22,6 +22,7 @@ export function useCustomerDialogData(customer: Customer | null) {
     company_name: '',
     business_name: '',
     contact_role: 'Primary Contact',
+    account_number: '',
   });
   
   const [deliveryRate, setDeliveryRate] = useState<string>('');
