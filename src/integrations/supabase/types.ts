@@ -359,6 +359,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          account_number: string | null
           auth_user_id: string | null
           billing_preferences: Json | null
           business_details: Json | null
@@ -394,6 +395,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_number?: string | null
           auth_user_id?: string | null
           billing_preferences?: Json | null
           business_details?: Json | null
@@ -429,6 +431,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_number?: string | null
           auth_user_id?: string | null
           billing_preferences?: Json | null
           business_details?: Json | null

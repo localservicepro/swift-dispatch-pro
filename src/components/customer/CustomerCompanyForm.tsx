@@ -9,13 +9,27 @@ interface CustomerCompanyFormProps {
     business_name: string;
     customer_type: "residential" | "trade" | "account";
     entity_type: "individual" | "business";
+    account_number?: string;
   };
   onFormDataChange: (updates: Partial<CustomerCompanyFormProps['formData']>) => void;
+  isEdit?: boolean;
 }
 
-export function CustomerCompanyForm({ formData, onFormDataChange }: CustomerCompanyFormProps) {
+export function CustomerCompanyForm({ formData, onFormDataChange, isEdit }: CustomerCompanyFormProps) {
   return (
     <>
+      <div>
+        <Label htmlFor="account_number">Account Number</Label>
+        <Input
+          id="account_number"
+          value={formData.account_number || ''}
+          readOnly
+          disabled
+          placeholder={isEdit ? 'N/A' : 'Auto-generated on save'}
+          className="bg-muted font-mono"
+        />
+      </div>
+
       <div>
         <Label htmlFor="customer_type">Customer Type</Label>
         <Select 
