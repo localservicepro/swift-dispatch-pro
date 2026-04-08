@@ -118,8 +118,10 @@ export function CustomerDialogTabs({
             business_name: formData.business_name,
             customer_type: formData.customer_type,
             entity_type: formData.entity_type,
+            account_number: (formData as any).account_number,
           }}
           onFormDataChange={onCompanyChange}
+          isEdit={isEdit}
         />
       </TabsContent>
 
