@@ -9,8 +9,10 @@ interface CustomerCompanyFormProps {
     business_name: string;
     customer_type: "residential" | "trade" | "account";
     entity_type: "individual" | "business";
+    account_number?: string;
   };
   onFormDataChange: (updates: Partial<CustomerCompanyFormProps['formData']>) => void;
+  isEdit?: boolean;
 }
 
 export function CustomerCompanyForm({ formData, onFormDataChange }: CustomerCompanyFormProps) {
