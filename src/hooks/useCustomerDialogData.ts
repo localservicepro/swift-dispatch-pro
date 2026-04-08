@@ -48,6 +48,7 @@ export function useCustomerDialogData(customer: Customer | null) {
         company_name: customer.company_name || '',
         business_name: customer.business_name || '',
         contact_role: customer.contact_role || getDefaultContactRole(customer.customer_type as any, customer.entity_type as any),
+        account_number: (customer as any).account_number || '',
       });
 
       // Load delivery rate if suburb_id exists
