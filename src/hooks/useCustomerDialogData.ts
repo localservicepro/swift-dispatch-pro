@@ -73,6 +73,7 @@ export function useCustomerDialogData(customer: Customer | null) {
         company_name: '',
         business_name: '',
         contact_role: 'Owner',
+        account_number: '',
       });
     }
   }, [customer]);

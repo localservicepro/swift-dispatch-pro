@@ -70,6 +70,11 @@ export function CustomerCard({
             <h3 className="font-semibold text-lg">
               {getCustomerDisplayName(customer)}
             </h3>
+            {customer.account_number && (
+              <Badge variant="outline" className="font-mono text-xs">
+                {customer.account_number}
+              </Badge>
+            )}
             {customer.entity_type === 'business' && (customer.first_name || customer.last_name) && (
               <span className="text-sm text-muted-foreground">
                 Contact: {[customer.first_name, customer.last_name].filter(Boolean).join(' ')}
