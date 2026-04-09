@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AccountNumberStep } from "@/components/storefront/AccountNumberStep";
 import { StorefrontOrderFlow } from "@/components/storefront/StorefrontOrderFlow";
+import { StorefrontProductBrowser, StorefrontCartItem } from "@/components/storefront/StorefrontProductBrowser";
 import { ShoppingBag } from "lucide-react";
 
 interface ValidatedCustomer {
@@ -13,18 +14,33 @@ interface ValidatedCustomer {
   suburb_id: string | null;
 }
 
+type StorefrontStep = "browse" | "account" | "checkout";
+
 export default function Storefront() {
+  const [step, setStep] = useState<StorefrontStep>("browse");
+  const [cart, setCart] = useState<StorefrontCartItem[]>([]);
   const [customer, setCustomer] = useState<ValidatedCustomer | null>(null);
   const [accountNumber, setAccountNumber] = useState("");
+
+  const handleProceedToCheckout = () => {
+    setStep("account");
+  };
 
   const handleValidated = (cust: ValidatedCustomer, accNum: string) => {
     setCustomer(cust);
     setAccountNumber(accNum);
+    setStep("checkout");
+  };
+
+  const handleBackToBrowse = () => {
+    setStep("browse");
   };
 
   const handleReset = () => {
     setCustomer(null);
     setAccountNumber("");
+    setCart([]);
+    setStep("browse");
   };
 
   return (
@@ -44,10 +60,23 @@ export default function Storefront() {
 
       {/* Content */}
       <main className="max-w-5xl mx-auto px-4 py-6">
-        {!customer ? (
-          <AccountNumberStep onValidated={handleValidated} />
-        ) : (
-          <StorefrontOrderFlow customer={customer} accountNumber={accountNumber} onBack={handleReset} />
+        {step === "browse" && (
+          <StorefrontProductBrowser
+            cart={cart}
+            onCartChange={setCart}
+            onNext={handleProceedToCheckout}
+          />
+        )}
+        {step === "account" && (
+          <AccountNumberStep onValidated={handleValidated} onBack={handleBackToBrowse} />
+        )}
+        {step === "checkout" && customer && (
+          <StorefrontOrderFlow
+            customer={customer}
+            accountNumber={accountNumber}
+            cart={cart}
+            onBack={handleReset}
+          />
         )}
       </main>
     </div>
