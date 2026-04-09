@@ -15,6 +15,7 @@ import SwiftDispatchGuide from "./pages/SwiftDispatchGuide";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
+import Storefront from "./pages/Storefront";
 import MyProfile from "./pages/MyProfile";
 import { useUserRole } from "./hooks/useUserRole";
 import { DashboardOverview } from "@/components/DashboardOverview";
