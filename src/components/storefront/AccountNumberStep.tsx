@@ -21,7 +21,7 @@ interface AccountNumberStepProps {
   onBack?: () => void;
 }
 
-export function AccountNumberStep({ onValidated }: AccountNumberStepProps) {
+export function AccountNumberStep({ onValidated, onBack }: AccountNumberStepProps) {
   const [accountNumber, setAccountNumber] = useState("");
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
