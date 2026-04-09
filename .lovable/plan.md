@@ -1,47 +1,71 @@
 
 
-## Restructure Storefront: Browse First, Account at Checkout
+## Modern Storefront Redesign with Enhanced Checkout
 
-### What changes
-The storefront currently requires account number validation upfront before showing any products. Instead, it should work like a typical e-commerce store: products are browsable immediately, and the account number is only requested when the customer proceeds to checkout.
+### Overview
+Redesign the storefront with a modern e-commerce look, add contact details collection at checkout, integrate Google address autocomplete for delivery, and auto-match suburbs for delivery fee calculation.
 
-### How
+### Visual Redesign
 
-**1. Modify `Storefront.tsx`**
-- Remove the conditional gate that blocks product browsing behind `AccountNumberStep`
-- Show `StorefrontProductBrowser` directly on load (no account needed)
-- Manage cart state at the page level
-- When user clicks "Proceed to Checkout" from the product browser, show the `AccountNumberStep` inline
-- After account validation, continue to the delivery/review steps in `StorefrontOrderFlow`
+**Product Browser (`StorefrontProductBrowser.tsx`)**
+- Hero banner with gradient background and store branding
+- Product cards with image placeholders, hover effects, and shadow transitions
+- Category pills/chips instead of dropdown for filtering
+- Floating cart drawer/sidebar instead of bottom bar
+- Quantity stepper with modern rounded pill design
+- Empty state with illustration
 
-**2. Modify `StorefrontProductBrowser.tsx`**
-- Change the "Next" button label to "Proceed to Checkout"
-- The `onBack` prop becomes unnecessary at this step (it's the landing view)
+**Checkout Flow (`StorefrontOrderFlow.tsx`) - Complete rewrite**
+- Modern single-page checkout layout with two columns on desktop: left = form sections, right = sticky order summary
+- Collapsible accordion sections for each step instead of multi-page wizard
+- Steps consolidated into:
+  1. Contact Details (name, phone, email)
+  2. Delivery Method (delivery/pickup toggle cards)
+  3. Delivery Address (Google autocomplete + auto suburb matching) -- only if delivery
+  4. Schedule (date/time)
+  5. Order Notes (optional)
+- Right sidebar: live-updating order summary with product list, subtotal, delivery fee, total
+- Modern "Place Order" button at bottom of summary
 
-**3. Modify `StorefrontOrderFlow.tsx`**
-- Remove step 1 (product browsing) since products are already selected before account validation
-- Start directly at delivery method selection (current step 2)
-- Cart is passed in as a prop (already selected)
-- Still requires `customer` and `accountNumber` props (validated before this component renders)
+**Account Number Step (`AccountNumberStep.tsx`)**
+- Sleeker design with subtle animation
+- Inline within checkout flow rather than full-page takeover
 
-**4. Modify `AccountNumberStep.tsx`**
-- No structural changes needed — it already works as a standalone validation step
-- Minor: update subtitle text from "Enter your account number to start ordering" → "Enter your account number to complete your order"
+**Page Layout (`Storefront.tsx`)**
+- Modern header with subtle gradient or clean white with shadow
+- Better max-width and spacing
 
-### Flow after changes
+### Functional Changes
 
-```text
-/storefront
-  ├── Browse Products & Build Cart (no account needed)
-  ├── "Proceed to Checkout" → Account Number Validation
-  ├── Delivery/Pickup Method Selection
-  ├── Notes & Review
-  └── Submit Order
-```
+**Contact Details Collection**
+- Add fields: contact name, phone, email
+- Pass these to `storefront-create-order` edge function
+- Edge function stores them as `contact_name`, `contact_phone`, `contact_email` on the order
 
-### Files modified
-- `src/pages/Storefront.tsx` — lift cart state up, restructure flow
-- `src/components/storefront/StorefrontOrderFlow.tsx` — remove product step, start at delivery
-- `src/components/storefront/StorefrontProductBrowser.tsx` — update button label
-- `src/components/storefront/AccountNumberStep.tsx` — update subtitle text
+**Google Address Autocomplete for Delivery**
+- Reuse existing `EnhancedAddressInput` component for delivery address
+- On address selection, extract postcode and auto-match to a suburb from the `suburbs` table
+- Auto-calculate delivery fee based on matched suburb's `delivery_rate`
+- Show delivery fee in order summary
+
+**Suburb Auto-Matching**
+- When address is selected via Google autocomplete, extract postcode
+- Query `suburbs` table (needs anon RLS policy) to find matching suburb
+- Auto-populate suburb and delivery fee
+- Allow manual suburb override via `SuburbSelector`
+
+### Database Changes
+- Add RLS SELECT policy on `suburbs` for `anon` role (active suburbs only) -- needed for storefront to query suburbs without auth
+
+### Edge Function Update (`storefront-create-order`)
+- Accept new fields: `contact_name`, `contact_phone`, `contact_email`, `delivery_fee`
+- Store contact info and delivery fee on the created order
+
+### Files Modified
+- `src/pages/Storefront.tsx` -- modern layout, gradient header
+- `src/components/storefront/StorefrontProductBrowser.tsx` -- modern product grid, category chips, floating cart
+- `src/components/storefront/StorefrontOrderFlow.tsx` -- complete rewrite with two-column checkout, contact fields, Google address, suburb matching
+- `src/components/storefront/AccountNumberStep.tsx` -- sleeker inline design
+- `supabase/functions/storefront-create-order/index.ts` -- accept contact info + delivery fee
+- New migration: anon SELECT policy on `suburbs`
 
