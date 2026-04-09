@@ -20,6 +20,7 @@ interface FormData {
   company_name: string;
   business_name: string;
   contact_role: string;
+  account_number?: string;
 }
 
 export function useCustomerDialogActions(
