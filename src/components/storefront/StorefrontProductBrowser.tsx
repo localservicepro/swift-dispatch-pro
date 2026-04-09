@@ -267,9 +267,34 @@ export function StorefrontProductBrowser({ cart, onCartChange, onNext }: Storefr
                   <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">${item.price.toFixed(2)} × {item.quantity}</p>
+                      <p className="text-xs text-muted-foreground">${item.price.toFixed(2)} each</p>
                     </div>
-                    <span className="font-semibold text-sm">${(item.price * item.quantity).toFixed(2)}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7 rounded-full"
+                        onClick={() => {
+                          if (item.quantity <= 1) {
+                            removeFromCart(item.id);
+                          } else {
+                            onCartChange(cart.map((c) => c.id === item.id ? { ...c, quantity: c.quantity - 1 } : c));
+                          }
+                        }}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="font-semibold text-sm w-6 text-center">{item.quantity}</span>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7 rounded-full"
+                        onClick={() => onCartChange(cart.map((c) => c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c))}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <span className="font-semibold text-sm shrink-0">${(item.price * item.quantity).toFixed(2)}</span>
                     <Button
                       size="icon"
                       variant="ghost"
