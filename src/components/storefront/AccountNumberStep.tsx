@@ -73,10 +73,15 @@ export function AccountNumberStep({ onValidated, onBack }: AccountNumberStepProp
           </div>
           <CardTitle className="text-2xl">Account Login</CardTitle>
           <CardDescription>
-            Enter your account number to start ordering
+            Enter your account number to complete your order
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {onBack && (
+            <Button variant="ghost" size="sm" onClick={onBack} className="mb-2">
+              ← Back to products
+            </Button>
+          )}
           <div className="space-y-2">
             <Label htmlFor="account-number">Account Number</Label>
             <Input
