@@ -44,22 +44,22 @@ export default function Storefront() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+    <div className="min-h-screen bg-muted/30">
+      {/* Modern Header */}
+      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
             <ShoppingBag className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="font-bold text-lg leading-tight">Online Ordering</h1>
-            <p className="text-xs text-muted-foreground">Place your order quickly and easily</p>
+            <h1 className="font-bold text-lg leading-tight tracking-tight">Online Store</h1>
+            <p className="text-xs text-muted-foreground">Browse products & place your order</p>
           </div>
         </div>
       </header>
 
       {/* Content */}
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {step === "browse" && (
           <StorefrontProductBrowser
             cart={cart}

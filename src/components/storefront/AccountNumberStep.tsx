@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { KeyRound, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { KeyRound, CheckCircle2, Loader2, AlertCircle, ArrowLeft, ArrowRight, Shield } from "lucide-react";
 
 interface ValidatedCustomer {
   id: string;
@@ -66,24 +66,34 @@ export function AccountNumberStep({ onValidated, onBack }: AccountNumberStepProp
 
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-            <KeyRound className="h-7 w-7 text-primary" />
+      <Card className="w-full max-w-md shadow-xl border-0">
+        <CardContent className="p-8 space-y-6">
+          {/* Header */}
+          <div className="text-center space-y-3">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+              <Shield className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">Verify Your Account</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Enter your account number to complete your order
+              </p>
+            </div>
           </div>
-          <CardTitle className="text-2xl">Account Login</CardTitle>
-          <CardDescription>
-            Enter your account number to complete your order
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+
+          {/* Back button */}
           {onBack && (
-            <Button variant="ghost" size="sm" onClick={onBack} className="mb-2">
-              ← Back to products
+            <Button variant="ghost" size="sm" onClick={onBack} className="w-full justify-start text-muted-foreground">
+              <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+              Back to products
             </Button>
           )}
+
+          {/* Input */}
           <div className="space-y-2">
-            <Label htmlFor="account-number">Account Number</Label>
+            <Label htmlFor="account-number" className="text-xs font-medium">
+              Account Number
+            </Label>
             <Input
               id="account-number"
               placeholder="e.g. 00001"
@@ -95,43 +105,54 @@ export function AccountNumberStep({ onValidated, onBack }: AccountNumberStepProp
               }}
               onKeyDown={(e) => e.key === "Enter" && !validatedCustomer && handleValidate()}
               maxLength={10}
-              className="text-center text-lg tracking-widest font-mono"
+              className="text-center text-xl tracking-[0.3em] font-mono h-12 rounded-xl bg-muted/50 border-border/60"
             />
           </div>
 
+          {/* Error */}
           {error && (
-            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+            <div className="flex items-center gap-2.5 text-sm text-destructive bg-destructive/10 p-3.5 rounded-xl">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
+          {/* Validated Customer */}
           {validatedCustomer && (
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-3 rounded-md border border-green-200">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <div className="flex items-center gap-3 text-sm bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 p-4 rounded-xl border border-green-200 dark:border-green-800">
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
               <div>
-                <p className="font-medium">{validatedCustomer.display_name}</p>
+                <p className="font-semibold">{validatedCustomer.display_name}</p>
                 {validatedCustomer.full_address && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{validatedCustomer.full_address}</p>
+                  <p className="text-xs opacity-75 mt-0.5">{validatedCustomer.full_address}</p>
                 )}
               </div>
             </div>
           )}
 
+          {/* Actions */}
           {!validatedCustomer ? (
-            <Button onClick={handleValidate} disabled={isValidating || !accountNumber.trim()} className="w-full">
+            <Button
+              onClick={handleValidate}
+              disabled={isValidating || !accountNumber.trim()}
+              className="w-full h-12 rounded-xl text-base font-semibold"
+            >
               {isValidating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Validating...
                 </>
               ) : (
-                "Validate Account"
+                "Verify Account"
               )}
             </Button>
           ) : (
-            <Button onClick={handleContinue} className="w-full">
-              Continue to Order
+            <Button
+              onClick={handleContinue}
+              className="w-full h-12 rounded-xl text-base font-semibold"
+            >
+              Continue to Checkout
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           )}
         </CardContent>
