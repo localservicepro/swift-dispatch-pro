@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { StorefrontProductBrowser, StorefrontCartItem } from "./StorefrontProductBrowser";
+import { StorefrontCartItem } from "./StorefrontProductBrowser";
 import { Truck, Store, Loader2, CheckCircle2, ArrowLeft, ShoppingBag } from "lucide-react";
 
 interface CustomerInfo {
@@ -23,13 +23,13 @@ interface CustomerInfo {
 interface StorefrontOrderFlowProps {
   customer: CustomerInfo;
   accountNumber: string;
+  cart: StorefrontCartItem[];
   onBack: () => void;
 }
 
-export function StorefrontOrderFlow({ customer, accountNumber, onBack }: StorefrontOrderFlowProps) {
+export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: StorefrontOrderFlowProps) {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
-  const [cart, setCart] = useState<StorefrontCartItem[]>([]);
   const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup">("delivery");
   const [deliveryAddress, setDeliveryAddress] = useState(customer.full_address || "");
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -39,7 +39,7 @@ export function StorefrontOrderFlow({ customer, accountNumber, onBack }: Storefr
   const [orderResult, setOrderResult] = useState<{ orderNumber: string } | null>(null);
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const totalSteps = 4;
+  const totalSteps = 3;
 
   const handleSubmitOrder = async () => {
     setIsSubmitting(true);
@@ -104,12 +104,12 @@ export function StorefrontOrderFlow({ customer, accountNumber, onBack }: Storefr
             </div>
             <div>
               <p className="font-medium">{customer.display_name}</p>
-              <p className="text-xs text-muted-foreground">Account: {accountNumber}</p>
+              <p className="text-xs text-muted-foreground">Account: {accountNumber} · {cart.length} item{cart.length !== 1 ? "s" : ""} · ${cartTotal.toFixed(2)}</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft className="h-4 w-4 mr-1" />
-            Change Account
+            Start Over
           </Button>
         </CardContent>
       </Card>
@@ -121,13 +121,8 @@ export function StorefrontOrderFlow({ customer, accountNumber, onBack }: Storefr
         ))}
       </div>
 
-      {/* Step 1: Products */}
+      {/* Step 1: Delivery Method */}
       {step === 1 && (
-        <StorefrontProductBrowser cart={cart} onCartChange={setCart} onNext={() => setStep(2)} onBack={onBack} />
-      )}
-
-      {/* Step 2: Delivery Method */}
-      {step === 2 && (
         <Card>
           <CardHeader>
             <CardTitle>Delivery Method</CardTitle>
@@ -166,15 +161,15 @@ export function StorefrontOrderFlow({ customer, accountNumber, onBack }: Storefr
             </div>
 
             <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
-              <Button onClick={() => setStep(3)}>Next</Button>
+              <Button variant="outline" onClick={onBack}>Back</Button>
+              <Button onClick={() => setStep(2)}>Next</Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Step 3: Notes */}
-      {step === 3 && (
+      {/* Step 2: Notes */}
+      {step === 2 && (
         <Card>
           <CardHeader>
             <CardTitle>Order Notes</CardTitle>
@@ -183,15 +178,15 @@ export function StorefrontOrderFlow({ customer, accountNumber, onBack }: Storefr
           <CardContent className="space-y-4">
             <Textarea value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="e.g. Please call before delivery..." rows={4} />
             <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-              <Button onClick={() => setStep(4)}>Review Order</Button>
+              <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
+              <Button onClick={() => setStep(3)}>Review Order</Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Step 4: Review */}
-      {step === 4 && (
+      {/* Step 3: Review */}
+      {step === 3 && (
         <Card>
           <CardHeader>
             <CardTitle>Review Your Order</CardTitle>
@@ -246,7 +241,7 @@ export function StorefrontOrderFlow({ customer, accountNumber, onBack }: Storefr
             </div>
 
             <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => setStep(3)}>Back</Button>
+              <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
               <Button onClick={handleSubmitOrder} disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>

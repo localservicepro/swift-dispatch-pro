@@ -18,6 +18,7 @@ interface ValidatedCustomer {
 
 interface AccountNumberStepProps {
   onValidated: (customer: ValidatedCustomer, accountNumber: string) => void;
+  onBack?: () => void;
 }
 
 export function AccountNumberStep({ onValidated }: AccountNumberStepProps) {

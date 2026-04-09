@@ -35,10 +35,9 @@ interface StorefrontProductBrowserProps {
   cart: StorefrontCartItem[];
   onCartChange: (cart: StorefrontCartItem[]) => void;
   onNext: () => void;
-  onBack: () => void;
 }
 
-export function StorefrontProductBrowser({ cart, onCartChange, onNext, onBack }: StorefrontProductBrowserProps) {
+export function StorefrontProductBrowser({ cart, onCartChange, onNext }: StorefrontProductBrowserProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,18 +171,11 @@ export function StorefrontProductBrowser({ cart, onCartChange, onNext, onBack }:
               <span className="font-semibold">${cartTotal.toFixed(2)}</span>
             </div>
             <Button variant="secondary" onClick={onNext}>
-              Continue
+              Proceed to Checkout
             </Button>
           </CardContent>
         </Card>
       )}
-
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={onBack}>Back</Button>
-        <Button onClick={onNext} disabled={cart.length === 0}>
-          Next
-        </Button>
-      </div>
     </div>
   );
 }
