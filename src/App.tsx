@@ -135,6 +135,7 @@ function AppRoutes() {
       <Routes>
         {/* Public routes - no authentication required */}
         <Route path="/portal-login" element={<PortalLogin />} />
+        <Route path="/storefront" element={<Storefront />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
         
