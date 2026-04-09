@@ -93,6 +93,14 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
+  // Parse delivery rate from text like "AU$50", "$50", "50" etc.
+  const parseDeliveryRate = (rate: any): number => {
+    if (rate == null) return 0;
+    if (typeof rate === "number") return rate;
+    const cleaned = String(rate).replace(/[^0-9.]/g, "");
+    return parseFloat(cleaned) || 0;
+  };
+
   // Auto-match suburb by postcode
   const handleAddressSelect = useCallback(async (addressData: AddressData) => {
     setDeliveryAddress(addressData.fullAddress);
@@ -106,9 +114,10 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
           .limit(1);
 
         if (suburbs && suburbs.length > 0) {
+          const baseRate = parseDeliveryRate(suburbs[0].delivery_rate);
           setMatchedSuburbId(suburbs[0].id);
           setMatchedSuburbName(suburbs[0].name);
-          setDeliveryFee(Number(suburbs[0].delivery_rate) || 0);
+          setDeliveryFee(baseRate);
         } else {
           setMatchedSuburbId(null);
           setMatchedSuburbName(null);
