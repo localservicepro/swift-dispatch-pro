@@ -32,6 +32,10 @@ Deno.serve(async (req) => {
       order_notes,
       payment_method,
       suburb_id,
+      contact_name,
+      contact_phone,
+      contact_email,
+      delivery_fee,
     } = body;
 
     // Validate required fields
@@ -92,6 +96,8 @@ Deno.serve(async (req) => {
       ? (customer.full_address || "Pickup") 
       : (delivery_address || customer.full_address || "");
 
+    const sanitizedDeliveryFee = Math.max(0, Number(delivery_fee) || 0);
+
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
@@ -103,8 +109,8 @@ Deno.serve(async (req) => {
         delivery_address: finalDeliveryAddress,
         products: sanitizedProducts,
         subtotal,
-        total_amount: subtotal,
-        delivery_fee: 0,
+        total_amount: subtotal + sanitizedDeliveryFee,
+        delivery_fee: sanitizedDeliveryFee,
         status: "requested",
         payment_status: "unpaid",
         payment_method: payment_method || "account",
@@ -115,6 +121,9 @@ Deno.serve(async (req) => {
         order_notes: order_notes || null,
         delivery_suburb_id: suburb_id || null,
         placed_via: "storefront",
+        contact_name: contact_name || null,
+        contact_phone: contact_phone || null,
+        contact_email: contact_email || null,
       })
       .select("id, order_number")
       .single();

@@ -1,14 +1,33 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { StorefrontCartItem } from "./StorefrontProductBrowser";
-import { Truck, Store, Loader2, CheckCircle2, ArrowLeft, ShoppingBag } from "lucide-react";
+import { EnhancedAddressInput } from "@/components/ui/enhanced-address-input";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Truck,
+  Store,
+  Loader2,
+  CheckCircle2,
+  ArrowLeft,
+  ShoppingBag,
+  User,
+  MapPin,
+  CalendarDays,
+  MessageSquare,
+  ChevronDown,
+  Shield,
+} from "lucide-react";
 
 interface CustomerInfo {
   id: string;
@@ -27,9 +46,19 @@ interface StorefrontOrderFlowProps {
   onBack: () => void;
 }
 
+interface AddressData {
+  fullAddress: string;
+  street: string;
+  city: string;
+  state: string;
+  postcode: string;
+  country: string;
+  lat?: number;
+  lng?: number;
+}
+
 export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: StorefrontOrderFlowProps) {
   const { toast } = useToast();
-  const [step, setStep] = useState(1);
   const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup">("delivery");
   const [deliveryAddress, setDeliveryAddress] = useState(customer.full_address || "");
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -38,10 +67,66 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderResult, setOrderResult] = useState<{ orderNumber: string } | null>(null);
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const totalSteps = 3;
+  // Contact fields
+  const [contactName, setContactName] = useState(customer.display_name || "");
+  const [contactPhone, setContactPhone] = useState(customer.phone || "");
+  const [contactEmail, setContactEmail] = useState(customer.email || "");
+
+  // Suburb / delivery fee
+  const [matchedSuburbId, setMatchedSuburbId] = useState<string | null>(customer.suburb_id || null);
+  const [matchedSuburbName, setMatchedSuburbName] = useState<string | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState(0);
+
+  // Collapsible sections
+  const [openSections, setOpenSections] = useState({
+    contact: true,
+    delivery: true,
+    address: true,
+    schedule: false,
+    notes: false,
+  });
+
+  const cartSubtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const cartTotal = cartSubtotal + deliveryFee;
+
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // Auto-match suburb by postcode
+  const handleAddressSelect = useCallback(async (addressData: AddressData) => {
+    setDeliveryAddress(addressData.fullAddress);
+    if (addressData.postcode) {
+      try {
+        const { data: suburbs } = await supabase
+          .from("suburbs")
+          .select("id, name, delivery_rate")
+          .eq("postcode", addressData.postcode)
+          .eq("is_active", true)
+          .limit(1);
+
+        if (suburbs && suburbs.length > 0) {
+          setMatchedSuburbId(suburbs[0].id);
+          setMatchedSuburbName(suburbs[0].name);
+          setDeliveryFee(Number(suburbs[0].delivery_rate) || 0);
+        } else {
+          setMatchedSuburbId(null);
+          setMatchedSuburbName(null);
+          setDeliveryFee(0);
+        }
+      } catch {
+        setMatchedSuburbId(null);
+        setMatchedSuburbName(null);
+        setDeliveryFee(0);
+      }
+    }
+  }, []);
 
   const handleSubmitOrder = async () => {
+    if (!contactName.trim()) {
+      toast({ title: "Contact name required", variant: "destructive" });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke("storefront-create-order", {
@@ -54,7 +139,11 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
           delivery_time: deliveryTime || undefined,
           order_notes: orderNotes || undefined,
           payment_method: "account",
-          suburb_id: customer.suburb_id || undefined,
+          suburb_id: matchedSuburbId || customer.suburb_id || undefined,
+          contact_name: contactName || undefined,
+          contact_phone: contactPhone || undefined,
+          contact_email: contactEmail || undefined,
+          delivery_fee: deliveryMethod === "delivery" ? deliveryFee : 0,
         },
       });
 
@@ -70,21 +159,25 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
     }
   };
 
-  // Order confirmation screen
+  // Order confirmation
   if (orderResult) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="w-full max-w-md text-center">
-          <CardContent className="pt-8 pb-8 space-y-4">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
+        <Card className="w-full max-w-md text-center shadow-xl border-0">
+          <CardContent className="pt-10 pb-10 space-y-5">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
+              <CheckCircle2 className="h-10 w-10 text-green-600" />
             </div>
             <h2 className="text-2xl font-bold">Order Confirmed!</h2>
             <p className="text-muted-foreground">
-              Your order <span className="font-mono font-semibold text-foreground">{orderResult.orderNumber}</span> has been submitted successfully.
+              Your order{" "}
+              <span className="font-mono font-bold text-foreground bg-muted px-2 py-0.5 rounded">
+                {orderResult.orderNumber}
+              </span>{" "}
+              has been submitted successfully.
             </p>
             <p className="text-sm text-muted-foreground">We'll process your order shortly.</p>
-            <Button onClick={onBack} variant="outline" className="mt-4">
+            <Button onClick={onBack} variant="outline" className="mt-4 rounded-xl">
               Place Another Order
             </Button>
           </CardContent>
@@ -93,156 +186,294 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
     );
   }
 
+  const SectionHeader = ({
+    icon: Icon,
+    title,
+    section,
+    badge,
+  }: {
+    icon: any;
+    title: string;
+    section: keyof typeof openSections;
+    badge?: string;
+  }) => (
+    <CollapsibleTrigger
+      className="flex items-center justify-between w-full py-3 group"
+      onClick={() => toggleSection(section)}
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="h-4 w-4" />
+        </div>
+        <span className="font-semibold text-sm">{title}</span>
+        {badge && (
+          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{badge}</span>
+        )}
+      </div>
+      <ChevronDown
+        className={`h-4 w-4 text-muted-foreground transition-transform ${
+          openSections[section] ? "rotate-180" : ""
+        }`}
+      />
+    </CollapsibleTrigger>
+  );
+
   return (
-    <div className="space-y-4">
-      {/* Customer header */}
-      <Card>
-        <CardContent className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <ShoppingBag className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="font-medium">{customer.display_name}</p>
-              <p className="text-xs text-muted-foreground">Account: {accountNumber} · {cart.length} item{cart.length !== 1 ? "s" : ""} · ${cartTotal.toFixed(2)}</p>
-            </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Left: Form Sections */}
+      <div className="lg:col-span-2 space-y-4">
+        {/* Customer Badge */}
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-background border">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+            <Shield className="h-5 w-5 text-primary" />
           </div>
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">{customer.display_name}</p>
+            <p className="text-xs text-muted-foreground">Account: {accountNumber}</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onBack} className="text-xs">
+            <ArrowLeft className="h-3.5 w-3.5 mr-1" />
             Start Over
           </Button>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Progress */}
-      <div className="flex gap-1">
-        {Array.from({ length: totalSteps }, (_, i) => (
-          <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${i < step ? "bg-primary" : "bg-muted"}`} />
-        ))}
+        {/* Contact Details */}
+        <Card className="shadow-sm">
+          <Collapsible open={openSections.contact}>
+            <CardHeader className="pb-0 pt-2 px-5">
+              <SectionHeader icon={User} title="Contact Details" section="contact" />
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="px-5 pb-5 pt-2 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Contact Name *</Label>
+                    <Input
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      placeholder="Full name"
+                      className="h-10 rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Phone</Label>
+                    <Input
+                      value={contactPhone}
+                      onChange={(e) => setContactPhone(e.target.value)}
+                      placeholder="Phone number"
+                      className="h-10 rounded-lg"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Email</Label>
+                  <Input
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="Email address"
+                    className="h-10 rounded-lg"
+                  />
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+
+        {/* Delivery Method */}
+        <Card className="shadow-sm">
+          <Collapsible open={openSections.delivery}>
+            <CardHeader className="pb-0 pt-2 px-5">
+              <SectionHeader
+                icon={Truck}
+                title="Delivery Method"
+                section="delivery"
+                badge={deliveryMethod === "delivery" ? "Delivery" : "Pickup"}
+              />
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="px-5 pb-5 pt-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setDeliveryMethod("delivery")}
+                    className={`flex flex-col items-center gap-2 p-5 rounded-xl border-2 transition-all ${
+                      deliveryMethod === "delivery"
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-border hover:border-primary/30"
+                    }`}
+                  >
+                    <Truck className={`h-7 w-7 ${deliveryMethod === "delivery" ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className={`font-medium text-sm ${deliveryMethod === "delivery" ? "text-primary" : ""}`}>
+                      Delivery
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDeliveryMethod("pickup");
+                      setDeliveryFee(0);
+                    }}
+                    className={`flex flex-col items-center gap-2 p-5 rounded-xl border-2 transition-all ${
+                      deliveryMethod === "pickup"
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-border hover:border-primary/30"
+                    }`}
+                  >
+                    <Store className={`h-7 w-7 ${deliveryMethod === "pickup" ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className={`font-medium text-sm ${deliveryMethod === "pickup" ? "text-primary" : ""}`}>
+                      Pickup
+                    </span>
+                  </button>
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+
+        {/* Delivery Address - only for delivery */}
+        {deliveryMethod === "delivery" && (
+          <Card className="shadow-sm">
+            <Collapsible open={openSections.address}>
+              <CardHeader className="pb-0 pt-2 px-5">
+                <SectionHeader
+                  icon={MapPin}
+                  title="Delivery Address"
+                  section="address"
+                  badge={matchedSuburbName || undefined}
+                />
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent className="px-5 pb-5 pt-2 space-y-3">
+                  <EnhancedAddressInput
+                    value={deliveryAddress}
+                    onChange={setDeliveryAddress}
+                    onAddressSelect={handleAddressSelect}
+                    placeholder="Start typing your delivery address..."
+                    showMapButton={true}
+                    showValidation={false}
+                  />
+                  {matchedSuburbName && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                      <MapPin className="h-3.5 w-3.5" />
+                      <span>
+                        Suburb: <strong className="text-foreground">{matchedSuburbName}</strong>
+                        {deliveryFee > 0 && (
+                          <> · Delivery fee: <strong className="text-foreground">${deliveryFee.toFixed(2)}</strong></>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
+        )}
+
+        {/* Schedule */}
+        <Card className="shadow-sm">
+          <Collapsible open={openSections.schedule}>
+            <CardHeader className="pb-0 pt-2 px-5">
+              <SectionHeader icon={CalendarDays} title="Preferred Schedule" section="schedule" badge="Optional" />
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="px-5 pb-5 pt-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Date</Label>
+                    <Input
+                      type="date"
+                      value={deliveryDate}
+                      onChange={(e) => setDeliveryDate(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                      className="h-10 rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Time</Label>
+                    <Input
+                      type="time"
+                      value={deliveryTime}
+                      onChange={(e) => setDeliveryTime(e.target.value)}
+                      className="h-10 rounded-lg"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+
+        {/* Notes */}
+        <Card className="shadow-sm">
+          <Collapsible open={openSections.notes}>
+            <CardHeader className="pb-0 pt-2 px-5">
+              <SectionHeader icon={MessageSquare} title="Order Notes" section="notes" badge="Optional" />
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="px-5 pb-5 pt-2">
+                <Textarea
+                  value={orderNotes}
+                  onChange={(e) => setOrderNotes(e.target.value)}
+                  placeholder="Any special instructions for your order..."
+                  rows={3}
+                  className="rounded-lg resize-none"
+                />
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
       </div>
 
-      {/* Step 1: Delivery Method */}
-      {step === 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Delivery Method</CardTitle>
-            <CardDescription>How would you like to receive your order?</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <RadioGroup value={deliveryMethod} onValueChange={(v) => setDeliveryMethod(v as "delivery" | "pickup")} className="grid grid-cols-2 gap-4">
-              <Label htmlFor="delivery" className={`flex flex-col items-center gap-3 rounded-lg border-2 p-6 cursor-pointer transition-colors ${deliveryMethod === "delivery" ? "border-primary bg-primary/5" : "border-muted"}`}>
-                <RadioGroupItem value="delivery" id="delivery" className="sr-only" />
-                <Truck className="h-8 w-8 text-primary" />
-                <span className="font-medium">Delivery</span>
-              </Label>
-              <Label htmlFor="pickup" className={`flex flex-col items-center gap-3 rounded-lg border-2 p-6 cursor-pointer transition-colors ${deliveryMethod === "pickup" ? "border-primary bg-primary/5" : "border-muted"}`}>
-                <RadioGroupItem value="pickup" id="pickup" className="sr-only" />
-                <Store className="h-8 w-8 text-primary" />
-                <span className="font-medium">Pickup</span>
-              </Label>
-            </RadioGroup>
-
-            {deliveryMethod === "delivery" && (
-              <div className="space-y-2">
-                <Label>Delivery Address</Label>
-                <Textarea value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Enter delivery address" rows={2} />
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Preferred Date</Label>
-                <Input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} min={new Date().toISOString().split("T")[0]} />
-              </div>
-              <div className="space-y-2">
-                <Label>Preferred Time</Label>
-                <Input type="time" value={deliveryTime} onChange={(e) => setDeliveryTime(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={onBack}>Back</Button>
-              <Button onClick={() => setStep(2)}>Next</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Step 2: Notes */}
-      {step === 2 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Order Notes</CardTitle>
-            <CardDescription>Any special instructions for your order?</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Textarea value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="e.g. Please call before delivery..." rows={4} />
-            <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
-              <Button onClick={() => setStep(3)}>Review Order</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Step 3: Review */}
-      {step === 3 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Review Your Order</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">Products</h4>
-              <div className="divide-y rounded-md border">
+      {/* Right: Order Summary */}
+      <div className="lg:col-span-1">
+        <div className="sticky top-20">
+          <Card className="shadow-lg border-0 bg-background">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ShoppingBag className="h-4 w-4" />
+                Order Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Items */}
+              <div className="space-y-2 max-h-60 overflow-y-auto">
                 {cart.map((item) => (
-                  <div key={item.id} className="flex justify-between p-3 text-sm">
-                    <span>{item.name} × {item.quantity}</span>
-                    <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span className="text-muted-foreground truncate mr-2">
+                      {item.name} <span className="text-xs">×{item.quantity}</span>
+                    </span>
+                    <span className="font-medium shrink-0">${(item.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
-            </div>
 
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Method</span>
-                <span className="capitalize">{deliveryMethod}</span>
+              <Separator />
+
+              {/* Totals */}
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>${cartSubtotal.toFixed(2)}</span>
+                </div>
+                {deliveryMethod === "delivery" && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Delivery</span>
+                    <span>{deliveryFee > 0 ? `$${deliveryFee.toFixed(2)}` : "Free"}</span>
+                  </div>
+                )}
               </div>
-              {deliveryMethod === "delivery" && deliveryAddress && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Address</span>
-                  <span className="text-right max-w-[60%]">{deliveryAddress}</span>
-                </div>
-              )}
-              {deliveryDate && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Date</span>
-                  <span>{deliveryDate}</span>
-                </div>
-              )}
-              {deliveryTime && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Time</span>
-                  <span>{deliveryTime}</span>
-                </div>
-              )}
-              {orderNotes && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Notes</span>
-                  <span className="text-right max-w-[60%]">{orderNotes}</span>
-                </div>
-              )}
-            </div>
 
-            <div className="border-t pt-3 flex justify-between font-semibold text-lg">
-              <span>Total</span>
-              <span>${cartTotal.toFixed(2)}</span>
-            </div>
+              <Separator />
 
-            <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-              <Button onClick={handleSubmitOrder} disabled={isSubmitting}>
+              <div className="flex justify-between font-bold text-lg">
+                <span>Total</span>
+                <span>${cartTotal.toFixed(2)}</span>
+              </div>
+
+              <Button
+                className="w-full h-12 rounded-xl text-base font-semibold mt-2"
+                onClick={handleSubmitOrder}
+                disabled={isSubmitting || !contactName.trim()}
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -252,10 +483,14 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
                   "Place Order"
                 )}
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+
+              <p className="text-[11px] text-center text-muted-foreground">
+                Payment on account · Charged to {accountNumber}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
