@@ -83,6 +83,7 @@ export function useCustomerDialogActions(
         company_name: formData.entity_type === 'business' ? formData.company_name : null,
         business_name: formData.entity_type === 'business' ? formData.business_name : null,
         contact_role: formData.contact_role,
+        account_number: formData.account_number || null,
         updated_at: new Date().toISOString(),
       };
 
