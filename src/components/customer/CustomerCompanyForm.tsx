@@ -23,10 +23,9 @@ export function CustomerCompanyForm({ formData, onFormDataChange, isEdit }: Cust
         <Input
           id="account_number"
           value={formData.account_number || ''}
-          readOnly
-          disabled
-          placeholder={isEdit ? 'N/A' : 'Auto-generated on save'}
-          className="bg-muted font-mono"
+          onChange={(e) => onFormDataChange({ account_number: e.target.value })}
+          placeholder={isEdit ? 'ACC-XXXXX' : 'Auto-generated on save (or enter manually)'}
+          className="font-mono"
         />
       </div>
 
