@@ -1,0 +1,1 @@
+ALTER TABLE public.orders ADD COLUMN fuel_surcharge numeric DEFAULT 0;
