@@ -40,7 +40,6 @@ export interface Order {
   fuel_surcharge?: number;
   order_notes?: string;
   delivery_notes?: string;
-  fuel_surcharge?: number;
 }
 
 export interface OrderEditFormProps {
