@@ -76,16 +76,22 @@ export function OrderReviewStep({
   const { data: paymentSettings } = usePaymentSettings();
   const stepNumber = deliveryMethod === "pickup" ? "5" : "7";
 
+  // Calculate split count for fuel surcharge
+  const splitCount = orderType === 'split' && splits.length > 0 ? splits.length : 1;
+
   // Calculate totals with payment settings
   const orderTotals = paymentSettings ? 
-    calculateOrderTotals(subtotal, adjustments, deliveryFee, paymentMethod, paymentSettings) :
+    calculateOrderTotals(subtotal, adjustments, deliveryFee, paymentMethod, paymentSettings, deliveryMethod, splitCount) :
     {
       subtotal,
       adjustments,
       deliveryFee,
+      fuelSurcharge: 0,
+      fuelSurchargePerUnit: 0,
+      splitCount: 1,
       surchargeAmount: 0,
-      gstAmount: (subtotal + adjustments + deliveryFee) / 11, // GST included calculation (10% of total)
-      totalAmount: subtotal + adjustments + deliveryFee, // No extra GST - already included
+      gstAmount: (subtotal + adjustments + deliveryFee) / 11,
+      totalAmount: subtotal + adjustments + deliveryFee,
       hasSurcharge: false,
       surchargeRate: 0,
       gstRate: 10,
@@ -542,6 +548,21 @@ export function OrderReviewStep({
                     📍 Auto-populated from {deliveryFeeInfo.displayText}. You can edit if needed.
                   </p>
                 )}
+              </div>
+            )}
+            {/* Fuel Surcharge - only for delivery */}
+            {deliveryMethod === "delivery" && orderTotals.fuelSurcharge > 0 && (
+              <div className="flex justify-between text-muted-foreground">
+                <span>
+                  Fuel Surcharge
+                  {orderType === "split" && splits.length > 1 && (
+                    <span className="text-xs ml-1">
+                      ({splits.length} × AU${(orderTotals.fuelSurchargePerUnit || 0).toFixed(2)})
+                    </span>
+                  )}
+                  :
+                </span>
+                <span>AU${orderTotals.fuelSurcharge.toFixed(2)}</span>
               </div>
             )}
             {orderTotals.hasSurcharge && orderTotals.surchargeAmount > 0 && (

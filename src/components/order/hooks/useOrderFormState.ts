@@ -169,12 +169,16 @@ export function useOrderFormState() {
   const currentDeliveryFee = deliveryMethod === "pickup" ? 0 : manualDeliveryFee;
   
   // Use dynamic calculation with payment settings
+  const splitCount = orderType === 'split' && splits.length > 0 ? splits.length : 1;
   const orderTotals = paymentSettings ? 
-    calculateOrderTotals(subtotal, adjustments, currentDeliveryFee, paymentMethod, paymentSettings) :
+    calculateOrderTotals(subtotal, adjustments, currentDeliveryFee, paymentMethod, paymentSettings, deliveryMethod, splitCount) :
     {
       subtotal,
       adjustments,
       deliveryFee: currentDeliveryFee,
+      fuelSurcharge: 0,
+      fuelSurchargePerUnit: 0,
+      splitCount: 1,
       surchargeAmount: 0,
       gstAmount: (subtotal + adjustments + currentDeliveryFee) / 11, // GST included calculation
       totalAmount: subtotal + adjustments + currentDeliveryFee, // No extra GST - already included
