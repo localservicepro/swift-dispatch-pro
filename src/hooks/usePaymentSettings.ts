@@ -21,6 +21,7 @@ interface PaymentSettings {
   stripe_last_tested_at?: string;
   delivery_markup_type: string;
   delivery_markup_value: number;
+  fuel_surcharge: number;
 }
 
 export function usePaymentSettings() {
@@ -52,7 +53,8 @@ export function usePaymentSettings() {
         stripe_mode: 'test',
         stripe_connection_status: 'not_configured',
         delivery_markup_type: 'percentage',
-        delivery_markup_value: 0
+        delivery_markup_value: 0,
+        fuel_surcharge: 5.00
       };
 
       return data || defaultSettings;

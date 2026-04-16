@@ -6,6 +6,7 @@ interface PaymentSettings {
   gst_label: string;
   include_gst_in_prices: boolean;
   gst_enabled: boolean;
+  fuel_surcharge?: number;
 }
 
 export function calculateGST(amount: number, gstRate: number): number {
