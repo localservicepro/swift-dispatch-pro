@@ -17,6 +17,7 @@ export interface ReceiptData {
   }>;
   subtotal: number;
   deliveryFee: number;
+  fuelSurcharge?: number;
   totalAmount: number;
   deliveryAddress?: string;
   specialInstructions?: string;
@@ -95,6 +96,7 @@ export class ReceiptService {
       items: this.parseOrderItems(orderData.products),
       subtotal: orderData.subtotal || 0,
       deliveryFee: orderData.delivery_fee || 0,
+      fuelSurcharge: orderData.fuel_surcharge || 0,
       totalAmount: orderData.total_amount || 0,
       deliveryAddress: orderData.delivery_address || orderData.customer_address,
       specialInstructions: orderData.special_instructions || '',
@@ -193,6 +195,7 @@ export class ReceiptService {
       items: this.parseOrderItems(orderData.products),
       subtotal: orderData.subtotal || 0,
       deliveryFee: orderData.delivery_fee || 0,
+      fuelSurcharge: orderData.fuel_surcharge || 0,
       totalAmount: invoiceData.amount || orderData.total_amount || 0,
       deliveryAddress: orderData.delivery_address || orderData.customer_address,
       specialInstructions: orderData.special_instructions || '',
