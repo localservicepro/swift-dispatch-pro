@@ -76,6 +76,25 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
   const [matchedSuburbId, setMatchedSuburbId] = useState<string | null>(customer.suburb_id || null);
   const [matchedSuburbName, setMatchedSuburbName] = useState<string | null>(null);
   const [deliveryFee, setDeliveryFee] = useState(0);
+  const [fuelSurcharge, setFuelSurcharge] = useState(0);
+
+  // Fetch fuel surcharge from payment settings
+  useEffect(() => {
+    const fetchFuelSurcharge = async () => {
+      try {
+        const { data } = await supabase
+          .from("payment_settings")
+          .select("fuel_surcharge")
+          .single();
+        if (data?.fuel_surcharge != null) {
+          setFuelSurcharge(Number(data.fuel_surcharge) || 0);
+        }
+      } catch {
+        setFuelSurcharge(5); // fallback default
+      }
+    };
+    fetchFuelSurcharge();
+  }, []);
 
   // Collapsible sections
   const [openSections, setOpenSections] = useState({
@@ -87,7 +106,8 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
   });
 
   const cartSubtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const cartTotal = cartSubtotal + deliveryFee;
+  const activeFuelSurcharge = deliveryMethod === "delivery" ? fuelSurcharge : 0;
+  const cartTotal = cartSubtotal + deliveryFee + activeFuelSurcharge;
 
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -152,7 +172,7 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
           contact_name: contactName || undefined,
           contact_phone: contactPhone || undefined,
           contact_email: contactEmail || undefined,
-          delivery_fee: deliveryMethod === "delivery" ? deliveryFee : 0,
+          delivery_fee: deliveryMethod === "delivery" ? deliveryFee + activeFuelSurcharge : 0,
         },
       });
 
@@ -464,10 +484,18 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
                   <span>${cartSubtotal.toFixed(2)}</span>
                 </div>
                 {deliveryMethod === "delivery" && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Delivery</span>
-                    <span>{deliveryFee > 0 ? `$${deliveryFee.toFixed(2)}` : "Free"}</span>
-                  </div>
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Delivery</span>
+                      <span>{deliveryFee > 0 ? `$${deliveryFee.toFixed(2)}` : "Free"}</span>
+                    </div>
+                    {fuelSurcharge > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Fuel Surcharge</span>
+                        <span>${fuelSurcharge.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 

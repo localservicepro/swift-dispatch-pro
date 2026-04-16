@@ -21,6 +21,7 @@ interface PaymentSettingsData {
   gst_enabled: boolean;
   delivery_markup_type: string;
   delivery_markup_value: number;
+  fuel_surcharge: number;
 }
 
 interface PaymentSettingsProps {
@@ -38,7 +39,7 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
     queryFn: async (): Promise<PaymentSettingsData> => {
       const { data, error } = await supabase
         .from('payment_settings')
-        .select('id, gst_rate, service_charge_rate, gst_label, include_gst_in_prices, currency, default_delivery_fee, gst_enabled, delivery_markup_type, delivery_markup_value')
+        .select('id, gst_rate, service_charge_rate, gst_label, include_gst_in_prices, currency, default_delivery_fee, gst_enabled, delivery_markup_type, delivery_markup_value, fuel_surcharge')
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
@@ -52,7 +53,8 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
         default_delivery_fee: 0.00,
         gst_enabled: true,
         delivery_markup_type: 'percentage',
-        delivery_markup_value: 0
+        delivery_markup_value: 0,
+        fuel_surcharge: 5.00
       };
     }
   });
@@ -78,7 +80,8 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
     default_delivery_fee: 0.00,
     gst_enabled: true,
     delivery_markup_type: 'percentage',
-    delivery_markup_value: 0
+    delivery_markup_value: 0,
+    fuel_surcharge: 5.00
   });
 
   useEffect(() => {
@@ -92,7 +95,8 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
         default_delivery_fee: settings.default_delivery_fee,
         gst_enabled: settings.gst_enabled,
         delivery_markup_type: settings.delivery_markup_type || 'percentage',
-        delivery_markup_value: settings.delivery_markup_value || 0
+        delivery_markup_value: settings.delivery_markup_value || 0,
+        fuel_surcharge: settings.fuel_surcharge ?? 5.00
       });
     }
   }, [settings]);
@@ -243,6 +247,17 @@ export function PaymentSettings({ isOpen, onClose }: PaymentSettingsProps) {
                   <p className="text-xs text-muted-foreground mt-1">
                     {formData.delivery_markup_type === 'percentage' ? 'E.g. 10% markup on a $50 delivery fee = $55' : 'E.g. $5 markup on a $50 delivery fee = $55'}
                   </p>
+                </div>
+              </div>
+
+              {/* Fuel Surcharge */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Fuel Surcharge</h3>
+                <p className="text-sm text-muted-foreground">Flat surcharge applied to every delivery order</p>
+                <div>
+                  <Label htmlFor="fuel_surcharge">Fuel Surcharge ($)</Label>
+                  <Input id="fuel_surcharge" type="number" min="0" step="0.01" value={formData.fuel_surcharge} onChange={(e) => setFormData({ ...formData, fuel_surcharge: parseFloat(e.target.value) || 0 })} />
+                  <p className="text-xs text-muted-foreground mt-1">Added on top of the delivery fee for each delivery order (default: $5.00)</p>
                 </div>
               </div>
 

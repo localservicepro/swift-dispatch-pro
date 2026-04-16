@@ -17,6 +17,7 @@ interface OrderPricingFormProps {
   paymentSettings?: any;
   orderId?: string;
   customerId?: string;
+  deliveryMethod?: string;
 }
 
 export function OrderPricingForm({ 
@@ -25,7 +26,8 @@ export function OrderPricingForm({
   calculationBreakdown,
   paymentSettings,
   orderId,
-  customerId
+  customerId,
+  deliveryMethod
 }: OrderPricingFormProps) {
   // Get returns and credits data
   const { returns } = useOrderReturns(orderId);
@@ -152,6 +154,13 @@ export function OrderPricingForm({
             </div>
           )}
           
+          {deliveryMethod === 'delivery' && paymentSettings?.fuel_surcharge > 0 && (
+            <div className="flex justify-between text-amber-700">
+              <span>Fuel Surcharge:</span>
+              <span>AU${(Number(paymentSettings.fuel_surcharge) || 0).toFixed(2)}</span>
+            </div>
+          )}
+
           <div className="flex justify-between">
             <span>Delivery Fee:</span>
             <span>AU${safeToFixed(breakdown.deliveryFee)}</span>
