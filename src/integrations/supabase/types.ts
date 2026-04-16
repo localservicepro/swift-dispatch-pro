@@ -1161,6 +1161,7 @@ export type Database = {
           end_customer_email: string | null
           end_customer_name: string | null
           end_customer_phone: string | null
+          fuel_surcharge: number | null
           id: string
           is_split_order: boolean | null
           master_order_id: string | null
@@ -1222,6 +1223,7 @@ export type Database = {
           end_customer_email?: string | null
           end_customer_name?: string | null
           end_customer_phone?: string | null
+          fuel_surcharge?: number | null
           id?: string
           is_split_order?: boolean | null
           master_order_id?: string | null
@@ -1283,6 +1285,7 @@ export type Database = {
           end_customer_email?: string | null
           end_customer_name?: string | null
           end_customer_phone?: string | null
+          fuel_surcharge?: number | null
           id?: string
           is_split_order?: boolean | null
           master_order_id?: string | null
