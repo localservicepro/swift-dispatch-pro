@@ -833,10 +833,10 @@ function generateReceiptHTML(data: any): string {
         <span class="total-value">$${baseDeliveryFee.toFixed(2)}</span>
       </div>
       
-      <div class="total-row">
+      ${fuelSurcharge > 0 ? `<div class="total-row">
         <span class="total-label">Fuel Surcharge</span>
         <span class="total-value">$${fuelSurcharge.toFixed(2)}</span>
-      </div>
+      </div>` : ''}
       
       <div class="total-row">
         <span class="total-label">Sale Total</span>
