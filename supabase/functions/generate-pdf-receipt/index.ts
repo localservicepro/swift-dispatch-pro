@@ -134,6 +134,7 @@ const handler = async (req: Request): Promise<Response> => {
             payment_method,
             subtotal,
             delivery_fee,
+            fuel_surcharge,
             adjustments,
             delivery_notes,
             contact_name,
@@ -184,6 +185,7 @@ const handler = async (req: Request): Promise<Response> => {
           payment_method,
           subtotal,
           delivery_fee,
+          fuel_surcharge,
           adjustments,
           delivery_notes,
           contact_name,
@@ -343,7 +345,9 @@ function generateSimpleReceiptHTML(data: any): string {
 
   // Calculate totals
   const totalAmount = invoice?.amount || order.total_amount || order.totalAmount || 0;
-  const deliveryFee = order.delivery_fee || order.deliveryFee || 0;
+  const fuelSurcharge = order.fuel_surcharge || order.fuelSurcharge || 0;
+  const baseDeliveryFee = order.delivery_fee || order.deliveryFee || 0;
+  const deliveryFee = baseDeliveryFee + fuelSurcharge;
   const subtotal = order.subtotal || order.subTotal || totalAmount - deliveryFee;
   const adjustments = order.adjustments || 0;
   const gstAmount = totalAmount / 11;
@@ -712,8 +716,15 @@ function generateSimpleReceiptHTML(data: any): string {
       
       <div class="total-row">
         <span class="total-label">Delivery${suburbName ? ` (${suburbName})` : ""}</span>
-        <span class="total-value">$${Number(deliveryFee).toFixed(2)}</span>
+        <span class="total-value">$${Number(baseDeliveryFee).toFixed(2)}</span>
       </div>
+
+      ${fuelSurcharge > 0 ? `
+      <div class="total-row">
+        <span class="total-label">Fuel Surcharge</span>
+        <span class="total-value">$${Number(fuelSurcharge).toFixed(2)}</span>
+      </div>
+      ` : ""}
       
       <div class="total-row">
         <span class="total-label"><span class="accent">Sale</span> Total</span>
