@@ -203,6 +203,7 @@ export function OrderEditSections({
         paymentSettings={paymentSettings}
         orderId={orderId}
         customerId={customerId}
+        deliveryMethod={formData.delivery_method}
       />
 
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
