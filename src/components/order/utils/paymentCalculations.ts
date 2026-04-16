@@ -38,24 +38,32 @@ export function calculateOrderTotals(
   adjustments: number,
   deliveryFee: number,
   paymentMethod: string,
-  settings: PaymentSettings
+  settings: PaymentSettings,
+  deliveryMethod: string = 'delivery',
+  splitCount: number = 1
 ) {
   console.log('Calculating order totals:', {
     subtotal,
     adjustments,
     deliveryFee,
     paymentMethod,
-    settings
+    settings,
+    deliveryMethod,
+    splitCount
   });
 
-  // Base amount before surcharges
-  const baseAmount = subtotal + adjustments + deliveryFee;
+  // Fuel surcharge: only for delivery orders, applied per split
+  const fuelSurchargePerUnit = settings.fuel_surcharge || 0;
+  const fuelSurcharge = deliveryMethod === 'delivery' ? fuelSurchargePerUnit * splitCount : 0;
+
+  // Base amount before surcharges (fuel surcharge is added on top of delivery fee)
+  const baseAmount = subtotal + adjustments + deliveryFee + fuelSurcharge;
   
   // Calculate surcharge if applicable
   const hasSurcharge = getPaymentMethodSurcharge(paymentMethod);
   const surchargeAmount = hasSurcharge ? calculateSurcharge(baseAmount, settings.service_charge_rate) : 0;
   
-  // Final total (no additional GST since it's included in prices)
+  // Final total
   const totalAmount = baseAmount + surchargeAmount;
   
   // Calculate GST that's already included in the subtotal for display purposes only
@@ -63,14 +71,13 @@ export function calculateOrderTotals(
     ? calculateIncludedGST(subtotal, settings.gst_rate) 
     : 0;
 
-  // Fuel surcharge is already included in deliveryFee, store separately for display
-  const fuelSurcharge = settings.fuel_surcharge || 0;
-
   const result = {
     subtotal,
     adjustments,
     deliveryFee,
     fuelSurcharge,
+    fuelSurchargePerUnit,
+    splitCount,
     surchargeAmount,
     gstAmount,
     totalAmount,
