@@ -375,8 +375,8 @@ function generateReceiptHTML(data: any): string {
   // Calculate totals
   const totalAmount = invoice?.amount || order.total_amount || 0
   const fuelSurcharge = order.fuel_surcharge || 0
-  const baseDeliveryFee = (order.delivery_fee || 0) - fuelSurcharge
-  const deliveryFee = order.delivery_fee || 0
+  const baseDeliveryFee = order.delivery_fee || 0
+  const deliveryFee = baseDeliveryFee + fuelSurcharge
   const subtotal = order.subtotal || (totalAmount - deliveryFee)
   const adjustments = order.adjustments || 0
   const gstAmount = totalAmount / 11 // GST is 1/11 of GST-inclusive price
