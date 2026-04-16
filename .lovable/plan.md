@@ -1,36 +1,32 @@
 
 
-## Fix Fuel Surcharge in Order Summary and Split Orders
+## Fuel Surcharge: Apply Only to New Orders
 
-### Problems
-1. The admin Order Review Step doesn't display a fuel surcharge line item in the order summary.
-2. Split orders don't include fuel surcharge per split — each split should add $5 (or configured amount) individually.
-3. The `calculateOrderTotals` function returns `fuelSurcharge` but doesn't add it to `totalAmount` (it assumes it's baked into `deliveryFee`, but in the admin flow it isn't).
+### Problem
+The fuel surcharge line item currently displays in the **order edit** form for all orders, including ones created before the feature existed. It should only appear and be calculated for **newly created orders** — editing an existing order should show whatever `fuel_surcharge` value was stored at creation time, not the current global setting.
 
 ### Changes
 
-**1. `src/components/order/OrderReviewStep.tsx`**
-- Add a "Fuel Surcharge" line item in the order summary between Delivery Fee and Surcharge, only when `deliveryMethod === "delivery"`.
-- For split orders, show fuel surcharge per split (e.g., "2 × $5.00 = $10.00").
+**1. `src/components/order/OrderPricingForm.tsx`**
+- Change the fuel surcharge display to use the **order's stored `fuel_surcharge`** value (from `formData`) instead of the current `paymentSettings.fuel_surcharge`.
+- Add the stored value to the `OrderFormData` or pass it via props from the order record.
+- Only show the line if the order's stored `fuel_surcharge > 0`.
 
-**2. `src/components/order/utils/paymentCalculations.ts`**
-- Update `calculateOrderTotals` to accept `deliveryMethod` and add `fuelSurcharge` to `totalAmount` when delivery (currently it's display-only and not added to the total).
+**2. `src/components/order/hooks/useOrderFormData.ts`**
+- Include `fuel_surcharge` from the order record in the form data so it's available during editing.
 
-**3. `src/components/order/services/orderCreationService.ts`**
-- **Single orders**: Already stores `fuel_surcharge` from `orderTotals.fuelSurcharge`. Ensure it's included in `total_amount`.
-- **Split orders**: Add `fuel_surcharge` per split order. Each split with delivery method gets the surcharge. Update master order's `fuel_surcharge` to be the sum across all splits.
+**3. `src/components/order/OrderEditSections.tsx`**
+- Pass the order's `fuel_surcharge` to `OrderPricingForm` so it displays the stored value, not the global setting.
 
-**4. `src/components/order/MultiStepOrderForm.tsx`**
-- Pass `deliveryMethod` to `calculateOrderTotals` so the fuel surcharge is only applied for delivery orders.
+**4. No change to order creation flow**
+- The creation flow (`useOrderFormState.ts`, `orderCreationService.ts`) already correctly reads and stores the fuel surcharge from `paymentSettings` at creation time. This remains unchanged.
 
-### Split Order Logic
-- Each split that is a delivery gets fuel surcharge added to its `total_amount` and stored in `fuel_surcharge`.
-- Master order `fuel_surcharge` = sum of all splits' fuel surcharges (e.g., 2 splits × $5 = $10).
-- The OrderReviewStep split breakdown will show fuel surcharge per split.
+### Summary
+- **New orders**: Fuel surcharge is read from `paymentSettings` and stored on the order — no change needed.
+- **Editing orders**: Show the order's stored `fuel_surcharge` value instead of the current global setting. Orders created before the feature will have `fuel_surcharge = 0` and won't show the line.
 
 ### Files Modified
-- `src/components/order/utils/paymentCalculations.ts`
-- `src/components/order/OrderReviewStep.tsx`
-- `src/components/order/services/orderCreationService.ts`
-- `src/components/order/MultiStepOrderForm.tsx` (if needed to pass deliveryMethod)
+- `src/components/order/hooks/useOrderFormData.ts`
+- `src/components/order/OrderPricingForm.tsx`
+- `src/components/order/OrderEditSections.tsx`
 
