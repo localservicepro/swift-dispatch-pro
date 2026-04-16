@@ -1389,6 +1389,7 @@ export type Database = {
           default_delivery_fee: number
           delivery_markup_type: string
           delivery_markup_value: number
+          fuel_surcharge: number
           gst_enabled: boolean
           gst_label: string
           gst_rate: number
@@ -1412,6 +1413,7 @@ export type Database = {
           default_delivery_fee?: number
           delivery_markup_type?: string
           delivery_markup_value?: number
+          fuel_surcharge?: number
           gst_enabled?: boolean
           gst_label?: string
           gst_rate?: number
@@ -1435,6 +1437,7 @@ export type Database = {
           default_delivery_fee?: number
           delivery_markup_type?: string
           delivery_markup_value?: number
+          fuel_surcharge?: number
           gst_enabled?: boolean
           gst_label?: string
           gst_rate?: number
