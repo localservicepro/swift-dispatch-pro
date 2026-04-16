@@ -96,6 +96,16 @@ Deno.serve(async (req) => {
       ? (customer.full_address || "Pickup") 
       : (delivery_address || customer.full_address || "");
 
+    // Read fuel surcharge from payment_settings
+    let fuelSurcharge = 0;
+    if (delivery_method !== "pickup") {
+      const { data: ps } = await supabase
+        .from("payment_settings")
+        .select("fuel_surcharge")
+        .single();
+      fuelSurcharge = Math.max(0, Number(ps?.fuel_surcharge) || 0);
+    }
+
     const sanitizedDeliveryFee = Math.max(0, Number(delivery_fee) || 0);
 
     const { data: order, error: orderError } = await supabase
