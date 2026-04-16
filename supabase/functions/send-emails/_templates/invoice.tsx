@@ -25,6 +25,7 @@ interface InvoiceEmailProps {
   }>
   subtotal: number
   deliveryFee: number
+  fuelSurcharge?: number
   totalAmount: number
   dueDate: string
   paymentStatus: string
@@ -38,6 +39,7 @@ export const InvoiceEmail = ({
   orderItems,
   subtotal,
   deliveryFee,
+  fuelSurcharge = 0,
   totalAmount,
   dueDate,
   paymentStatus,
@@ -98,7 +100,13 @@ export const InvoiceEmail = ({
             
             <Row style={totalRow}>
               <Column>
-                <Text style={totalText}>Delivery Fee: ${deliveryFee.toFixed(2)}</Text>
+                <Text style={totalText}>Delivery Fee: ${(deliveryFee - fuelSurcharge).toFixed(2)}</Text>
+              </Column>
+            </Row>
+
+            <Row style={totalRow}>
+              <Column>
+                <Text style={totalText}>Fuel Surcharge: ${fuelSurcharge.toFixed(2)}</Text>
               </Column>
             </Row>
             

@@ -120,6 +120,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       subtotal: params.orderTotals.subtotal,
       adjustments: params.orderTotals.adjustments,
       delivery_fee: params.orderTotals.deliveryFee,
+      fuel_surcharge: params.orderTotals.fuelSurcharge || 0,
       total_amount: params.orderTotals.totalAmount,
       delivery_method: params.deliveryMethod,
       delivery_date: params.deliveryDate || null,

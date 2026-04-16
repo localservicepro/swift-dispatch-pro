@@ -374,6 +374,8 @@ function generateReceiptHTML(data: any): string {
   
   // Calculate totals
   const totalAmount = invoice?.amount || order.total_amount || 0
+  const fuelSurcharge = order.fuel_surcharge || 0
+  const baseDeliveryFee = (order.delivery_fee || 0) - fuelSurcharge
   const deliveryFee = order.delivery_fee || 0
   const subtotal = order.subtotal || (totalAmount - deliveryFee)
   const adjustments = order.adjustments || 0
@@ -828,7 +830,12 @@ function generateReceiptHTML(data: any): string {
       
       <div class="total-row">
         <span class="total-label">Delivery${suburbName ? ` (${suburbName})` : ''}</span>
-        <span class="total-value">$${deliveryFee.toFixed(2)}</span>
+        <span class="total-value">$${baseDeliveryFee.toFixed(2)}</span>
+      </div>
+      
+      <div class="total-row">
+        <span class="total-label">Fuel Surcharge</span>
+        <span class="total-value">$${fuelSurcharge.toFixed(2)}</span>
       </div>
       
       <div class="total-row">

@@ -121,6 +121,7 @@ Deno.serve(async (req) => {
         subtotal,
         total_amount: subtotal + sanitizedDeliveryFee,
         delivery_fee: sanitizedDeliveryFee,
+        fuel_surcharge: fuelSurcharge,
         status: "requested",
         payment_status: "unpaid",
         payment_method: payment_method || "account",
