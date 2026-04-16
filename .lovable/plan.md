@@ -1,51 +1,43 @@
 
 
-## Add Fuel Surcharge for Deliveries
+## Add Fuel Surcharge to Invoices, Receipts, and Statements
 
 ### Overview
-Add a configurable fuel surcharge (default $5 AUD) applied to every delivery order. Admins can adjust the amount in Payment Settings.
+The fuel surcharge is stored as part of the `delivery_fee` on orders (the edge function adds it server-side). Since `delivery_fee` already includes the fuel surcharge baked in, the statements already reflect the correct totals. However, we should display the fuel surcharge as a **separate line item** on receipts and invoice emails so customers can see the breakdown.
 
-### Database Changes
-- Add `fuel_surcharge` column (numeric, default 5.00) to `payment_settings` table
-- Migration with `ALTER TABLE payment_settings ADD COLUMN fuel_surcharge numeric NOT NULL DEFAULT 5.00`
+### Approach
+The fuel surcharge amount needs to be stored separately on orders so it can be displayed distinctly. Currently the `storefront-create-order` function adds it into `delivery_fee`. We need to either:
+- **(Option A)** Add a `fuel_surcharge` column to `orders` table to store the applied surcharge per order, then display it separately in receipts/invoices/statements.
+- **(Option B)** Read `fuel_surcharge` from `payment_settings` at render time and show it as a line item on receipts and invoices. This is simpler but won't reflect historical values if the rate changes.
+
+**Chosen: Option A** — store on the order for accuracy.
+
+### Changes
+
+**1. Database Migration**
+- Add `fuel_surcharge numeric DEFAULT 0` column to `orders` table.
+
+**2. `supabase/functions/storefront-create-order/index.ts`**
+- Store the fuel surcharge value in the new `fuel_surcharge` column when creating the order (already calculated there).
+
+**3. `supabase/functions/generate-receipt/index.ts`**
+- Read `order.fuel_surcharge` and display it as a separate "Fuel Surcharge" line between "Delivery" and "Sale Total" in the totals section.
+- Adjust `deliveryFee` display to show only the suburb delivery rate (i.e., `delivery_fee - fuel_surcharge`).
+
+**4. `supabase/functions/send-emails/_templates/invoice.tsx`**
+- Add `fuelSurcharge` prop to the interface.
+- Add a "Fuel Surcharge" row between "Delivery Fee" and "Total Amount" in the email template.
+
+**5. `supabase/functions/generate-account-statement/index.ts`**
+- No changes needed — the statement shows order-level totals (Charges/Payments/Balance) which already include the fuel surcharge in `total_amount`. The statement is an accounting document, not an itemized invoice.
+
+**6. Admin order creation (`orderCreationService.ts`)**
+- When creating orders via admin panel with delivery method, also fetch and store fuel surcharge in the new column.
 
 ### Files Modified
-
-**1. `src/components/payment/PaymentSettings.tsx`**
-- Add `fuel_surcharge` to the form data interface and state
-- Add a "Fuel Surcharge ($)" input field in the Delivery Markup section (or its own section)
-- Save/load the new field
-
-**2. `src/hooks/usePaymentSettings.ts`**
-- Add `fuel_surcharge` to the `PaymentSettings` interface (default 5.00)
-
-**3. `src/components/storefront/StorefrontOrderFlow.tsx`**
-- Fetch `payment_settings` (anon needs SELECT — will need RLS policy or fetch via edge function)
-- When delivery method is selected, add fuel surcharge to `cartTotal`
-- Show fuel surcharge as a separate line in the order summary
-
-**4. `src/components/order/utils/paymentCalculations.ts`**
-- Add `fuel_surcharge` to the PaymentSettings interface
-- Include fuel surcharge in `calculateOrderTotals` when delivery method applies
-
-**5. `src/components/order/OrderPricingForm.tsx`**
-- Display fuel surcharge line item when order is delivery
-
-**6. Database: RLS policy**
-- Add anon SELECT on `payment_settings` for the `fuel_surcharge` column (or query it in the edge function and pass it back). Since the storefront already calls the edge function, the cleaner approach is to have `storefront-create-order` read the fuel surcharge server-side and add it to the order total.
-
-### Approach for Storefront
-Rather than giving anon access to `payment_settings`, the `storefront-create-order` edge function will read `fuel_surcharge` from `payment_settings` server-side and apply it to the delivery fee/total. The storefront UI will show the fuel surcharge by fetching it from a lightweight edge function or embedding it in the product listing response. Simpler: add an anon SELECT policy on `payment_settings` limited to non-sensitive columns (fuel_surcharge, gst_rate, etc.) so the storefront can display it.
-
-### Refined approach
-Add anon RLS SELECT policy on `payment_settings` so the storefront can read `fuel_surcharge` to display it in the order summary. The edge function also reads it server-side when creating the order.
-
-### Files
-- New migration: add `fuel_surcharge` column + anon SELECT policy on `payment_settings`
-- `src/hooks/usePaymentSettings.ts` — add field
-- `src/components/payment/PaymentSettings.tsx` — add input
-- `src/components/storefront/StorefrontOrderFlow.tsx` — fetch and display fuel surcharge for deliveries
-- `src/components/order/utils/paymentCalculations.ts` — include in calculations
-- `src/components/order/OrderPricingForm.tsx` — display line item
-- `supabase/functions/storefront-create-order/index.ts` — apply fuel surcharge server-side
+- New migration: add `fuel_surcharge` column to `orders`
+- `supabase/functions/storefront-create-order/index.ts` — store fuel surcharge separately
+- `supabase/functions/generate-receipt/index.ts` — display fuel surcharge line
+- `supabase/functions/send-emails/_templates/invoice.tsx` — add fuel surcharge row
+- `src/components/order/services/orderCreationService.ts` — include fuel surcharge on admin-created delivery orders
 
