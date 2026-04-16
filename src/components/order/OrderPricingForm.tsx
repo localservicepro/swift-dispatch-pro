@@ -154,10 +154,10 @@ export function OrderPricingForm({
             </div>
           )}
           
-          {deliveryMethod === 'delivery' && paymentSettings?.fuel_surcharge > 0 && (
+          {deliveryMethod === 'delivery' && Number(formData.fuel_surcharge) > 0 && (
             <div className="flex justify-between text-amber-700">
               <span>Fuel Surcharge:</span>
-              <span>AU${(Number(paymentSettings.fuel_surcharge) || 0).toFixed(2)}</span>
+              <span>AU${Number(formData.fuel_surcharge).toFixed(2)}</span>
             </div>
           )}
 

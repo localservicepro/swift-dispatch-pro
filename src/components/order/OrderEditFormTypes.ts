@@ -37,6 +37,7 @@ export interface Order {
   contact_email?: string | null;
   contact_phone?: string | null;
   delivery_method?: string;
+  fuel_surcharge?: number;
   order_notes?: string;
   delivery_notes?: string;
 }

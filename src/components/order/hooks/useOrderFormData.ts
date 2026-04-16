@@ -33,6 +33,7 @@ export interface OrderFormData {
   contact_email: string | null;
   contact_phone: string | null;
   delivery_method: string;
+  fuel_surcharge: number;
 }
 
 export function useOrderFormData(order: Order) {
@@ -65,7 +66,8 @@ export function useOrderFormData(order: Order) {
     contact_name: order.contact_name || null,
     contact_email: order.contact_email || null,
     contact_phone: order.contact_phone || null,
-    delivery_method: order.delivery_method || 'delivery'
+    delivery_method: order.delivery_method || 'delivery',
+    fuel_surcharge: Number(order.fuel_surcharge) || 0
   });
 
   // Initialize products with current prices from database
