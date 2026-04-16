@@ -63,10 +63,14 @@ export function calculateOrderTotals(
     ? calculateIncludedGST(subtotal, settings.gst_rate) 
     : 0;
 
+  // Fuel surcharge is already included in deliveryFee, store separately for display
+  const fuelSurcharge = settings.fuel_surcharge || 0;
+
   const result = {
     subtotal,
     adjustments,
     deliveryFee,
+    fuelSurcharge,
     surchargeAmount,
     gstAmount,
     totalAmount,
