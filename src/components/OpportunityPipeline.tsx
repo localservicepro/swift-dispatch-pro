@@ -126,27 +126,9 @@ export function OpportunityPipeline() {
       });
     }
 
-    // Apply date filter
-    if (dateFilter !== "all") {
-      const today = new Date();
-      const filterDate = new Date();
-      switch (dateFilter) {
-        case "today":
-          filterDate.setHours(0, 0, 0, 0);
-          filtered = filtered.filter(order => new Date(order.created_at) >= filterDate);
-          break;
-        case "week":
-          filterDate.setDate(today.getDate() - 7);
-          filtered = filtered.filter(order => new Date(order.created_at) >= filterDate);
-          break;
-        case "month":
-          filterDate.setMonth(today.getMonth() - 1);
-          filtered = filtered.filter(order => new Date(order.created_at) >= filterDate);
-          break;
-      }
-    }
+    // Date filtering is now handled server-side in useOpportunityData via dateFilter.
     return filtered;
-  }, [orders, searchQuery, dateFilter]);
+  }, [orders, searchQuery]);
 
   // Group orders by pipeline stage with payment-priority logic
   const ordersByStage = useMemo(() => {
