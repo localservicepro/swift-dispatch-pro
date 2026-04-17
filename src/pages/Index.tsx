@@ -58,8 +58,10 @@ const Index = () => {
           
           {/* Desktop header with personalized greeting */}
           <div className="hidden md:flex justify-between items-center p-4 bg-white border-b">
-            <PersonalizedGreeting profile={profile} />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+              <PersonalizedGreeting profile={profile} />
+            </div>
               <span className="text-sm text-gray-600">{profile?.email}</span>
               <Tooltip>
                 <TooltipTrigger asChild>
