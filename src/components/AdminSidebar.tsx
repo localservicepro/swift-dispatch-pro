@@ -104,13 +104,13 @@ export function AdminSidebar() {
               {menuItems
                 .filter(item => !item.requiresSuperAdmin || isSuperAdmin || isAdmin)
                 .map(item => <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild tooltip={item.title}>
                     <Link 
                       to={item.path}
                       className={cn("w-full justify-start", location.pathname === item.path && "text-primary bg-primary/10")}
                     >
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {item.title}
+                      <item.icon className="mr-2 h-4 w-4 shrink-0" />
+                      <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>)}
