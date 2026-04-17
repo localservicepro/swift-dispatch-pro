@@ -80,8 +80,10 @@ export function OpportunityPipeline() {
     isLoading,
     error,
     refetch,
-    invalidateOrdersCache
-  } = useOpportunityData();
+    invalidateOrdersCache,
+    patchOrderInCache,
+    markRecentlyMutated
+  } = useOpportunityData(dateFilter as any);
 
   // Configure drag sensors
   const mouseSensor = useSensor(MouseSensor, {
@@ -124,27 +126,9 @@ export function OpportunityPipeline() {
       });
     }
 
-    // Apply date filter
-    if (dateFilter !== "all") {
-      const today = new Date();
-      const filterDate = new Date();
-      switch (dateFilter) {
-        case "today":
-          filterDate.setHours(0, 0, 0, 0);
-          filtered = filtered.filter(order => new Date(order.created_at) >= filterDate);
-          break;
-        case "week":
-          filterDate.setDate(today.getDate() - 7);
-          filtered = filtered.filter(order => new Date(order.created_at) >= filterDate);
-          break;
-        case "month":
-          filterDate.setMonth(today.getMonth() - 1);
-          filtered = filtered.filter(order => new Date(order.created_at) >= filterDate);
-          break;
-      }
-    }
+    // Date filtering is now handled server-side in useOpportunityData via dateFilter.
     return filtered;
-  }, [orders, searchQuery, dateFilter]);
+  }, [orders, searchQuery]);
 
   // Group orders by pipeline stage with payment-priority logic
   const ordersByStage = useMemo(() => {
@@ -213,11 +197,39 @@ export function OpportunityPipeline() {
   const totalOrders = filteredOrders.length;
   const totalValue = filteredOrders.reduce((sum, order) => sum + order.total_amount, 0);
 
+  // Compute the optimistic patch for moving an order into a new stage.
+  const buildStagePatch = (order: any, newStage: string) => {
+    const customerType = order.customers?.customer_type || order.customer_type;
+    const patch: any = { updated_at: new Date().toISOString() };
+    switch (newStage) {
+      case 'on_hold':
+        patch.status = 'back_order';
+        break;
+      case 'requested':
+        patch.status = 'requested';
+        break;
+      case 'preparing':
+        patch.status = 'preparing';
+        patch.payment_status = customerType === 'account' ? 'pending' : 'paid';
+        break;
+      case 'loading':
+        patch.status = 'loading';
+        break;
+      case 'en_route':
+        patch.status = 'en_route';
+        break;
+      case 'delivered':
+        patch.status = 'delivered';
+        break;
+      default:
+        patch.status = newStage;
+    }
+    return patch;
+  };
+
   // Drag handlers
   const handleDragStart = (event: DragStartEvent) => {
-    const {
-      active
-    } = event;
+    const { active } = event;
     setActiveId(active.id as string);
     const order = orders.find(o => o.id === active.id);
     if (order) {
@@ -238,7 +250,6 @@ export function OpportunityPipeline() {
     const { order, currentStage } = active.data.current;
     const newStage = over.id as string;
 
-    // If dropping in the same stage, do nothing
     if (currentStage === newStage) {
       return;
     }
@@ -254,17 +265,13 @@ export function OpportunityPipeline() {
       return;
     }
 
-    // NEW: Handle truck/driver assignment when moving to preparing stage
+    // Truck/driver assignment dialog when moving to preparing without truck
     if (newStage === 'preparing' && (!order.truck_id || !order.truck_type)) {
-      console.log('Order needs truck assignment, opening dialog:', order.order_number);
       setOrderForAssignment(order);
       setShowAssignmentDialog(true);
-      return; // Don't proceed with status update yet
+      return;
     }
 
-    // Allow complete flexibility - orders can be moved to any stage
-
-    // Proceed with regular status update for other stage transitions
     await updateOrderStatus(order, currentStage, newStage);
   };
 
@@ -276,9 +283,9 @@ export function OpportunityPipeline() {
   }) => {
     if (!orderForAssignment) return;
 
-    try {
-      console.log('Completing assignment for order:', orderForAssignment.order_number, assignments);
+    const previousSnapshot = orderForAssignment;
 
+    try {
       const customerType = orderForAssignment.customers?.customer_type || orderForAssignment.customer_type;
       const updateData: any = {
         truck_type: assignments.truckType,
@@ -289,6 +296,9 @@ export function OpportunityPipeline() {
         updated_at: new Date().toISOString()
       };
 
+      // Optimistic update — card moves to Preparing immediately
+      patchOrderInCache(orderForAssignment.id, updateData);
+
       const { error } = await supabase
         .from('orders')
         .update(updateData)
@@ -296,18 +306,13 @@ export function OpportunityPipeline() {
 
       if (error) throw error;
 
-      // Update truck status to assigned if a truck was selected
       if (assignments.truckId && assignments.truckId !== 'none') {
         await supabase
           .from('trucks')
-          .update({ 
-            status: 'assigned',
-            updated_at: new Date().toISOString()
-          })
+          .update({ status: 'assigned', updated_at: new Date().toISOString() })
           .eq('id', assignments.truckId);
       }
 
-      // Log the activity
       if (profile?.full_name) {
         await activityLogger.orderStatusUpdate(
           orderForAssignment.id,
@@ -323,57 +328,38 @@ export function OpportunityPipeline() {
         title: "Assignment Complete",
         description: `Order ${orderForAssignment.order_number} assigned and moved to preparing stage`,
       });
-
-      // Use enhanced cache invalidation
-      await invalidateOrdersCache('truck and driver assignment');
-      
     } catch (error: any) {
       console.error('Error completing assignment:', error);
+      // Roll back optimistic update
+      patchOrderInCache(previousSnapshot.id, {
+        status: previousSnapshot.status,
+        payment_status: previousSnapshot.payment_status,
+        truck_type: previousSnapshot.truck_type,
+        truck_id: previousSnapshot.truck_id,
+        driver_id: previousSnapshot.driver_id,
+      });
       throw error;
     }
   };
 
-  // Regular status update function for non-assignment transitions
+  // Regular status update — optimistic, with rollback on failure
   const updateOrderStatus = async (order: any, currentStage: string, newStage: string) => {
+    const patch = buildStagePatch(order, newStage);
+    const previous = {
+      status: order.status,
+      payment_status: order.payment_status,
+    };
+
+    // Optimistic — card stays in dropped column instantly
+    patchOrderInCache(order.id, patch);
+
     try {
-      let updateData: any = {};
-
-      switch (newStage) {
-        case 'on_hold':
-          updateData = { status: 'back_order' };
-          break;
-        case 'requested':
-          updateData = { status: 'requested' };
-          break;
-        case 'preparing':
-          const customerType = order.customers?.customer_type || order.customer_type;
-          updateData = {
-            payment_status: customerType === 'account' ? 'pending' : 'paid',
-            status: 'preparing'
-          };
-          break;
-        case 'loading':
-          updateData = { status: 'loading' };
-          break;
-        case 'en_route':
-          updateData = { status: 'en_route' };
-          break;
-        case 'delivered':
-          updateData = { status: 'delivered' };
-          break;
-        default:
-          updateData = { status: newStage };
-      }
-
-      console.log('Updating order status:', order.order_number, currentStage, '->', newStage);
-
-      // Use centralized order status service for proper delivery tracking
       await updateOrderStatusService({
         orderId: order.id,
         orderNumber: order.order_number,
         customerName: order.customer_name,
         oldStatus: currentStage,
-        newStatus: updateData.status || newStage,
+        newStatus: patch.status || newStage,
         updatedBy: profile?.full_name || 'Admin'
       });
 
@@ -381,11 +367,10 @@ export function OpportunityPipeline() {
         title: "Order Moved",
         description: `Order ${order.order_number} moved to ${PIPELINE_STAGES.find(s => s.id === newStage)?.title}`,
       });
-
-      // Use enhanced cache invalidation
-      await invalidateOrdersCache('status update via drag and drop');
     } catch (error: any) {
       console.error('Error moving order:', error);
+      // Roll back
+      patchOrderInCache(order.id, previous);
       toast({
         title: "Error",
         description: "Failed to move order",

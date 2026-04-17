@@ -1,316 +1,290 @@
-
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-export function useOpportunityData() {
+export type OpportunityDateFilter = "today" | "week" | "month" | "all";
+
+// Cap on how many delivered orders to ever load into the pipeline view.
+// The pipeline is operational, not historical — anything older lives in Order Management.
+const DELIVERED_HARD_CAP = 200;
+
+function getCreatedAfter(dateFilter: OpportunityDateFilter): Date | null {
+  const now = new Date();
+  switch (dateFilter) {
+    case "today": {
+      const d = new Date(now);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    case "week": {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 7);
+      return d;
+    }
+    case "month": {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - 1);
+      return d;
+    }
+    case "all":
+    default:
+      return null;
+  }
+}
+
+function getDeliveredCutoff(dateFilter: OpportunityDateFilter): Date {
+  // Even on "All Time" we only show recent delivered jobs in the pipeline.
+  if (dateFilter === "all") {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d;
+  }
+  return getCreatedAfter(dateFilter) ?? new Date(0);
+}
+
+const PIPELINE_SELECT = `
+  id,
+  order_number,
+  purchase_order,
+  customer_name,
+  customer_phone,
+  customer_address,
+  delivery_address,
+  products,
+  total_amount,
+  status,
+  payment_status,
+  driver_id,
+  created_at,
+  delivery_date,
+  delivery_time,
+  special_instructions,
+  customer_id,
+  delivery_fee,
+  subtotal,
+  adjustments,
+  truck_type,
+  truck_id,
+  deleted_at,
+  master_order_id,
+  is_split_order,
+  delivery_suburb_id,
+  delivery_method,
+  order_notes,
+  delivery_notes,
+  contact_id,
+  contact_name,
+  contact_email,
+  contact_phone,
+  customers!orders_customer_id_fkey(
+    id,
+    suburb_id,
+    company_name,
+    business_name,
+    customer_type,
+    suburbs(id, name, state, postcode)
+  ),
+  delivery_suburbs:suburbs!orders_delivery_suburb_id_fkey(id, name, state, postcode),
+  profiles!orders_driver_id_fkey(full_name),
+  trucks!orders_truck_id_fkey(registration_number, truck_type)
+`;
+
+function mapOrder(order: any) {
+  return {
+    ...order,
+    suburb_id: order.customers?.suburb_id || null,
+    suburb_name: order.customers?.suburbs?.name || null,
+    suburb_state: order.customers?.suburbs?.state || null,
+    suburb_postcode: order.customers?.suburbs?.postcode || null,
+    delivery_suburb_id: order.delivery_suburb_id || null,
+    delivery_suburb_name: order.delivery_suburbs?.name || null,
+    delivery_suburb_state: order.delivery_suburbs?.state || null,
+    delivery_suburb_postcode: order.delivery_suburbs?.postcode || null,
+    company_name: order.customers?.company_name || null,
+    business_name: order.customers?.business_name || null,
+    customer_type: order.customers?.customer_type || null,
+    driver_name: order.profiles?.full_name || 'Not Assigned',
+    truck_registration: order.trucks?.registration_number || null,
+    truck_type_from_truck: order.trucks?.truck_type || order.truck_type,
+    delivered_at: null as string | null,
+  };
+}
+
+function sortOrders(rows: any[]) {
+  const getDeliveryDateTime = (order: any) => {
+    if (!order.delivery_date) return null;
+    const dateStr = order.delivery_date;
+    const timeStr = order.delivery_time || '00:00:00';
+    return new Date(`${dateStr}T${timeStr}`).getTime();
+  };
+
+  return [...rows].sort((a, b) => {
+    const aT = getDeliveryDateTime(a);
+    const bT = getDeliveryDateTime(b);
+    if (aT && bT) return aT - bT;
+    if (aT && !bT) return -1;
+    if (!aT && bT) return 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
+export function useOpportunityData(dateFilter: OpportunityDateFilter = "all") {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Track orders we just mutated locally so realtime echoes don't trigger refetches/toasts.
+  const recentlyMutatedRef = useRef<Map<string, number>>(new Map());
 
-  // Debounced cache invalidation function
-  const invalidateOrdersCache = async (reason?: string) => {
+  const markRecentlyMutated = useCallback((orderId: string) => {
+    recentlyMutatedRef.current.set(orderId, Date.now());
+    // Auto-cleanup after 4s
+    setTimeout(() => recentlyMutatedRef.current.delete(orderId), 4000);
+  }, []);
+
+  const queryKey = ['opportunity-orders', dateFilter];
+
+  const invalidateOrdersCache = useCallback(async (reason?: string) => {
     console.log(`Invalidating orders cache: ${reason || 'unknown reason'}`);
-    
-    // Clear existing debounce timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    
-    // Debounce invalidation to prevent excessive refetches
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(async () => {
       await queryClient.invalidateQueries({ queryKey: ['opportunity-orders'] });
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
       await queryClient.invalidateQueries({ queryKey: ['deleted-orders'] });
     }, 500);
-  };
+  }, [queryClient]);
 
-  // Fetch orders for pipeline (excluding soft-deleted orders)
+  // Optimistically patch a single order in the cache (e.g. after drag-drop).
+  const patchOrderInCache = useCallback((orderId: string, patch: Record<string, any>) => {
+    markRecentlyMutated(orderId);
+    queryClient.setQueryData(queryKey, (oldData: any[] | undefined) => {
+      if (!oldData) return oldData;
+      return oldData.map(o => (o.id === orderId ? { ...o, ...patch } : o));
+    });
+  }, [queryClient, queryKey, markRecentlyMutated]);
+
   const { data: orders = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['opportunity-orders'],
+    queryKey,
     queryFn: async () => {
-      console.log('Fetching orders for opportunity pipeline...');
-      
-      const { data: ordersData, error: ordersError } = await supabase
+      console.log(`Fetching opportunity orders (filter=${dateFilter})...`);
+
+      const createdAfter = getCreatedAfter(dateFilter);
+      const deliveredCutoff = getDeliveredCutoff(dateFilter);
+
+      // Active stages: respect dateFilter only when not "all" (active work should always be visible).
+      let activeQuery = supabase
         .from('orders')
-        .select(`
-          id,
-          order_number,
-          purchase_order,
-          customer_name,
-          customer_phone,
-          customer_address,
-          delivery_address,
-          products,
-          total_amount,
-          status,
-          payment_status,
-          driver_id,
-          created_at,
-          delivery_date,
-          delivery_time,
-          special_instructions,
-          customer_id,
-           delivery_fee,
-           subtotal,
-           adjustments,
-           truck_type,
-           truck_id,
-          deleted_at,
-          master_order_id,
-          is_split_order,
-          delivery_suburb_id,
-          delivery_method,
-          order_notes,
-          delivery_notes,
-          contact_id,
-          contact_name,
-          contact_email,
-          contact_phone,
-          customers!orders_customer_id_fkey(
-            id,
-            suburb_id,
-            company_name,
-            business_name,
-            customer_type,
-            suburbs(id, name, state, postcode)
-          ),
-          delivery_suburbs:suburbs!orders_delivery_suburb_id_fkey(
-            id, name, state, postcode
-          ),
-          profiles!orders_driver_id_fkey(full_name),
-          trucks!orders_truck_id_fkey(registration_number, truck_type),
-          delivered_status:delivery_status_updates!delivery_status_updates_order_id_fkey(
-            created_at
-          )
-        `)
-        .is('deleted_at', null) // Exclude soft-deleted orders
+        .select(PIPELINE_SELECT)
+        .is('deleted_at', null)
+        .neq('status', 'delivered')
         .order('created_at', { ascending: false });
 
-      if (ordersError) {
-        console.error('Error fetching opportunity orders:', ordersError);
-        throw ordersError;
+      if (createdAfter) {
+        activeQuery = activeQuery.gte('created_at', createdAfter.toISOString());
       }
 
-      // Map the data and sort by delivery date/time (earliest first)
-      const mappedOrders = ordersData?.map(order => {
-        // Find the most recent delivery completion timestamp
-        const deliveredAt = order.status === 'delivered' && order.delivered_status?.length > 0 
-          ? order.delivered_status[order.delivered_status.length - 1].created_at 
-          : null;
+      // Delivered stage: always capped, and date-restricted to recent window.
+      const deliveredQuery = supabase
+        .from('orders')
+        .select(PIPELINE_SELECT)
+        .is('deleted_at', null)
+        .eq('status', 'delivered')
+        .gte('created_at', deliveredCutoff.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(DELIVERED_HARD_CAP);
 
-        return {
-          ...order,
-          suburb_id: order.customers?.suburb_id || null,
-          suburb_name: order.customers?.suburbs?.name || null,
-          suburb_state: order.customers?.suburbs?.state || null,
-          suburb_postcode: order.customers?.suburbs?.postcode || null,
-          delivery_suburb_id: order.delivery_suburb_id || null,
-          delivery_suburb_name: order.delivery_suburbs?.name || null,
-          delivery_suburb_state: order.delivery_suburbs?.state || null,
-          delivery_suburb_postcode: order.delivery_suburbs?.postcode || null,
-          company_name: order.customers?.company_name || null,
-          business_name: order.customers?.business_name || null,
-          customer_type: order.customers?.customer_type || null,
-          driver_name: order.profiles?.full_name || 'Not Assigned',
-          truck_registration: order.trucks?.registration_number || null,
-          truck_type_from_truck: order.trucks?.truck_type || order.truck_type,
-          delivered_at: deliveredAt
-        };
-      }) || [];
+      const [activeRes, deliveredRes] = await Promise.all([activeQuery, deliveredQuery]);
 
-      // Sort orders by delivery date and time (earliest first), then by creation time
-      const sortedOrders = mappedOrders.sort((a, b) => {
-        // Helper function to create a comparable date from delivery_date and delivery_time
-        const getDeliveryDateTime = (order: any) => {
-          if (!order.delivery_date) return null;
-          
-          // Combine delivery_date and delivery_time into a single Date object
-          const dateStr = order.delivery_date;
-          const timeStr = order.delivery_time || '00:00:00';
-          const combinedDateTime = new Date(`${dateStr}T${timeStr}`);
-          
-          return combinedDateTime.getTime();
-        };
+      if (activeRes.error) throw activeRes.error;
+      if (deliveredRes.error) throw deliveredRes.error;
 
-        const aDeliveryTime = getDeliveryDateTime(a);
-        const bDeliveryTime = getDeliveryDateTime(b);
+      const combined = [...(activeRes.data || []), ...(deliveredRes.data || [])];
+      const mapped = combined.map(mapOrder);
+      const sorted = sortOrders(mapped);
 
-        // If both have delivery dates, sort by delivery date/time (earliest first)
-        if (aDeliveryTime && bDeliveryTime) {
-          return aDeliveryTime - bDeliveryTime;
-        }
-
-        // If only one has a delivery date, prioritize the one with delivery date
-        if (aDeliveryTime && !bDeliveryTime) return -1;
-        if (!aDeliveryTime && bDeliveryTime) return 1;
-
-        // If neither has delivery date, sort by creation time (newest first)
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-
-      console.log('Opportunity orders mapped and sorted by delivery time:', sortedOrders);
-      return sortedOrders;
+      console.log(`Opportunity orders loaded: ${sorted.length} (active=${activeRes.data?.length}, delivered=${deliveredRes.data?.length})`);
+      return sorted;
     },
-    staleTime: 1000 * 30, // Consider data fresh for 30 seconds
-    gcTime: 1000 * 60 * 5, // Keep in cache for 5 minutes
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
   });
 
-  // Set up enhanced real-time subscription for pipeline updates
+  // Lightweight realtime: patch cache instead of invalidating, and skip self-echoes.
   useEffect(() => {
-    console.log('Setting up enhanced real-time subscription for opportunity pipeline...');
-    
     const channel = supabase
-      .channel('opportunity-pipeline-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders'
-        },
-        async (payload) => {
-          console.log('Real-time pipeline update received:', payload);
-          
-          const { eventType, new: newRecord, old: oldRecord } = payload;
-          
-          // ENHANCED: Check for delivery address changes specifically
-          if (eventType === 'UPDATE' && oldRecord && newRecord) {
-            const deliveryAddressChanged = oldRecord.delivery_address !== newRecord.delivery_address;
-            const customerAddressChanged = oldRecord.customer_address !== newRecord.customer_address;
-            const deliverySuburbChanged = oldRecord.delivery_suburb_id !== newRecord.delivery_suburb_id;
-            
-            if (deliveryAddressChanged || customerAddressChanged || deliverySuburbChanged) {
-              console.log('Delivery information change detected:', {
-                orderNumber: newRecord.order_number,
-                oldDeliveryAddress: oldRecord.delivery_address,
-                newDeliveryAddress: newRecord.delivery_address,
-                oldCustomerAddress: oldRecord.customer_address,
-                newCustomerAddress: newRecord.customer_address,
-                oldDeliverySuburbId: oldRecord.delivery_suburb_id,
-                newDeliverySuburbId: newRecord.delivery_suburb_id
-              });
-              
-              toast({
-                title: "Delivery Information Updated",
-                description: `Delivery details for Order ${newRecord.order_number} have been updated`,
-                duration: 3000,
-              });
-            }
-          }
-          
-          // Handle deletion events (when deleted_at changes from null to timestamp)
-          if (eventType === 'UPDATE' && oldRecord?.deleted_at === null && newRecord?.deleted_at !== null) {
-            console.log('Order deletion detected:', newRecord?.order_number);
-            
-            // Optimistically remove from cache immediately
-            queryClient.setQueryData(['opportunity-orders'], (oldData: any[]) => {
-              if (!oldData) return [];
-              const filtered = oldData.filter(order => order.id !== newRecord.id);
-              console.log('Optimistically removed order from cache:', newRecord?.order_number);
-              return filtered;
-            });
-            
-            // Show deletion notification
-            toast({
-              title: "Order Deleted",
-              description: `Order ${newRecord?.order_number} has been deleted`,
-              duration: 3000,
-            });
-            
-            return; // Don't invalidate cache, optimistic update is enough
-          }
-          
-          // Handle restoration events (when deleted_at changes from timestamp to null)
-          if (eventType === 'UPDATE' && oldRecord?.deleted_at !== null && newRecord?.deleted_at === null) {
-            console.log('Order restoration detected:', newRecord?.order_number);
-            
-            toast({
-              title: "Order Restored",
-              description: `Order ${newRecord?.order_number} has been restored`,
-              duration: 3000,
-            });
-            
-            // Force cache refresh for restoration
-            await invalidateOrdersCache('order restoration detected');
+      .channel(`opportunity-pipeline-${dateFilter}`)
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders' },
+        (payload) => {
+          const newRecord = payload.new as any;
+          const oldRecord = payload.old as any;
+          if (!newRecord) return;
+
+          // Skip echoes from our own optimistic updates
+          if (recentlyMutatedRef.current.has(newRecord.id)) return;
+
+          // Soft-delete: remove from cache
+          if (oldRecord?.deleted_at === null && newRecord.deleted_at !== null) {
+            queryClient.setQueryData(queryKey, (oldData: any[] | undefined) =>
+              (oldData || []).filter(o => o.id !== newRecord.id)
+            );
             return;
           }
-          
-          // Handle regular status updates with smart invalidation
-          if (eventType === 'UPDATE' && oldRecord && newRecord) {
-            const oldStatus = oldRecord.status;
-            const newStatus = newRecord.status;
-            const oldPaymentStatus = oldRecord.payment_status;
-            const newPaymentStatus = newRecord.payment_status;
-            
-            // Only invalidate for meaningful changes
-            const meaningfulChange = 
-              oldStatus !== newStatus ||
-              oldPaymentStatus !== newPaymentStatus ||
-              oldRecord.delivery_address !== newRecord.delivery_address ||
-              oldRecord.customer_address !== newRecord.customer_address ||
-              oldRecord.delivery_suburb_id !== newRecord.delivery_suburb_id;
-            
-            if (oldStatus !== newStatus) {
-              console.log('Order status changed:', newRecord?.order_number, oldStatus, '->', newStatus);
-              toast({
-                title: "Pipeline Update",
-                description: `Order ${newRecord.order_number} moved to ${newStatus}`,
-                duration: 3000,
-              });
-            }
-            
-            if (oldPaymentStatus !== newPaymentStatus && newPaymentStatus === 'paid') {
-              console.log('Payment confirmed:', newRecord?.order_number);
-              toast({
-                title: "Payment Confirmed",
-                description: `Order ${newRecord.order_number} payment confirmed`,
-                duration: 3000,
-              });
-            }
-            
-            // Only invalidate cache for meaningful changes
-            if (meaningfulChange) {
-              await invalidateOrdersCache(`meaningful UPDATE`);
-            } else {
-              // For minor updates, just update the specific order in cache
-              queryClient.setQueryData(['opportunity-orders'], (oldData: any[]) => {
-                if (!oldData) return oldData;
-                return oldData.map(order => 
-                  order.id === newRecord.id ? { ...order, ...newRecord } : order
-                );
-              });
-            }
+
+          // Restoration: needs full refetch to repopulate joins
+          if (oldRecord?.deleted_at !== null && newRecord.deleted_at === null) {
+            invalidateOrdersCache('order restored');
             return;
           }
-          
-          // Handle new orders
-          if (eventType === 'INSERT' && newRecord) {
-            console.log('New order detected:', newRecord?.order_number);
+
+          // Status change toast (only for changes from other users)
+          if (oldRecord && oldRecord.status !== newRecord.status) {
             toast({
-              title: "New Opportunity",
-              description: `Order ${newRecord.order_number} entered pipeline`,
-              duration: 3000,
+              title: "Pipeline Update",
+              description: `Order ${newRecord.order_number} moved to ${newRecord.status}`,
+              duration: 2500,
             });
-            
-            await invalidateOrdersCache('new order INSERT');
           }
+
+          // Patch the order in cache without refetch
+          queryClient.setQueryData(queryKey, (oldData: any[] | undefined) => {
+            if (!oldData) return oldData;
+            const exists = oldData.some(o => o.id === newRecord.id);
+            if (!exists) return oldData;
+            return oldData.map(o => (o.id === newRecord.id ? { ...o, ...newRecord } : o));
+          });
+        }
+      )
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'orders' },
+        (payload) => {
+          const newRecord = payload.new as any;
+          if (!newRecord || newRecord.deleted_at) return;
+          if (recentlyMutatedRef.current.has(newRecord.id)) return;
+
+          toast({
+            title: "New Opportunity",
+            description: `Order ${newRecord.order_number} entered pipeline`,
+            duration: 2500,
+          });
+          // Need a refetch so we get the joined customer/driver/truck info
+          invalidateOrdersCache('new order INSERT');
         }
       )
       .subscribe();
 
     return () => {
-      console.log('Cleaning up enhanced real-time pipeline subscription...');
       supabase.removeChannel(channel);
     };
-  }, [queryClient, toast]);
+  }, [queryClient, toast, dateFilter, invalidateOrdersCache]);
 
   return {
     orders,
     isLoading,
     error,
     refetch,
-    invalidateOrdersCache
+    invalidateOrdersCache,
+    patchOrderInCache,
+    markRecentlyMutated,
   };
 }
