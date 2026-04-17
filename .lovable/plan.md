@@ -1,32 +1,45 @@
 
+Fix the edit flow so fuel surcharge survives after order creation and displays correctly in the Pricing & Details summary.
 
-## Fuel Surcharge: Apply Only to New Orders
+1. Root cause
+- The Orders list fetch (`src/components/order/hooks/useOrderData.ts`) does not select `fuel_surcharge`.
+- When you click Edit, the order object passed into the dialog is missing that stored value, so `useOrderFormData` initializes `fuel_surcharge` as `0`.
+- That is why the total still looks correct, but the separate “Fuel Surcharge” line disappears.
 
-### Problem
-The fuel surcharge line item currently displays in the **order edit** form for all orders, including ones created before the feature existed. It should only appear and be calculated for **newly created orders** — editing an existing order should show whatever `fuel_surcharge` value was stored at creation time, not the current global setting.
+2. Changes to make
+- Update `src/components/order/hooks/useOrderData.ts`
+  - Add `fuel_surcharge` to the orders `select(...)`.
+  - Add `fuel_surcharge?: number` to the local `Order` type there.
+  - Preserve it in the mapped order returned to Order Management.
+- Update edit-flow typings for safety
+  - Add `fuel_surcharge?: number` where the intermediate order types are still missing it, especially:
+    - `src/components/order/OrderEditDialog.tsx`
+    - `src/components/order/OrderManagementProvider.tsx` if needed
+- Update edit calculations in `src/components/order/hooks/useOrderFormData.ts`
+  - Make edit-mode calculations use the stored `formData.fuel_surcharge`, not the current global payment setting.
+  - Pass `formData.delivery_method` into the calculation path so pickup never shows or applies fuel surcharge.
+  - Keep legacy orders safe: if stored `fuel_surcharge` is `0`, nothing appears.
+- Keep `src/components/order/OrderPricingForm.tsx` display logic tied to:
+  - delivery only
+  - stored `formData.fuel_surcharge > 0`
 
-### Changes
+3. Expected result
+- A newly created delivery order like `ORD-391951JT` will show the fuel surcharge again when reopened in Edit.
+- Older orders created before this feature will still stay hidden if they have no stored fuel surcharge.
+- Pickup orders will not show fuel surcharge.
+- Split orders will reflect whatever surcharge is stored on that specific record.
 
-**1. `src/components/order/OrderPricingForm.tsx`**
-- Change the fuel surcharge display to use the **order's stored `fuel_surcharge`** value (from `formData`) instead of the current `paymentSettings.fuel_surcharge`.
-- Add the stored value to the `OrderFormData` or pass it via props from the order record.
-- Only show the line if the order's stored `fuel_surcharge > 0`.
+4. Technical details
+- No database migration needed.
+- This is a frontend data-fetch + edit-calculation consistency fix.
+- Main files:
+  - `src/components/order/hooks/useOrderData.ts`
+  - `src/components/order/hooks/useOrderFormData.ts`
+  - `src/components/order/OrderEditDialog.tsx`
+  - `src/components/order/OrderManagementProvider.tsx` (if typing update is needed)
 
-**2. `src/components/order/hooks/useOrderFormData.ts`**
-- Include `fuel_surcharge` from the order record in the form data so it's available during editing.
-
-**3. `src/components/order/OrderEditSections.tsx`**
-- Pass the order's `fuel_surcharge` to `OrderPricingForm` so it displays the stored value, not the global setting.
-
-**4. No change to order creation flow**
-- The creation flow (`useOrderFormState.ts`, `orderCreationService.ts`) already correctly reads and stores the fuel surcharge from `paymentSettings` at creation time. This remains unchanged.
-
-### Summary
-- **New orders**: Fuel surcharge is read from `paymentSettings` and stored on the order — no change needed.
-- **Editing orders**: Show the order's stored `fuel_surcharge` value instead of the current global setting. Orders created before the feature will have `fuel_surcharge = 0` and won't show the line.
-
-### Files Modified
-- `src/components/order/hooks/useOrderFormData.ts`
-- `src/components/order/OrderPricingForm.tsx`
-- `src/components/order/OrderEditSections.tsx`
-
+5. Verification after implementation
+- Create a new delivery order and confirm fuel surcharge appears in create summary.
+- Reopen the same order from `/orders` and confirm the edit summary shows the same fuel surcharge.
+- Open a legacy order with no stored fuel surcharge and confirm it stays hidden.
+- Check a pickup order and confirm no fuel surcharge appears.
