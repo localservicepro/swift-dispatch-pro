@@ -114,6 +114,7 @@ async function fetchOrdersPage(pageParam: number, filters: OrderFilters) {
       adjustments,
       truck_type,
       truck_id,
+      fuel_surcharge,
       order_notes,
       delivery_notes,
       driver_name,
