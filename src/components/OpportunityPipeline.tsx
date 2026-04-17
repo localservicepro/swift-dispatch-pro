@@ -80,8 +80,10 @@ export function OpportunityPipeline() {
     isLoading,
     error,
     refetch,
-    invalidateOrdersCache
-  } = useOpportunityData();
+    invalidateOrdersCache,
+    patchOrderInCache,
+    markRecentlyMutated
+  } = useOpportunityData(dateFilter as any);
 
   // Configure drag sensors
   const mouseSensor = useSensor(MouseSensor, {
