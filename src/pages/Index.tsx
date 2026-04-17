@@ -62,6 +62,7 @@ const Index = () => {
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               <PersonalizedGreeting profile={profile} />
             </div>
+            <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">{profile?.email}</span>
               <Tooltip>
                 <TooltipTrigger asChild>
