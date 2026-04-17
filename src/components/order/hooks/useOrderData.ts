@@ -62,6 +62,7 @@ export interface Order {
   contact_email?: string;
   contact_phone?: string;
   admin_initials?: string;
+  fuel_surcharge?: number;
 }
 
 interface OrderFilters {
@@ -113,6 +114,7 @@ async function fetchOrdersPage(pageParam: number, filters: OrderFilters) {
       adjustments,
       truck_type,
       truck_id,
+      fuel_surcharge,
       order_notes,
       delivery_notes,
       driver_name,
