@@ -62,6 +62,7 @@ export interface Order {
   contact_email?: string;
   contact_phone?: string;
   admin_initials?: string;
+  fuel_surcharge?: number;
 }
 
 interface OrderFilters {
