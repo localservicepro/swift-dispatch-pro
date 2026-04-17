@@ -1,45 +1,44 @@
 
-Fix the edit flow so fuel surcharge survives after order creation and displays correctly in the Pricing & Details summary.
 
-1. Root cause
-- The Orders list fetch (`src/components/order/hooks/useOrderData.ts`) does not select `fuel_surcharge`.
-- When you click Edit, the order object passed into the dialog is missing that stored value, so `useOrderFormData` initializes `fuel_surcharge` as `0`.
-- That is why the total still looks correct, but the separate “Fuel Surcharge” line disappears.
+## Optimize Opportunities Pipeline (Performance + Smooth Drag)
 
-2. Changes to make
-- Update `src/components/order/hooks/useOrderData.ts`
-  - Add `fuel_surcharge` to the orders `select(...)`.
-  - Add `fuel_surcharge?: number` to the local `Order` type there.
-  - Preserve it in the mapped order returned to Order Management.
-- Update edit-flow typings for safety
-  - Add `fuel_surcharge?: number` where the intermediate order types are still missing it, especially:
-    - `src/components/order/OrderEditDialog.tsx`
-    - `src/components/order/OrderManagementProvider.tsx` if needed
-- Update edit calculations in `src/components/order/hooks/useOrderFormData.ts`
-  - Make edit-mode calculations use the stored `formData.fuel_surcharge`, not the current global payment setting.
-  - Pass `formData.delivery_method` into the calculation path so pickup never shows or applies fuel surcharge.
-  - Keep legacy orders safe: if stored `fuel_surcharge` is `0`, nothing appears.
-- Keep `src/components/order/OrderPricingForm.tsx` display logic tied to:
-  - delivery only
-  - stored `formData.fuel_surcharge > 0`
+### Root Causes
+The pipeline fetches **all 5,133 active orders** (5,092 are `delivered`) on every load, with heavy joins. There's no DB-level date filtering, no pagination, no optimistic UI on drag, and cache invalidation triggers a full refetch — so dropped cards visibly snap back.
 
-3. Expected result
-- A newly created delivery order like `ORD-391951JT` will show the fuel surcharge again when reopened in Edit.
-- Older orders created before this feature will still stay hidden if they have no stored fuel surcharge.
-- Pickup orders will not show fuel surcharge.
-- Split orders will reflect whatever surcharge is stored on that specific record.
+### Fix Strategy
 
-4. Technical details
-- No database migration needed.
-- This is a frontend data-fetch + edit-calculation consistency fix.
-- Main files:
-  - `src/components/order/hooks/useOrderData.ts`
-  - `src/components/order/hooks/useOrderFormData.ts`
-  - `src/components/order/OrderEditDialog.tsx`
-  - `src/components/order/OrderManagementProvider.tsx` (if typing update is needed)
+**1. Server-side date filter + cap delivered orders (biggest win)**
+- Push the `dateFilter` ("today", "week", "month", "all") into the Supabase query.
+- For `"all"`, still cap `delivered` orders to the last 30 days (or last 200) — the pipeline doesn't need 5,000 historical delivered cards. Active stages (on_hold, requested, preparing, loading, en_route) stay unbounded.
+- Refetch only when `dateFilter` changes (include it in the query key).
+- Expected: 5,133 → ~200–400 rows on "All Time", much less on Today/Week.
 
-5. Verification after implementation
-- Create a new delivery order and confirm fuel surcharge appears in create summary.
-- Reopen the same order from `/orders` and confirm the edit summary shows the same fuel surcharge.
-- Open a legacy order with no stored fuel surcharge and confirm it stays hidden.
-- Check a pickup order and confirm no fuel surcharge appears.
+**2. Optimistic drag-and-drop update**
+- On `handleDragEnd`, immediately update React Query cache (`setQueryData`) to move the card to the new stage before the DB call returns.
+- If the DB update fails, roll back the cache and toast the error.
+- Remove the post-update `invalidateOrdersCache` call for drag moves — the optimistic update is the source of truth, and realtime will reconcile if needed.
+- Result: card stays in dropped column instantly, no snap-back, no freeze.
+
+**3. Lighter realtime subscription**
+- Subscribe only to `UPDATE` and `INSERT` events (drop wildcard `*`), and only patch the affected order in cache via `setQueryData` instead of invalidating.
+- Skip self-triggered updates (we already applied them optimistically) by comparing `updated_at` or using a short-lived "recently moved by me" set.
+- Reduce toast spam — only toast for changes coming from other users.
+
+**4. Trim the query payload**
+- Drop fields the pipeline cards don't render (e.g. `customer_address`, `special_instructions`, full `delivered_status` array — we only need the latest timestamp).
+- Replace `delivered_status:delivery_status_updates(...)` with a single `delivered_at` column read from the order if available, or limit to 1 row.
+
+**5. Memoize heavier work**
+- `ordersByStage` already uses `useMemo` — keep. Ensure `filteredOrders` dependencies are stable.
+- Move the per-card phone/text search into the DB query when `searchQuery` is set (mirroring `useOrderData.ts` pattern), so we don't filter 5k rows in JS.
+
+### Files to Modify
+- `src/components/opportunity/useOpportunityData.ts` — server-side date filter, delivered cap, lighter select, smarter realtime, optimistic-update helpers.
+- `src/components/OpportunityPipeline.tsx` — pass `dateFilter` into the hook, implement optimistic cache update in `handleDragEnd` / `handleAssignmentComplete`, remove blanket `invalidateOrdersCache` after drag.
+
+### Expected Result
+- "All Time" loads in well under a second instead of freezing.
+- Dragging a card to a new stage feels instant and stays put.
+- Realtime updates from other users still appear, but no longer trigger full refetches.
+- No DB schema changes required.
+
