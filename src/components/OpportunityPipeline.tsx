@@ -457,87 +457,66 @@ export function OpportunityPipeline() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-bold text-slate-800 flex items-center gap-2 text-base">
-                <BarChart3 className="w-8 h-8" />
-                Jobs Management
-              </h2>
-              <p className="text-slate-600 mt-1">Track orders through your sales pipeline • Drag to move orders • Real-time updates enabled</p>
+        <div className="space-y-2">
+          {/* Compact header: title + metrics + filters in one row */}
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
+              <BarChart3 className="w-4 h-4" />
+              Jobs Management
+            </h2>
+
+            <div className="flex items-center gap-3 text-xs text-slate-600">
+              <span><span className="font-bold text-slate-800">{totalOrders}</span> orders</span>
+              <span><span className="font-bold text-green-600">${totalValue.toFixed(0)}</span> value</span>
+              {isLoading && <span className="text-slate-500">(Loading...)</span>}
             </div>
-            
-            {/* Pipeline Metrics */}
-            <div className="hidden md:flex items-center gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-slate-800">{totalOrders}</p>
-                <p className="text-sm text-slate-600">Total Orders</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">${totalValue.toFixed(0)}</p>
-                <p className="text-sm text-slate-600">Pipeline Value</p>
-              </div>
+
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Input
+                placeholder="Search orders, customers, PO..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
             </div>
+
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="h-8 w-32 text-sm">
+                <Filter className="h-3.5 w-3.5 text-slate-400" />
+                <SelectValue placeholder="Date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="week">This Week</SelectItem>
+                <SelectItem value="month">This Month</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {hasActiveFilters && (
+              <Button variant="outline" size="sm" onClick={clearFilters} className="h-8 px-2 flex items-center gap-1">
+                <X className="h-3.5 w-3.5" />
+                Clear
+              </Button>
+            )}
           </div>
 
-          {/* Filters */}
+          {/* Pipeline area */}
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="text-lg font-semibold text-slate-800">
-                  {isLoading && <span className="text-sm font-normal text-slate-500">(Loading...)</span>}
-                </div>
-                {hasActiveFilters && (
-                  <Button variant="outline" size="sm" onClick={clearFilters} className="flex items-center gap-2">
-                    <X className="h-4 w-4" />
-                    Clear Filters
-                  </Button>
-                )}
-              </div>
-              
-              {/* Search and Filter Controls */}
-              <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    placeholder="Search by order number, customer name, business name, or PO number..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <div className="flex items-center gap-2 sm:w-48">
-                  <Filter className="h-4 w-4 text-slate-400" />
-                  <Select value={dateFilter} onValueChange={setDateFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filter by date" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Time</SelectItem>
-                      <SelectItem value="today">Today</SelectItem>
-                      <SelectItem value="week">This Week</SelectItem>
-                      <SelectItem value="month">This Month</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Color Legend */}
-              <div className="mt-4 pt-4 border-t border-slate-200">
-                <OpportunityCardColorLegend />
-              </div>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="p-3">
               {isLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-2 text-slate-600">Loading pipeline...</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2">
+                  {/* Inline color legend */}
+                  <OpportunityCardColorLegend />
+
                   {/* Top Scroll Bar */}
-                  <div className="border-b border-slate-200 pb-2">
-                    <p className="text-xs text-slate-500 mb-2">Scroll to navigate pipeline stages • Drag cards to move between stages</p>
+                  <div className="border-b border-slate-200 pb-1">
                     <ScrollArea ref={topScrollRef} className="w-full">
                       <div
                         className="flex gap-4"
