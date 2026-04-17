@@ -57,7 +57,7 @@ const Index = () => {
           </div>
           
           {/* Desktop header with personalized greeting */}
-          <div className="hidden md:flex justify-between items-center p-4 bg-white border-b">
+          <div className="hidden md:flex justify-between items-center py-1.5 px-4 bg-white border-b">
             <div className="flex items-center gap-3">
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               <PersonalizedGreeting profile={profile} />
