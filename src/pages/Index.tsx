@@ -1,6 +1,6 @@
 
 import { useEffect } from "react";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { MobileHeader } from "@/components/MobileHeader";
@@ -58,7 +58,10 @@ const Index = () => {
           
           {/* Desktop header with personalized greeting */}
           <div className="hidden md:flex justify-between items-center p-4 bg-white border-b">
-            <PersonalizedGreeting profile={profile} />
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+              <PersonalizedGreeting profile={profile} />
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">{profile?.email}</span>
               <Tooltip>
