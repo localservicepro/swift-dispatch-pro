@@ -8,6 +8,9 @@ export type OpportunityDateFilter = "today" | "week" | "month" | "all";
 // Cap on how many delivered orders to ever load into the pipeline view.
 // The pipeline is operational, not historical — anything older lives in Order Management.
 const DELIVERED_HARD_CAP = 200;
+// Explicit cap on active orders to prevent Supabase's silent 1000-row default truncation.
+// Active workload should never approach this in practice.
+const ACTIVE_HARD_CAP = 2000;
 
 function getCreatedAfter(dateFilter: OpportunityDateFilter): Date | null {
   const now = new Date();
