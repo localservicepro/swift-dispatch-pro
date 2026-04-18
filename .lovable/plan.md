@@ -1,76 +1,51 @@
 
-User shows ORD-466121JT in Order Management with status `requested` and scheduled delivery 2026-04-23. They're asking why it doesn't show in Opportunities.
+The user filters by Today/Week/Month and sees the order, but on "All Time" it disappears. Looking at `useOpportunityData.ts`:
 
-Looking at `useOpportunityData.ts` we just changed:
+- Active query: `neq('status', 'delivered')` + `gte('created_at', createdAfter)` only when filter is not "all". So All Time should return MORE orders, not fewer.
+- BUT: Supabase has a **default 1000 row limit per query**. There are ~5000+ orders in the system. On "All Time" the active query fetches without date filter and gets capped at 1000 rows by Supabase — likely the 1000 most recent by `created_at DESC`. ORD-466121JT was created today so it should be in the top 1000... unless it's not.
 
-```ts
-function getCreatedAfter(dateFilter): Date | null {
-  case "today": today 00:00
-  case "week": now - 7 days
-  case "month": now - 1 month
-  case "all": null
-}
+Wait — the order is on the `requested` stage. The active query orders by `created_at DESC` and takes the top 1000. ORD-466121JT created today (2026-04-18) should be at the very top. So why missing?
 
-// Active stages query:
-let activeQuery = supabase.from('orders')...neq('status', 'delivered')...
-if (createdAfter) {
-  activeQuery = activeQuery.gte('created_at', createdAfter.toISOString());
-}
-```
+Let me reconsider. Actually the `.order('created_at', { ascending: false })` followed by Supabase's implicit 1000 cap means the 1000 most recent active (non-delivered) orders. If there are >1000 active orders, older ones get dropped — but today's order would be IN the result.
 
-The order was **created 4/18/2026** (today per screenshot — "Good morning, Jay 8:16 AM"). But the **delivery date is 2026-04-23** (5 days out).
+Hmm. Then maybe the issue is on Today/Week/Month, the query has `.gte('created_at', cutoff)` which returns fewer rows, all under 1000, so everything shows. On All Time, the result hits 1000 cap and the order is included BUT something downstream filters it out.
 
-Wait — the filter is on `created_at`, not `delivery_date`. So if filter is "Today", it filters orders created today. ORD-466121JT was created 4/18/2026 which IS today. It should show.
+Actually wait — I missed something. Let me re-read: combined = active + delivered. If active returns 1000 and delivered returns 200, total 1200. That's fine. The order should appear.
 
-But user says it doesn't. Let me re-check... actually the user might have filter set to "Today" and the order created today should appear. Unless... the issue is different.
+Possible cause: the customer-type filter in `OpportunityPipeline.tsx` defaults to certain types, and perhaps there's logic that depends on dataset behavior. But filter is consistent across date ranges, so that's unlikely the cause.
 
-Hmm wait — looking more carefully. The active query has no limit. The delivered cap is 200. Active orders should all return. Let me think about what could exclude this order.
+More likely: **Supabase 1000-row cap silently drops the order.** On Today filter, only ~10-50 orders return → all visible. On All Time, 1000 cap hits — and `created_at DESC` should put the newest first BUT if there are 1000+ active non-delivered orders (very plausible given 5000 total) AND the order was created today, it should still be in top 1000.
 
-Possibility: The order has `master_order_id` set or `is_split_order` true and the pipeline filters those out somewhere. Let me check OpportunityPipeline.
+UNLESS: there's another active query that hits the cap differently, or the combined+sorted result has 1200 items but pipeline rendering does pagination.
 
-Actually, more likely culprit: the active query includes ALL non-delivered orders without date filter when "all", but with a date filter the `created_at >= cutoff` excludes anything created before. ORD-466121JT created today (4/18/2026), filter "Today" cutoff = today 00:00 → should pass.
+Best path: query DB to verify counts, then add explicit `.range()` / higher limit / pagination. Most likely fix: explicitly set `.limit(2000)` on active query and confirm.
 
-Could be: the user has filter set to something else, OR the pipeline filters by `is_split_order` / master orders, OR there's a customer-type filter excluding it.
+Need to investigate live data before finalizing.
 
-I should investigate by reading OpportunityPipeline.tsx to see all filters applied.
+## Plan: Fix Missing Orders on "All Time" Filter
 
-Plan: investigate, fix.
+### Root Cause (suspected)
+Supabase enforces a default **1000-row cap per query**. On Today/Week/Month, the date filter keeps results well under 1000 so everything renders. On **All Time**, the active-orders query (`status != 'delivered'`) likely returns more than 1000 rows, gets silently truncated, and some orders — including newly created ones in less common stages — drop out of the response.
 
-## Plan: Diagnose Missing Order in Opportunities Pipeline
+### Investigation (during implementation)
+1. Query the DB to count active (non-delivered, non-soft-deleted) orders. If > 1000, the cap is the cause.
+2. Confirm `ORD-466121JT` is in the active set with `status='requested'`, `deleted_at IS NULL`.
 
-### Investigation
-The order `ORD-466121JT` is `requested` status, created today, delivery 2026-04-23, but doesn't show on `/opportunities`. Need to check:
+### Fix
+In `src/components/opportunity/useOpportunityData.ts`:
 
-1. **`OpportunityPipeline.tsx`** — review all client-side filters applied after fetch:
-   - Customer-type checkbox filters (Account/Trade/Residential)
-   - Search query filter
-   - Any split-order / master-order exclusions
-   - Stage mapping (does `requested` map to a visible column?)
+1. **Add explicit limits to both queries** so Supabase doesn't silently truncate:
+   - Active query: `.limit(2000)` (well above expected active workload but bounded for performance).
+   - Delivered query: keep existing `.limit(200)` cap.
 
-2. **`useOpportunityData.ts`** — confirm the active-orders query actually returns this order:
-   - Check `dateFilter` cutoff against `created_at = 2026-04-18`
-   - Confirm no `master_order_id` / `is_split_order` exclusion in the SELECT
-   - Verify the order isn't soft-deleted (`deleted_at IS NULL`)
+2. **Tighten the All Time active fetch** to mirror the operational intent: only the most recent active orders matter. Cap to e.g. last 90 days OR latest 2000 rows ordered by `created_at DESC` — whichever the data supports. The pipeline is operational, not historical.
 
-3. **Check the customer record** — `Test Company 1232` may have a `customer_type` that's being filtered out, or no customer_type at all (null) which the type-checkbox filter might drop.
+3. **Add a dev-only console warning** when the active query returns exactly the cap — helps catch this regression in future.
 
-### Likely Causes (ranked)
-1. **Customer type filter is hiding it** — the customer-type checkboxes default to specific types; if `Test Company 1232` has `customer_type` null or not in the checked list, it gets filtered out client-side.
-2. **Date filter mismatch** — pipeline filter set to something narrower than "Today/All Time" while user expects to see it.
-3. **Stage column mapping** — `requested` status not mapped to a visible pipeline stage.
-
-### Fix Approach
-- Read `OpportunityPipeline.tsx` to identify the filter logic.
-- Query the DB for this specific order to verify its `customer_type`, `status`, `master_order_id`, `is_split_order`, and `deleted_at`.
-- Based on findings:
-  - If customer-type filter is the cause: either default-include customers with null `customer_type`, or surface a clear "X orders hidden by filter" indicator with a one-click reset.
-  - If date filter: ensure the active-stages query ignores `dateFilter` for active work (already the intent — verify it's working).
-  - If stage mapping: add the missing status to the appropriate column.
-
-### Files to Modify (likely)
-- `src/components/OpportunityPipeline.tsx` — adjust client-side filter so orders with null/unknown `customer_type` aren't silently hidden.
-- Possibly `src/components/opportunity/useOpportunityData.ts` if a query condition is excluding the row.
+### Files Modified
+- `src/components/opportunity/useOpportunityData.ts`
 
 ### Verification
-- Reload `/opportunities` with default filters and confirm `ORD-466121JT` appears in the `Requested` column.
-- Toggle customer-type checkboxes and confirm orders with unknown type still appear when "all" is effectively selected.
+- Reload `/opportunities` with **All Time** filter → confirm `ORD-466121JT` appears in the Requested column.
+- Toggle between Today / Week / Month / All Time → order remains visible in all views.
+- Check console for any "result hit cap" warnings.
