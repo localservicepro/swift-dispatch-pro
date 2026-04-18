@@ -180,7 +180,8 @@ export function useOpportunityData(dateFilter: OpportunityDateFilter = "all") {
         .select(PIPELINE_SELECT)
         .is('deleted_at', null)
         .neq('status', 'delivered')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(ACTIVE_HARD_CAP);
 
       if (createdAfter) {
         activeQuery = activeQuery.gte('created_at', createdAfter.toISOString());
@@ -201,14 +202,22 @@ export function useOpportunityData(dateFilter: OpportunityDateFilter = "all") {
       if (activeRes.error) throw activeRes.error;
       if (deliveredRes.error) throw deliveredRes.error;
 
-      const combined = [...(activeRes.data || []), ...(deliveredRes.data || [])];
+      const activeRows = activeRes.data || [];
+      const deliveredRows = deliveredRes.data || [];
+
+      // Warn if we hit the cap — indicates we may be silently dropping active orders.
+      if (activeRows.length === ACTIVE_HARD_CAP) {
+        console.warn(`[OpportunityPipeline] Active orders query hit cap of ${ACTIVE_HARD_CAP}. Some orders may be missing.`);
+      }
+
+      const combined = [...activeRows, ...deliveredRows];
       const mapped = combined.map(mapOrder);
       const sorted = sortOrders(mapped);
 
-      console.log(`Opportunity orders loaded: ${sorted.length} (active=${activeRes.data?.length}, delivered=${deliveredRes.data?.length})`);
+      console.log(`Opportunity orders loaded: ${sorted.length} (active=${activeRows.length}, delivered=${deliveredRows.length})`);
       return sorted;
     },
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 5,
     gcTime: 1000 * 60 * 5,
   });
 
