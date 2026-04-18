@@ -140,6 +140,10 @@ export function OpportunityPipeline() {
     filteredOrders.forEach(order => {
       let stage = 'requested';
       const customerType = order.customers?.customer_type || order.customer_type;
+      // Diagnostic: surface any order we can't categorise so it isn't silently dropped.
+      if (!order.status) {
+        console.warn('[Pipeline] Order missing status, defaulting to requested:', order.order_number, order.id);
+      }
 
       // Check for "On Hold" conditions first - only back_order status
       if (order.status === 'back_order') {
