@@ -85,6 +85,12 @@ export function OpportunityPipeline() {
     markRecentlyMutated
   } = useOpportunityData(dateFilter as any);
 
+  // Always refetch when this view mounts so freshly created orders appear immediately.
+  useEffect(() => {
+    refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Configure drag sensors
   const mouseSensor = useSensor(MouseSensor, {
     activationConstraint: {
