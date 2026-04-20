@@ -30,7 +30,9 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
     handleFormDataChange,
     getFormDataForSubmission,
     calculationBreakdown,
-    paymentSettings
+    paymentSettings,
+    missingFuelSurchargeAmount,
+    applyMissingFuelSurcharge,
   } = useOrderEditFormLogic(order);
 
   // Prepare business information from order data
@@ -100,6 +102,8 @@ export function OrderEditForm({ order, onOrderUpdated, onClose }: OrderEditFormP
         onFormDataChange={handleFormDataChange}
         calculationBreakdown={calculationBreakdown}
         paymentSettings={paymentSettings}
+        missingFuelSurchargeAmount={missingFuelSurchargeAmount}
+        applyMissingFuelSurcharge={applyMissingFuelSurcharge}
       />
 
       <OrderEditConflictSection
