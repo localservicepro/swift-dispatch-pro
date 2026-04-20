@@ -151,28 +151,34 @@ export function useOrderFormData(order: Order) {
     initializeProductsWithPrices();
   }, [order.id]); // Only depend on order.id to avoid infinite loops
 
-  // Calculate totals whenever pricing components change
+  // Calculate totals whenever pricing components change.
+  // IMPORTANT: We use the order's STORED fuel_surcharge (formData.fuel_surcharge),
+  // not paymentSettings.fuel_surcharge, so the edit dialog total always matches
+  // what is persisted in the database.
   const calculateTotals = (updatedData: Partial<OrderFormData>) => {
     const currentData = { ...formData, ...updatedData };
-    
-    // Parse adjustments from string to number for calculation
+
     const adjustmentsNum = parseFloat(currentData.adjustments) || 0;
-    
+    const fuelSurcharge = Number(currentData.fuel_surcharge) || 0;
+
     if (!paymentSettings) {
-      // Fallback calculation without payment settings - GST is included in prices
-      const total = currentData.subtotal + currentData.delivery_fee + adjustmentsNum;
+      const total = currentData.subtotal + currentData.delivery_fee + adjustmentsNum + fuelSurcharge;
       return total.toFixed(2);
     }
 
+    // Pass deliveryMethod='pickup' so the util does NOT add paymentSettings.fuel_surcharge.
+    // We add the order's stored fuel_surcharge ourselves below.
     const orderTotals = calculateOrderTotals(
       currentData.subtotal,
       adjustmentsNum,
       currentData.delivery_fee,
       currentData.payment_method,
-      paymentSettings
+      paymentSettings,
+      'pickup',
+      1
     );
 
-    return orderTotals.totalAmount.toFixed(2);
+    return (orderTotals.totalAmount + fuelSurcharge).toFixed(2);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -336,30 +342,61 @@ export function useOrderFormData(order: Order) {
     };
   };
 
-  // Get calculation breakdown for display
+  // Get calculation breakdown for display.
+  // Uses the order's stored fuel_surcharge so the breakdown matches the saved record.
   const getCalculationBreakdown = () => {
     const adjustmentsNum = parseFloat(formData.adjustments) || 0;
-    
+    const fuelSurcharge = Number(formData.fuel_surcharge) || 0;
+
     if (!paymentSettings) {
       return {
         subtotal: formData.subtotal,
         adjustments: adjustmentsNum,
         deliveryFee: formData.delivery_fee,
+        fuelSurcharge,
         surchargeAmount: 0,
-        gstAmount: (formData.subtotal + adjustmentsNum + formData.delivery_fee) / 11, // GST included calculation
+        gstAmount: (formData.subtotal + adjustmentsNum + formData.delivery_fee + fuelSurcharge) / 11,
         totalAmount: parseFloat(formData.total_amount),
         hasSurcharge: false,
         gstIncluded: true
       };
     }
 
-    return calculateOrderTotals(
+    const base = calculateOrderTotals(
       formData.subtotal,
       adjustmentsNum,
       formData.delivery_fee,
       formData.payment_method,
-      paymentSettings
+      paymentSettings,
+      'pickup', // suppress implicit fuel surcharge from util
+      1
     );
+
+    return {
+      ...base,
+      fuelSurcharge,
+      totalAmount: base.totalAmount + fuelSurcharge,
+    };
+  };
+
+  // Detect a missing fuel surcharge so the UI can offer to apply it.
+  const missingFuelSurchargeAmount = (() => {
+    const settingsFuel = Number(paymentSettings?.fuel_surcharge) || 0;
+    const stored = Number(formData.fuel_surcharge) || 0;
+    if (formData.delivery_method === 'delivery' && stored === 0 && settingsFuel > 0) {
+      return settingsFuel;
+    }
+    return 0;
+  })();
+
+  const applyMissingFuelSurcharge = () => {
+    if (missingFuelSurchargeAmount <= 0) return;
+    const newTotal = calculateTotals({ fuel_surcharge: missingFuelSurchargeAmount });
+    setFormData(prev => ({
+      ...prev,
+      fuel_surcharge: missingFuelSurchargeAmount,
+      total_amount: newTotal,
+    }));
   };
 
   return {
@@ -377,6 +414,8 @@ export function useOrderFormData(order: Order) {
     getCalculationBreakdown,
     paymentSettings,
     isDeliveryFeeManuallySet,
-    getDeliveryFeeInfo
+    getDeliveryFeeInfo,
+    missingFuelSurchargeAmount,
+    applyMissingFuelSurcharge,
   };
 }

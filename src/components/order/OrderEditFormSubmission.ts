@@ -71,15 +71,19 @@ export function useOrderFormSubmission() {
       }
 
       // Enhanced order update with comprehensive data and payment adjustments.
-      // Preserve the existing fuel_surcharge and ensure it is reflected in total_amount.
-      const preservedFuelSurcharge = Number((order as any).fuel_surcharge) || 0;
+      // Use the form's fuel_surcharge (which may have been just-applied via the
+      // missing-surcharge prompt) instead of the stale value from the original order.
+      const editedFuelSurcharge =
+        submissionData.fuel_surcharge !== undefined && submissionData.fuel_surcharge !== null
+          ? Number(submissionData.fuel_surcharge) || 0
+          : Number((order as any).fuel_surcharge) || 0;
       const editedSubtotal = Number(submissionData.subtotal) || 0;
       const editedAdjustments = parseFloat(submissionData.adjustments) || 0;
       const editedDeliveryFee = Number(submissionData.delivery_fee) || 0;
       // Recompute the authoritative total so the fuel surcharge is never dropped
       // by stale form state during edits.
       const finalTotalAmount =
-        editedSubtotal + editedAdjustments + editedDeliveryFee + preservedFuelSurcharge;
+        editedSubtotal + editedAdjustments + editedDeliveryFee + editedFuelSurcharge;
 
       const updateData = {
         customer_name: submissionData.customer_name,
@@ -91,7 +95,7 @@ export function useOrderFormSubmission() {
         total_amount: finalTotalAmount,
         subtotal: editedSubtotal,
         adjustments: editedAdjustments,
-        fuel_surcharge: preservedFuelSurcharge,
+        fuel_surcharge: editedFuelSurcharge,
         status: submissionData.status as OrderStatus,
         delivery_date: submissionData.delivery_date || null,
         delivery_time: submissionData.delivery_time || null,

@@ -103,6 +103,12 @@ export function CustomerOrderCreate({ customer, onClose, onSuccess }: CustomerOr
         total_price: item.unit_price * item.quantity
       }));
 
+      const subtotal = calculateTotal();
+      const fuelSurcharge =
+        deliveryMethod === 'delivery' ? Number(paymentSettings?.fuel_surcharge) || 0 : 0;
+      const deliveryFee = 0;
+      const totalAmount = subtotal + deliveryFee + fuelSurcharge;
+
       const { error } = await supabase.from('orders').insert([{
         customer_id: customer.id,
         customer_name: getCustomerDisplayName(customer),
@@ -133,9 +139,10 @@ export function CustomerOrderCreate({ customer, onClose, onSuccess }: CustomerOr
         pickup_time: deliveryMethod === 'pickup' ? (deliveryTime || null) : null,
         
         products,
-        subtotal: calculateTotal(),
-        total_amount: calculateTotal(),
-        delivery_fee: 0,
+        subtotal,
+        total_amount: totalAmount,
+        delivery_fee: deliveryFee,
+        fuel_surcharge: fuelSurcharge,
         adjustments: 0,
         status: 'requested',
         payment_status: 'pending',

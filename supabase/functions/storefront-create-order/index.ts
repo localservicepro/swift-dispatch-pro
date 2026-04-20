@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
         delivery_address: finalDeliveryAddress,
         products: sanitizedProducts,
         subtotal,
-        total_amount: subtotal + sanitizedDeliveryFee,
+        total_amount: subtotal + sanitizedDeliveryFee + fuelSurcharge,
         delivery_fee: sanitizedDeliveryFee,
         fuel_surcharge: fuelSurcharge,
         status: "requested",
