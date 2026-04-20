@@ -67,6 +67,32 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
     // Serialize cart items for database storage - the trigger will automatically create products_formatted
     const serializedProducts = serializeCartItemsWithFormatting(params.cart);
 
+    // SERVER-SIDE AUTHORITATIVE FUEL SURCHARGE & TOTAL CALCULATION
+    // Don't trust client-supplied fuelSurcharge/totalAmount — they can be 0 if
+    // payment_settings hadn't loaded when the user clicked Confirm. Recompute
+    // from the freshly-fetched paymentSettings to guarantee correctness.
+    const authoritativeFuelSurchargePerUnit =
+      params.deliveryMethod === 'delivery' ? Number(paymentSettings.fuel_surcharge) || 0 : 0;
+    const authoritativeFuelSurcharge = authoritativeFuelSurchargePerUnit; // single order = 1 unit
+    const authoritativeSubtotal = Number(params.orderTotals.subtotal) || 0;
+    const authoritativeAdjustments = Number(params.orderTotals.adjustments) || 0;
+    const authoritativeDeliveryFee = Number(params.orderTotals.deliveryFee) || 0;
+    const authoritativeTotal =
+      authoritativeSubtotal +
+      authoritativeAdjustments +
+      authoritativeDeliveryFee +
+      authoritativeFuelSurcharge;
+
+    console.log('🚚 Single order authoritative totals:', {
+      subtotal: authoritativeSubtotal,
+      adjustments: authoritativeAdjustments,
+      deliveryFee: authoritativeDeliveryFee,
+      fuelSurcharge: authoritativeFuelSurcharge,
+      totalAmount: authoritativeTotal,
+      clientFuelSurcharge: params.orderTotals.fuelSurcharge,
+      clientTotal: params.orderTotals.totalAmount,
+    });
+
     // Determine order status based on delivery method and pickup timing
     let orderStatus: 'back_order' | 'requested' | 'delivered' = 'requested';
     
@@ -117,11 +143,11 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       contact_email: params.selectedContact?.email || null,
       contact_phone: params.selectedContact?.phone || null,
       products: serializedProducts,
-      subtotal: params.orderTotals.subtotal,
-      adjustments: params.orderTotals.adjustments,
-      delivery_fee: params.orderTotals.deliveryFee,
-      fuel_surcharge: params.orderTotals.fuelSurcharge || 0,
-      total_amount: params.orderTotals.totalAmount,
+      subtotal: authoritativeSubtotal,
+      adjustments: authoritativeAdjustments,
+      delivery_fee: authoritativeDeliveryFee,
+      fuel_surcharge: authoritativeFuelSurcharge,
+      total_amount: authoritativeTotal,
       delivery_method: params.deliveryMethod,
       delivery_date: params.deliveryDate || null,
       delivery_time: params.deliveryTime || null,
@@ -261,11 +287,15 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       contact_email: params.selectedContact?.email || null,
       contact_phone: params.selectedContact?.phone || null,
       products: serializedProducts,
-      subtotal: params.orderTotals.subtotal,
-      adjustments: params.orderTotals.adjustments,
+      subtotal: Number(params.orderTotals.subtotal) || 0,
+      adjustments: Number(params.orderTotals.adjustments) || 0,
       delivery_fee: totalDeliveryFee,
       fuel_surcharge: totalFuelSurcharge,
-      total_amount: params.orderTotals.totalAmount,
+      total_amount:
+        (Number(params.orderTotals.subtotal) || 0) +
+        (Number(params.orderTotals.adjustments) || 0) +
+        totalDeliveryFee +
+        totalFuelSurcharge,
       delivery_method: params.deliveryMethod,
       payment_method: params.paymentMethod,
       order_notes: params.orderNotes,

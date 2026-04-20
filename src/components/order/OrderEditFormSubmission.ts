@@ -70,8 +70,17 @@ export function useOrderFormSubmission() {
         }
       }
 
-      // Enhanced order update with comprehensive data and payment adjustments
-      const finalTotalAmount = parseFloat(submissionData.total_amount);
+      // Enhanced order update with comprehensive data and payment adjustments.
+      // Preserve the existing fuel_surcharge and ensure it is reflected in total_amount.
+      const preservedFuelSurcharge = Number((order as any).fuel_surcharge) || 0;
+      const editedSubtotal = Number(submissionData.subtotal) || 0;
+      const editedAdjustments = parseFloat(submissionData.adjustments) || 0;
+      const editedDeliveryFee = Number(submissionData.delivery_fee) || 0;
+      // Recompute the authoritative total so the fuel surcharge is never dropped
+      // by stale form state during edits.
+      const finalTotalAmount =
+        editedSubtotal + editedAdjustments + editedDeliveryFee + preservedFuelSurcharge;
+
       const updateData = {
         customer_name: submissionData.customer_name,
         purchase_order: submissionData.purchase_order || null,
@@ -80,15 +89,16 @@ export function useOrderFormSubmission() {
         delivery_address: submissionData.customer_address, // Ensure delivery_address is updated
         products: submissionData.products,
         total_amount: finalTotalAmount,
-        subtotal: submissionData.subtotal,
-        adjustments: parseFloat(submissionData.adjustments) || 0,
+        subtotal: editedSubtotal,
+        adjustments: editedAdjustments,
+        fuel_surcharge: preservedFuelSurcharge,
         status: submissionData.status as OrderStatus,
         delivery_date: submissionData.delivery_date || null,
         delivery_time: submissionData.delivery_time || null,
         order_notes: submissionData.order_notes || null,
         delivery_notes: submissionData.delivery_notes || null,
         driver_id: submissionData.driver_id === 'unassigned' ? null : submissionData.driver_id,
-        delivery_fee: submissionData.delivery_fee,
+        delivery_fee: editedDeliveryFee,
         truck_type: submissionData.truck_type === 'none' ? null : submissionData.truck_type as TruckType,
         truck_id: submissionData.truck_id === 'none' ? null : submissionData.truck_id,
         delivery_suburb_id: submissionData.delivery_suburb_id || null,
