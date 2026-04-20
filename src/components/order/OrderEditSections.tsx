@@ -43,6 +43,8 @@ interface OrderEditSectionsProps {
   onFormDataChange: (updates: any) => void;
   calculationBreakdown?: any;
   paymentSettings?: any;
+  missingFuelSurchargeAmount?: number;
+  applyMissingFuelSurcharge?: () => void;
 }
 
 export function OrderEditSections({
@@ -59,7 +61,9 @@ export function OrderEditSections({
   onContactChange,
   onFormDataChange,
   calculationBreakdown,
-  paymentSettings
+  paymentSettings,
+  missingFuelSurchargeAmount,
+  applyMissingFuelSurcharge,
 }: OrderEditSectionsProps) {
   const [backorderDialogOpen, setBackorderDialogOpen] = useState(false);
 
@@ -204,6 +208,8 @@ export function OrderEditSections({
         orderId={orderId}
         customerId={customerId}
         deliveryMethod={formData.delivery_method}
+        missingFuelSurchargeAmount={missingFuelSurchargeAmount}
+        applyMissingFuelSurcharge={applyMissingFuelSurcharge}
       />
 
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">

@@ -51,7 +51,9 @@ export function useOrderEditFormLogic(order: Order) {
     handleContactChange,
     getFormDataForSubmission,
     getCalculationBreakdown,
-    paymentSettings
+    paymentSettings,
+    missingFuelSurchargeAmount,
+    applyMissingFuelSurcharge,
   } = useOrderFormData(order);
 
   // Use conflict detection hook
@@ -132,6 +134,8 @@ export function useOrderEditFormLogic(order: Order) {
     handleFormDataChange,
     getFormDataForSubmission,
     calculationBreakdown,
-    paymentSettings
+    paymentSettings,
+    missingFuelSurchargeAmount,
+    applyMissingFuelSurcharge,
   };
 }
