@@ -18,6 +18,8 @@ interface OrderPricingFormProps {
   orderId?: string;
   customerId?: string;
   deliveryMethod?: string;
+  missingFuelSurchargeAmount?: number;
+  applyMissingFuelSurcharge?: () => void;
 }
 
 export function OrderPricingForm({ 
@@ -27,7 +29,9 @@ export function OrderPricingForm({
   paymentSettings,
   orderId,
   customerId,
-  deliveryMethod
+  deliveryMethod,
+  missingFuelSurchargeAmount = 0,
+  applyMissingFuelSurcharge,
 }: OrderPricingFormProps) {
   // Get returns and credits data
   const { returns } = useOrderReturns(orderId);
@@ -154,10 +158,25 @@ export function OrderPricingForm({
             </div>
           )}
           
-          {deliveryMethod === 'delivery' && Number(formData.fuel_surcharge) > 0 && (
+          {Number(formData.fuel_surcharge) > 0 && (
             <div className="flex justify-between text-amber-700">
               <span>Fuel Surcharge:</span>
               <span>AU${Number(formData.fuel_surcharge).toFixed(2)}</span>
+            </div>
+          )}
+
+          {missingFuelSurchargeAmount > 0 && applyMissingFuelSurcharge && (
+            <div className="my-2 p-2 rounded border border-amber-300 bg-amber-100 text-xs flex items-center justify-between gap-2">
+              <span className="text-amber-900">
+                Fuel surcharge missing — apply AU${missingFuelSurchargeAmount.toFixed(2)}?
+              </span>
+              <button
+                type="button"
+                onClick={applyMissingFuelSurcharge}
+                className="px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 text-xs font-medium"
+              >
+                Apply
+              </button>
             </div>
           )}
 
