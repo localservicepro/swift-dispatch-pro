@@ -287,11 +287,15 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       contact_email: params.selectedContact?.email || null,
       contact_phone: params.selectedContact?.phone || null,
       products: serializedProducts,
-      subtotal: params.orderTotals.subtotal,
-      adjustments: params.orderTotals.adjustments,
+      subtotal: Number(params.orderTotals.subtotal) || 0,
+      adjustments: Number(params.orderTotals.adjustments) || 0,
       delivery_fee: totalDeliveryFee,
       fuel_surcharge: totalFuelSurcharge,
-      total_amount: params.orderTotals.totalAmount,
+      total_amount:
+        (Number(params.orderTotals.subtotal) || 0) +
+        (Number(params.orderTotals.adjustments) || 0) +
+        totalDeliveryFee +
+        totalFuelSurcharge,
       delivery_method: params.deliveryMethod,
       payment_method: params.paymentMethod,
       order_notes: params.orderNotes,
