@@ -159,7 +159,9 @@ export function useOrderFormData(order: Order) {
     const currentData = { ...formData, ...updatedData };
 
     const adjustmentsNum = parseFloat(currentData.adjustments) || 0;
-    const fuelSurcharge = Number(currentData.fuel_surcharge) || 0;
+    // Pickup orders never carry a fuel surcharge — gate authoritatively here.
+    const isPickup = currentData.delivery_method === 'pickup';
+    const fuelSurcharge = isPickup ? 0 : (Number(currentData.fuel_surcharge) || 0);
 
     if (!paymentSettings) {
       const total = currentData.subtotal + currentData.delivery_fee + adjustmentsNum + fuelSurcharge;
