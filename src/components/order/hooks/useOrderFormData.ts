@@ -297,6 +297,13 @@ export function useOrderFormData(order: Order) {
 
   const handleFormDataChange = (updates: Partial<OrderFormData>) => {
     console.log('Form data change:', updates);
+    // Apply pickup-method gating so toggling via this path also strips surcharge/fee.
+    if (updates.delivery_method === 'pickup') {
+      const merged = { ...updates, fuel_surcharge: 0, delivery_fee: 0 };
+      const newTotal = calculateTotals(merged);
+      setFormData(prev => ({ ...prev, ...merged, total_amount: newTotal }));
+      return;
+    }
     setFormData(prev => ({ ...prev, ...updates }));
   };
 
@@ -373,7 +380,8 @@ export function useOrderFormData(order: Order) {
   // Uses the order's stored fuel_surcharge so the breakdown matches the saved record.
   const getCalculationBreakdown = () => {
     const adjustmentsNum = parseFloat(formData.adjustments) || 0;
-    const fuelSurcharge = Number(formData.fuel_surcharge) || 0;
+    const isPickup = formData.delivery_method === 'pickup';
+    const fuelSurcharge = isPickup ? 0 : (Number(formData.fuel_surcharge) || 0);
 
     if (!paymentSettings) {
       return {
