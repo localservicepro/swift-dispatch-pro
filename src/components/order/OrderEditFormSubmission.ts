@@ -71,17 +71,18 @@ export function useOrderFormSubmission() {
       }
 
       // Enhanced order update with comprehensive data and payment adjustments.
-      // Use the form's fuel_surcharge (which may have been just-applied via the
-      // missing-surcharge prompt) instead of the stale value from the original order.
-      const editedFuelSurcharge =
+      // CRITICAL: pickup orders can never carry a fuel surcharge or delivery fee — gate
+      // authoritatively here so a stale delivery→pickup toggle cannot persist a phantom $5.
+      const isPickup = submissionData.delivery_method === 'pickup';
+      const formFuelSurcharge =
         submissionData.fuel_surcharge !== undefined && submissionData.fuel_surcharge !== null
           ? Number(submissionData.fuel_surcharge) || 0
           : Number((order as any).fuel_surcharge) || 0;
+      const editedFuelSurcharge = isPickup ? 0 : formFuelSurcharge;
       const editedSubtotal = Number(submissionData.subtotal) || 0;
       const editedAdjustments = parseFloat(submissionData.adjustments) || 0;
-      const editedDeliveryFee = Number(submissionData.delivery_fee) || 0;
-      // Recompute the authoritative total so the fuel surcharge is never dropped
-      // by stale form state during edits.
+      const editedDeliveryFee = isPickup ? 0 : (Number(submissionData.delivery_fee) || 0);
+      // Recompute the authoritative total — pickups exclude delivery_fee + fuel_surcharge.
       const finalTotalAmount =
         editedSubtotal + editedAdjustments + editedDeliveryFee + editedFuelSurcharge;
 
