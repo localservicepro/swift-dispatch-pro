@@ -221,6 +221,31 @@ export function useOrderFormData(order: Order) {
         payment_method: value,
         total_amount: newTotal
       }));
+    } else if (field === 'delivery_method') {
+      // When switching to pickup, strip any fuel surcharge and delivery fee carried over from delivery.
+      if (value === 'pickup') {
+        const updatedData = {
+          delivery_method: value,
+          fuel_surcharge: 0,
+          delivery_fee: 0,
+        };
+        const newTotal = calculateTotals(updatedData);
+        setFormData(prev => ({
+          ...prev,
+          delivery_method: value,
+          fuel_surcharge: 0,
+          delivery_fee: 0,
+          total_amount: newTotal,
+        }));
+      } else {
+        const updatedData = { delivery_method: value };
+        const newTotal = calculateTotals(updatedData);
+        setFormData(prev => ({
+          ...prev,
+          delivery_method: value,
+          total_amount: newTotal,
+        }));
+      }
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
