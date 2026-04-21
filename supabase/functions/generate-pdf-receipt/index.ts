@@ -344,13 +344,12 @@ function generateSimpleReceiptHTML(data: any): string {
   const businessAbn = businessSettings?.abn || "44 788 796 653";
 
   // Calculate totals
-  const totalAmount = invoice?.amount || order.total_amount || order.totalAmount || 0;
+  const storedTotal = order.total_amount || order.totalAmount || 0;
   const fuelSurcharge = order.fuel_surcharge || order.fuelSurcharge || 0;
   const baseDeliveryFee = order.delivery_fee || order.deliveryFee || 0;
   const deliveryFee = baseDeliveryFee + fuelSurcharge;
-  const subtotal = order.subtotal || order.subTotal || totalAmount - deliveryFee;
+  const subtotal = order.subtotal || order.subTotal || storedTotal - deliveryFee;
   const adjustments = order.adjustments || 0;
-  const gstAmount = totalAmount / 11;
 
   // Calculate surcharge if applicable (from payment method)
   const paymentMethod = order.payment_method || order.paymentMethod || "";
@@ -367,6 +366,20 @@ function generateSimpleReceiptHTML(data: any): string {
     surchargeAmount = preSurchargeTotal * (surchargePercent / 100);
   }
   const saleTotal = subtotal + deliveryFee + adjustments;
+
+  // Defensive guard: if stored total diverges from computed expected total (and no invoice),
+  // trust the computed value to prevent stale/phantom-surcharge inflation on receipts.
+  const expectedTotal = saleTotal + surchargeAmount;
+  let totalAmount: number;
+  if (invoice?.amount) {
+    totalAmount = invoice.amount;
+  } else if (Math.abs(storedTotal - expectedTotal) > 0.01) {
+    console.warn(`[pdf-receipt] Total mismatch for order ${order.order_number}: stored=${storedTotal}, expected=${expectedTotal}. Using computed value.`);
+    totalAmount = expectedTotal;
+  } else {
+    totalAmount = storedTotal;
+  }
+  const gstAmount = totalAmount / 11;
 
   // Format date as DD/MM/YYYY with leading zeros
   const formatDateAU = (date: Date): string => {
