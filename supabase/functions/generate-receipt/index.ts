@@ -375,25 +375,37 @@ function generateReceiptHTML(data: any): string {
   const businessAbn = businessSettings?.abn || '44 788 796 653'
   
   // Calculate totals
-  const totalAmount = invoice?.amount || order.total_amount || 0
+  const storedTotal = order.total_amount || 0
   const fuelSurcharge = order.fuel_surcharge || 0
   const baseDeliveryFee = order.delivery_fee || 0
   const deliveryFee = baseDeliveryFee + fuelSurcharge
-  const subtotal = order.subtotal || (totalAmount - deliveryFee)
+  const subtotal = order.subtotal || (storedTotal - deliveryFee)
   const adjustments = order.adjustments || 0
-  const gstAmount = totalAmount / 11 // GST is 1/11 of GST-inclusive price
-  
+
   // Calculate surcharge if applicable (from payment method)
   const paymentMethod = order.payment_method || order.paymentMethod || ''
   let surchargePercent = 0
   let surchargeAmount = 0
   if (paymentMethod === 'card_on_file' || paymentMethod === 'in_yard_card' || paymentMethod === 'account_card') {
     surchargePercent = 1.2
-    // Surcharge is typically on the pre-surcharge amount
     const preSurchargeTotal = subtotal + deliveryFee + adjustments
     surchargeAmount = preSurchargeTotal * (surchargePercent / 100)
   }
   const saleTotal = subtotal + deliveryFee + adjustments
+
+  // Defensive guard: if stored total diverges from computed expected total (and no invoice),
+  // trust the computed value to prevent stale/phantom-surcharge inflation on receipts.
+  const expectedTotal = saleTotal + surchargeAmount
+  let totalAmount: number
+  if (invoice?.amount) {
+    totalAmount = invoice.amount
+  } else if (Math.abs(storedTotal - expectedTotal) > 0.01) {
+    console.warn(`[receipt] Total mismatch for order ${order.order_number}: stored=${storedTotal}, expected=${expectedTotal}. Using computed value.`)
+    totalAmount = expectedTotal
+  } else {
+    totalAmount = storedTotal
+  }
+  const gstAmount = totalAmount / 11 // GST is 1/11 of GST-inclusive price
   
   // Format timestamp for top of receipt
   const now = new Date()
