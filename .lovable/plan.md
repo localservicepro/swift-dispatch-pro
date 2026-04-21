@@ -1,47 +1,41 @@
 
 
-## Fix: Phantom $5 fuel surcharge appearing on pickup/yard orders
+## Fix: ORD-795464 receipt prints $520 instead of $515
 
 ### Root cause
 
-ORD-795464 (a "Pickup from yard" order) has `total_amount=520` but `subtotal=515`, `delivery_fee=0`, `adjustments=0`, `fuel_surcharge=0` in the database. Activity log shows it was edited from $504 → $520 shortly after creation.
+The database still stores `total_amount = 520` for ORD-795464, even though `subtotal + delivery_fee + adjustments + fuel_surcharge = 515 + 0 + 0 + 0 = 515`. The receipt edge function correctly trusts `order.total_amount` for the grand total, so it prints **Sale Total $515 / Total $520** — a $5 jump with no line item to justify it.
 
-The likely sequence:
-1. Order was opened in the edit dialog while still classified as a delivery order. The new "Apply missing fuel surcharge" prompt fired and the user (or the form re-initialization) added the $5 surcharge to `formData.fuel_surcharge` and `formData.total_amount`.
-2. The delivery method was then switched to `pickup`, but **nothing zeros `formData.fuel_surcharge` when delivery_method changes**.
-3. On save, the surcharge made its way into `total_amount` (or the recompute used a stale subtotal). Either way, the saved `total_amount` is $5 above the true pickup total of $515.
+The earlier pickup-phantom-surcharge migration deliberately **skipped paid orders** (only flagging them in `activity_logs`) to avoid silently mutating closed financials. ORD-795464 was paid in cash, so it was flagged but never corrected — the receipt still reflects the wrong number.
 
-The same bug surface exists for the create flow if a user toggles delivery → pickup mid-flow.
+### Fix
 
-There are also two structural gaps:
-- `OrderEditFormSubmission.ts` recomputes `finalTotalAmount = subtotal + adj + delivery_fee + fuel_surcharge` **without** gating on `delivery_method`, so any non-zero `fuel_surcharge` carried in form state silently inflates a pickup order's total.
-- `useOrderFormData.ts`'s "missing fuel surcharge" prompt fires whenever `delivery_method === 'delivery' && stored === 0`, but never clears `formData.fuel_surcharge` when the user later switches to pickup in the same edit session.
+1. **Targeted data repair migration** for paid pickup orders flagged by the previous run:
+   - Find orders where `delivery_method = 'pickup'`, `deleted_at IS NULL`, `payment_status = 'paid'`, and `total_amount > subtotal + COALESCE(delivery_fee,0) + COALESCE(adjustments,0) + COALESCE(fuel_surcharge,0) + 0.01`.
+   - Update `total_amount = subtotal + delivery_fee + adjustments + fuel_surcharge` and `fuel_surcharge = 0`.
+   - Log each correction to `activity_logs` with action `pickup_phantom_surcharge_corrected`, capturing the previous and new totals so the cash overcharge is auditable for refund.
+   - Wrap in a transaction; emit a notice with the count.
 
-### Fixes
+2. **Receipt defensive guard** (`supabase/functions/generate-receipt/index.ts` and `generate-pdf-receipt/index.ts` if it has the same logic):
+   - Compute `expectedTotal = subtotal + deliveryFee + adjustments + fuelSurcharge + surchargeAmount`.
+   - If `Math.abs(order.total_amount - expectedTotal) > 0.01`, use `expectedTotal` for the printed grand total instead of the stored value, so a stale stored total can never produce a mystery jump on a printed receipt again.
+   - Keep the existing fallback to `invoice?.amount` when an invoice is attached (invoices are authoritative).
 
-1. **`src/components/order/OrderEditFormSubmission.ts`** — always force `fuel_surcharge = 0` and exclude it from `finalTotalAmount` when `submissionData.delivery_method === 'pickup'`. This is the authoritative server-style guard so a pickup order can never persist a non-zero fuel surcharge regardless of form state.
+### Verification
 
-2. **`src/components/order/hooks/useOrderFormData.ts`** —
-   - When `formData.delivery_method` changes to `'pickup'` (via `handleInputChange`/`handleFormDataChange`), reset `formData.fuel_surcharge` to 0, recompute `formData.total_amount`, and clear `formData.delivery_fee` if it's non-zero.
-   - Make `missingFuelSurchargeAmount` continually re-gate on the current `formData.delivery_method`, so toggling to pickup hides the prompt and toggling back to delivery re-shows it.
-   - In `getCalculationBreakdown` and `calculateTotals`, when `delivery_method === 'pickup'`, ignore `formData.fuel_surcharge` entirely (treat as 0) so the displayed total cannot drift above what would be saved.
-
-3. **`src/components/order/services/orderCreationService.ts`** — already gated correctly, but add a final defensive line in both `createSingleOrder` and the split path: `const safeFuelSurcharge = params.deliveryMethod === 'pickup' ? 0 : authoritativeFuelSurcharge;` and use it for both the column and the total. (Belt-and-braces; current code already does this but it makes the invariant explicit and protects the split path's master-order write.)
-
-4. **One-time data repair migration** — find delivery_method=pickup orders where `total_amount > subtotal + COALESCE(delivery_fee,0) + COALESCE(adjustments,0)` and the difference equals the current `payment_settings.fuel_surcharge` (within $0.01). For unpaid orders, correct `total_amount = subtotal + delivery_fee + adjustments` and ensure `fuel_surcharge = 0`. For paid orders (like ORD-795464), only flag in `activity_logs` for manual review/refund — do not silently change a paid total. Wrap in a transaction, log counts.
-
-5. **Verification** — re-query ORD-795464 post-flag and a sample of any other affected pickup orders. Confirm new pickup orders cannot persist `total_amount > subtotal + delivery_fee + adjustments`.
+- Re-query ORD-795464 and confirm `total_amount = 515`.
+- Reprint the receipt and confirm Sale Total $515 / Total $515 (no $5 jump, no orphan Surcharge line).
+- Confirm an `activity_logs` entry exists noting the $5 cash overcharge to refund the customer.
 
 ### Files modified
 
-- `src/components/order/OrderEditFormSubmission.ts`
-- `src/components/order/hooks/useOrderFormData.ts`
-- `src/components/order/services/orderCreationService.ts`
-- New migration: `supabase/migrations/<ts>_repair_pickup_phantom_surcharge.sql`
+- New migration: `supabase/migrations/<ts>_correct_paid_pickup_phantom_surcharge.sql`
+- `supabase/functions/generate-receipt/index.ts`
+- `supabase/functions/generate-pdf-receipt/index.ts` (only if it has equivalent total logic)
 
 ### Result
 
-- Pickup/yard orders can never persist a fuel surcharge — neither in `fuel_surcharge` column nor inflated into `total_amount`.
-- Switching delivery method to pickup mid-edit immediately strips any previously-applied surcharge from the displayed total.
-- Existing affected unpaid pickup orders auto-corrected; paid ones (incl. ORD-795464) flagged for admin review so the $5 overcharge can be refunded manually.
+- ORD-795464 (and any other paid pickup orders with the same phantom $5) will print correctly at $515.
+- An auditable activity log entry per corrected order lets admins identify the cash overcharges that need to be refunded.
+- Future stored/computed total mismatches will be self-healed at print time so customers never see a confusing receipt again.
 
