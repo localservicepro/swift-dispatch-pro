@@ -1,47 +1,43 @@
 
 
-## Add Light/Dark Mode Toggle
+## Add server-side search to Opportunities pipeline (find historical orders)
 
-### Overview
+### Problem
 
-The design system already defines both light and dark color tokens in `src/index.css` (`:root` and `.dark`), and Tailwind is configured with `darkMode: ["class"]`. The `next-themes` package is already installed but never wired up. We just need to add the provider, persist the choice, and expose a toggle in the header.
+The Opportunities pipeline only loads **active orders + delivered orders from the last 30 days** (capped at 200 delivered). It's designed as an operational view, not a historical one. So when you search for an old account customer's order, it isn't in the cache and the client-side filter has nothing to match against.
 
-### What you'll see
+The phone formatting itself already works correctly here — the existing client-side filter uses `phoneSearchMatch` which strips spaces from both sides. The issue is purely that the data isn't loaded.
 
-- A sun/moon icon button in the desktop header (next to the Guide and Sign Out buttons) and in the mobile header.
-- Clicking it cycles Light → Dark (with a small dropdown for Light / Dark / System).
-- The choice is remembered across reloads and tabs (localStorage via `next-themes`).
-- No flash of wrong theme on first paint.
+### Solution
 
-### Implementation
+Keep the lean operational pipeline as the default, but **when the user actively types a search query, run an additional server-side query** that scans the entire `orders` table (not just the recent window) and merges any extra hits into the pipeline. This mirrors the Order Management server-side search pattern (and now uses the new phone variant helper added in the previous fix).
 
-1. **ThemeProvider wrapper** — new `src/components/theme/ThemeProvider.tsx` re-exporting `next-themes`'s provider configured with `attribute="class"`, `defaultTheme="system"`, `enableSystem`, `disableTransitionOnChange`.
+### Changes
 
-2. **Mount provider** — wrap the tree in `src/App.tsx` (inside `QueryClientProvider`, outside `AuthProvider`) so every route (admin, driver portal, customer portal, storefront) gets the theme class on `<html>`.
+**1. `src/components/opportunity/useOpportunitySearchData.ts` (new)**
+- `useQuery` keyed on `['opportunity-search', debouncedSearchQuery]`.
+- Disabled when search is empty.
+- Builds the same `or(...)` as Order Management:
+  - `order_number`, `customer_name`, `purchase_order`, `contact_name`, `delivery_address` (ILIKE)
+  - phone columns ORed across `getPhoneSearchVariants(q)` when `isPhoneNumber(q)`
+  - `customer_id.in.(...)` from a pre-search of `customers` (company/business/first/last name + phone variants)
+- `.is('deleted_at', null)`, `.limit(200)`, same `PIPELINE_SELECT` and `mapOrder` so the shape matches.
+- 300ms debounce via existing `useDebounce`.
 
-3. **Anti-flash script** — add a tiny inline script in `index.html` `<head>` that reads `localStorage.theme` and applies `dark` class to `<html>` before React mounts.
+**2. `src/components/OpportunityPipeline.tsx`**
+- Call `useOpportunitySearchData(searchQuery)` alongside `useOpportunityData(dateFilter)`.
+- Merge results into one array (dedupe by `id`, prefer the realtime-tracked copy from the pipeline cache when present).
+- Keep the existing client-side `filteredOrders` filter unchanged — it will now operate over the merged set, so old orders surfaced by search show up in the correct pipeline columns.
+- Add a small "Searching all orders…" indicator next to the search input while the search query is in flight.
 
-4. **ThemeToggle component** — new `src/components/theme/ThemeToggle.tsx`: a `DropdownMenu` triggered by a Sun/Moon icon Button (icons swap based on resolved theme, using existing `lucide-react` icons). Options: Light, Dark, System. Uses `useTheme()` from `next-themes`.
+### Result
 
-5. **Wire into headers**:
-   - `src/pages/Index.tsx` — add `<ThemeToggle />` next to the Guide tooltip button in the desktop header.
-   - `src/components/MobileHeader.tsx` — add `<ThemeToggle />` to the mobile header actions row.
-   - `src/pages/SwiftDispatchGuide.tsx` and other top-level pages with their own headers (driver portal, customer portal) — optional follow-up; the global provider already themes them, only the toggle button needs to be placed where users expect it. Plan: add the toggle to admin headers (desktop + mobile) and the driver/customer portal top bars so all logged-in surfaces can switch.
-
-6. **Sonner already reads theme** — `src/components/ui/sonner.tsx` already calls `useTheme()`, so toasts will follow automatically.
-
-### Out of scope (intentionally)
-
-- No design changes to dark token values — the existing `.dark` palette in `index.css` is used as-is.
-- No per-component dark mode audit. If specific screens look off in dark mode, those are separate fix-ups.
+- Default pipeline view stays fast and lean (no behavior change when you're not searching).
+- Typing any name, phone (in any format), order number, or PO surfaces matching orders from across the entire history — including delivered jobs older than 30 days for long-time account customers.
+- Phone formatting already works thanks to the variant helper added in the previous turn.
 
 ### Files
 
-- New: `src/components/theme/ThemeProvider.tsx`
-- New: `src/components/theme/ThemeToggle.tsx`
-- Edited: `src/App.tsx` (mount provider)
-- Edited: `index.html` (anti-flash script)
-- Edited: `src/pages/Index.tsx` (toggle in desktop header)
-- Edited: `src/components/MobileHeader.tsx` (toggle in mobile header)
-- Edited: `src/pages/DriverPortal.tsx` and `src/pages/CustomerPortal.tsx` (toggle in their top bars)
+- New: `src/components/opportunity/useOpportunitySearchData.ts`
+- Edited: `src/components/OpportunityPipeline.tsx`
 

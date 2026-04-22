@@ -9,7 +9,6 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { LogOut, Loader2, BookOpen } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PersonalizedGreeting } from "@/components/PersonalizedGreeting";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useNavigate, Outlet } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -77,7 +76,6 @@ const Index = () => {
                 </TooltipTrigger>
                 <TooltipContent>SwiftDispatch Guide</TooltipContent>
               </Tooltip>
-              <ThemeToggle />
               <Button 
                 variant="outline" 
                 size="sm" 
