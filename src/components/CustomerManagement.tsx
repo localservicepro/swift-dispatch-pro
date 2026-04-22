@@ -1,6 +1,3 @@
-
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { CustomerDialog } from "@/components/customer/CustomerDialog";
 import { CustomerImportDialog } from "@/components/customer/CustomerImportDialog";
 import { CustomerOrders } from "@/components/customer/CustomerOrders";
@@ -10,55 +7,42 @@ import { CustomerFilters } from "@/components/customer/CustomerFilters";
 import { CustomerList } from "@/components/customer/CustomerList";
 import { useCustomerFilters } from "@/hooks/useCustomerFilters";
 import { useCustomerActions } from "@/hooks/useCustomerActions";
+import { useCustomersData } from "@/hooks/useCustomersData";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function CustomerManagement() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-
-  const { data: customers, isLoading, error, refetch } = useQuery({
-    queryKey: ["customers"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customers")
-        .select(`
-          *,
-          suburbs (
-            id,
-            name,
-            state,
-            postcode,
-            delivery_rate
-          ),
-          customer_contacts (
-            id,
-            first_name,
-            last_name,
-            email,
-            phone,
-            contact_role,
-            is_primary_contact,
-            is_active
-          )
-        `);
-      
-      if (error) throw error;
-      return data;
-    }
-  });
+  const queryClient = useQueryClient();
 
   const {
     searchTerm,
+    debouncedSearchTerm,
     customerTypeFilter,
     entityTypeFilter,
     statusFilter,
-    filteredCustomers,
     activeFilterCount,
     setSearchTerm,
     setCustomerTypeFilter,
     setEntityTypeFilter,
     setStatusFilter,
-    clearAllFilters
-  } = useCustomerFilters(customers);
+    clearAllFilters,
+  } = useCustomerFilters();
+
+  const {
+    customers,
+    isLoading,
+    error,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useCustomersData({
+    searchQuery: debouncedSearchTerm,
+    customerTypeFilter,
+    entityTypeFilter,
+    statusFilter,
+  });
 
   const {
     isDialogOpen,
@@ -71,31 +55,32 @@ export function CustomerManagement() {
     handleEditCustomer,
     handleViewOrders,
     handleDeleteCustomer,
-    handleDialogSuccess
+    handleDialogSuccess,
   } = useCustomerActions();
 
   const handleImportSuccess = () => {
     refetch();
+    queryClient.invalidateQueries({ queryKey: ["customers-stats-counts"] });
     setIsImportDialogOpen(false);
   };
 
   if (showOrders && selectedCustomer) {
     return (
-      <CustomerOrders 
-        customer={selectedCustomer} 
-        onBack={() => setShowOrders(false)} 
+      <CustomerOrders
+        customer={selectedCustomer}
+        onBack={() => setShowOrders(false)}
       />
     );
   }
 
   return (
     <div className="space-y-6">
-      <CustomerManagementHeader 
+      <CustomerManagementHeader
         onAddCustomer={handleAddCustomer}
         onImportCustomers={() => setIsImportDialogOpen(true)}
       />
 
-      <CustomerStats customers={customers || []} />
+      <CustomerStats />
 
       <CustomerFilters
         searchTerm={searchTerm}
@@ -108,12 +93,12 @@ export function CustomerManagement() {
         onEntityTypeChange={setEntityTypeFilter}
         onStatusChange={setStatusFilter}
         onClearFilters={clearAllFilters}
-        totalCustomers={customers?.length || 0}
-        filteredCount={filteredCustomers?.length || 0}
+        loadedCount={customers?.length || 0}
+        hasMore={hasNextPage}
       />
 
       <CustomerList
-        customers={filteredCustomers}
+        customers={customers}
         isLoading={isLoading}
         error={error}
         activeFilterCount={activeFilterCount}
@@ -121,6 +106,9 @@ export function CustomerManagement() {
         onEditCustomer={handleEditCustomer}
         onDeleteCustomer={handleDeleteCustomer}
         onClearFilters={clearAllFilters}
+        fetchNextPage={fetchNextPage}
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
       />
 
       <CustomerDialog

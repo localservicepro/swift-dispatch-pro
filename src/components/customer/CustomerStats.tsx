@@ -1,92 +1,37 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Building, UserCheck, UserX, Home, Wrench } from "lucide-react";
+import { useCustomerStatsCounts } from "@/hooks/useCustomersData";
 
-interface CustomerStatsProps {
-  customers: any[];
-}
+export function CustomerStats() {
+  const { data, isLoading } = useCustomerStatsCounts();
 
-export function CustomerStats({ customers }: CustomerStatsProps) {
-  const totalCustomers = customers.length;
-  const residentialCustomers = customers.filter(c => c.customer_type === "residential").length;
-  const tradeCustomers = customers.filter(c => c.customer_type === "trade").length;
-  const accountCustomers = customers.filter(c => c.customer_type === "account").length;
-  const activeCustomers = customers.filter(c => c.is_active).length;
-  const inactiveCustomers = totalCustomers - activeCustomers;
+  const stat = (n: number | undefined) =>
+    isLoading ? "…" : (n ?? 0).toLocaleString();
+
+  const items = [
+    { label: "Total", value: data?.total, Icon: Users, color: "text-blue-600" },
+    { label: "Residential", value: data?.residential, Icon: Home, color: "text-green-600" },
+    { label: "Trade", value: data?.trade, Icon: Wrench, color: "text-orange-600" },
+    { label: "Account", value: data?.account, Icon: Building, color: "text-purple-600" },
+    { label: "Active", value: data?.active, Icon: UserCheck, color: "text-green-600" },
+    { label: "Inactive", value: data?.inactive, Icon: UserX, color: "text-red-600" },
+  ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Total</p>
-              <p className="text-2xl font-bold text-slate-800">{totalCustomers}</p>
+      {items.map(({ label, value, Icon, color }) => (
+        <Card key={label}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-600">{label}</p>
+                <p className="text-2xl font-bold text-slate-800">{stat(value)}</p>
+              </div>
+              <Icon className={`w-6 h-6 ${color}`} />
             </div>
-            <Users className="w-6 h-6 text-blue-600" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Residential</p>
-              <p className="text-2xl font-bold text-slate-800">{residentialCustomers}</p>
-            </div>
-            <Home className="w-6 h-6 text-green-600" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Trade</p>
-              <p className="text-2xl font-bold text-slate-800">{tradeCustomers}</p>
-            </div>
-            <Wrench className="w-6 h-6 text-orange-600" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Account</p>
-              <p className="text-2xl font-bold text-slate-800">{accountCustomers}</p>
-            </div>
-            <Building className="w-6 h-6 text-purple-600" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Active</p>
-              <p className="text-2xl font-bold text-slate-800">{activeCustomers}</p>
-            </div>
-            <UserCheck className="w-6 h-6 text-green-600" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Inactive</p>
-              <p className="text-2xl font-bold text-slate-800">{inactiveCustomers}</p>
-            </div>
-            <UserX className="w-6 h-6 text-red-600" />
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
