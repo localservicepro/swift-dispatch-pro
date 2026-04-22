@@ -77,7 +77,7 @@ export function OpportunityPipeline() {
   const topScrollRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const {
-    orders,
+    orders: pipelineOrders,
     isLoading,
     error,
     refetch,
@@ -85,6 +85,22 @@ export function OpportunityPipeline() {
     patchOrderInCache,
     markRecentlyMutated
   } = useOpportunityData(dateFilter as any);
+
+  // When the user types a search, also pull matching orders from across the
+  // entire history so historical / older delivered orders can be surfaced.
+  const {
+    data: searchOrders = [],
+    isFetching: isSearching,
+  } = useOpportunitySearchData(searchQuery);
+
+  // Merge pipeline + search results, preferring the realtime-tracked pipeline copy.
+  const orders = useMemo(() => {
+    if (!searchQuery.trim() || searchOrders.length === 0) return pipelineOrders;
+    const byId = new Map<string, any>();
+    for (const o of searchOrders) byId.set(o.id, o);
+    for (const o of pipelineOrders) byId.set(o.id, o); // pipeline copy wins
+    return Array.from(byId.values());
+  }, [pipelineOrders, searchOrders, searchQuery]);
 
   // Always refetch when this view mounts so freshly created orders appear immediately.
   useEffect(() => {
