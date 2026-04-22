@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { isPhoneNumber } from "@/utils/phoneUtils";
+import { isPhoneNumber, getPhoneSearchVariants } from "@/utils/phoneUtils";
 
 const PAGE_SIZE = 50;
 
@@ -66,10 +66,12 @@ async function fetchCustomersPage(pageParam: number, filters: CustomerFilters) {
   const q = filters.searchQuery?.trim();
   if (q) {
     if (isPhoneNumber(q)) {
-      // Match digits anywhere in stored phone (matches phoneSearchMatch behaviour broadly enough for server scope)
-      const digits = q.replace(/\D/g, "");
-      if (digits.length > 0) {
-        query = query.ilike("phone", `%${digits}%`);
+      // Stored phones may be formatted with spaces (e.g. "0409 563 775"),
+      // so build multiple variants and match any of them.
+      const variants = getPhoneSearchVariants(q);
+      if (variants.length > 0) {
+        const orFilter = variants.map(v => `phone.ilike.%${v}%`).join(",");
+        query = query.or(orFilter);
       }
     } else {
       const matchedSuburbIds = await fetchMatchingSuburbIds(q);

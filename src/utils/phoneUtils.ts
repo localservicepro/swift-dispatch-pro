@@ -137,3 +137,60 @@ export function getPhoneVariations(phoneNumber: string): string[] {
   
   return [...new Set(variations)]; // Remove duplicates
 }
+
+/**
+ * Build search variants for a user-typed phone query so it matches
+ * stored phones regardless of formatting (spaces, country code, etc.).
+ *
+ * Returns substrings safe to drop into Postgres ILIKE patterns
+ * (no commas or wildcards). Caller is responsible for wrapping in `%...%`.
+ */
+export function getPhoneSearchVariants(input: string): string[] {
+  if (!input) return [];
+
+  const trimmed = input.trim();
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 0) return [trimmed];
+
+  const set = new Set<string>();
+  set.add(trimmed);
+  set.add(digits);
+
+  // Convert international 61 prefix to local 0 prefix and vice versa
+  let local = digits;
+  if (digits.startsWith("61") && digits.length >= 11) {
+    local = "0" + digits.substring(2);
+  }
+  set.add(local);
+
+  let intl = digits;
+  if (digits.startsWith("0") && digits.length === 10) {
+    intl = "61" + digits.substring(1);
+  }
+  set.add(intl);
+
+  // Spaced AU formats — only when we have a complete 10-digit local number
+  if (local.length === 10 && local.startsWith("0")) {
+    if (local.startsWith("04")) {
+      // Mobile: 04XX XXX XXX
+      set.add(`${local.substring(0, 4)} ${local.substring(4, 7)} ${local.substring(7)}`);
+    } else {
+      // Landline: 0X XXXX XXXX
+      set.add(`${local.substring(0, 2)} ${local.substring(2, 6)} ${local.substring(6)}`);
+    }
+  }
+
+  // Spaced international (+61 4XX XXX XXX)
+  if (intl.length === 11 && intl.startsWith("61")) {
+    const rest = intl.substring(2); // 9 digits
+    if (rest.startsWith("4")) {
+      set.add(`+61 ${rest.substring(0, 3)} ${rest.substring(3, 6)} ${rest.substring(6)}`);
+      set.add(`+61 ${rest}`);
+    } else {
+      set.add(`+61 ${rest.substring(0, 1)} ${rest.substring(1, 5)} ${rest.substring(5)}`);
+    }
+  }
+
+  // Strip any values containing commas or % (defensive — should never happen)
+  return [...set].filter(v => v && !v.includes(",") && !v.includes("%"));
+}

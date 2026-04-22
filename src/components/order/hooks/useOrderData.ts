@@ -3,6 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { formatOrderNumber } from "@/utils/orderNumberFormatter";
+import { isPhoneNumber, getPhoneSearchVariants } from "@/utils/phoneUtils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -78,6 +79,17 @@ async function fetchMatchingCustomerIds(searchTerm: string): Promise<string[]> {
     .or(
       `company_name.ilike.%${searchTerm}%,business_name.ilike.%${searchTerm}%,first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`
     )
+    .limit(200);
+  return data?.map(c => c.id) || [];
+}
+
+async function fetchCustomerIdsByPhone(phoneVariants: string[]): Promise<string[]> {
+  if (phoneVariants.length === 0) return [];
+  const orFilter = phoneVariants.map(v => `phone.ilike.%${v}%`).join(',');
+  const { data } = await supabase
+    .from('customers')
+    .select('id')
+    .or(orFilter)
     .limit(200);
   return data?.map(c => c.id) || [];
 }
@@ -162,17 +174,41 @@ async function fetchOrdersPage(pageParam: number, filters: OrderFilters) {
   // Apply server-side search filter — also searches customer company/business names
   if (filters.searchQuery && filters.searchQuery.trim()) {
     const q = filters.searchQuery.trim();
+    const isPhone = isPhoneNumber(q);
 
     // Pre-search customers table for company_name / business_name matches
     const matchedCustomerIds = await fetchMatchingCustomerIds(q);
 
-    let orFilter = `order_number.ilike.%${q}%,customer_name.ilike.%${q}%,customer_phone.ilike.%${q}%,purchase_order.ilike.%${q}%,contact_phone.ilike.%${q}%,contact_name.ilike.%${q}%,delivery_address.ilike.%${q}%`;
+    // If query looks like a phone number, also match across formatted variants
+    // (stored phones contain spaces, e.g. "0409 563 775") on both the order
+    // columns and the linked customer record.
+    const phoneVariants = isPhone ? getPhoneSearchVariants(q) : [];
+    const phoneCustomerIds = isPhone ? await fetchCustomerIdsByPhone(phoneVariants) : [];
 
-    if (matchedCustomerIds.length > 0) {
-      orFilter += `,customer_id.in.(${matchedCustomerIds.join(',')})`;
+    const orParts: string[] = [
+      `order_number.ilike.%${q}%`,
+      `customer_name.ilike.%${q}%`,
+      `purchase_order.ilike.%${q}%`,
+      `contact_name.ilike.%${q}%`,
+      `delivery_address.ilike.%${q}%`,
+    ];
+
+    if (isPhone && phoneVariants.length > 0) {
+      for (const v of phoneVariants) {
+        orParts.push(`customer_phone.ilike.%${v}%`);
+        orParts.push(`contact_phone.ilike.%${v}%`);
+      }
+    } else {
+      orParts.push(`customer_phone.ilike.%${q}%`);
+      orParts.push(`contact_phone.ilike.%${q}%`);
     }
 
-    query = query.or(orFilter);
+    const allCustomerIds = Array.from(new Set([...matchedCustomerIds, ...phoneCustomerIds]));
+    if (allCustomerIds.length > 0) {
+      orParts.push(`customer_id.in.(${allCustomerIds.join(',')})`);
+    }
+
+    query = query.or(orParts.join(','));
   }
 
   query = query.range(from, to);
