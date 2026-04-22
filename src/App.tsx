@@ -29,6 +29,7 @@ import { TruckManagement } from "@/components/TruckManagement";
 import { TeamManagement } from "@/components/TeamManagement";
 import { SuburbManagement } from "@/components/SuburbManagement";
 import { Settings } from "@/components/Settings";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -157,14 +158,16 @@ const App = () => {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <AppRoutes />
-          <Toaster />
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <AppRoutes />
+            <Toaster />
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 

@@ -8,6 +8,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { PersonalizedGreeting } from "./PersonalizedGreeting";
+import { ThemeToggle } from "./theme/ThemeToggle";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "react-router-dom";
@@ -47,6 +48,8 @@ export function MobileHeader({ profile }: MobileHeaderProps) {
         <PersonalizedGreeting profile={profile} />
       </div>
       
+      <div className="flex items-center gap-1">
+      <ThemeToggle className="h-8 w-8" />
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -85,6 +88,7 @@ export function MobileHeader({ profile }: MobileHeaderProps) {
           </div>
         </SheetContent>
       </Sheet>
+      </div>
     </div>
   );
 }
