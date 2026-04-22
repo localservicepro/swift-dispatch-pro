@@ -506,6 +506,11 @@ export function OpportunityPipeline() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8 h-8 text-sm"
               />
+              {searchQuery.trim() && isSearching && (
+                <span className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-[10px] text-slate-400">
+                  Searching all orders…
+                </span>
+              )}
             </div>
 
             <Select value={dateFilter} onValueChange={setDateFilter}>
