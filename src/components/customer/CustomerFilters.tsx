@@ -17,8 +17,8 @@ interface CustomerFiltersProps {
   onEntityTypeChange: (value: string) => void;
   onStatusChange: (value: string) => void;
   onClearFilters: () => void;
-  totalCustomers: number;
-  filteredCount: number;
+  loadedCount: number;
+  hasMore: boolean;
 }
 
 export function CustomerFilters({
