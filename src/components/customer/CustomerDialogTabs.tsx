@@ -191,7 +191,7 @@ export function CustomerDialogTabs({
           </TabsContent>
 
           <TabsContent value="stats">
-            <CustomerStats customers={[customer]} />
+            <CustomerStats />
           </TabsContent>
         </>
       )}

@@ -1,52 +1,13 @@
+import { useState } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 
-import { useState, useMemo } from "react";
-import { getCustomerDisplayName } from "@/components/order/services/orderFormattingService";
-import { isPhoneNumber, phoneSearchMatch } from "@/utils/phoneUtils";
-
-export function useCustomerFilters(customers: any[] = []) {
+export function useCustomerFilters() {
   const [searchTerm, setSearchTerm] = useState("");
   const [customerTypeFilter, setCustomerTypeFilter] = useState<string>("all");
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const filteredCustomers = useMemo(() => {
-    const filtered = customers?.filter(customer => {
-      const searchText = searchTerm.toLowerCase();
-      const customerName = getCustomerDisplayName(customer);
-      
-      // Check if search term is a phone number
-      const isPhoneSearch = isPhoneNumber(searchTerm);
-      
-      let matchesSearch;
-      if (isPhoneSearch) {
-        // Enhanced phone number search
-        matchesSearch = phoneSearchMatch(customer.phone, searchTerm);
-      } else {
-        // Regular text search
-        matchesSearch = 
-          customerName.toLowerCase().includes(searchText) ||
-          customer.email?.toLowerCase().includes(searchText) ||
-          customer.suburbs?.name?.toLowerCase().includes(searchText) ||
-          customer.company_name?.toLowerCase().includes(searchText) ||
-          customer.business_name?.toLowerCase().includes(searchText);
-      }
-      
-      const matchesCustomerType = customerTypeFilter === "all" || customer.customer_type === customerTypeFilter;
-      const matchesEntityType = entityTypeFilter === "all" || customer.entity_type === entityTypeFilter;
-      const matchesStatus = statusFilter === "all" || 
-        (statusFilter === "active" && customer.is_active) || 
-        (statusFilter === "inactive" && !customer.is_active);
-      
-      return matchesSearch && matchesCustomerType && matchesEntityType && matchesStatus;
-    });
-
-    // Sort alphabetically by display name (case-insensitive)
-    return filtered?.sort((a, b) => {
-      const nameA = getCustomerDisplayName(a).toLowerCase();
-      const nameB = getCustomerDisplayName(b).toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-  }, [customers, searchTerm, customerTypeFilter, entityTypeFilter, statusFilter]);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const getActiveFilterCount = () => {
     let count = 0;
@@ -64,19 +25,17 @@ export function useCustomerFilters(customers: any[] = []) {
     setSearchTerm("");
   };
 
-  const activeFilterCount = getActiveFilterCount();
-
   return {
     searchTerm,
+    debouncedSearchTerm,
     customerTypeFilter,
     entityTypeFilter,
     statusFilter,
-    filteredCustomers,
-    activeFilterCount,
+    activeFilterCount: getActiveFilterCount(),
     setSearchTerm,
     setCustomerTypeFilter,
     setEntityTypeFilter,
     setStatusFilter,
-    clearAllFilters
+    clearAllFilters,
   };
 }

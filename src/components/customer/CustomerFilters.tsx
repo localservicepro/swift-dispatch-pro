@@ -17,8 +17,8 @@ interface CustomerFiltersProps {
   onEntityTypeChange: (value: string) => void;
   onStatusChange: (value: string) => void;
   onClearFilters: () => void;
-  totalCustomers: number;
-  filteredCount: number;
+  loadedCount: number;
+  hasMore: boolean;
 }
 
 export function CustomerFilters({
@@ -32,8 +32,8 @@ export function CustomerFilters({
   onEntityTypeChange,
   onStatusChange,
   onClearFilters,
-  totalCustomers,
-  filteredCount
+  loadedCount,
+  hasMore
 }: CustomerFiltersProps) {
   return (
     <Card>
@@ -154,7 +154,8 @@ export function CustomerFilters({
 
         <div className="flex items-center justify-between text-sm text-slate-600 border-t pt-4">
           <span>
-            Showing {filteredCount} of {totalCustomers} customers
+            Showing {loadedCount} customer{loadedCount !== 1 ? "s" : ""}
+            {hasMore ? " (load more below)" : ""}
           </span>
           {activeFilterCount > 0 && (
             <span className="text-blue-600">

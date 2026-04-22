@@ -58,6 +58,8 @@ export function useCustomerActions() {
 
   const handleDialogSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ["customers"] });
+    queryClient.invalidateQueries({ queryKey: ["customers-paginated"] });
+    queryClient.invalidateQueries({ queryKey: ["customers-stats-counts"] });
     queryClient.invalidateQueries({ queryKey: ["customer_contacts"] });
     setIsDialogOpen(false);
   };
