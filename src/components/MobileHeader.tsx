@@ -88,6 +88,7 @@ export function MobileHeader({ profile }: MobileHeaderProps) {
           </div>
         </SheetContent>
       </Sheet>
+      </div>
     </div>
   );
 }
