@@ -1,52 +1,43 @@
 
 
-## Fix: Phone search ignores formatting (Orders + Customers)
+## Add server-side search to Opportunities pipeline (find historical orders)
 
-### Root cause
+### Problem
 
-Phone numbers are stored in the database with spaces (e.g. `0409 563 775`). Both search hooks use `ilike` directly against the stored column, so:
+The Opportunities pipeline only loads **active orders + delivered orders from the last 30 days** (capped at 200 delivered). It's designed as an operational view, not a historical one. So when you search for an old account customer's order, it isn't in the cache and the client-side filter has nothing to match against.
 
-- **Orders tab**: `customer_phone.ilike.%0409563775%` returns nothing because the stored value has spaces. Typing `0409 563 775` works only because it happens to match the stored format exactly.
-- **Customers tab**: same bug — `phone.ilike.%<digits>%` never matches a spaced stored phone, so the customer is invisible.
+The phone formatting itself already works correctly here — the existing client-side filter uses `phoneSearchMatch` which strips spaces from both sides. The issue is purely that the data isn't loaded.
 
-### Fix
+### Solution
 
-Generate **multiple phone variants** from whatever the user types and OR them all into the Supabase query. Variants cover:
-
-- Raw digits (`0409563775`)
-- AU mobile format (`0409 563 775`)
-- AU landline format (`02 9876 5432`)
-- With/without country code (`+61 409 563 775`, `61409563775`)
-- The original input as-typed
-
-Both hooks then build an `.or(...)` like `phone.ilike.%v1%,phone.ilike.%v2%,...` so any stored format matches.
-
-### New helper in `src/utils/phoneUtils.ts`
-
-`getPhoneSearchVariants(input: string): string[]` — returns the deduped list of variants above, derived from the normalized digit string. Reuses existing `normalizePhoneNumber`.
+Keep the lean operational pipeline as the default, but **when the user actively types a search query, run an additional server-side query** that scans the entire `orders` table (not just the recent window) and merges any extra hits into the pipeline. This mirrors the Order Management server-side search pattern (and now uses the new phone variant helper added in the previous fix).
 
 ### Changes
 
-**1. `src/utils/phoneUtils.ts`** — add `getPhoneSearchVariants()`. Existing `getPhoneVariations` is similar but tied to a stored number; the new helper is search-input oriented (handles partial digit strings ≥4 digits, builds spaced AU formats only when length matches 10 digits).
+**1. `src/components/opportunity/useOpportunitySearchData.ts` (new)**
+- `useQuery` keyed on `['opportunity-search', debouncedSearchQuery]`.
+- Disabled when search is empty.
+- Builds the same `or(...)` as Order Management:
+  - `order_number`, `customer_name`, `purchase_order`, `contact_name`, `delivery_address` (ILIKE)
+  - phone columns ORed across `getPhoneSearchVariants(q)` when `isPhoneNumber(q)`
+  - `customer_id.in.(...)` from a pre-search of `customers` (company/business/first/last name + phone variants)
+- `.is('deleted_at', null)`, `.limit(200)`, same `PIPELINE_SELECT` and `mapOrder` so the shape matches.
+- 300ms debounce via existing `useDebounce`.
 
-**2. `src/hooks/useCustomersData.ts`** — in the `isPhoneNumber(q)` branch, replace the single `query.ilike("phone", '%digits%')` with:
-```
-const variants = getPhoneSearchVariants(q);
-const orFilter = variants.map(v => `phone.ilike.%${v}%`).join(',');
-query = query.or(orFilter);
-```
-
-**3. `src/components/order/hooks/useOrderData.ts`** — when `q` is detected as a phone (add `isPhoneNumber` check at the top of the search branch), build the same variant list and OR it across `customer_phone` and `contact_phone`. Also pre-search `customers` by the same phone variants to capture the `customer_id` so orders linked via the customer record (rather than the denormalized `customer_phone` column) are included. Then merge those IDs into the existing `customer_id.in.(...)` clause.
+**2. `src/components/OpportunityPipeline.tsx`**
+- Call `useOpportunitySearchData(searchQuery)` alongside `useOpportunityData(dateFilter)`.
+- Merge results into one array (dedupe by `id`, prefer the realtime-tracked copy from the pipeline cache when present).
+- Keep the existing client-side `filteredOrders` filter unchanged — it will now operate over the merged set, so old orders surfaced by search show up in the correct pipeline columns.
+- Add a small "Searching all orders…" indicator next to the search input while the search query is in flight.
 
 ### Result
 
-- Typing `0409563775`, `0409 563 775`, `409563775`, `+61409563775`, or `61 409 563 775` all return the same matches in both tabs.
-- No more "no results" for customers whose phone happens to be stored in a different format than what was typed.
-- Orders that reference a customer only via `customer_id` (without a denormalized `customer_phone`) are also surfaced.
+- Default pipeline view stays fast and lean (no behavior change when you're not searching).
+- Typing any name, phone (in any format), order number, or PO surfaces matching orders from across the entire history — including delivered jobs older than 30 days for long-time account customers.
+- Phone formatting already works thanks to the variant helper added in the previous turn.
 
-### Files modified
+### Files
 
-- `src/utils/phoneUtils.ts`
-- `src/hooks/useCustomersData.ts`
-- `src/components/order/hooks/useOrderData.ts`
+- New: `src/components/opportunity/useOpportunitySearchData.ts`
+- Edited: `src/components/OpportunityPipeline.tsx`
 
