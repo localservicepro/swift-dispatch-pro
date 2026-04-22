@@ -1,41 +1,69 @@
 
 
-## Fix: ORD-795464 receipt prints $520 instead of $515
+## Plan: Paginated, server-side searchable Customers (mirror Order Management)
 
-### Root cause
+### Problem
 
-The database still stores `total_amount = 520` for ORD-795464, even though `subtotal + delivery_fee + adjustments + fuel_surcharge = 515 + 0 + 0 + 0 = 515`. The receipt edge function correctly trusts `order.total_amount` for the grand total, so it prints **Sale Total $515 / Total $520** — a $5 jump with no line item to justify it.
+The Customers tab loads via a single `select('*')` from `customers` with no `range()`. Supabase caps queries at 1000 rows, so any customer beyond the first 1000 is invisible — including long-standing account customers — and you can't open them to place an order. Filtering and search currently happen client-side over the same capped 1000.
 
-The earlier pickup-phantom-surcharge migration deliberately **skipped paid orders** (only flagging them in `activity_logs`) to avoid silently mutating closed financials. ORD-795464 was paid in cash, so it was flagged but never corrected — the receipt still reflects the wrong number.
+### Solution
 
-### Fix
+Mirror the proven Order Management pattern: paginated `useInfiniteQuery` with **all filtering and search executed server-side**, so every customer in the database is reachable regardless of total count.
 
-1. **Targeted data repair migration** for paid pickup orders flagged by the previous run:
-   - Find orders where `delivery_method = 'pickup'`, `deleted_at IS NULL`, `payment_status = 'paid'`, and `total_amount > subtotal + COALESCE(delivery_fee,0) + COALESCE(adjustments,0) + COALESCE(fuel_surcharge,0) + 0.01`.
-   - Update `total_amount = subtotal + delivery_fee + adjustments + fuel_surcharge` and `fuel_surcharge = 0`.
-   - Log each correction to `activity_logs` with action `pickup_phantom_surcharge_corrected`, capturing the previous and new totals so the cash overcharge is auditable for refund.
-   - Wrap in a transaction; emit a notice with the count.
+### Changes
 
-2. **Receipt defensive guard** (`supabase/functions/generate-receipt/index.ts` and `generate-pdf-receipt/index.ts` if it has the same logic):
-   - Compute `expectedTotal = subtotal + deliveryFee + adjustments + fuelSurcharge + surchargeAmount`.
-   - If `Math.abs(order.total_amount - expectedTotal) > 0.01`, use `expectedTotal` for the printed grand total instead of the stored value, so a stale stored total can never produce a mystery jump on a printed receipt again.
-   - Keep the existing fallback to `invoice?.amount` when an invoice is attached (invoices are authoritative).
+**1. New `src/hooks/useCustomersData.ts`** (replaces the inline `useQuery` in `CustomerManagement.tsx`)
+- `useInfiniteQuery` with `PAGE_SIZE = 50`.
+- Server-side filters built into the Supabase query:
+  - `customer_type` → `.eq('customer_type', ...)`
+  - `entity_type` → `.eq('entity_type', ...)`
+  - `status` → `.eq('is_active', true/false)`
+  - Search → `.or(...)` across `first_name`, `last_name`, `company_name`, `business_name`, `email`, `account_number`, plus `suburb_id.in.(...)` from a pre-search of suburbs by name (same two-step trick used in `useOrderData` for company name search).
+  - Phone search (detected via `isPhoneNumber`) → strict start/end match per the project's phone-matching rule (memory: phone-matching-logic).
+- `.order('created_at', { ascending: false })` then `.range(from, to)`.
+- `getNextPageParam` returns next page only when the last page is full.
+- Returns `{ customers, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage }`.
 
-### Verification
+**2. `src/hooks/useCustomerFilters.ts`** — convert to a state-only hook
+- Keeps `searchTerm`, `customerTypeFilter`, `entityTypeFilter`, `statusFilter`, `activeFilterCount`, setters, and `clearAllFilters`.
+- **Removes the client-side `filteredCustomers` memo** (filtering moves to the server). Sorting also moves to the server (`order by created_at desc`, matching Order Management).
+- Adds a 300ms debounced `searchTerm` to feed the data hook (same UX as orders).
 
-- Re-query ORD-795464 and confirm `total_amount = 515`.
-- Reprint the receipt and confirm Sale Total $515 / Total $515 (no $5 jump, no orphan Surcharge line).
-- Confirm an `activity_logs` entry exists noting the $5 cash overcharge to refund the customer.
+**3. `src/components/CustomerManagement.tsx`**
+- Replace `useQuery` with `useCustomersData({ searchQuery, customerTypeFilter, entityTypeFilter, statusFilter })`.
+- Pass `fetchNextPage`, `hasNextPage`, `isFetchingNextPage` down to `CustomerList`.
+- `CustomerStats` currently counts the loaded array — switch it to display **totals from the server** via lightweight `head: true, count: 'exact'` queries (one per stat: total, active, residential, trade, account) so the headline numbers reflect every customer, not just the 50 currently loaded.
+
+**4. `src/components/customer/CustomerList.tsx`**
+- Add the same "Load More Customers" footer button used by `OrderList` (button calls `fetchNextPage`, disabled while `isFetchingNextPage`, hidden when `!hasNextPage`).
+- Empty state unchanged.
+
+**5. `src/components/customer/CustomerFilters.tsx`**
+- No structural change; the existing `Showing X of Y` line becomes `Showing X of Y loaded (Z total)` where Z is the server total count, so it's clear more can be loaded.
+
+### Technical notes
+
+- All search/filter queries hit the server with `.range(from, to)` so the 1000-row cap is bypassed by paging — identical to how Order Management already accesses 10k+ orders.
+- Search across joined company name uses the suburb pre-search pattern from `useOrderData.fetchMatchingCustomerIds` for parity.
+- Customer dialog, edit, delete, view orders, and import flows are untouched — they already work off a single `customer` object, not the list.
+- Query key: `['customers-paginated', debouncedSearch, customerType, entityType, status]` so cached pages invalidate cleanly when filters change.
+- `handleDialogSuccess` and `handleImportSuccess` already call `queryClient.invalidateQueries({ queryKey: ['customers'] })`; update those keys to the new paginated key.
 
 ### Files modified
 
-- New migration: `supabase/migrations/<ts>_correct_paid_pickup_phantom_surcharge.sql`
-- `supabase/functions/generate-receipt/index.ts`
-- `supabase/functions/generate-pdf-receipt/index.ts` (only if it has equivalent total logic)
+- `src/components/CustomerManagement.tsx`
+- `src/components/customer/CustomerList.tsx`
+- `src/components/customer/CustomerFilters.tsx`
+- `src/components/customer/CustomerStats.tsx`
+- `src/hooks/useCustomerFilters.ts`
+- `src/hooks/useCustomerActions.ts` (update invalidation key)
+- New: `src/hooks/useCustomersData.ts`
 
 ### Result
 
-- ORD-795464 (and any other paid pickup orders with the same phantom $5) will print correctly at $515.
-- An auditable activity log entry per corrected order lets admins identify the cash overcharges that need to be refunded.
-- Future stored/computed total mismatches will be self-healed at print time so customers never see a confusing receipt again.
+- Every customer in the database is reachable through search/filter, no matter how many exist.
+- Initial load is faster (50 rows vs up to 1000).
+- "Load More Customers" pages through the rest exactly like Order Management.
+- Account customers from years ago can be found by name, account number, email, or phone, then have a new order placed.
+- Stats cards reflect true totals across the entire customers table.
 
