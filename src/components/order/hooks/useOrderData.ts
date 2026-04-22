@@ -3,6 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { formatOrderNumber } from "@/utils/orderNumberFormatter";
+import { isPhoneNumber, getPhoneSearchVariants } from "@/utils/phoneUtils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
