@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Filter, X, BarChart3 } from "lucide-react";
 import { DroppablePipelineColumn } from "./opportunity/DroppablePipelineColumn";
 import { useOpportunityData } from "./opportunity/useOpportunityData";
+import { useOpportunitySearchData } from "./opportunity/useOpportunitySearchData";
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { OpportunityCard } from "./opportunity/OpportunityCard";
 import { useAuth } from "./auth/AuthProvider";
