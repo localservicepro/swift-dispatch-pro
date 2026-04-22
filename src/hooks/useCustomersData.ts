@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { isPhoneNumber } from "@/utils/phoneUtils";
+import { isPhoneNumber, getPhoneSearchVariants } from "@/utils/phoneUtils";
 
 const PAGE_SIZE = 50;
 
