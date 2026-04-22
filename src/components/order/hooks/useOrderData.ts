@@ -83,6 +83,17 @@ async function fetchMatchingCustomerIds(searchTerm: string): Promise<string[]> {
   return data?.map(c => c.id) || [];
 }
 
+async function fetchCustomerIdsByPhone(phoneVariants: string[]): Promise<string[]> {
+  if (phoneVariants.length === 0) return [];
+  const orFilter = phoneVariants.map(v => `phone.ilike.%${v}%`).join(',');
+  const { data } = await supabase
+    .from('customers')
+    .select('id')
+    .or(orFilter)
+    .limit(200);
+  return data?.map(c => c.id) || [];
+}
+
 async function fetchOrdersPage(pageParam: number, filters: OrderFilters) {
   const from = pageParam * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
