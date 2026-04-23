@@ -3,6 +3,33 @@ import { supabase } from "@/integrations/supabase/client";
 import { Customer, CartItem, SelectedContact } from "../types";
 import { serializeCartItemsWithFormatting } from "./orderFormattingService";
 
+// Custom error type so callers can show a "please sign in" UI instead of the
+// raw Postgres "row violates row-level security" message.
+export class SessionExpiredError extends Error {
+  constructor(message = "Your session has expired. Please sign in again to create the order.") {
+    super(message);
+    this.name = "SessionExpiredError";
+  }
+}
+
+/**
+ * Verify the user has a live, non-expired Supabase session before attempting
+ * an authenticated INSERT. Without this, an expired session causes Postgres
+ * to reject the row with a confusing RLS error and the in-flight order data
+ * is lost when the AuthProvider redirects to the login screen.
+ */
+async function assertActiveSession(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user?.id) {
+    throw new SessionExpiredError();
+  }
+  // expires_at is a unix timestamp in seconds
+  if (session.expires_at && session.expires_at * 1000 <= Date.now()) {
+    throw new SessionExpiredError();
+  }
+  return session.user.id;
+}
+
 // Google Sheets sync is now handled centrally via syncAllOrdersToSheets in @/utils/googleSheetsSync.ts
 
 // Interface for creating single orders
@@ -45,9 +72,9 @@ interface CreateSplitOrderParams {
 
 export async function createSingleOrder(params: CreateSingleOrderParams) {
   try {
-    // Get current user ID for admin_id
-    const { data: { user } } = await supabase.auth.getUser();
-    const adminId = user?.id || null;
+    // Pre-flight session check — converts the would-be RLS error into a
+    // clean SessionExpiredError that the UI can surface without losing draft.
+    const adminId = await assertActiveSession();
 
     // Fetch current payment settings for calculations
     const { data: paymentSettings, error: settingsError } = await supabase
@@ -194,9 +221,8 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
 
 export async function createSplitOrder(params: CreateSplitOrderParams) {
   try {
-    // Get current user ID for admin_id
-    const { data: { user } } = await supabase.auth.getUser();
-    const adminId = user?.id || null;
+    // Pre-flight session check — see createSingleOrder for rationale.
+    const adminId = await assertActiveSession();
 
     // Fetch current payment settings for calculations
     const { data: paymentSettings, error: settingsError } = await supabase
