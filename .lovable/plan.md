@@ -1,58 +1,72 @@
 
 
-## Fix: Admin "Create Order" customer search is capped at 1000 customers
+## Fix: Delivery fee dropping to $0 on some orders → undercharged customers
 
 ### What's happening
 
-You currently have **1,099 active customers**, and Supabase silently returns **at most 1000 rows** for any unbounded `SELECT`. The order-creation customer picker (`CustomerSearchStep`) trips this trap when an admin searches by **phone number**:
+Today's orders include real cases where `delivery_method = 'delivery'`, a valid `delivery_suburb_id` is saved, but `delivery_fee = 0` and `total_amount` is missing the delivery charge. Examples from the last 72 hours:
 
-```ts
-// src/components/order/CustomerSearchStep.tsx (phone branch)
-const { data } = await supabase
-  .from('customers')
-  .select('*, ..., customer_contacts(...)')
-  .eq('is_active', true);          // ← no .range(), no server-side phone filter
-```
+| Order | Suburb | Suburb rate | Saved delivery_fee | Loss |
+|---|---|---|---|---|
+| ORD-741594 | Box Hill South | $40 | **$0** | -$40 |
+| ORD-648169 | Burwood | $40 | **$0** | -$40 |
+| ORD-282651 | Murrumbeena | $60 | **$0** | -$60 |
+| ORD-464522 | Mont Albert | $40 | **$0** | -$40 |
+| ORD-229823 | Bulleen | $50 | **$0** | -$50 |
+| ORD-152231-A | Eltham (split) | $70 | **$0** | -$70 |
+| ORD-124513-A | Balwyn North (split) | $40 | **$0** | -$40 |
 
-Supabase truncates the result to the first 1000 rows by `id` order, then the code does **client-side** phone matching. So:
+The screenshot shows the bug live: suburb dropdown reads `3146 Glen Iris – $45.00 (estimate)`, but the **Delivery Fee** input next to it reads `0`. The order would be confirmed at the wrong total.
 
-- Customers (and their contact phones) past row #1000 never appear when phone-searching.
-- The newer the customer, the more likely they're invisible to phone search.
-- Only some admins notice it because they're the ones searching unusual numbers — admins who only ever search names hit the text branch, which already runs server-side with `.limit(10)` and is fine.
+### Root cause
 
-The text-search branch is fine. The customer-list page (`useCustomersData`) is also fine — it's already paginated 50/page via infinite query.
+Delivery fee lives in **client React state only** (`manualDeliveryFee` in `useOrderFormState.ts`). Three independent client paths keep it in sync with the suburb, and any one of them silently failing leaves the fee at `0`:
 
-### Fix — push the phone match to the server (same pattern already used in Order/Customer/Opportunity search)
+1. **`handleSuburbChange`** auto-populates the fee, but only when `!isDeliveryFeeManuallySet`. The flag goes `true` the moment anyone touches the fee input — and the order draft is now persisted to `sessionStorage` (added with the recent session-expiry fix), so the flag survives reloads, sign-outs, and crashes. After that, changing the suburb never refreshes the fee.
+2. **`autoPopulateDeliveryFee`** does `fetchSuburbData(...).then(...)` with no await and no submit gating. If the admin clicks "Continue" / "Confirm Order" before the async fetch resolves, the fee stays at its previous value (often `0`).
+3. **`handleDeliveryFeeChange`** in `OrderReviewStep` does `parseFloat(e.target.value) || 0`. The instant the admin clears the field to retype a number, the value becomes `0` **and** `isDeliveryFeeManuallySet` flips to `true`, locking the `0` in.
 
-Rewrite the phone-search branch in `src/components/order/CustomerSearchStep.tsx` to:
+`createSingleOrder` and `createSplitOrder` then trust that client value verbatim and write it to the DB. There is no server-side recompute and no "fee must be > 0 for a delivery order" guard — exactly the same class of bug we just fixed for fuel surcharge, but for delivery fee.
 
-1. Use `getPhoneSearchVariants(searchQuery)` to build all the phone formats (e.g. `0409 563 775`, `0409563775`, `+61409563775`, etc.) — same helper already used in `useCustomersData`, `useOrderData`, and `useOpportunitySearchData`.
-2. Run **two server-side queries in parallel**, each with an explicit `.limit(50)`:
-   - `customers` where any variant matches `phone` ILIKE.
-   - `customer_contacts` where any variant matches `phone` ILIKE → collect `customer_id`s.
-3. Union the two ID sets, then fetch those customers (with the suburb + contacts joins already in use) in a single `.in('id', ids).limit(50)` query.
-4. Drop the client-side `.filter(...)` / `.slice(0, 10)` post-processing — the server has already narrowed it correctly to ≤50 results.
+### The fix — make the server authoritative for delivery fee (same pattern as fuel surcharge)
 
-This removes the 1000-row cap entirely (the database does the matching, the client receives only the matches), works regardless of phone formatting, and finds customers via either their main phone **or** any of their contacts' phones.
+**`src/components/order/services/orderCreationService.ts`**
 
-### Audit of other 1000-row traps
+For `createSingleOrder`:
+- After fetching `paymentSettings`, also fetch the row from `suburbs` for the chosen `delivery_suburb_id` (single round-trip) to get `delivery_rate`.
+- Compute `authoritativeDeliveryFee` server-side: parse `delivery_rate` (strip `AU$` / spaces) and apply `paymentSettings.delivery_markup_value` / `delivery_markup_type` — identical math to `useDeliveryFeeCalculation.applyMarkup`.
+- If the client-supplied `params.orderTotals.deliveryFee` differs by more than 1¢ from the server value, **use the server value** and `console.warn` the discrepancy (same shape as the existing fuel-surcharge log).
+- For `delivery` orders with a valid suburb, if the computed fee is `0` (suburb has empty/invalid `delivery_rate`), throw a `Error('Delivery fee could not be determined for the selected suburb. Please reselect the suburb.')` so the order is **never** silently saved at $0.
+- Recompute `authoritativeTotal` from the server-trusted subtotal + adjustments + delivery fee + fuel surcharge, then insert.
 
-Quick scan of the rest of the codebase confirms the other customer/contact loaders are safe:
+For `createSplitOrder`:
+- Do the same per-split: for each split with `delivery_method = 'delivery'`, look up its suburb (`split.deliverySuburbId || split.suburbId`, falling back to `customer.suburb_id` when `sameAsBilling`) and recompute that split's delivery fee server-side.
+- Sum the per-split server fees into `totalDeliveryFee` instead of trusting `splits[i].deliveryFee`.
+- Same "must be > 0 for delivery splits with a suburb" guard.
 
-- `useCustomersData.ts` — paginated 50/page, OK.
-- `useOpportunityData.ts` — has explicit `ACTIVE_HARD_CAP = 2000`, OK.
-- `useOpportunitySearchData.ts` — server-side phone variants + `SEARCH_LIMIT = 200`, OK.
-- `useOrderData.ts` — server-side phone variants on both `orders` and `customers`, paginated, OK.
-- `BulkPinManagementDialog.tsx` — only loads `customer_type = 'account'` (small set), but I'll add an explicit `.range(0, 4999)` defensively so you don't hit this same wall when account customers grow past 1000.
+Batch the suburb lookups into one `select * from suburbs where id in (...)` to keep this to two extra round-trips total (settings + suburbs).
 
-### Files
+**`src/components/order/hooks/useOrderFormState.ts`**
 
-- Edit `src/components/order/CustomerSearchStep.tsx` — rewrite the `isPhoneNumber(searchQuery)` branch to do server-side variant matching against `customers.phone` + `customer_contacts.phone`.
-- Edit `src/components/customer/BulkPinManagementDialog.tsx` — add an explicit upper bound (`.range(0, 4999)`) so it can never silently truncate at 1000.
+Two small client-side hardenings so the UI matches the server's behaviour:
+
+- `handleSuburbChange`: drop the `!isDeliveryFeeManuallySet` guard when the suburb actually changes — changing suburb is an explicit user action and should always re-populate the fee. Keep the manual-edit flag respected only for fee input edits, not suburb changes.
+- `handleManualDeliveryFeeChange`: treat an empty input as "leave previous value alone" rather than collapsing to `0`. Only mark `isDeliveryFeeManuallySet = true` when the parsed value is a real number ≥ 0 from a non-empty string.
+
+**`src/components/order/OrderReviewStep.tsx`**
+
+- Disable the "Confirm Order" button when `deliveryMethod === 'delivery'` && `deliveryFee <= 0` && a suburb is selected, with a small inline warning ("Delivery fee not set — please reselect the suburb"). This is a belt-and-braces UI guard; the server check above is the real safety net.
+
+### Files to change
+
+- `src/components/order/services/orderCreationService.ts` — server-side delivery-fee recompute + zero-fee guard for both single and split paths.
+- `src/components/order/hooks/useOrderFormState.ts` — always re-populate fee on suburb change; don't collapse cleared input to `0`.
+- `src/components/order/OrderReviewStep.tsx` — block submit + warn when fee is `0` for a delivery order with a chosen suburb.
 
 ### Result
 
-- Admins can phone-search any of the 1,099+ customers when creating an order — no more "invisible customer" past the 1000th row.
-- Phone search now also finds customers via their **secondary contacts'** phone numbers (matches the behaviour of the Customers tab).
-- Search returns in one round-trip with up to 50 results instead of pulling 1000 rows over the wire and filtering them in the browser, so the picker is faster too.
+- Delivery orders can no longer be saved with `delivery_fee = 0` when a valid suburb is selected — the server recomputes from the suburbs table on every insert.
+- The seven recent under-charged orders above won't repeat, and any future race between async suburb lookup and "Confirm" click is caught server-side.
+- The reviewer screen can't submit a $0 delivery fee accidentally; admins get a clear inline message instead of an under-billed order.
+- Existing under-charged orders are not auto-fixed (they're already created); we'll surface a follow-up list of the seven orders so you can re-invoice manually if needed.
 
