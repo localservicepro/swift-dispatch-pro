@@ -170,7 +170,7 @@ export function CustomerDialogTabs({
         />
       </TabsContent>
 
-      {isEdit && customer && formData.entity_type === 'business' && formData.customer_type === 'account' && (
+      {isEdit && customer && (
         <TabsContent value="contacts">
           <CustomerContactsManager 
             customerId={customer.id}
