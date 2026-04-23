@@ -3,6 +3,54 @@ import { supabase } from "@/integrations/supabase/client";
 import { Customer, CartItem, SelectedContact } from "../types";
 import { serializeCartItemsWithFormatting } from "./orderFormattingService";
 
+// Parse a delivery_rate string like "AU$45" / "$45.00" / "45" to a number.
+function parseSuburbDeliveryRate(raw: string | null | undefined): number {
+  if (!raw) return 0;
+  const cleaned = String(raw).replace(/[AU$\s]/gi, "").trim();
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+}
+
+// Apply the global delivery markup (matches useDeliveryFeeCalculation.applyMarkup)
+function applyDeliveryMarkup(
+  baseFee: number,
+  settings: { delivery_markup_value?: number | null; delivery_markup_type?: string | null }
+): number {
+  const markup = Number(settings?.delivery_markup_value) || 0;
+  if (markup <= 0) return baseFee;
+  if (settings?.delivery_markup_type === "fixed") return baseFee + markup;
+  return baseFee + (baseFee * markup) / 100;
+}
+
+/**
+ * Look up suburbs by id and return server-authoritative delivery fees keyed by id.
+ * Returns an empty map for ids that don't exist or have unparseable rates.
+ */
+async function fetchAuthoritativeDeliveryFees(
+  suburbIds: string[],
+  paymentSettings: { delivery_markup_value?: number | null; delivery_markup_type?: string | null }
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  const unique = Array.from(new Set(suburbIds.filter(Boolean)));
+  if (unique.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from("suburbs")
+    .select("id, name, delivery_rate")
+    .in("id", unique);
+
+  if (error) {
+    console.error("Error fetching suburbs for fee recompute:", error);
+    return map;
+  }
+
+  for (const row of data || []) {
+    const base = parseSuburbDeliveryRate(row.delivery_rate as any);
+    map.set(row.id as string, applyDeliveryMarkup(base, paymentSettings));
+  }
+  return map;
+}
+
 // Custom error type so callers can show a "please sign in" UI instead of the
 // raw Postgres "row violates row-level security" message.
 export class SessionExpiredError extends Error {
