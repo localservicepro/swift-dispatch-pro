@@ -151,7 +151,42 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
     const authoritativeFuelSurcharge = authoritativeFuelSurchargePerUnit; // single order = 1 unit
     const authoritativeSubtotal = Number(params.orderTotals.subtotal) || 0;
     const authoritativeAdjustments = Number(params.orderTotals.adjustments) || 0;
-    const authoritativeDeliveryFee = Number(params.orderTotals.deliveryFee) || 0;
+
+    // SERVER-SIDE AUTHORITATIVE DELIVERY FEE
+    // The client value can be 0 due to: (a) async suburb fetch not resolving
+    // before submit, (b) cleared input collapsing to 0 via parseFloat('')||0,
+    // or (c) stale isDeliveryFeeManuallySet flag persisted in sessionStorage.
+    // Recompute from the suburbs table to guarantee customers are charged the
+    // correct delivery fee even when the client state is wrong.
+    const clientDeliveryFee = Number(params.orderTotals.deliveryFee) || 0;
+    let authoritativeDeliveryFee = clientDeliveryFee;
+    const isDelivery = params.deliveryMethod === 'delivery';
+    const deliverySuburbIdForLookup = isDelivery ? (params.suburbId || null) : null;
+
+    if (isDelivery && deliverySuburbIdForLookup) {
+      const feeMap = await fetchAuthoritativeDeliveryFees(
+        [deliverySuburbIdForLookup],
+        paymentSettings
+      );
+      const serverFee = feeMap.get(deliverySuburbIdForLookup);
+
+      if (typeof serverFee === 'number' && serverFee > 0) {
+        if (Math.abs(serverFee - clientDeliveryFee) > 0.01) {
+          console.warn('🚚 Delivery fee mismatch — using server value', {
+            suburb_id: deliverySuburbIdForLookup,
+            clientDeliveryFee,
+            serverDeliveryFee: serverFee,
+          });
+        }
+        authoritativeDeliveryFee = serverFee;
+      } else {
+        // Suburb has no usable delivery_rate. Don't silently save $0.
+        throw new Error(
+          'Delivery fee could not be determined for the selected suburb. Please reselect the delivery suburb and try again.'
+        );
+      }
+    }
+
     const authoritativeTotal =
       authoritativeSubtotal +
       authoritativeAdjustments +
@@ -162,6 +197,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       subtotal: authoritativeSubtotal,
       adjustments: authoritativeAdjustments,
       deliveryFee: authoritativeDeliveryFee,
+      clientDeliveryFee,
       fuelSurcharge: authoritativeFuelSurcharge,
       totalAmount: authoritativeTotal,
       clientFuelSurcharge: params.orderTotals.fuelSurcharge,
