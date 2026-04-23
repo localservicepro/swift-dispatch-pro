@@ -251,10 +251,6 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
     onContactChange?.();
   };
   
-  if (customerType !== 'account') {
-    return null;
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
