@@ -24,7 +24,7 @@ interface Contact {
 
 interface CustomerContactsManagerProps {
   customerId: string;
-  customerType: "trade" | "account";
+  customerType: "residential" | "trade" | "account";
   onContactChange?: () => void;
 }
 
