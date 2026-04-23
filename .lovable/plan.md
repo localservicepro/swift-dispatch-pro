@@ -1,43 +1,50 @@
 
 
-## Add server-side search to Opportunities pipeline (find historical orders)
+## Fix: "Failed to create order — RLS violation" + lost order data on session expiry
 
-### Problem
+### Root cause
 
-The Opportunities pipeline only loads **active orders + delivered orders from the last 30 days** (capped at 200 delivered). It's designed as an operational view, not a historical one. So when you search for an old account customer's order, it isn't in the cache and the client-side filter has nothing to match against.
+Your screenshot shows the toast "new row violates row-level security policy for table 'orders'" while the page behind it has reverted to the **Sign In** screen. That tells the whole story:
 
-The phone formatting itself already works correctly here — the existing client-side filter uses `phoneSearchMatch` which strips spaces from both sides. The issue is purely that the data isn't loaded.
+1. The admin's Supabase session silently expired (token refresh failed, browser was idle, laptop slept, etc.).
+2. The "Create Order" button fired the INSERT against `orders`. With no valid `auth.uid()`, none of the admin/driver/customer RLS policies matched, so Postgres rejected the row.
+3. `AuthProvider` then received `SIGNED_OUT` and rendered `<AuthPage />`, **destroying the order form's React state**. Everything the customer just dictated is gone.
 
-### Solution
+There is a `clearOrderDraft()` helper in `useOrderFormState`, but **nothing ever writes the draft** — the persistence layer was never finished. So today there is zero recovery.
 
-Keep the lean operational pipeline as the default, but **when the user actively types a search query, run an additional server-side query** that scans the entire `orders` table (not just the recent window) and merges any extra hits into the pipeline. This mirrors the Order Management server-side search pattern (and now uses the new phone variant helper added in the previous fix).
+### Fix — three layers so this can never lose work again
 
-### Changes
+**1. Pre-flight session check before insert (prevents the error entirely)**
 
-**1. `src/components/opportunity/useOpportunitySearchData.ts` (new)**
-- `useQuery` keyed on `['opportunity-search', debouncedSearchQuery]`.
-- Disabled when search is empty.
-- Builds the same `or(...)` as Order Management:
-  - `order_number`, `customer_name`, `purchase_order`, `contact_name`, `delivery_address` (ILIKE)
-  - phone columns ORed across `getPhoneSearchVariants(q)` when `isPhoneNumber(q)`
-  - `customer_id.in.(...)` from a pre-search of `customers` (company/business/first/last name + phone variants)
-- `.is('deleted_at', null)`, `.limit(200)`, same `PIPELINE_SELECT` and `mapOrder` so the shape matches.
-- 300ms debounce via existing `useDebounce`.
+In `orderCreationService.ts`, before calling `.from('orders').insert(...)`, call `supabase.auth.getSession()`. If there is no session (or the access token is expired), throw a typed `SessionExpiredError` instead of letting Postgres reject the insert. This converts a confusing RLS message into a clean, actionable one.
 
-**2. `src/components/OpportunityPipeline.tsx`**
-- Call `useOpportunitySearchData(searchQuery)` alongside `useOpportunityData(dateFilter)`.
-- Merge results into one array (dedupe by `id`, prefer the realtime-tracked copy from the pipeline cache when present).
-- Keep the existing client-side `filteredOrders` filter unchanged — it will now operate over the merged set, so old orders surfaced by search show up in the correct pipeline columns.
-- Add a small "Searching all orders…" indicator next to the search input while the search query is in flight.
+**2. Auto-save the order draft to sessionStorage on every change**
 
-### Result
+Wire up the missing half of `useOrderFormState`:
 
-- Default pipeline view stays fast and lean (no behavior change when you're not searching).
-- Typing any name, phone (in any format), order number, or PO surfaces matching orders from across the entire history — including delivered jobs older than 30 days for long-time account customers.
-- Phone formatting already works thanks to the variant helper added in the previous turn.
+- Add a `useEffect` that serialises the relevant state (`selectedCustomer`, `selectedContact`, `cart`, `adjustments`, `deliveryMethod`, `orderType`, `splits`, dates/times, addresses, suburb, notes, PO, payment method, current step) to `sessionStorage` under `order_form_draft` whenever any of them change (debounced ~500ms to avoid thrash).
+- On mount, hydrate state from `sessionStorage` if a draft exists.
+- Keep the existing `clearOrderDraft()` call on successful submit.
+
+This means even a hard refresh, browser crash, or auth redirect leaves the cart/customer/notes intact. The user is dropped back at the same step with the same data.
+
+**3. Graceful session-expiry handling in MultiStepOrderForm**
+
+In the `catch` block of the create-order handler:
+
+- Detect the `SessionExpiredError` (or any error containing "row-level security" / "JWT expired" / status 401/403) and show a distinct toast: **"Your session expired. Your order is saved — please sign in and click Create Order again."**
+- Do **not** reset the form state in this branch (the existing reset only runs on success, which is already correct — but we explicitly skip the redirect-clearing path).
+- Because the draft is now persisted in sessionStorage, when `AuthProvider` swaps in `<AuthPage />` and the user signs back in, returning to Order Management will rehydrate the entire form at the Review step, ready to submit.
 
 ### Files
 
-- New: `src/components/opportunity/useOpportunitySearchData.ts`
-- Edited: `src/components/OpportunityPipeline.tsx`
+- Edit `src/components/order/services/orderCreationService.ts` — add session pre-flight check, export `SessionExpiredError`.
+- Edit `src/components/order/hooks/useOrderFormState.ts` — add debounced auto-save effect and on-mount hydration from `sessionStorage`.
+- Edit `src/components/order/MultiStepOrderForm.tsx` — branch on session-expiry errors with the new toast copy; keep state intact so the draft survives.
+
+### Result
+
+- The RLS error message that you see in the screenshot will no longer appear for expired sessions — you'll get a clear "session expired, please sign in" message instead.
+- The customer's order (cart, customer, contact, address, notes, PO, payment method, step) survives sign-out, refresh, and even closing the tab within the same browser session.
+- After signing back in, you click Create Order once more and it submits — no re-keying, no lost customer call.
 
