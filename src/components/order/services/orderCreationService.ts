@@ -215,6 +215,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
     };
   } catch (error: any) {
     console.error('Error in createSingleOrder:', error);
+    if (error instanceof SessionExpiredError) throw error;
     throw new Error(error.message || 'Failed to create single order');
   }
 }
@@ -489,6 +490,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
     };
   } catch (error: any) {
     console.error('Error in createSplitOrder:', error);
+    if (error instanceof SessionExpiredError) throw error;
     throw new Error(error.message || 'Failed to create split order');
   }
 }
