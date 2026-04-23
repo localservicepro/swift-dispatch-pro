@@ -24,7 +24,7 @@ interface Contact {
 
 interface CustomerContactsManagerProps {
   customerId: string;
-  customerType: "trade" | "account";
+  customerType: "residential" | "trade" | "account";
   onContactChange?: () => void;
 }
 
@@ -50,10 +50,8 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (customerType === 'account') {
-      loadContacts();
-    }
-  }, [customerId, customerType]);
+    loadContacts();
+  }, [customerId]);
 
   const loadContacts = async () => {
     const { data, error } = await supabase
@@ -182,13 +180,22 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
     });
   };
 
-  const handleDeleteContact = async (contactId: string) => {
+  const handleDeleteContact = async (contact: Contact) => {
+    if (contact.is_primary_contact) {
+      toast({
+        title: "Can't remove primary contact",
+        description: "Promote another contact to primary before removing this one.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!confirm("Are you sure you want to remove this contact?")) return;
 
     const { error } = await supabase
       .from('customer_contacts')
       .update({ is_active: false })
-      .eq('id', contactId);
+      .eq('id', contact.id);
 
     if (error) {
       toast({
@@ -244,10 +251,6 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
     onContactChange?.();
   };
   
-  if (customerType !== 'account') {
-    return null;
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -293,8 +296,8 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
                       {contact.phone && <p>Phone: {contact.phone}</p>}
                     </div>
                   </div>
-                  {!contact.is_primary_contact && (
-                    <div className="flex gap-2">
+                  <div className="flex gap-2">
+                    {!contact.is_primary_contact && (
                       <Button
                         size="sm"
                         onClick={() => handleSetPrimaryContact(contact.id, contact.email)}
@@ -303,23 +306,26 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
                       >
                         <Star className="w-4 h-4" />
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditContact(contact)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteContact(contact.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditContact(contact)}
+                      title="Edit contact"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteContact(contact)}
+                      className="text-red-600 hover:text-red-700"
+                      title={contact.is_primary_contact ? "Promote another contact to primary first" : "Remove contact"}
+                      disabled={contact.is_primary_contact}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
