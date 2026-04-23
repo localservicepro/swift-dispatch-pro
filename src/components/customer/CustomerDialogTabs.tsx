@@ -99,7 +99,7 @@ export function CustomerDialogTabs({
         <TabsTrigger value="contact">Contact</TabsTrigger>
         <TabsTrigger value="address">Address</TabsTrigger>
         <TabsTrigger value="preferences">Preferences</TabsTrigger>
-        {isEdit && customer && formData.entity_type === 'business' && formData.customer_type === 'account' && (
+        {isEdit && customer && (
           <TabsTrigger value="contacts">Contacts</TabsTrigger>
         )}
         {isEdit && customer && (
