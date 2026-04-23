@@ -296,8 +296,8 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
                       {contact.phone && <p>Phone: {contact.phone}</p>}
                     </div>
                   </div>
-                  {!contact.is_primary_contact && (
-                    <div className="flex gap-2">
+                  <div className="flex gap-2">
+                    {!contact.is_primary_contact && (
                       <Button
                         size="sm"
                         onClick={() => handleSetPrimaryContact(contact.id, contact.email)}
@@ -306,23 +306,26 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
                       >
                         <Star className="w-4 h-4" />
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditContact(contact)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteContact(contact.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditContact(contact)}
+                      title="Edit contact"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteContact(contact)}
+                      className="text-red-600 hover:text-red-700"
+                      title={contact.is_primary_contact ? "Promote another contact to primary first" : "Remove contact"}
+                      disabled={contact.is_primary_contact}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
