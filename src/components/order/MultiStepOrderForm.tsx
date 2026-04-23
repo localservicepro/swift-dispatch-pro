@@ -14,7 +14,7 @@ import { OrderReviewStep } from "./OrderReviewStep";
 import { SplitOrderConfigurationStep } from "./SplitOrderConfigurationStep";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { OrderCustomerHeader } from "./OrderCustomerHeader";
-import { createSingleOrder, createSplitOrder } from "./services/orderCreationService";
+import { createSingleOrder, createSplitOrder, SessionExpiredError } from "./services/orderCreationService";
 import { useOrderFormState } from "./hooks/useOrderFormState";
 import { syncSingleOrderToSheets } from "@/utils/googleSheetsSync";
 
@@ -217,11 +217,36 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
     } catch (error: any) {
       console.error('Order creation error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create order. Please try again.",
-        variant: "destructive",
-      });
+
+      // Detect an expired/missing session — either via our typed error or via
+      // the raw RLS / JWT messages that surface when the session dies between
+      // form completion and the Create Order click. In all these cases we
+      // MUST NOT reset the form: the draft is already saved to sessionStorage
+      // and will rehydrate when the user signs back in.
+      const msg = (error?.message || '').toLowerCase();
+      const isSessionIssue =
+        error instanceof SessionExpiredError ||
+        msg.includes('row-level security') ||
+        msg.includes('row level security') ||
+        msg.includes('jwt expired') ||
+        msg.includes('jwt') && msg.includes('expired') ||
+        error?.status === 401 ||
+        error?.status === 403;
+
+      if (isSessionIssue) {
+        toast({
+          title: "Session expired",
+          description:
+            "Your sign-in expired before the order could be saved. Your order details are kept — please sign in again and click Create Order.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to create order. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsCreatingOrder(false);
     }

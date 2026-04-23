@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Customer, CartItem, SplitConfig, TruckType, Truck, SelectedContact } from "../types";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals } from "../utils/paymentCalculations";
@@ -7,48 +7,68 @@ import { useDeliveryFeeCalculation } from "@/hooks/useDeliveryFeeCalculation";
 
 const STORAGE_KEY = "order_form_draft";
 
+// Read any saved draft synchronously so initial useState calls hydrate from it.
+// This survives auth redirects (session expiry → AuthPage → sign back in)
+// and full page refreshes within the same browser tab/session.
+function loadDraft(): any | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error('Error loading order draft:', error);
+    return null;
+  }
+}
+
 export function useOrderFormState() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [selectedContact, setSelectedContact] = useState<SelectedContact | null>(null);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [adjustments, setAdjustments] = useState(0);
+  const draft = loadDraft();
+  const [currentStep, setCurrentStep] = useState<number>(draft?.currentStep ?? 1);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(draft?.selectedCustomer ?? null);
+  const [selectedContact, setSelectedContact] = useState<SelectedContact | null>(draft?.selectedContact ?? null);
+  const [cart, setCart] = useState<CartItem[]>(draft?.cart ?? []);
+  const [adjustments, setAdjustments] = useState<number>(draft?.adjustments ?? 0);
   
   // Delivery method state - starts with delivery as default
-  const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup">("delivery");
+  const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup">(draft?.deliveryMethod ?? "delivery");
   
   // Order splitting state - auto-set to "single" for pickup orders
-  const [orderType, setOrderType] = useState<"single" | "split">("single");
-  const [splits, setSplits] = useState<SplitConfig[]>([]);
+  const [orderType, setOrderType] = useState<"single" | "split">(draft?.orderType ?? "single");
+  const [splits, setSplits] = useState<SplitConfig[]>(draft?.splits ?? []);
   
   // Single order delivery state
-  const [deliveryDate, setDeliveryDate] = useState("");
-  const [deliveryTime, setDeliveryTime] = useState("");
-  const [pickupTiming, setPickupTiming] = useState<"now" | "scheduled">("scheduled");
-  const [specialInstructions, setSpecialInstructions] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState<string>(draft?.deliveryDate ?? "");
+  const [deliveryTime, setDeliveryTime] = useState<string>(draft?.deliveryTime ?? "");
+  const [pickupTiming, setPickupTiming] = useState<"now" | "scheduled">(draft?.pickupTiming ?? "scheduled");
+  const [specialInstructions, setSpecialInstructions] = useState<string>(draft?.specialInstructions ?? "");
+  const [paymentMethod, setPaymentMethod] = useState<string>(draft?.paymentMethod ?? "");
   
   // New notes state
-  const [orderNotes, setOrderNotes] = useState("");
-  const [deliveryNotes, setDeliveryNotes] = useState("");
+  const [orderNotes, setOrderNotes] = useState<string>(draft?.orderNotes ?? "");
+  const [deliveryNotes, setDeliveryNotes] = useState<string>(draft?.deliveryNotes ?? "");
   
   // Purchase order state
-  const [purchaseOrder, setPurchaseOrder] = useState("");
+  const [purchaseOrder, setPurchaseOrder] = useState<string>(draft?.purchaseOrder ?? "");
   
   // Delivery address state
-  const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [sameAsBilling, setSameAsBilling] = useState(true);
-  const [useGlobalDeliveryAddress, setUseGlobalDeliveryAddress] = useState(true);
+  const [deliveryAddress, setDeliveryAddress] = useState<string>(draft?.deliveryAddress ?? "");
+  const [sameAsBilling, setSameAsBilling] = useState<boolean>(draft?.sameAsBilling ?? true);
+  const [useGlobalDeliveryAddress, setUseGlobalDeliveryAddress] = useState<boolean>(draft?.useGlobalDeliveryAddress ?? true);
   
   // Suburb state (no automatic rate setting)
-  const [selectedSuburbId, setSelectedSuburbId] = useState("");
+  const [selectedSuburbId, setSelectedSuburbId] = useState<string>(draft?.selectedSuburbId ?? "");
   
   // Manual delivery fee state (number, not string)
-  const [manualDeliveryFee, setManualDeliveryFee] = useState<number>(0);
-  const [isDeliveryFeeManuallySet, setIsDeliveryFeeManuallySet] = useState(false);
+  const [manualDeliveryFee, setManualDeliveryFee] = useState<number>(draft?.manualDeliveryFee ?? 0);
+  const [isDeliveryFeeManuallySet, setIsDeliveryFeeManuallySet] = useState<boolean>(draft?.isDeliveryFeeManuallySet ?? false);
 
   // Track if address was auto-populated from customer
-  const [isUsingCustomerAddress, setIsUsingCustomerAddress] = useState(false);
+  const [isUsingCustomerAddress, setIsUsingCustomerAddress] = useState<boolean>(draft?.isUsingCustomerAddress ?? false);
+
+  // Suppress the "customer changed → clear address" effect on the very first
+  // render when we hydrated a customer from the draft (otherwise the saved
+  // address/suburb would be wiped immediately after restore).
+  const hydratedFromDraft = useRef<boolean>(!!draft?.selectedCustomer);
 
   // Fetch payment settings for calculations
   const { data: paymentSettings } = usePaymentSettings();
@@ -58,6 +78,13 @@ export function useOrderFormState() {
 
   // When customer changes, clear address (don't auto-populate - user can tick checkbox to use customer address)
   useEffect(() => {
+    // Skip on the first render after a draft hydration so we don't wipe the
+    // restored address/suburb. Subsequent customer changes still clear it.
+    if (hydratedFromDraft.current) {
+      hydratedFromDraft.current = false;
+      return;
+    }
+
     if (selectedCustomer) {
       // Clear delivery address when customer changes (don't auto-populate)
       setDeliveryAddress("");
@@ -71,6 +98,54 @@ export function useOrderFormState() {
       setSelectedContact(null);
     }
   }, [selectedCustomer]);
+
+  // Auto-save the draft to sessionStorage on every relevant change. Debounced
+  // (~400ms) so we don't thrash storage on every keystroke. This means an
+  // expired session, accidental refresh, or browser crash never costs the
+  // operator the customer's order details — they reappear on remount.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      try {
+        const snapshot = {
+          currentStep,
+          selectedCustomer,
+          selectedContact,
+          cart,
+          adjustments,
+          deliveryMethod,
+          orderType,
+          splits,
+          deliveryDate,
+          deliveryTime,
+          pickupTiming,
+          specialInstructions,
+          paymentMethod,
+          orderNotes,
+          deliveryNotes,
+          purchaseOrder,
+          deliveryAddress,
+          sameAsBilling,
+          useGlobalDeliveryAddress,
+          selectedSuburbId,
+          manualDeliveryFee,
+          isDeliveryFeeManuallySet,
+          isUsingCustomerAddress,
+        };
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+      } catch (error) {
+        // sessionStorage can throw in private mode / quota — swallow silently.
+        console.warn('Could not save order draft:', error);
+      }
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [
+    currentStep, selectedCustomer, selectedContact, cart, adjustments,
+    deliveryMethod, orderType, splits, deliveryDate, deliveryTime, pickupTiming,
+    specialInstructions, paymentMethod, orderNotes, deliveryNotes, purchaseOrder,
+    deliveryAddress, sameAsBilling, useGlobalDeliveryAddress, selectedSuburbId,
+    manualDeliveryFee, isDeliveryFeeManuallySet, isUsingCustomerAddress,
+  ]);
+
 
   // Dynamic step calculation based on delivery method
   const getTotalSteps = () => {
