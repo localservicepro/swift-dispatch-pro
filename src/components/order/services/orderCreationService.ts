@@ -3,6 +3,54 @@ import { supabase } from "@/integrations/supabase/client";
 import { Customer, CartItem, SelectedContact } from "../types";
 import { serializeCartItemsWithFormatting } from "./orderFormattingService";
 
+// Parse a delivery_rate string like "AU$45" / "$45.00" / "45" to a number.
+function parseSuburbDeliveryRate(raw: string | null | undefined): number {
+  if (!raw) return 0;
+  const cleaned = String(raw).replace(/[AU$\s]/gi, "").trim();
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+}
+
+// Apply the global delivery markup (matches useDeliveryFeeCalculation.applyMarkup)
+function applyDeliveryMarkup(
+  baseFee: number,
+  settings: { delivery_markup_value?: number | null; delivery_markup_type?: string | null }
+): number {
+  const markup = Number(settings?.delivery_markup_value) || 0;
+  if (markup <= 0) return baseFee;
+  if (settings?.delivery_markup_type === "fixed") return baseFee + markup;
+  return baseFee + (baseFee * markup) / 100;
+}
+
+/**
+ * Look up suburbs by id and return server-authoritative delivery fees keyed by id.
+ * Returns an empty map for ids that don't exist or have unparseable rates.
+ */
+async function fetchAuthoritativeDeliveryFees(
+  suburbIds: string[],
+  paymentSettings: { delivery_markup_value?: number | null; delivery_markup_type?: string | null }
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  const unique = Array.from(new Set(suburbIds.filter(Boolean)));
+  if (unique.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from("suburbs")
+    .select("id, name, delivery_rate")
+    .in("id", unique);
+
+  if (error) {
+    console.error("Error fetching suburbs for fee recompute:", error);
+    return map;
+  }
+
+  for (const row of data || []) {
+    const base = parseSuburbDeliveryRate(row.delivery_rate as any);
+    map.set(row.id as string, applyDeliveryMarkup(base, paymentSettings));
+  }
+  return map;
+}
+
 // Custom error type so callers can show a "please sign in" UI instead of the
 // raw Postgres "row violates row-level security" message.
 export class SessionExpiredError extends Error {
@@ -103,7 +151,42 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
     const authoritativeFuelSurcharge = authoritativeFuelSurchargePerUnit; // single order = 1 unit
     const authoritativeSubtotal = Number(params.orderTotals.subtotal) || 0;
     const authoritativeAdjustments = Number(params.orderTotals.adjustments) || 0;
-    const authoritativeDeliveryFee = Number(params.orderTotals.deliveryFee) || 0;
+
+    // SERVER-SIDE AUTHORITATIVE DELIVERY FEE
+    // The client value can be 0 due to: (a) async suburb fetch not resolving
+    // before submit, (b) cleared input collapsing to 0 via parseFloat('')||0,
+    // or (c) stale isDeliveryFeeManuallySet flag persisted in sessionStorage.
+    // Recompute from the suburbs table to guarantee customers are charged the
+    // correct delivery fee even when the client state is wrong.
+    const clientDeliveryFee = Number(params.orderTotals.deliveryFee) || 0;
+    let authoritativeDeliveryFee = clientDeliveryFee;
+    const isDelivery = params.deliveryMethod === 'delivery';
+    const deliverySuburbIdForLookup = isDelivery ? (params.suburbId || null) : null;
+
+    if (isDelivery && deliverySuburbIdForLookup) {
+      const feeMap = await fetchAuthoritativeDeliveryFees(
+        [deliverySuburbIdForLookup],
+        paymentSettings
+      );
+      const serverFee = feeMap.get(deliverySuburbIdForLookup);
+
+      if (typeof serverFee === 'number' && serverFee > 0) {
+        if (Math.abs(serverFee - clientDeliveryFee) > 0.01) {
+          console.warn('🚚 Delivery fee mismatch — using server value', {
+            suburb_id: deliverySuburbIdForLookup,
+            clientDeliveryFee,
+            serverDeliveryFee: serverFee,
+          });
+        }
+        authoritativeDeliveryFee = serverFee;
+      } else {
+        // Suburb has no usable delivery_rate. Don't silently save $0.
+        throw new Error(
+          'Delivery fee could not be determined for the selected suburb. Please reselect the delivery suburb and try again.'
+        );
+      }
+    }
+
     const authoritativeTotal =
       authoritativeSubtotal +
       authoritativeAdjustments +
@@ -114,6 +197,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       subtotal: authoritativeSubtotal,
       adjustments: authoritativeAdjustments,
       deliveryFee: authoritativeDeliveryFee,
+      clientDeliveryFee,
       fuelSurcharge: authoritativeFuelSurcharge,
       totalAmount: authoritativeTotal,
       clientFuelSurcharge: params.orderTotals.fuelSurcharge,
@@ -291,11 +375,54 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       masterDeliveryAddress = fallbackAddress;
     }
     const masterSameAsBilling = true;
-    
-    // Calculate total delivery fee from all splits
-    const totalDeliveryFee = params.splits.reduce((sum, split) => {
-      return sum + (split.deliveryFee || 0);
-    }, 0);
+
+    // SERVER-SIDE AUTHORITATIVE PER-SPLIT DELIVERY FEE
+    // For each delivery split, look up the suburb in the database and recompute
+    // the fee. This guards against client state ever sending 0 for a delivery
+    // split that has a valid suburb (see createSingleOrder for the same fix).
+    const splitSuburbIdFor = (split: any): string | null => {
+      if (params.deliveryMethod !== 'delivery') return null;
+      if (split.sameAsBilling) return params.customer.suburb_id || null;
+      return split.deliverySuburbId || split.suburbId || null;
+    };
+
+    const splitSuburbIds = params.splits
+      .map(splitSuburbIdFor)
+      .filter((id): id is string => !!id);
+
+    const serverFeeBySuburbId =
+      params.deliveryMethod === 'delivery' && splitSuburbIds.length > 0
+        ? await fetchAuthoritativeDeliveryFees(splitSuburbIds, paymentSettings)
+        : new Map<string, number>();
+
+    const authoritativeSplitFees: number[] = params.splits.map((split, idx) => {
+      if (params.deliveryMethod !== 'delivery') return 0;
+      const suburbId = splitSuburbIdFor(split);
+      const clientFee = Number(split.deliveryFee) || 0;
+
+      if (suburbId) {
+        const serverFee = serverFeeBySuburbId.get(suburbId);
+        if (typeof serverFee === 'number' && serverFee > 0) {
+          if (Math.abs(serverFee - clientFee) > 0.01) {
+            console.warn(`🚚 Split #${idx + 1} delivery fee mismatch — using server value`, {
+              suburb_id: suburbId,
+              clientDeliveryFee: clientFee,
+              serverDeliveryFee: serverFee,
+            });
+          }
+          return serverFee;
+        }
+        // Suburb known but no usable rate → refuse to silently undercharge.
+        throw new Error(
+          `Delivery fee could not be determined for split #${idx + 1}. Please reselect that split's delivery suburb and try again.`
+        );
+      }
+
+      // No suburb on this split (admin chose address-only) → trust client value.
+      return clientFee;
+    });
+
+    const totalDeliveryFee = authoritativeSplitFees.reduce((sum, fee) => sum + fee, 0);
 
     // Calculate fuel surcharge: per split for delivery orders
     const fuelSurchargePerUnit = params.deliveryMethod === 'delivery' ? (paymentSettings.fuel_surcharge || 0) : 0;
@@ -356,6 +483,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
     for (let i = 0; i < params.splits.length; i++) {
       const split = params.splits[i];
       // Calculate split totals with decimal quantity support
+      const splitDeliveryFee = authoritativeSplitFees[i] || 0;
       const splitSubtotal = split.products.reduce((sum: number, splitProduct: any) => {
         const cartItem = params.cart.find(cartItem => cartItem.product.id === splitProduct.productId);
         if (!cartItem) {
@@ -441,9 +569,9 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         products: splitProducts,
         subtotal: splitSubtotal,
         adjustments: 0,
-        delivery_fee: split.deliveryFee || 0,
+        delivery_fee: splitDeliveryFee,
         fuel_surcharge: fuelSurchargePerUnit,
-        total_amount: splitSubtotal + (split.deliveryFee || 0) + fuelSurchargePerUnit,
+        total_amount: splitSubtotal + splitDeliveryFee + fuelSurchargePerUnit,
         delivery_method: params.deliveryMethod,
         delivery_date: split.deliveryDate,
         delivery_time: split.deliveryTime,

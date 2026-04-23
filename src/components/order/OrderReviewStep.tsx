@@ -585,18 +585,39 @@ export function OrderReviewStep({
           </div>
         </div>
 
-        <div className="flex gap-2 pt-4">
-          <Button variant="outline" onClick={onBack} disabled={isCreating}>
-            Back
-          </Button>
-          <Button 
-            onClick={onConfirm}
-            disabled={isCreating}
-            className="ml-auto"
-          >
-            {isCreating ? "Creating Order..." : "Create Order"}
-          </Button>
-        </div>
+        {(() => {
+          // Belt-and-braces UI guard: never let an admin submit a delivery
+          // order with $0 delivery fee when a suburb has been selected. The
+          // server also recomputes & rejects this, but blocking it here gives
+          // an inline message instead of a generic error toast.
+          const missingDeliveryFee =
+            deliveryMethod === "delivery" &&
+            !!deliveryFeeInfo &&
+            (!deliveryFee || deliveryFee <= 0);
+
+          return (
+            <div className="flex flex-col gap-2 pt-4">
+              {missingDeliveryFee && (
+                <p className="text-sm text-destructive">
+                  Delivery fee is $0 but a delivery suburb is selected. Please reselect the
+                  suburb (or enter the fee manually) before creating the order.
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onBack} disabled={isCreating}>
+                  Back
+                </Button>
+                <Button
+                  onClick={onConfirm}
+                  disabled={isCreating || missingDeliveryFee}
+                  className="ml-auto"
+                >
+                  {isCreating ? "Creating Order..." : "Create Order"}
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );
