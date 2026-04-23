@@ -69,46 +69,6 @@ export function useOrderFormState() {
   // render when we hydrated a customer from the draft (otherwise the saved
   // address/suburb would be wiped immediately after restore).
   const hydratedFromDraft = useRef<boolean>(!!draft?.selectedCustomer);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [selectedContact, setSelectedContact] = useState<SelectedContact | null>(null);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [adjustments, setAdjustments] = useState(0);
-  
-  // Delivery method state - starts with delivery as default
-  const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup">("delivery");
-  
-  // Order splitting state - auto-set to "single" for pickup orders
-  const [orderType, setOrderType] = useState<"single" | "split">("single");
-  const [splits, setSplits] = useState<SplitConfig[]>([]);
-  
-  // Single order delivery state
-  const [deliveryDate, setDeliveryDate] = useState("");
-  const [deliveryTime, setDeliveryTime] = useState("");
-  const [pickupTiming, setPickupTiming] = useState<"now" | "scheduled">("scheduled");
-  const [specialInstructions, setSpecialInstructions] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
-  
-  // New notes state
-  const [orderNotes, setOrderNotes] = useState("");
-  const [deliveryNotes, setDeliveryNotes] = useState("");
-  
-  // Purchase order state
-  const [purchaseOrder, setPurchaseOrder] = useState("");
-  
-  // Delivery address state
-  const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [sameAsBilling, setSameAsBilling] = useState(true);
-  const [useGlobalDeliveryAddress, setUseGlobalDeliveryAddress] = useState(true);
-  
-  // Suburb state (no automatic rate setting)
-  const [selectedSuburbId, setSelectedSuburbId] = useState("");
-  
-  // Manual delivery fee state (number, not string)
-  const [manualDeliveryFee, setManualDeliveryFee] = useState<number>(0);
-  const [isDeliveryFeeManuallySet, setIsDeliveryFeeManuallySet] = useState(false);
-
-  // Track if address was auto-populated from customer
-  const [isUsingCustomerAddress, setIsUsingCustomerAddress] = useState(false);
 
   // Fetch payment settings for calculations
   const { data: paymentSettings } = usePaymentSettings();
@@ -118,6 +78,13 @@ export function useOrderFormState() {
 
   // When customer changes, clear address (don't auto-populate - user can tick checkbox to use customer address)
   useEffect(() => {
+    // Skip on the first render after a draft hydration so we don't wipe the
+    // restored address/suburb. Subsequent customer changes still clear it.
+    if (hydratedFromDraft.current) {
+      hydratedFromDraft.current = false;
+      return;
+    }
+
     if (selectedCustomer) {
       // Clear delivery address when customer changes (don't auto-populate)
       setDeliveryAddress("");
@@ -131,6 +98,54 @@ export function useOrderFormState() {
       setSelectedContact(null);
     }
   }, [selectedCustomer]);
+
+  // Auto-save the draft to sessionStorage on every relevant change. Debounced
+  // (~400ms) so we don't thrash storage on every keystroke. This means an
+  // expired session, accidental refresh, or browser crash never costs the
+  // operator the customer's order details — they reappear on remount.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      try {
+        const snapshot = {
+          currentStep,
+          selectedCustomer,
+          selectedContact,
+          cart,
+          adjustments,
+          deliveryMethod,
+          orderType,
+          splits,
+          deliveryDate,
+          deliveryTime,
+          pickupTiming,
+          specialInstructions,
+          paymentMethod,
+          orderNotes,
+          deliveryNotes,
+          purchaseOrder,
+          deliveryAddress,
+          sameAsBilling,
+          useGlobalDeliveryAddress,
+          selectedSuburbId,
+          manualDeliveryFee,
+          isDeliveryFeeManuallySet,
+          isUsingCustomerAddress,
+        };
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+      } catch (error) {
+        // sessionStorage can throw in private mode / quota — swallow silently.
+        console.warn('Could not save order draft:', error);
+      }
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [
+    currentStep, selectedCustomer, selectedContact, cart, adjustments,
+    deliveryMethod, orderType, splits, deliveryDate, deliveryTime, pickupTiming,
+    specialInstructions, paymentMethod, orderNotes, deliveryNotes, purchaseOrder,
+    deliveryAddress, sameAsBilling, useGlobalDeliveryAddress, selectedSuburbId,
+    manualDeliveryFee, isDeliveryFeeManuallySet, isUsingCustomerAddress,
+  ]);
+
 
   // Dynamic step calculation based on delivery method
   const getTotalSteps = () => {
