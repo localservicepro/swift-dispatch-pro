@@ -167,11 +167,16 @@ export function useOrderFormState() {
     }
   };
 
-  // Suburb change handler with auto-population (uses markup-aware calculation)
+  // Suburb change handler with auto-population (uses markup-aware calculation).
+  // Changing the suburb is an explicit user action and must always re-populate
+  // the fee — even if the user previously edited it manually for a different
+  // suburb. Otherwise a stale isDeliveryFeeManuallySet flag (which now persists
+  // across sessions via the order draft) silently leaves the fee at $0.
   const handleSuburbChange = (suburbId: string, suburb?: any) => {
+    const suburbChanged = suburbId !== selectedSuburbId;
     setSelectedSuburbId(suburbId);
-    
-    if (suburb && !isDeliveryFeeManuallySet && deliveryMethod === "delivery") {
+
+    if (suburb && deliveryMethod === "delivery" && (suburbChanged || !isDeliveryFeeManuallySet)) {
       autoPopulateDeliveryFee(suburbId, (fee: number) => {
         setManualDeliveryFee(fee);
         setIsDeliveryFeeManuallySet(false);
@@ -179,8 +184,11 @@ export function useOrderFormState() {
     }
   };
 
-  // Handle manual delivery fee changes
+  // Handle manual delivery fee changes. Only treat the input as "manually set"
+  // when the user actually typed a value — clearing the field to retype must
+  // not collapse the fee to $0 with the manual-set lock turned on.
   const handleManualDeliveryFeeChange = (fee: number) => {
+    if (!Number.isFinite(fee) || fee < 0) return;
     setManualDeliveryFee(fee);
     setIsDeliveryFeeManuallySet(true);
   };
