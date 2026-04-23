@@ -50,10 +50,8 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (customerType === 'account') {
-      loadContacts();
-    }
-  }, [customerId, customerType]);
+    loadContacts();
+  }, [customerId]);
 
   const loadContacts = async () => {
     const { data, error } = await supabase
