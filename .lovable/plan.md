@@ -1,46 +1,58 @@
 
 
-## Enable Contacts management for Trade and Residential customers
+## Fix: Admin "Create Order" customer search is capped at 1000 customers
 
-### What's broken
+### What's happening
 
-The Contacts tab is currently only shown for **Business + Account** customers. Trade and Residential customers have no UI at all to add additional contacts, and the existing primary contact can't be edited or removed because:
+You currently have **1,099 active customers**, and Supabase silently returns **at most 1000 rows** for any unbounded `SELECT`. The order-creation customer picker (`CustomerSearchStep`) trips this trap when an admin searches by **phone number**:
 
-1. `CustomerDialogTabs.tsx` only renders the `Contacts` tab when `entity_type === 'business' && customer_type === 'account'`.
-2. `CustomerContactsManager.tsx` early-returns `null` for any `customerType !== 'account'`, and its prop type is locked to `"trade" | "account"`.
-3. Even when contacts are visible, the **primary contact** has no Edit or Delete buttons (the action group is wrapped in `{!contact.is_primary_contact && ...}`), so there's no way to fix a wrong name/phone/email on the main contact.
+```ts
+// src/components/order/CustomerSearchStep.tsx (phone branch)
+const { data } = await supabase
+  .from('customers')
+  .select('*, ..., customer_contacts(...)')
+  .eq('is_active', true);          // ← no .range(), no server-side phone filter
+```
 
-### Fix
+Supabase truncates the result to the first 1000 rows by `id` order, then the code does **client-side** phone matching. So:
 
-**1. Show the Contacts tab for every customer (any type, any entity)**
-In `src/components/customer/CustomerDialogTabs.tsx`, drop the `entity_type === 'business' && customer_type === 'account'` gate. As long as the customer exists (`isEdit && customer`), show the Contacts tab. Pass `customerType` through as-is.
+- Customers (and their contact phones) past row #1000 never appear when phone-searching.
+- The newer the customer, the more likely they're invisible to phone search.
+- Only some admins notice it because they're the ones searching unusual numbers — admins who only ever search names hit the text branch, which already runs server-side with `.limit(10)` and is fine.
 
-**2. Let the manager render for trade and residential**
-In `src/components/customer/CustomerContactsManager.tsx`:
-- Widen the `customerType` prop to `"residential" | "trade" | "account"`.
-- Remove the `if (customerType !== 'account') return null;` early return.
-- Always load contacts on mount (drop the `customerType === 'account'` check in the `useEffect`).
+The text-search branch is fine. The customer-list page (`useCustomersData`) is also fine — it's already paginated 50/page via infinite query.
 
-**3. Allow editing and deleting the primary contact too**
-In the same file, move the **Edit** and **Delete** buttons out of the `{!contact.is_primary_contact && ...}` block so they always appear. Keep the **Set as Primary** (star) button gated behind `!is_primary_contact` — that one only makes sense for non-primary rows.
+### Fix — push the phone match to the server (same pattern already used in Order/Customer/Opportunity search)
 
-Add a safety guard in `handleDeleteContact`: if the contact being deleted is the primary, show a toast "Promote another contact to primary before removing this one" and abort. This prevents leaving the customer with zero primary contacts (which would break portal access lookups for account customers, and is just confusing for trade/residential).
+Rewrite the phone-search branch in `src/components/order/CustomerSearchStep.tsx` to:
 
-**4. No database changes needed**
-- The `customer_contacts` table already supports any customer regardless of type.
-- RLS already allows admins to manage contacts for all customers (`Admins can manage customer contacts` policy with `is_current_user_admin()`).
-- Drivers can already view them.
+1. Use `getPhoneSearchVariants(searchQuery)` to build all the phone formats (e.g. `0409 563 775`, `0409563775`, `+61409563775`, etc.) — same helper already used in `useCustomersData`, `useOrderData`, and `useOpportunitySearchData`.
+2. Run **two server-side queries in parallel**, each with an explicit `.limit(50)`:
+   - `customers` where any variant matches `phone` ILIKE.
+   - `customer_contacts` where any variant matches `phone` ILIKE → collect `customer_id`s.
+3. Union the two ID sets, then fetch those customers (with the suburb + contacts joins already in use) in a single `.in('id', ids).limit(50)` query.
+4. Drop the client-side `.filter(...)` / `.slice(0, 10)` post-processing — the server has already narrowed it correctly to ≤50 results.
 
-### Result
+This removes the 1000-row cap entirely (the database does the matching, the client receives only the matches), works regardless of phone formatting, and finds customers via either their main phone **or** any of their contacts' phones.
 
-- Trade and Residential customers now have a **Contacts** tab in their edit dialog identical to the one Account customers have.
-- Admin can **add** unlimited additional contacts (e.g. spouse, site manager, secondary phone) for any customer type.
-- Admin can **edit** any contact, including the primary one (fix typos in name/email/phone).
-- Admin can **delete** any non-primary contact freely; deleting the primary is blocked with a clear message instructing them to promote another contact first.
-- Account-customer behaviour (portal-access primary contact email, set-primary RPC, etc.) is unchanged.
+### Audit of other 1000-row traps
+
+Quick scan of the rest of the codebase confirms the other customer/contact loaders are safe:
+
+- `useCustomersData.ts` — paginated 50/page, OK.
+- `useOpportunityData.ts` — has explicit `ACTIVE_HARD_CAP = 2000`, OK.
+- `useOpportunitySearchData.ts` — server-side phone variants + `SEARCH_LIMIT = 200`, OK.
+- `useOrderData.ts` — server-side phone variants on both `orders` and `customers`, paginated, OK.
+- `BulkPinManagementDialog.tsx` — only loads `customer_type = 'account'` (small set), but I'll add an explicit `.range(0, 4999)` defensively so you don't hit this same wall when account customers grow past 1000.
 
 ### Files
 
-- `src/components/customer/CustomerDialogTabs.tsx` — relax the tab visibility condition.
-- `src/components/customer/CustomerContactsManager.tsx` — widen prop type, remove non-account guards, expose Edit/Delete for primary, block primary deletion.
+- Edit `src/components/order/CustomerSearchStep.tsx` — rewrite the `isPhoneNumber(searchQuery)` branch to do server-side variant matching against `customers.phone` + `customer_contacts.phone`.
+- Edit `src/components/customer/BulkPinManagementDialog.tsx` — add an explicit upper bound (`.range(0, 4999)`) so it can never silently truncate at 1000.
+
+### Result
+
+- Admins can phone-search any of the 1,099+ customers when creating an order — no more "invisible customer" past the 1000th row.
+- Phone search now also finds customers via their **secondary contacts'** phone numbers (matches the behaviour of the Customers tab).
+- Search returns in one round-trip with up to 50 results instead of pulling 1000 rows over the wire and filtering them in the browser, so the picker is faster too.
 
