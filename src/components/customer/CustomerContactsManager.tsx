@@ -180,13 +180,22 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
     });
   };
 
-  const handleDeleteContact = async (contactId: string) => {
+  const handleDeleteContact = async (contact: Contact) => {
+    if (contact.is_primary_contact) {
+      toast({
+        title: "Can't remove primary contact",
+        description: "Promote another contact to primary before removing this one.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!confirm("Are you sure you want to remove this contact?")) return;
 
     const { error } = await supabase
       .from('customer_contacts')
       .update({ is_active: false })
-      .eq('id', contactId);
+      .eq('id', contact.id);
 
     if (error) {
       toast({
