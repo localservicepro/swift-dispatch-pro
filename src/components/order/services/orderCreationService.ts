@@ -483,6 +483,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
     for (let i = 0; i < params.splits.length; i++) {
       const split = params.splits[i];
       // Calculate split totals with decimal quantity support
+      const splitDeliveryFee = authoritativeSplitFees[i] || 0;
       const splitSubtotal = split.products.reduce((sum: number, splitProduct: any) => {
         const cartItem = params.cart.find(cartItem => cartItem.product.id === splitProduct.productId);
         if (!cartItem) {
