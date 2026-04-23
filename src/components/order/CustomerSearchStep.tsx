@@ -13,7 +13,7 @@ import { GoogleAddressAutocomplete } from "@/components/ui/google-address-autoco
 import { ContactSelector } from "@/components/customer/ContactSelector";
 import { StopCreditWarningDialog } from "@/components/customer/StopCreditWarningDialog";
 import { StopCreditIndicator } from "@/components/customer/StopCreditIndicator";
-import { isPhoneNumber, phoneSearchMatch } from "@/utils/phoneUtils";
+import { isPhoneNumber, phoneSearchMatch, getPhoneSearchVariants } from "@/utils/phoneUtils";
 
 interface Customer {
   id: string;
@@ -151,9 +151,60 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
       
       // Check if the search query looks like a phone number
       if (isPhoneNumber(searchQuery)) {
-        console.log('📞 Performing phone number search');
-        
-        // For phone number searches, fetch all customers and their contacts
+        console.log('📞 Performing server-side phone number search');
+
+        // Build phone variants (handles spaces, country codes, etc.)
+        const variants = getPhoneSearchVariants(searchQuery);
+        if (variants.length === 0) {
+          if (isMountedRef.current && !newAbortController.signal.aborted) {
+            setCustomers([]);
+          }
+          return;
+        }
+
+        const customersOr = variants.map(v => `phone.ilike.%${v}%`).join(',');
+        const contactsOr = variants.map(v => `phone.ilike.%${v}%`).join(',');
+
+        // Run both lookups server-side in parallel — no 1000-row truncation,
+        // matches against either the customer's main phone or any contact's phone.
+        const [customersByPhone, contactsByPhone] = await Promise.all([
+          supabase
+            .from('customers')
+            .select('id')
+            .eq('is_active', true)
+            .or(customersOr)
+            .limit(50),
+          supabase
+            .from('customer_contacts')
+            .select('customer_id')
+            .eq('is_active', true)
+            .or(contactsOr)
+            .limit(200),
+        ]);
+
+        if (customersByPhone.error) {
+          console.error('❌ Phone search error (customers):', customersByPhone.error);
+          throw customersByPhone.error;
+        }
+        if (contactsByPhone.error) {
+          console.error('❌ Phone search error (contacts):', contactsByPhone.error);
+          throw contactsByPhone.error;
+        }
+
+        const idSet = new Set<string>();
+        (customersByPhone.data || []).forEach((r: any) => r?.id && idSet.add(r.id));
+        (contactsByPhone.data || []).forEach((r: any) => r?.customer_id && idSet.add(r.customer_id));
+
+        const ids = Array.from(idSet).slice(0, 50);
+        console.log(`📊 Phone search matched ${ids.length} unique customer ids`);
+
+        if (ids.length === 0) {
+          if (isMountedRef.current && !newAbortController.signal.aborted) {
+            setCustomers([]);
+          }
+          return;
+        }
+
         const { data, error } = await supabase
           .from('customers')
           .select(`
@@ -161,56 +212,18 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
             suburb:suburbs(name, state, delivery_rate),
             customer_contacts(id, phone, first_name, last_name, is_active)
           `)
-          .eq('is_active', true);
+          .in('id', ids)
+          .eq('is_active', true)
+          .limit(50);
 
         if (error) {
-          console.error('❌ Phone search error:', error);
+          console.error('❌ Phone search hydrate error:', error);
           throw error;
         }
 
-        if (data && Array.isArray(data)) {
-          console.log(`📊 Phone search returned ${data.length} customers to filter`);
-          
-          // Filter results using phone number matching on both customer phone and contact phones
-          const phoneMatches = data.filter(customer => {
-            try {
-              // Validate customer object structure
-              if (!customer || typeof customer !== 'object') {
-                console.warn('⚠️ Invalid customer object:', customer);
-                return false;
-              }
-
-              // Check customer's main phone
-              if (customer.phone && phoneSearchMatch(customer.phone, searchQuery)) {
-                return true;
-              }
-              
-              // Check all active contact phones
-              if (customer.customer_contacts && Array.isArray(customer.customer_contacts)) {
-                return customer.customer_contacts.some(contact => {
-                  if (!contact || typeof contact !== 'object') {
-                    return false;
-                  }
-                  return contact.is_active && contact.phone && phoneSearchMatch(contact.phone, searchQuery);
-                });
-              }
-              
-              return false;
-            } catch (filterError) {
-              console.error('❌ Error filtering customer:', customer?.id, filterError);
-              return false;
-            }
-          });
-          
-          console.log(`✅ Phone search found ${phoneMatches.length} matches`);
-          if (isMountedRef.current && !newAbortController.signal.aborted) {
-            setCustomers(phoneMatches.slice(0, 10)); // Limit to 10 results
-          }
-        } else {
-          console.log('📊 Phone search returned no data');
-          if (isMountedRef.current && !newAbortController.signal.aborted) {
-            setCustomers([]);
-          }
+        console.log(`✅ Phone search returning ${data?.length ?? 0} customers`);
+        if (isMountedRef.current && !newAbortController.signal.aborted) {
+          setCustomers((data as any) || []);
         }
       } else {
         console.log('🔤 Performing text search');
