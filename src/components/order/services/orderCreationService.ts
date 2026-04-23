@@ -375,11 +375,54 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       masterDeliveryAddress = fallbackAddress;
     }
     const masterSameAsBilling = true;
-    
-    // Calculate total delivery fee from all splits
-    const totalDeliveryFee = params.splits.reduce((sum, split) => {
-      return sum + (split.deliveryFee || 0);
-    }, 0);
+
+    // SERVER-SIDE AUTHORITATIVE PER-SPLIT DELIVERY FEE
+    // For each delivery split, look up the suburb in the database and recompute
+    // the fee. This guards against client state ever sending 0 for a delivery
+    // split that has a valid suburb (see createSingleOrder for the same fix).
+    const splitSuburbIdFor = (split: any): string | null => {
+      if (params.deliveryMethod !== 'delivery') return null;
+      if (split.sameAsBilling) return params.customer.suburb_id || null;
+      return split.deliverySuburbId || split.suburbId || null;
+    };
+
+    const splitSuburbIds = params.splits
+      .map(splitSuburbIdFor)
+      .filter((id): id is string => !!id);
+
+    const serverFeeBySuburbId =
+      params.deliveryMethod === 'delivery' && splitSuburbIds.length > 0
+        ? await fetchAuthoritativeDeliveryFees(splitSuburbIds, paymentSettings)
+        : new Map<string, number>();
+
+    const authoritativeSplitFees: number[] = params.splits.map((split, idx) => {
+      if (params.deliveryMethod !== 'delivery') return 0;
+      const suburbId = splitSuburbIdFor(split);
+      const clientFee = Number(split.deliveryFee) || 0;
+
+      if (suburbId) {
+        const serverFee = serverFeeBySuburbId.get(suburbId);
+        if (typeof serverFee === 'number' && serverFee > 0) {
+          if (Math.abs(serverFee - clientFee) > 0.01) {
+            console.warn(`🚚 Split #${idx + 1} delivery fee mismatch — using server value`, {
+              suburb_id: suburbId,
+              clientDeliveryFee: clientFee,
+              serverDeliveryFee: serverFee,
+            });
+          }
+          return serverFee;
+        }
+        // Suburb known but no usable rate → refuse to silently undercharge.
+        throw new Error(
+          `Delivery fee could not be determined for split #${idx + 1}. Please reselect that split's delivery suburb and try again.`
+        );
+      }
+
+      // No suburb on this split (admin chose address-only) → trust client value.
+      return clientFee;
+    });
+
+    const totalDeliveryFee = authoritativeSplitFees.reduce((sum, fee) => sum + fee, 0);
 
     // Calculate fuel surcharge: per split for delivery orders
     const fuelSurchargePerUnit = params.deliveryMethod === 'delivery' ? (paymentSettings.fuel_surcharge || 0) : 0;
