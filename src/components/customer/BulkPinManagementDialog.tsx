@@ -75,12 +75,14 @@ export function BulkPinManagementDialog({ open, onOpenChange }: BulkPinManagemen
 
   const loadCustomers = async () => {
     setState("loading");
+    // Explicit upper bound so Supabase's silent 1000-row default can never truncate.
     const { data, error } = await supabase
       .from("customers")
       .select("id, first_name, last_name, email, company_name, business_name, pin_enabled, portal_access_enabled, pin_expires_at")
       .eq("customer_type", "account")
       .eq("is_active", true)
-      .order("company_name", { ascending: true });
+      .order("company_name", { ascending: true })
+      .range(0, 4999);
 
     if (error) {
       toast({ title: "Error", description: "Failed to load customers", variant: "destructive" });
