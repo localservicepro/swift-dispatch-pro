@@ -1,50 +1,46 @@
 
 
-## Fix: "Failed to create order — RLS violation" + lost order data on session expiry
+## Enable Contacts management for Trade and Residential customers
 
-### Root cause
+### What's broken
 
-Your screenshot shows the toast "new row violates row-level security policy for table 'orders'" while the page behind it has reverted to the **Sign In** screen. That tells the whole story:
+The Contacts tab is currently only shown for **Business + Account** customers. Trade and Residential customers have no UI at all to add additional contacts, and the existing primary contact can't be edited or removed because:
 
-1. The admin's Supabase session silently expired (token refresh failed, browser was idle, laptop slept, etc.).
-2. The "Create Order" button fired the INSERT against `orders`. With no valid `auth.uid()`, none of the admin/driver/customer RLS policies matched, so Postgres rejected the row.
-3. `AuthProvider` then received `SIGNED_OUT` and rendered `<AuthPage />`, **destroying the order form's React state**. Everything the customer just dictated is gone.
+1. `CustomerDialogTabs.tsx` only renders the `Contacts` tab when `entity_type === 'business' && customer_type === 'account'`.
+2. `CustomerContactsManager.tsx` early-returns `null` for any `customerType !== 'account'`, and its prop type is locked to `"trade" | "account"`.
+3. Even when contacts are visible, the **primary contact** has no Edit or Delete buttons (the action group is wrapped in `{!contact.is_primary_contact && ...}`), so there's no way to fix a wrong name/phone/email on the main contact.
 
-There is a `clearOrderDraft()` helper in `useOrderFormState`, but **nothing ever writes the draft** — the persistence layer was never finished. So today there is zero recovery.
+### Fix
 
-### Fix — three layers so this can never lose work again
+**1. Show the Contacts tab for every customer (any type, any entity)**
+In `src/components/customer/CustomerDialogTabs.tsx`, drop the `entity_type === 'business' && customer_type === 'account'` gate. As long as the customer exists (`isEdit && customer`), show the Contacts tab. Pass `customerType` through as-is.
 
-**1. Pre-flight session check before insert (prevents the error entirely)**
+**2. Let the manager render for trade and residential**
+In `src/components/customer/CustomerContactsManager.tsx`:
+- Widen the `customerType` prop to `"residential" | "trade" | "account"`.
+- Remove the `if (customerType !== 'account') return null;` early return.
+- Always load contacts on mount (drop the `customerType === 'account'` check in the `useEffect`).
 
-In `orderCreationService.ts`, before calling `.from('orders').insert(...)`, call `supabase.auth.getSession()`. If there is no session (or the access token is expired), throw a typed `SessionExpiredError` instead of letting Postgres reject the insert. This converts a confusing RLS message into a clean, actionable one.
+**3. Allow editing and deleting the primary contact too**
+In the same file, move the **Edit** and **Delete** buttons out of the `{!contact.is_primary_contact && ...}` block so they always appear. Keep the **Set as Primary** (star) button gated behind `!is_primary_contact` — that one only makes sense for non-primary rows.
 
-**2. Auto-save the order draft to sessionStorage on every change**
+Add a safety guard in `handleDeleteContact`: if the contact being deleted is the primary, show a toast "Promote another contact to primary before removing this one" and abort. This prevents leaving the customer with zero primary contacts (which would break portal access lookups for account customers, and is just confusing for trade/residential).
 
-Wire up the missing half of `useOrderFormState`:
-
-- Add a `useEffect` that serialises the relevant state (`selectedCustomer`, `selectedContact`, `cart`, `adjustments`, `deliveryMethod`, `orderType`, `splits`, dates/times, addresses, suburb, notes, PO, payment method, current step) to `sessionStorage` under `order_form_draft` whenever any of them change (debounced ~500ms to avoid thrash).
-- On mount, hydrate state from `sessionStorage` if a draft exists.
-- Keep the existing `clearOrderDraft()` call on successful submit.
-
-This means even a hard refresh, browser crash, or auth redirect leaves the cart/customer/notes intact. The user is dropped back at the same step with the same data.
-
-**3. Graceful session-expiry handling in MultiStepOrderForm**
-
-In the `catch` block of the create-order handler:
-
-- Detect the `SessionExpiredError` (or any error containing "row-level security" / "JWT expired" / status 401/403) and show a distinct toast: **"Your session expired. Your order is saved — please sign in and click Create Order again."**
-- Do **not** reset the form state in this branch (the existing reset only runs on success, which is already correct — but we explicitly skip the redirect-clearing path).
-- Because the draft is now persisted in sessionStorage, when `AuthProvider` swaps in `<AuthPage />` and the user signs back in, returning to Order Management will rehydrate the entire form at the Review step, ready to submit.
-
-### Files
-
-- Edit `src/components/order/services/orderCreationService.ts` — add session pre-flight check, export `SessionExpiredError`.
-- Edit `src/components/order/hooks/useOrderFormState.ts` — add debounced auto-save effect and on-mount hydration from `sessionStorage`.
-- Edit `src/components/order/MultiStepOrderForm.tsx` — branch on session-expiry errors with the new toast copy; keep state intact so the draft survives.
+**4. No database changes needed**
+- The `customer_contacts` table already supports any customer regardless of type.
+- RLS already allows admins to manage contacts for all customers (`Admins can manage customer contacts` policy with `is_current_user_admin()`).
+- Drivers can already view them.
 
 ### Result
 
-- The RLS error message that you see in the screenshot will no longer appear for expired sessions — you'll get a clear "session expired, please sign in" message instead.
-- The customer's order (cart, customer, contact, address, notes, PO, payment method, step) survives sign-out, refresh, and even closing the tab within the same browser session.
-- After signing back in, you click Create Order once more and it submits — no re-keying, no lost customer call.
+- Trade and Residential customers now have a **Contacts** tab in their edit dialog identical to the one Account customers have.
+- Admin can **add** unlimited additional contacts (e.g. spouse, site manager, secondary phone) for any customer type.
+- Admin can **edit** any contact, including the primary one (fix typos in name/email/phone).
+- Admin can **delete** any non-primary contact freely; deleting the primary is blocked with a clear message instructing them to promote another contact first.
+- Account-customer behaviour (portal-access primary contact email, set-primary RPC, etc.) is unchanged.
+
+### Files
+
+- `src/components/customer/CustomerDialogTabs.tsx` — relax the tab visibility condition.
+- `src/components/customer/CustomerContactsManager.tsx` — widen prop type, remove non-account guards, expose Edit/Delete for primary, block primary deletion.
 
