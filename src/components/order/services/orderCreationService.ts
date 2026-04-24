@@ -99,6 +99,9 @@ interface CreateSingleOrderParams {
   sameAsBilling: boolean;
   suburbId: string;
   orderTotals: any;
+  // When true, the admin explicitly typed a delivery fee that overrides the
+  // suburb-derived rate. The server must respect this and skip recomputation.
+  isDeliveryFeeManuallySet?: boolean;
 }
 
 // Interface for creating split orders (simplified)
@@ -153,17 +156,23 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
     const authoritativeAdjustments = Number(params.orderTotals.adjustments) || 0;
 
     // SERVER-SIDE AUTHORITATIVE DELIVERY FEE
-    // The client value can be 0 due to: (a) async suburb fetch not resolving
-    // before submit, (b) cleared input collapsing to 0 via parseFloat('')||0,
-    // or (c) stale isDeliveryFeeManuallySet flag persisted in sessionStorage.
-    // Recompute from the suburbs table to guarantee customers are charged the
-    // correct delivery fee even when the client state is wrong.
+    // Goal: never silently save $0 for a delivery order with a valid suburb,
+    // while ALSO respecting an admin's explicit manual override of the
+    // suburb-derived rate (e.g. typing $20 instead of the default $55).
+    //
+    // Rules:
+    //  - Pickup orders: fee is always 0.
+    //  - Manually set: trust the client value verbatim (admin override).
+    //  - Otherwise: recompute from the suburbs table; if that yields 0 for a
+    //    delivery order with a suburb selected, throw so the operator can
+    //    reselect the suburb instead of undercharging.
     const clientDeliveryFee = Number(params.orderTotals.deliveryFee) || 0;
     let authoritativeDeliveryFee = clientDeliveryFee;
     const isDelivery = params.deliveryMethod === 'delivery';
     const deliverySuburbIdForLookup = isDelivery ? (params.suburbId || null) : null;
+    const manualOverride = !!params.isDeliveryFeeManuallySet;
 
-    if (isDelivery && deliverySuburbIdForLookup) {
+    if (isDelivery && deliverySuburbIdForLookup && !manualOverride) {
       const feeMap = await fetchAuthoritativeDeliveryFees(
         [deliverySuburbIdForLookup],
         paymentSettings
@@ -185,6 +194,11 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
           'Delivery fee could not be determined for the selected suburb. Please reselect the delivery suburb and try again.'
         );
       }
+    } else if (manualOverride) {
+      console.log('🚚 Using manually set delivery fee (admin override):', {
+        suburb_id: deliverySuburbIdForLookup,
+        manualDeliveryFee: clientDeliveryFee,
+      });
     }
 
     const authoritativeTotal =
@@ -403,16 +417,23 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       if (suburbId) {
         const serverFee = serverFeeBySuburbId.get(suburbId);
         if (typeof serverFee === 'number' && serverFee > 0) {
-          if (Math.abs(serverFee - clientFee) > 0.01) {
-            console.warn(`🚚 Split #${idx + 1} delivery fee mismatch — using server value`, {
+          // Respect manual admin overrides: if the client supplied a non-zero
+          // fee that differs from the suburb default, trust the admin's value.
+          // Only fall back to the server fee when the client value is 0
+          // (which indicates a stale/empty state, not an intentional override).
+          if (clientFee > 0 && Math.abs(serverFee - clientFee) > 0.01) {
+            console.warn(`🚚 Split #${idx + 1} using manually set delivery fee (admin override)`, {
               suburb_id: suburbId,
-              clientDeliveryFee: clientFee,
-              serverDeliveryFee: serverFee,
+              manualDeliveryFee: clientFee,
+              suburbDefaultFee: serverFee,
             });
+            return clientFee;
           }
           return serverFee;
         }
-        // Suburb known but no usable rate → refuse to silently undercharge.
+        // Suburb known but no usable rate → refuse to silently undercharge,
+        // unless the admin explicitly typed a non-zero fee for this split.
+        if (clientFee > 0) return clientFee;
         throw new Error(
           `Delivery fee could not be determined for split #${idx + 1}. Please reselect that split's delivery suburb and try again.`
         );
