@@ -214,7 +214,8 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
   };
   
   const handleSetPrimaryContact = async (contactId: string, contactEmail: string | null) => {
-    if (!contactEmail) {
+    // Email is only required for account customers (portal access)
+    if (customerType === 'account' && !contactEmail) {
       toast({
         title: "Email required",
         description: "Primary contact must have an email address for portal access",
@@ -223,7 +224,7 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
       return;
     }
     
-    if (!confirm("Set this contact as the primary contact for this account?")) return;
+    if (!confirm("Set this contact as the primary contact for this customer?")) return;
     
     const { error } = await supabase.rpc('set_primary_contact', {
       p_customer_id: customerId,
@@ -301,8 +302,12 @@ export function CustomerContactsManager({ customerId, customerType, onContactCha
                       <Button
                         size="sm"
                         onClick={() => handleSetPrimaryContact(contact.id, contact.email)}
-                        title="Set as Primary"
-                        disabled={!contact.email}
+                        title={
+                          customerType === 'account' && !contact.email
+                            ? "Email required for portal access"
+                            : "Set as Primary"
+                        }
+                        disabled={customerType === 'account' && !contact.email}
                       >
                         <Star className="w-4 h-4" />
                       </Button>
