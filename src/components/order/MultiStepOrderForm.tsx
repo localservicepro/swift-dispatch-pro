@@ -145,7 +145,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           deliveryAddress,
           sameAsBilling,
           suburbId: selectedSuburbId,
-          orderTotals
+          orderTotals,
+          isDeliveryFeeManuallySet,
         });
       } else {
         result = await createSplitOrder({
