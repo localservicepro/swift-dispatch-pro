@@ -406,14 +406,19 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
     }));
   };
 
+  const isBusinessCustomer = (customer: Customer) => {
+    return customer.entity_type === 'business' || customer.customer_type === 'account';
+  };
+
   const getCustomerDisplayName = (customer: Customer) => {
     const personalName = [customer.first_name, customer.last_name]
       .filter(Boolean)
       .join(' ')
       .trim();
 
-    if (customer.customer_type === 'account' && customer.company_name) {
-      return customer.company_name;
+    if (isBusinessCustomer(customer)) {
+      const businessTitle = customer.company_name || customer.business_name;
+      if (businessTitle) return businessTitle;
     }
 
     if (customer.entity_type === 'individual' && personalName) {
@@ -424,9 +429,14 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
   };
 
   const getCustomerSubtitle = (customer: Customer) => {
-    if (customer.customer_type === 'account' && customer.company_name) {
-      if (customer.first_name && customer.last_name) {
-        return `Contact: ${customer.first_name} ${customer.last_name}`;
+    const businessTitle = customer.company_name || customer.business_name;
+    if (isBusinessCustomer(customer) && businessTitle) {
+      const personalName = [customer.first_name, customer.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      if (personalName) {
+        return `Contact: ${personalName}`;
       }
       return customer.email || 'No contact details';
     }

@@ -1,50 +1,52 @@
-## Fix: Delivery fee stays $0 when "Use registered address" is ticked
+## Fix: Trade customers with a company name should display like account customers
 
 ### What's broken
 
-In Create Order → Address step, ticking **"Use Jay's registered address"** copies the customer's address and suburb (3150 Glen Waverley) into the form, but the **Delivery Fee in Order Summary stays at $0** — even though the suburb dropdown clearly shows `$55.00 (estimate)`. The user then has to manually retype 55 to fix it.
+In **Create New Order → Step 1: Select Customer**, searching for a trade business like "Rival Concrete" returns the customer but shows the contact's personal name as the title (e.g. "Rhett .") with a TRADE badge. The company name "Rival Concrete" is hidden, and there's no contact line below.
+
+For account customers, the same screen correctly shows:
+- Company name as the title (with building icon)
+- "Contact: <First Last>" line
+- Address line
+
+The team wants **trade and any other business-entity customers** to follow the same layout.
 
 ### Root cause
 
-`resetToCustomerAddress()` in `src/components/order/hooks/useOrderFormState.ts` (line 219) sets the suburb directly:
+In `src/components/order/CustomerSearchStep.tsx`:
 
-```ts
-setSelectedSuburbId(selectedCustomer.suburb_id);
-```
+- `getCustomerDisplayName()` only promotes `company_name` to the title when `customer_type === 'account'`. Trade customers with a company fall through to the personal name.
+- `getCustomerSubtitle()` only emits the "Contact: …" line for accounts.
+- The list-row and selected-customer-card icon (`Building2` vs `User`) is also gated on `customer_type === 'account'` only.
 
-This bypasses `handleSuburbChange()`, which is the only place that calls `autoPopulateDeliveryFee(...)` to look the suburb's `delivery_rate` up and push it into `manualDeliveryFee`. Result: suburb id changes, but the fee state never updates from its initial `0`.
-
-The same gap exists for **picking a suburb manually from the dropdown inside the Address step** if it is ever wired straight to `setSelectedSuburbId` — confirmed `OrderAddressForm` already routes through `handleSuburbChange`, so only the "use registered address" path is broken.
+This contradicts the project rule that any customer with `entity_type === 'business'` should display the business name as the primary identifier.
 
 ### Fix
 
-In `src/components/order/hooks/useOrderFormState.ts`, change `resetToCustomerAddress()` to route the suburb through `handleSuburbChange()` so the auto-populate flow runs:
+Update the three helpers / icon checks in `src/components/order/CustomerSearchStep.tsx` to treat **any business-entity customer** (not just accounts) the same way:
 
-```ts
-const resetToCustomerAddress = () => {
-  if (!selectedCustomer?.full_address) return;
-  setDeliveryAddress(selectedCustomer.full_address);
-  setIsUsingCustomerAddress(true);
-  setSameAsBilling(true);
+1. **`getCustomerDisplayName`** — If `entity_type === 'business'` OR `customer_type === 'account'`, prefer `company_name` (then `business_name`) as the title; fall back to personal name only if neither exists.
 
-  if (selectedCustomer.suburb_id) {
-    // Use the same path as the suburb dropdown so the delivery fee is
-    // auto-populated from the suburb's delivery_rate (incl. markup).
-    handleSuburbChange(selectedCustomer.suburb_id);
-  }
-};
+2. **`getCustomerSubtitle`** — When the title is the business name and a personal name exists, return `Contact: <First Last>`. Otherwise keep current email fallback.
+
+3. **Building icon** — In both the search-result row (line ~617) and the selected-customer card (line ~512), show `Building2` when the customer is a business entity (`entity_type === 'business' || customer_type === 'account'`), not only for accounts.
+
+4. **"Trading as" line** — The selected-customer detail block currently shows `business_name` only for accounts (line ~539). Extend it to any business-entity customer where `business_name` exists and differs from the title.
+
+### Result
+
+Searching "Rival Concrete" will display:
+
+```
+🏢 Rival Concrete                           TRADE
+   Contact: Rhett .
+   <full address>
 ```
 
-Also clear `isDeliveryFeeManuallySet` first so a stale manual-set lock from an earlier session can't suppress the auto-populate (`handleSuburbChange` already re-populates whenever `suburbChanged`, but if the user toggles the checkbox off-and-on with the same suburb id the flag would still be true — explicit reset is safer).
-
-### Acceptance
-
-1. Customer has registered suburb 3150 Glen Waverley with `$55` delivery rate.
-2. Open Create Order → Address step.
-3. Tick **Use Jay's registered address** → Order Summary **Delivery Fee = $55.00** (was $0), GST/total recalculate accordingly.
-4. Untick → fee resets to $0 (existing behaviour).
-5. Manually editing the fee after ticking still works and is preserved on Create Order (existing manual-override fix from the previous task).
+Account customers continue to render exactly as today (logic is a superset).
 
 ### Files
 
-- `src/components/order/hooks/useOrderFormState.ts` — fix `resetToCustomerAddress`.
+- `src/components/order/CustomerSearchStep.tsx` — update `getCustomerDisplayName`, `getCustomerSubtitle`, the two icon conditionals, and the "Trading as" conditional.
+
+No DB changes. No other components touched — this is an order-creation display-only fix.
