@@ -496,20 +496,38 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
   return (
     <div className="space-y-4">
+      {hasResumedDraft && (
+        <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span className="text-foreground">
+            Resumed your saved order draft. You can keep editing or start over.
+          </span>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={dismissResumedDraft}>
+              Dismiss
+            </Button>
+            <Button variant="outline" size="sm" onClick={startFresh}>
+              Start fresh
+            </Button>
+          </div>
+        </div>
+      )}
+
       {selectedCustomer && (
-        <OrderCustomerHeader 
+        <OrderCustomerHeader
           customer={selectedCustomer}
           contact={selectedContact}
           onChangeCustomer={() => setCurrentStep(1)}
         />
       )}
-      
+
       <Card>
         <CardContent className="pt-6">
           <ProgressIndicator
             currentStep={currentStep}
             totalSteps={getTotalSteps()}
             deliveryMethod={deliveryMethod}
+            maxReachedStep={maxReachedStep}
+            onStepClick={goToStep}
           />
         </CardContent>
       </Card>
