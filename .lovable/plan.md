@@ -1,52 +1,73 @@
-## Fix: Trade customers with a company name should display like account customers
+# Disable Stray Text Caret on Non-Editable Text Across the Entire App
 
-### What's broken
+## Problem
+Clicking on any plain text in the system (headings, labels, greetings like "Good evening, Jay", step labels, table cells, card titles, descriptive copy, etc.) shows a blinking text caret (`|`) as if the user can type into it. The caret should appear ONLY in real input fields (text inputs, textareas, search boxes, contenteditable areas).
 
-In **Create New Order → Step 1: Select Customer**, searching for a trade business like "Rival Concrete" returns the customer but shows the contact's personal name as the title (e.g. "Rhett .") with a TRADE badge. The company name "Rival Concrete" is hidden, and there's no contact line below.
+## Fix — Global, One-Line Solution
+Apply a global CSS rule that disables text selection (and therefore the stray caret) on the entire app by default, then re-enable selection only on actual form controls and content areas where users legitimately need to copy text.
 
-For account customers, the same screen correctly shows:
-- Company name as the title (with building icon)
-- "Contact: <First Last>" line
-- Address line
+### File to update
 
-The team wants **trade and any other business-entity customers** to follow the same layout.
+**`src/index.css`** — add a global rule near the existing `@layer base` block:
 
-### Root cause
+```css
+@layer base {
+  /* Disable text selection / caret on UI chrome by default */
+  html, body {
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
 
-In `src/components/order/CustomerSearchStep.tsx`:
+  /* Re-enable selection + native caret on real input surfaces */
+  input,
+  textarea,
+  select,
+  [contenteditable="true"],
+  [contenteditable=""] {
+    -webkit-user-select: text;
+    user-select: text;
+    cursor: text;
+  }
 
-- `getCustomerDisplayName()` only promotes `company_name` to the title when `customer_type === 'account'`. Trade customers with a company fall through to the personal name.
-- `getCustomerSubtitle()` only emits the "Contact: …" line for accounts.
-- The list-row and selected-customer-card icon (`Building2` vs `User`) is also gated on `customer_type === 'account'` only.
+  /* Buttons keep pointer cursor */
+  button,
+  [role="button"],
+  a {
+    cursor: pointer;
+  }
 
-This contradicts the project rule that any customer with `entity_type === 'business'` should display the business name as the primary identifier.
-
-### Fix
-
-Update the three helpers / icon checks in `src/components/order/CustomerSearchStep.tsx` to treat **any business-entity customer** (not just accounts) the same way:
-
-1. **`getCustomerDisplayName`** — If `entity_type === 'business'` OR `customer_type === 'account'`, prefer `company_name` (then `business_name`) as the title; fall back to personal name only if neither exists.
-
-2. **`getCustomerSubtitle`** — When the title is the business name and a personal name exists, return `Contact: <First Last>`. Otherwise keep current email fallback.
-
-3. **Building icon** — In both the search-result row (line ~617) and the selected-customer card (line ~512), show `Building2` when the customer is a business entity (`entity_type === 'business' || customer_type === 'account'`), not only for accounts.
-
-4. **"Trading as" line** — The selected-customer detail block currently shows `business_name` only for accounts (line ~539). Extend it to any business-entity customer where `business_name` exists and differs from the title.
-
-### Result
-
-Searching "Rival Concrete" will display:
-
+  /* Allow users to select important data (order numbers, addresses,
+     phone numbers, emails, invoice text, receipts) when needed */
+  .selectable,
+  .user-select-text {
+    -webkit-user-select: text;
+    user-select: text;
+    cursor: text;
+  }
+}
 ```
-🏢 Rival Concrete                           TRADE
-   Contact: Rhett .
-   <full address>
-```
 
-Account customers continue to render exactly as today (logic is a superset).
+### Why this approach
+- **One change, system-wide** — covers Dashboard ("Good evening, Jay"), Order creation, Customer pages, Driver portal, Settings, every page automatically.
+- **Native form behavior preserved** — inputs/textareas/selects/contenteditable still get a blinking caret and full text selection.
+- **Buttons & links** keep `cursor: pointer`.
+- **Escape hatch** — any element that should remain selectable (e.g., an order number a user needs to copy) can opt-in with `className="selectable"`.
 
-### Files
+### Verification
+After the change, verify:
+1. Dashboard "Good evening, Jay" — clicking shows no caret.
+2. Order creation "Delivery Address & Schedule" heading — no caret.
+3. Address input field — caret blinks normally, typing works.
+4. Suburb dropdown, date picker, time selector — all still interactive.
+5. Buttons across the app — pointer cursor, click works.
+6. Customer/order details pages — labels are not selectable, but inputs are.
+7. Driver portal cards — text is not selectable, action buttons still work.
 
-- `src/components/order/CustomerSearchStep.tsx` — update `getCustomerDisplayName`, `getCustomerSubtitle`, the two icon conditionals, and the "Trading as" conditional.
+### Optional follow-up (not required)
+If the team later wants specific text (order numbers, customer phone, address strings) to be copyable, add `className="selectable"` to those specific spans. We can do this on request — no need upfront.
 
-No DB changes. No other components touched — this is an order-creation display-only fix.
+### Files touched
+- `src/index.css` (single addition inside `@layer base`)
+
+No component files need changes.
