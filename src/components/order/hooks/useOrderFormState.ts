@@ -247,14 +247,26 @@ export function useOrderFormState() {
   const nextStep = () => {
     const totalSteps = getTotalSteps();
     setCurrentStep(prev => {
-      const next = prev + 1;
-      return Math.min(next, totalSteps);
+      const next = Math.min(prev + 1, totalSteps);
+      setMaxReachedStep(m => Math.max(m, next));
+      return next;
     });
   };
 
   const prevStep = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
+
+  // Jump to any previously reached step (used by clickable progress bar).
+  const goToStep = (step: number) => {
+    const totalSteps = getTotalSteps();
+    const target = Math.max(1, Math.min(step, totalSteps));
+    if (target <= maxReachedStep) {
+      setCurrentStep(target);
+    }
+  };
+
+  const dismissResumedDraft = () => setHasResumedDraft(false);
 
   // Calculate totals using payment settings
   const subtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
