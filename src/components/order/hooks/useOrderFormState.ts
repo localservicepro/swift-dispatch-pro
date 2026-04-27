@@ -217,14 +217,18 @@ export function useOrderFormState() {
   };
 
   const resetToCustomerAddress = () => {
-    if (selectedCustomer && selectedCustomer.full_address) {
-      setDeliveryAddress(selectedCustomer.full_address);
-      setIsUsingCustomerAddress(true);
-      setSameAsBilling(true); // Address is now same as billing
-      
-      if (selectedCustomer.suburb_id) {
-        setSelectedSuburbId(selectedCustomer.suburb_id);
-      }
+    if (!selectedCustomer?.full_address) return;
+    setDeliveryAddress(selectedCustomer.full_address);
+    setIsUsingCustomerAddress(true);
+    setSameAsBilling(true); // Address is now same as billing
+
+    if (selectedCustomer.suburb_id) {
+      // Clear any stale manual-set lock so toggling the checkbox always
+      // re-populates the fee from the customer's registered suburb rate.
+      setIsDeliveryFeeManuallySet(false);
+      // Route through handleSuburbChange so autoPopulateDeliveryFee runs and
+      // pushes the suburb's delivery_rate (incl. markup) into manualDeliveryFee.
+      handleSuburbChange(selectedCustomer.suburb_id, { __forceRepopulate: true });
     }
   };
 
