@@ -110,4 +110,52 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Disable text selection / stray caret on UI chrome by default.
+     Real input surfaces (input/textarea/select/contenteditable) are
+     re-enabled below so they keep native caret + text selection. */
+  html,
+  body {
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
+
+  input,
+  textarea,
+  select,
+  [contenteditable="true"],
+  [contenteditable=""] {
+    -webkit-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+    cursor: text;
+  }
+
+  button,
+  [role="button"],
+  a,
+  label,
+  summary,
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  /* Opt-in: add className="selectable" to allow copying specific text
+     (order numbers, addresses, phone numbers, invoice IDs, etc.). */
+  .selectable,
+  .user-select-text {
+    -webkit-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+    cursor: text;
+  }
 }
