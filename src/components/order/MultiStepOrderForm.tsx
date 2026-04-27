@@ -88,8 +88,41 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     nextStep,
     prevStep,
     setCurrentStep,
+    setMaxReachedStep,
+    goToStep,
+    maxReachedStep,
+    hasResumedDraft,
+    dismissResumedDraft,
     getTotalSteps
   } = useOrderFormState();
+
+  // Reset everything to a blank order, including the persisted draft.
+  const startFresh = () => {
+    clearOrderDraft();
+    setCurrentStep(1);
+    setMaxReachedStep(1);
+    setSelectedCustomer(null);
+    setSelectedContact(null);
+    setCart([]);
+    setAdjustments(0);
+    setDeliveryMethod("delivery");
+    setOrderType("single");
+    setSplits([]);
+    setDeliveryDate("");
+    setDeliveryTime("");
+    setPickupTiming("scheduled");
+    setSpecialInstructions("");
+    setPaymentMethod("");
+    setOrderNotes("");
+    setDeliveryNotes("");
+    setPurchaseOrder("");
+    setDeliveryAddress("");
+    setSameAsBilling(true);
+    setUseGlobalDeliveryAddress(true);
+    setSelectedSuburbId("");
+    setManualDeliveryFee(0);
+    dismissResumedDraft();
+  };
 
   // Calculate total delivery fee from all splits for split orders
   useEffect(() => {
