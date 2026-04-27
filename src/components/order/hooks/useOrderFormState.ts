@@ -116,6 +116,7 @@ export function useOrderFormState() {
       try {
         const snapshot = {
           currentStep,
+          maxReachedStep,
           selectedCustomer,
           selectedContact,
           cart,
@@ -147,7 +148,7 @@ export function useOrderFormState() {
     }, 400);
     return () => clearTimeout(handle);
   }, [
-    currentStep, selectedCustomer, selectedContact, cart, adjustments,
+    currentStep, maxReachedStep, selectedCustomer, selectedContact, cart, adjustments,
     deliveryMethod, orderType, splits, deliveryDate, deliveryTime, pickupTiming,
     specialInstructions, paymentMethod, orderNotes, deliveryNotes, purchaseOrder,
     deliveryAddress, sameAsBilling, useGlobalDeliveryAddress, selectedSuburbId,
