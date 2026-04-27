@@ -370,6 +370,9 @@ export function useOrderFormState() {
     nextStep,
     prevStep,
     setCurrentStep,
+    goToStep,
+    dismissResumedDraft,
+    setMaxReachedStep,
     getTotalSteps
   };
 }
