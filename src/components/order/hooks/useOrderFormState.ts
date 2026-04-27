@@ -306,6 +306,8 @@ export function useOrderFormState() {
   return {
     // State
     currentStep,
+    maxReachedStep,
+    hasResumedDraft,
     selectedCustomer,
     selectedContact,
     cart,
