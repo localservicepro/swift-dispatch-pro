@@ -406,14 +406,19 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
     }));
   };
 
+  const isBusinessCustomer = (customer: Customer) => {
+    return customer.entity_type === 'business' || customer.customer_type === 'account';
+  };
+
   const getCustomerDisplayName = (customer: Customer) => {
     const personalName = [customer.first_name, customer.last_name]
       .filter(Boolean)
       .join(' ')
       .trim();
 
-    if (customer.customer_type === 'account' && customer.company_name) {
-      return customer.company_name;
+    if (isBusinessCustomer(customer)) {
+      const businessTitle = customer.company_name || customer.business_name;
+      if (businessTitle) return businessTitle;
     }
 
     if (customer.entity_type === 'individual' && personalName) {
@@ -424,9 +429,14 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
   };
 
   const getCustomerSubtitle = (customer: Customer) => {
-    if (customer.customer_type === 'account' && customer.company_name) {
-      if (customer.first_name && customer.last_name) {
-        return `Contact: ${customer.first_name} ${customer.last_name}`;
+    const businessTitle = customer.company_name || customer.business_name;
+    if (isBusinessCustomer(customer) && businessTitle) {
+      const personalName = [customer.first_name, customer.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      if (personalName) {
+        return `Contact: ${personalName}`;
       }
       return customer.email || 'No contact details';
     }
@@ -509,7 +519,7 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
             <div className="border rounded-lg p-4 bg-green-50">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  {selectedCustomer.customer_type === 'account' ? (
+                  {isBusinessCustomer(selectedCustomer) ? (
                     <Building2 className="w-5 h-5 text-blue-600" />
                   ) : (
                     <User className="w-5 h-5 text-green-600" />
@@ -536,7 +546,7 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
                     Phone: {selectedCustomer.phone}
                   </div>
                 )}
-                {selectedCustomer.customer_type === 'account' && selectedCustomer.business_name && (
+                {isBusinessCustomer(selectedCustomer) && selectedCustomer.business_name && selectedCustomer.business_name !== getCustomerDisplayName(selectedCustomer) && (
                   <div className="flex items-center gap-2 md:col-span-2">
                     <Building2 className="w-4 h-4 text-gray-500" />
                     Trading as: {selectedCustomer.business_name}
@@ -614,7 +624,7 @@ export function CustomerSearchStep({ selectedCustomer, selectedContact, onCustom
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        {customer.customer_type === 'account' ? (
+                        {isBusinessCustomer(customer) ? (
                           <Building2 className="w-4 h-4 text-blue-600" />
                         ) : (
                           <User className="w-4 h-4 text-green-600" />
