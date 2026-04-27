@@ -229,6 +229,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
       // Reset form after successful creation
       setCurrentStep(1);
+      setMaxReachedStep(1);
+      dismissResumedDraft();
       setSelectedCustomer(null);
       setSelectedContact(null);
       setCart([]);
