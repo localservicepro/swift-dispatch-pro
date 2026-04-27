@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -87,8 +88,41 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     nextStep,
     prevStep,
     setCurrentStep,
+    setMaxReachedStep,
+    goToStep,
+    maxReachedStep,
+    hasResumedDraft,
+    dismissResumedDraft,
     getTotalSteps
   } = useOrderFormState();
+
+  // Reset everything to a blank order, including the persisted draft.
+  const startFresh = () => {
+    clearOrderDraft();
+    setCurrentStep(1);
+    setMaxReachedStep(1);
+    setSelectedCustomer(null);
+    setSelectedContact(null);
+    setCart([]);
+    setAdjustments(0);
+    setDeliveryMethod("delivery");
+    setOrderType("single");
+    setSplits([]);
+    setDeliveryDate("");
+    setDeliveryTime("");
+    setPickupTiming("scheduled");
+    setSpecialInstructions("");
+    setPaymentMethod("");
+    setOrderNotes("");
+    setDeliveryNotes("");
+    setPurchaseOrder("");
+    setDeliveryAddress("");
+    setSameAsBilling(true);
+    setUseGlobalDeliveryAddress(true);
+    setSelectedSuburbId("");
+    setManualDeliveryFee(0);
+    dismissResumedDraft();
+  };
 
   // Calculate total delivery fee from all splits for split orders
   useEffect(() => {
@@ -195,6 +229,8 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
       // Reset form after successful creation
       setCurrentStep(1);
+      setMaxReachedStep(1);
+      dismissResumedDraft();
       setSelectedCustomer(null);
       setSelectedContact(null);
       setCart([]);
@@ -460,20 +496,38 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
   return (
     <div className="space-y-4">
+      {hasResumedDraft && (
+        <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span className="text-foreground">
+            Resumed your saved order draft. You can keep editing or start over.
+          </span>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={dismissResumedDraft}>
+              Dismiss
+            </Button>
+            <Button variant="outline" size="sm" onClick={startFresh}>
+              Start fresh
+            </Button>
+          </div>
+        </div>
+      )}
+
       {selectedCustomer && (
-        <OrderCustomerHeader 
+        <OrderCustomerHeader
           customer={selectedCustomer}
           contact={selectedContact}
           onChangeCustomer={() => setCurrentStep(1)}
         />
       )}
-      
+
       <Card>
         <CardContent className="pt-6">
           <ProgressIndicator
             currentStep={currentStep}
             totalSteps={getTotalSteps()}
             deliveryMethod={deliveryMethod}
+            maxReachedStep={maxReachedStep}
+            onStepClick={goToStep}
           />
         </CardContent>
       </Card>

@@ -24,6 +24,14 @@ function loadDraft(): any | null {
 export function useOrderFormState() {
   const draft = loadDraft();
   const [currentStep, setCurrentStep] = useState<number>(draft?.currentStep ?? 1);
+  const [maxReachedStep, setMaxReachedStep] = useState<number>(
+    draft?.maxReachedStep ?? draft?.currentStep ?? 1
+  );
+  // True only on the initial render after restoring a non-trivial draft so
+  // the form can show a "resumed" banner.
+  const [hasResumedDraft, setHasResumedDraft] = useState<boolean>(
+    !!draft && (!!draft.selectedCustomer || (Array.isArray(draft.cart) && draft.cart.length > 0))
+  );
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(draft?.selectedCustomer ?? null);
   const [selectedContact, setSelectedContact] = useState<SelectedContact | null>(draft?.selectedContact ?? null);
   const [cart, setCart] = useState<CartItem[]>(draft?.cart ?? []);
@@ -108,6 +116,7 @@ export function useOrderFormState() {
       try {
         const snapshot = {
           currentStep,
+          maxReachedStep,
           selectedCustomer,
           selectedContact,
           cart,
@@ -139,7 +148,7 @@ export function useOrderFormState() {
     }, 400);
     return () => clearTimeout(handle);
   }, [
-    currentStep, selectedCustomer, selectedContact, cart, adjustments,
+    currentStep, maxReachedStep, selectedCustomer, selectedContact, cart, adjustments,
     deliveryMethod, orderType, splits, deliveryDate, deliveryTime, pickupTiming,
     specialInstructions, paymentMethod, orderNotes, deliveryNotes, purchaseOrder,
     deliveryAddress, sameAsBilling, useGlobalDeliveryAddress, selectedSuburbId,
@@ -238,14 +247,26 @@ export function useOrderFormState() {
   const nextStep = () => {
     const totalSteps = getTotalSteps();
     setCurrentStep(prev => {
-      const next = prev + 1;
-      return Math.min(next, totalSteps);
+      const next = Math.min(prev + 1, totalSteps);
+      setMaxReachedStep(m => Math.max(m, next));
+      return next;
     });
   };
 
   const prevStep = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
+
+  // Jump to any previously reached step (used by clickable progress bar).
+  const goToStep = (step: number) => {
+    const totalSteps = getTotalSteps();
+    const target = Math.max(1, Math.min(step, totalSteps));
+    if (target <= maxReachedStep) {
+      setCurrentStep(target);
+    }
+  };
+
+  const dismissResumedDraft = () => setHasResumedDraft(false);
 
   // Calculate totals using payment settings
   const subtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
@@ -285,6 +306,8 @@ export function useOrderFormState() {
   return {
     // State
     currentStep,
+    maxReachedStep,
+    hasResumedDraft,
     selectedCustomer,
     selectedContact,
     cart,
@@ -347,6 +370,9 @@ export function useOrderFormState() {
     nextStep,
     prevStep,
     setCurrentStep,
+    goToStep,
+    dismissResumedDraft,
+    setMaxReachedStep,
     getTotalSteps
   };
 }
