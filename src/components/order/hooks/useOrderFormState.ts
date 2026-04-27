@@ -24,6 +24,14 @@ function loadDraft(): any | null {
 export function useOrderFormState() {
   const draft = loadDraft();
   const [currentStep, setCurrentStep] = useState<number>(draft?.currentStep ?? 1);
+  const [maxReachedStep, setMaxReachedStep] = useState<number>(
+    draft?.maxReachedStep ?? draft?.currentStep ?? 1
+  );
+  // True only on the initial render after restoring a non-trivial draft so
+  // the form can show a "resumed" banner.
+  const [hasResumedDraft, setHasResumedDraft] = useState<boolean>(
+    !!draft && (!!draft.selectedCustomer || (Array.isArray(draft.cart) && draft.cart.length > 0))
+  );
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(draft?.selectedCustomer ?? null);
   const [selectedContact, setSelectedContact] = useState<SelectedContact | null>(draft?.selectedContact ?? null);
   const [cart, setCart] = useState<CartItem[]>(draft?.cart ?? []);
