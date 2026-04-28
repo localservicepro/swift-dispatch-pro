@@ -111,25 +111,21 @@
     @apply bg-background text-foreground;
   }
 
-  /* Disable text selection / stray caret on UI chrome by default.
-     Real input surfaces (input/textarea/select/contenteditable) are
-     re-enabled below so they keep native caret + text selection. */
+  /* Hide stray blinking caret on non-editable text everywhere,
+     but keep text selection + copy fully functional. */
   html,
   body {
-    -webkit-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+    caret-color: transparent;
     cursor: default;
   }
 
+  /* Real input surfaces get a visible caret + text cursor. */
   input,
   textarea,
   select,
   [contenteditable="true"],
   [contenteditable=""] {
-    -webkit-user-select: text;
-    -ms-user-select: text;
-    user-select: text;
+    caret-color: auto;
     cursor: text;
   }
 
