@@ -235,13 +235,16 @@ export function ProductSelectionStep({
     loadProducts();
   }, [loadProducts]);
 
-  // Load specials when products change
+  // Load specials when the set of product IDs changes (ignore reference-only changes)
+  const productIdsKey = useMemo(
+    () => products.map(p => p.id).sort().join(','),
+    [products]
+  );
   useEffect(() => {
-    if (products.length > 0) {
-      const productIds = products.map(p => p.id);
-      loadSpecialsForProductsBatched(productIds);
-    }
-  }, [products, loadSpecialsForProductsBatched]);
+    if (!productIdsKey) return;
+    loadSpecialsForProductsBatched(productIdsKey.split(','));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productIdsKey]);
 
 
   const getProductPrice = useCallback((product: Product) => {

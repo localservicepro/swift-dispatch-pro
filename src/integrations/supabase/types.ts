@@ -2727,6 +2727,17 @@ export type Database = {
           special_name: string
         }[]
       }
+      get_active_specials_for_products: {
+        Args: { customer_tier_param?: string; product_ids_param: string[] }
+        Returns: {
+          discount_type: Database["public"]["Enums"]["discount_type"]
+          discount_value: number
+          end_date: string
+          product_id: string
+          special_id: string
+          special_name: string
+        }[]
+      }
       get_back_order_summary: {
         Args: never
         Returns: {
