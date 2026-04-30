@@ -45,6 +45,7 @@ interface ProductSelectionStepProps {
   onAdjustmentsChange: (adjustments: number) => void;
   onNext: () => void;
   onBack: () => void;
+  customerTier?: string;
 }
 
 export function ProductSelectionStep({
@@ -54,7 +55,8 @@ export function ProductSelectionStep({
   onCartUpdate,
   onAdjustmentsChange,
   onNext,
-  onBack
+  onBack,
+  customerTier = 'residential'
 }: ProductSelectionStepProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
