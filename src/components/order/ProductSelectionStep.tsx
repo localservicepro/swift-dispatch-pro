@@ -68,7 +68,6 @@ export function ProductSelectionStep({
   const [adjustmentValue, setAdjustmentValue] = useState<string>("");
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
-  const [specialsLoading, setSpecialsLoading] = useState(false);
   const { toast } = useToast();
   const { loadSpecialsForProducts, hasActiveSpecial, getSpecialForProduct, applySpecialDiscount } = useSpecialPricing();
   
