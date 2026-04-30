@@ -318,12 +318,22 @@ export function OrderReviewStep({
                       const cartItem = cart.find(item => item.product.id === splitProduct.productId);
                       if (!cartItem) return null;
                       const splitTotal = cartItem.unit_price * splitProduct.quantity;
+                      const originalPrice = (cartItem.product as any).price;
+                      const hasDiscount = typeof originalPrice === 'number' && originalPrice > cartItem.unit_price + 0.001;
                       return (
                         <div key={productIndex} className="flex justify-between items-center p-2 bg-white rounded border">
                           <div>
                             <p className="text-sm font-medium">{cartItem.product.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              AU${cartItem.unit_price.toFixed(2)} × {splitProduct.quantity}
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              {hasDiscount && (
+                                <span className="line-through text-muted-foreground/70">
+                                  AU${originalPrice.toFixed(2)}
+                                </span>
+                              )}
+                              <span className={hasDiscount ? "text-red-600 font-medium" : ""}>
+                                AU${cartItem.unit_price.toFixed(2)}
+                              </span>
+                              <span>× {splitProduct.quantity}</span>
                             </p>
                           </div>
                           <p className="text-sm font-semibold">AU${splitTotal.toFixed(2)}</p>
@@ -337,17 +347,29 @@ export function OrderReviewStep({
                 </div>
               ))
             ) : (
-              cart.map((item, index) => (
-                <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{item.product.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      AU${item.unit_price.toFixed(2)} × {item.quantity}
-                    </p>
+              cart.map((item, index) => {
+                const originalPrice = (item.product as any).price;
+                const hasDiscount = typeof originalPrice === 'number' && originalPrice > item.unit_price + 0.001;
+                return (
+                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium">{item.product.name}</p>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        {hasDiscount && (
+                          <span className="line-through text-muted-foreground/70">
+                            AU${originalPrice.toFixed(2)}
+                          </span>
+                        )}
+                        <span className={hasDiscount ? "text-red-600 font-medium" : ""}>
+                          AU${item.unit_price.toFixed(2)}
+                        </span>
+                        <span>× {item.quantity}</span>
+                      </p>
+                    </div>
+                    <p className="font-semibold">AU${item.total_price.toFixed(2)}</p>
                   </div>
-                  <p className="font-semibold">AU${item.total_price.toFixed(2)}</p>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
