@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ProductSpecial {
@@ -14,7 +13,7 @@ export function useSpecialPricing() {
   const [specials, setSpecials] = useState<Map<string, ProductSpecial>>(new Map());
   const [loading, setLoading] = useState(false);
 
-  const getActiveSpecialForProduct = async (productId: string, customerTier: string = 'trade') => {
+  const getActiveSpecialForProduct = useCallback(async (productId: string, customerTier: string = 'trade') => {
     try {
       const { data, error } = await supabase
         .rpc('get_active_specials_for_product', {
@@ -32,9 +31,9 @@ export function useSpecialPricing() {
       console.error('Error fetching special:', error);
       return null;
     }
-  };
+  }, []);
 
-  const calculateSpecialPrice = async (basePrice: number, productId: string, customerTier: string = 'trade') => {
+  const calculateSpecialPrice = useCallback(async (basePrice: number, productId: string, customerTier: string = 'trade') => {
     try {
       const { data, error } = await supabase
         .rpc('calculate_special_price', {
@@ -53,9 +52,9 @@ export function useSpecialPricing() {
       console.error('Error calculating special price:', error);
       return basePrice;
     }
-  };
+  }, []);
 
-  const loadSpecialsForProducts = async (productIds: string[], customerTier: string = 'trade') => {
+  const loadSpecialsForProducts = useCallback(async (productIds: string[], customerTier: string = 'trade') => {
     if (!productIds || productIds.length === 0) {
       setSpecials(new Map());
       return;
@@ -65,14 +64,13 @@ export function useSpecialPricing() {
     const specialsMap = new Map<string, ProductSpecial>();
 
     try {
-      // Single batched RPC call instead of one-per-product loop
       const { data, error } = await supabase.rpc('get_active_specials_for_products', {
         product_ids_param: productIds,
         customer_tier_param: customerTier,
       });
 
       if (error) {
-        console.error('Error loading specials for products:', error);
+        console.error('[useSpecialPricing] RPC error:', error);
       } else if (data) {
         for (const row of data as any[]) {
           specialsMap.set(row.product_id, {
@@ -83,24 +81,28 @@ export function useSpecialPricing() {
             end_date: row.end_date,
           });
         }
+        console.debug(
+          `[useSpecialPricing] Loaded ${specialsMap.size} specials for ${productIds.length} products (tier: ${customerTier})`
+        );
       }
       setSpecials(specialsMap);
     } catch (error) {
-      console.error('Error loading specials for products:', error);
+      console.error('[useSpecialPricing] Unexpected error loading specials:', error);
+      setSpecials(new Map());
     }
 
     setLoading(false);
-  };
+  }, []);
 
-  const hasActiveSpecial = (productId: string) => {
+  const hasActiveSpecial = useCallback((productId: string) => {
     return specials.has(productId);
-  };
+  }, [specials]);
 
-  const getSpecialForProduct = (productId: string) => {
+  const getSpecialForProduct = useCallback((productId: string) => {
     return specials.get(productId);
-  };
+  }, [specials]);
 
-  const applySpecialDiscount = (price: number, productId: string) => {
+  const applySpecialDiscount = useCallback((price: number, productId: string) => {
     const special = specials.get(productId);
     if (!special) return price;
 
@@ -109,7 +111,7 @@ export function useSpecialPricing() {
     } else {
       return Math.max(0, price - special.discount_value);
     }
-  };
+  }, [specials]);
 
   return {
     specials,

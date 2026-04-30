@@ -1,57 +1,48 @@
-# Fix slow "apply specials" in order forms
-
 ## Problem
 
-When opening the order/product selection step, the app calls a Postgres RPC **once per product** in a sequential `for` loop. With 866 active products that's 866 round-trips, even though there are currently **0 active specials** — so users wait 60+ seconds for nothing.
+The "Test Special" (10% off Bag Products, tiers: trade + account) is correctly stored in the database and the `get_active_specials_for_products` RPC returns 22 matching products when called directly. But on Step 2 "Select Products" of order creation, no SPECIAL badges or discounted prices appear.
 
-Bottleneck (in `src/hooks/useSpecialPricing.ts`):
+## Root Causes
 
-```ts
-for (const productId of productIds) {
-  const special = await getActiveSpecialForProduct(productId, customerTier); // 1 network call each
-}
-```
+1. **Hardcoded `'trade'` tier in `ProductSelectionStep`** — `loadSpecialsForProducts` is called without a `customerTier` argument, so it always defaults to `'trade'`. If the selected customer is `residential` (or any non-matching tier), the RPC returns nothing and no specials show. The selected customer's `customer_type` is never propagated into the hook.
 
-Called from:
-- `src/components/order/ProductSelectionStep.tsx` (every time products list loads)
-- `src/components/product/ProductList.tsx`
+2. **`specialsLoading` guard creates a race** — `loadSpecialsForProductsBatched` checks `if (productIds.length === 0 || specialsLoading) return` and is recreated whenever `specialsLoading` flips. The effect only depends on `productIdsKey`, so when the product list changes during an in-flight load (e.g., after search/filter), the new batch is silently dropped.
 
-## Solution
+3. **Unstable hook functions** — `useSpecialPricing` returns new function references every render, including `loadSpecialsForProducts`. Combined with #2 this can lead to stale closures.
 
-Replace the per-product loop with a single batch query that fetches all currently-active specials and matches them client-side against the requested product IDs and their categories.
+4. **No visible logging** — silent failures in the RPC call or empty-response paths give no feedback for debugging in the field.
 
-### 1. New batch DB function (single round-trip)
+## Fix
 
-Create `get_active_specials_for_products(product_ids uuid[], customer_tier text)` that returns one row per matched product with the best discount, using the same logic as the existing single-product function but in one set-based query.
+### 1. Pass the customer's tier into `ProductSelectionStep`
 
-```text
-INPUT : product_ids[], customer_tier
-OUTPUT: product_id, special_id, special_name, discount_type, discount_value, end_date
-       (DISTINCT ON (product_id) ORDER BY discount_value DESC)
-```
+`MultiStepOrderForm.tsx` and `CustomerOrderCreate.tsx` both render `ProductSelectionStep`. They have access to the selected customer object containing `customer_type` (`residential` | `trade` | `account`).
 
-Keep the existing single-product function for backward compatibility.
+- Add an optional `customerTier?: string` prop to `ProductSelectionStep`.
+- From parents, derive it from the selected customer: `customer.customer_type ?? 'residential'` and pass it.
+- Use the prop when calling `loadSpecialsForProducts(ids, customerTier)`.
+- Re-trigger the load when `customerTier` changes (add to the effect's dependency key).
 
-### 2. Rewrite `useSpecialPricing.loadSpecialsForProducts`
+### 2. Make `useSpecialPricing` callbacks stable
 
-- Single `supabase.rpc('get_active_specials_for_products', { product_ids, customer_tier })` call.
-- Build the `Map<productId, ProductSpecial>` from the returned rows.
-- Early-exit if `productIds.length === 0`.
+Wrap `loadSpecialsForProducts`, `getSpecialForProduct`, `hasActiveSpecial`, and `applySpecialDiscount` in `useCallback` so their identities don't change every render. Drop the redundant local `setSpecialsLoading` in `ProductSelectionStep` (use the hook's `loading` instead) and remove the `specialsLoading` guard so legitimate refetches aren't dropped.
 
-### 3. Minor guard in `ProductSelectionStep.tsx`
+### 3. Stabilise the load effect
 
-- Track the last loaded product-id set (sorted+joined as a key) so the effect doesn't re-run when the array reference changes but the IDs are identical.
+Replace the wrapper `loadSpecialsForProductsBatched` with a direct call inside the effect, keyed by `productIdsKey + customerTier`. Add a small `console.debug` log of the call args + result count so the next regression is observable.
 
-## Expected result
+### 4. Verify Special UI also covers FloatingCart
 
-- 866 sequential calls → 1 call.
-- Applying specials drops from ~60s to <500ms regardless of catalogue size.
-- No behavior change when specials exist (same selection logic, same discount math).
+`FloatingCart` already receives `hasActiveSpecial` and `getProductPrice`; once the map populates correctly the cart line totals will reflect the discount automatically. No change needed there beyond verifying.
 
 ## Files to change
 
-- `supabase/migrations/*` — new `get_active_specials_for_products` function (set search_path to 'public', SECURITY INVOKER, STABLE).
-- `src/hooks/useSpecialPricing.ts` — replace loop with batch RPC.
-- `src/components/order/ProductSelectionStep.tsx` — add stable-key guard on the load effect.
+- `src/hooks/useSpecialPricing.ts` — memoise returned callbacks, keep batched RPC call, add debug logging.
+- `src/components/order/ProductSelectionStep.tsx` — accept `customerTier` prop, remove `specialsLoading` guard and wrapper, key effect on `productIdsKey + customerTier`.
+- `src/components/order/MultiStepOrderForm.tsx` — pass `customerTier` derived from selected customer to `ProductSelectionStep`.
+- `src/components/customer/CustomerOrderCreate.tsx` — same prop pass-through (use `'residential'` if no customer object available in that flow).
 
-No UI changes, no schema changes to existing tables.
+## Out of scope
+
+- No DB migration needed. The `get_active_specials_for_products` function already works correctly (verified: returns 22 rows for the Bag Products + 'trade' tier).
+- Special creation/editing UI in `SpecialManagement` is unchanged.
