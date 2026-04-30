@@ -181,6 +181,7 @@ export function CustomerOrderCreate({ customer, onClose, onSuccess }: CustomerOr
                 onAdjustmentsChange={() => {}}
                 onNext={() => setStep('method')}
                 onBack={onClose}
+                customerTier={customer?.customer_type ?? 'residential'}
               />
               <div className="flex justify-between mt-6">
                 <Button variant="outline" onClick={onClose}>Cancel</Button>
