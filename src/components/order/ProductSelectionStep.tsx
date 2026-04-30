@@ -45,6 +45,7 @@ interface ProductSelectionStepProps {
   onAdjustmentsChange: (adjustments: number) => void;
   onNext: () => void;
   onBack: () => void;
+  customerTier?: string;
 }
 
 export function ProductSelectionStep({
@@ -54,7 +55,8 @@ export function ProductSelectionStep({
   onCartUpdate,
   onAdjustmentsChange,
   onNext,
-  onBack
+  onBack,
+  customerTier = 'residential'
 }: ProductSelectionStepProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
@@ -66,7 +68,6 @@ export function ProductSelectionStep({
   const [adjustmentValue, setAdjustmentValue] = useState<string>("");
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
-  const [specialsLoading, setSpecialsLoading] = useState(false);
   const { toast } = useToast();
   const { loadSpecialsForProducts, hasActiveSpecial, getSpecialForProduct, applySpecialDiscount } = useSpecialPricing();
   
@@ -197,17 +198,6 @@ export function ProductSelectionStep({
     setLoading(false);
   }, [debouncedSearchQuery, selectedCategory, stockFilter]);
 
-  const loadSpecialsForProductsBatched = useCallback(async (productIds: string[]) => {
-    if (productIds.length === 0 || specialsLoading) return;
-    
-    setSpecialsLoading(true);
-    try {
-      await loadSpecialsForProducts(productIds);
-    } finally {
-      setSpecialsLoading(false);
-    }
-  }, [loadSpecialsForProducts, specialsLoading]);
-
   // Load categories and set up realtime subscription on mount
   useEffect(() => {
     loadCategories();
@@ -215,7 +205,7 @@ export function ProductSelectionStep({
     // Set up realtime subscription with proper cleanup
     const channel = supabase
       .channel('product-selection-changes')
-      .on('postgres_changes', 
+      .on('postgres_changes',
         { event: '*', schema: 'public', table: 'products' },
         () => {
           console.log('Products table changed, reloading...');
@@ -235,16 +225,15 @@ export function ProductSelectionStep({
     loadProducts();
   }, [loadProducts]);
 
-  // Load specials when the set of product IDs changes (ignore reference-only changes)
+  // Load specials when the set of product IDs or the customer tier changes
   const productIdsKey = useMemo(
     () => products.map(p => p.id).sort().join(','),
     [products]
   );
   useEffect(() => {
     if (!productIdsKey) return;
-    loadSpecialsForProductsBatched(productIdsKey.split(','));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productIdsKey]);
+    loadSpecialsForProducts(productIdsKey.split(','), customerTier);
+  }, [productIdsKey, customerTier, loadSpecialsForProducts]);
 
 
   const getProductPrice = useCallback((product: Product) => {

@@ -314,6 +314,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             onAdjustmentsChange={setAdjustments}
             onBack={prevStep}
             onNext={nextStep}
+            customerTier={selectedCustomer?.customer_type ?? 'residential'}
           />
         );
 
