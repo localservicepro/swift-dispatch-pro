@@ -56,14 +56,32 @@ export function useSpecialPricing() {
   };
 
   const loadSpecialsForProducts = async (productIds: string[], customerTier: string = 'trade') => {
+    if (!productIds || productIds.length === 0) {
+      setSpecials(new Map());
+      return;
+    }
+
     setLoading(true);
     const specialsMap = new Map<string, ProductSpecial>();
 
     try {
-      for (const productId of productIds) {
-        const special = await getActiveSpecialForProduct(productId, customerTier);
-        if (special) {
-          specialsMap.set(productId, special);
+      // Single batched RPC call instead of one-per-product loop
+      const { data, error } = await supabase.rpc('get_active_specials_for_products', {
+        product_ids_param: productIds,
+        customer_tier_param: customerTier,
+      });
+
+      if (error) {
+        console.error('Error loading specials for products:', error);
+      } else if (data) {
+        for (const row of data as any[]) {
+          specialsMap.set(row.product_id, {
+            special_id: row.special_id,
+            special_name: row.special_name,
+            discount_type: row.discount_type,
+            discount_value: Number(row.discount_value),
+            end_date: row.end_date,
+          });
         }
       }
       setSpecials(specialsMap);
