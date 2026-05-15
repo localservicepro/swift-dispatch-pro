@@ -22,6 +22,11 @@ const menuItems = [{
   id: "orders",
   path: "/orders"
 }, {
+  title: "Reports",
+  icon: FileBarChart,
+  id: "reports",
+  path: "/reports/product-sales"
+}, {
   title: "Products",
   icon: Package,
   id: "products",
