@@ -66,9 +66,15 @@ export function useProductSalesReport({ productIds, start, end, customerType, en
           if (new Date(r.last_order) > new Date(existing.last_order)) existing.last_order = r.last_order;
           existing.perProduct[r.product_id] = (existing.perProduct[r.product_id] ?? 0) + Number(r.total_quantity);
         } else {
+          const personalName = r.customer_name ?? "Unknown";
+          const isBusiness = r.entity_type === "business" && !!r.business_name;
+          const display = isBusiness ? (r.business_name as string) : personalName;
           map.set(key, {
             customer_id: r.customer_id,
-            customer_name: r.customer_name ?? "Unknown",
+            customer_name: personalName,
+            display_name: display,
+            business_name: r.business_name,
+            entity_type: r.entity_type,
             customer_type: r.customer_type,
             total_quantity: Number(r.total_quantity),
             total_amount: Number(r.total_amount),
