@@ -17,6 +17,7 @@ import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
 import Storefront from "./pages/Storefront";
 import MyProfile from "./pages/MyProfile";
+import Reports from "./pages/Reports";
 import { useUserRole } from "./hooks/useUserRole";
 import { DashboardOverview } from "@/components/DashboardOverview";
 import { OpportunityPipeline } from "@/components/OpportunityPipeline";
