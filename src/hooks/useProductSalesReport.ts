@@ -39,7 +39,7 @@ export function useProductSalesReport({ productIds, start, end, customerType, en
     queryKey: ["product-sales-report", productIds, start.toISOString(), end.toISOString(), customerType ?? "all"],
     enabled: enabled && productIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_product_sales_by_customer", {
+      const { data, error } = await (supabase.rpc as any)("get_product_sales_by_customer", {
         p_product_ids: productIds,
         p_start: start.toISOString(),
         p_end: end.toISOString(),
