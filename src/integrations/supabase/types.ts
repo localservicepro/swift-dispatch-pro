@@ -2774,9 +2774,11 @@ export type Database = {
           p_start: string
         }
         Returns: {
+          business_name: string
           customer_id: string
           customer_name: string
           customer_type: string
+          entity_type: string
           first_order: string
           last_order: string
           order_count: number
