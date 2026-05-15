@@ -209,7 +209,12 @@ export function ProductSalesByCustomer() {
                     const colors = getCustomerTypeColors(r.customer_type);
                     return (
                       <tr key={r.customer_id ?? r.customer_name} className={cn("border-b", colors.leftBorder)}>
-                        <td className="px-3 py-2 font-medium">{r.customer_name}</td>
+                        <td className="px-3 py-2 font-medium">
+                          <div>{r.display_name}</div>
+                          {r.entity_type === "business" && r.business_name && r.customer_name && r.customer_name !== r.business_name && (
+                            <div className="text-xs text-muted-foreground font-normal">{r.customer_name}</div>
+                          )}
+                        </td>
                         <td className="px-3 py-2">
                           <Badge variant="secondary">{getCustomerTypeLabel(r.customer_type)}</Badge>
                         </td>
