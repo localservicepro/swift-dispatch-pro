@@ -2758,6 +2758,28 @@ export type Database = {
           product_name: string
         }[]
       }
+      get_product_orders_by_customer: {
+        Args: {
+          p_customer_type?: string
+          p_end: string
+          p_product_ids: string[]
+          p_start: string
+        }
+        Returns: {
+          business_name: string
+          customer_id: string
+          customer_name: string
+          customer_type: string
+          entity_type: string
+          line_total: number
+          order_date: string
+          order_id: string
+          order_number: string
+          product_id: string
+          product_name: string
+          quantity: number
+        }[]
+      }
       get_product_price: {
         Args: {
           customer_type_param?: string
