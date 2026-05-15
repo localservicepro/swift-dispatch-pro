@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { BarChart3, Package, ShoppingCart, Users, CreditCard, Mail, Settings, Users2, Target, Truck, MapPin, BookOpen, User } from "lucide-react";
+import { BarChart3, Package, ShoppingCart, Users, CreditCard, Mail, Settings, Users2, Target, Truck, MapPin, BookOpen, User, FileBarChart } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -21,6 +21,11 @@ const menuItems = [{
   icon: ShoppingCart,
   id: "orders",
   path: "/orders"
+}, {
+  title: "Reports",
+  icon: FileBarChart,
+  id: "reports",
+  path: "/reports/product-sales"
 }, {
   title: "Products",
   icon: Package,

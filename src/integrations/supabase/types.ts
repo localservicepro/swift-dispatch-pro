@@ -2766,6 +2766,26 @@ export type Database = {
         }
         Returns: number
       }
+      get_product_sales_by_customer: {
+        Args: {
+          p_customer_type?: string
+          p_end: string
+          p_product_ids: string[]
+          p_start: string
+        }
+        Returns: {
+          customer_id: string
+          customer_name: string
+          customer_type: string
+          first_order: string
+          last_order: string
+          order_count: number
+          product_id: string
+          product_name: string
+          total_amount: number
+          total_quantity: number
+        }[]
+      }
       get_stripe_settings: { Args: never; Returns: Json }
       get_truck_display_info: {
         Args: { truck_type_param: Database["public"]["Enums"]["truck_type"] }
