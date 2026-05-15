@@ -80,6 +80,7 @@ function AuthenticatedApp() {
         <Route path="dashboard" element={<DashboardOverview />} />
         <Route path="opportunities" element={<OpportunityPipeline />} />
         <Route path="orders" element={<OrderManagement />} />
+        <Route path="reports/product-sales" element={<Reports />} />
         <Route path="products" element={<ProductManagement />} />
         <Route path="customers" element={<CustomerManagement />} />
         <Route path="payments" element={<PaymentManagement />} />
