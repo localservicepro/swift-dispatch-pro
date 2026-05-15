@@ -1,67 +1,39 @@
-## Product Sales by Customer report
+## Goal
+Surface the actual order numbers behind each customer row in the Product Sales report, with a click-to-open order dialog.
 
-A new admin report that answers "who bought product X (and how much) between these dates?" — like the GP Cement query above.
+## UX
+- Each customer row in `ProductSalesByCustomer` becomes expandable (chevron in the first cell). Default collapsed.
+- Expanding the row reveals a nested table of that customer's matching orders within the report's filters:
+  - Order Number (clickable, primary color)
+  - Date
+  - Products purchased (selected products only) with quantities
+  - Order subtotal (sum of selected line items)
+- Clicking an order number opens the existing `OrderEditDialog` over the report (matches the current order opening flow used elsewhere).
+- CSV export gets an extra "Orders" column listing the matching order numbers per customer (comma-separated). Aggregated rows stay otherwise unchanged.
 
-### Where it lives
-- New page/tab under Order Management: **Reports → Product Sales by Customer**
-  - Add a top-level "Reports" section in `AdminSidebar.tsx`, or a "Reports" sub-tab inside the existing Orders page (TBD; default: new sidebar item `/reports/product-sales`).
+## Data layer
+Update the `get_product_sales_by_customer` Postgres function to additionally return per-customer/per-product order detail. Two options; will use approach A:
 
-### Filters (top of the page)
-1. **Date range** — preset chips + custom range
-   - Presets: Today, Last 7 days, Last 30 days, This month, Last month, Custom
-   - Custom uses two shadcn date-pickers (DD/MM/YYYY display)
-   - Default selection: **Last 30 days**
-2. **Products** — multi-select searchable combobox
-   - Pulls from `products` (active only), shows name + SKU
-   - Selected items shown as removable chips
-3. **Customer type** (optional secondary filter) — All / Account / Trade / Residential
-4. **Apply / Reset** buttons
+- **A (chosen):** Add a sibling RPC `get_product_orders_by_customer` returning one row per (customer, order, product) with: `customer_id, order_id, order_number, order_date, product_id, product_name, quantity, line_total`. The report calls this once and aggregates client-side for both the existing customer view and the new expanded list. This avoids JSON columns and keeps the original aggregate function unchanged for compatibility.
+- (B rejected: embedding a JSON `orders` array in the existing function — harder to type and breaks current consumers.)
 
-### Results table
-Columns:
-- Customer (links to customer detail)
-- Customer type badge (existing color tokens)
-- Total quantity (summed across selected products)
-- Per-product quantity breakdown (one column per selected product, or expandable row)
-- Order count
-- First order date / Last order date (DD/MM/YYYY)
-- Total spend on those line items
+The new RPC respects the same filters: `p_product_ids`, `p_start`, `p_end`, `p_customer_type`. Security definer + search_path = public.
 
-Sortable headers; default sort: total quantity desc.
+## Frontend changes
+- `useProductSalesReport.ts`: switch to the new RPC; build `CustomerAggregate` from the detailed rows, and attach an `orders: { id, order_number, date, items: {product_id, qty, amount}[], total }[]` array per customer.
+- `ProductSalesByCustomer.tsx`:
+  - Add expand state per row, chevron button in first cell.
+  - Render nested orders table when expanded.
+  - Order number is a button styled as a link; on click sets `selectedOrderId`.
+  - Fetch the full order via `supabase.from('orders').select('*').eq('id', id).single()` on demand and render `<OrderEditDialog order={...} onClose={...} onOrderUpdated={refetch} />`.
+  - Add Orders column to CSV export.
 
-Footer row with grand totals (total bags, total orders, total spend).
+## Files
+- `supabase/migrations/<new>.sql` — create `get_product_orders_by_customer` RPC.
+- `src/hooks/useProductSalesReport.ts` — switch to new RPC, attach `orders` per customer.
+- `src/components/reports/ProductSalesByCustomer.tsx` — expand UI, order dialog, CSV update.
+- `src/components/reports/OrderQuickViewLoader.tsx` (new, small) — fetches the full order row by id and renders `OrderEditDialog`.
 
-**Export CSV** button (top-right) — exports current filtered result.
-
-### How the data is fetched
-Add a Postgres RPC `get_product_sales_by_customer(p_product_ids uuid[], p_start timestamptz, p_end timestamptz, p_customer_type text default null)`:
-- `SECURITY DEFINER`, `SET search_path TO 'public'`, admin-only check via `is_current_user_admin()`
-- Iterates `orders` (excluding `deleted_at`) in date range, unnests `products` jsonb, filters by `(item->>'id')::uuid = ANY(p_product_ids)`
-- Returns rows: `customer_id, customer_name, customer_type, product_id, product_name, total_quantity, total_amount, order_count, first_order, last_order`
-- Frontend pivots per-product columns from these rows
-
-### Files to add
-- `src/pages/Reports.tsx` (route shell) + route in `App.tsx` (`/reports/product-sales`)
-- `src/components/reports/ProductSalesByCustomer.tsx`
-- `src/components/reports/ProductMultiSelect.tsx`
-- `src/components/reports/DateRangePresetPicker.tsx`
-- `src/hooks/useProductSalesReport.ts`
-- Sidebar entry in `AdminSidebar.tsx`
-- Migration: new RPC `get_product_sales_by_customer`
-
-### Out of scope
-- Editing the existing Order Management filters (request was for a customer-aggregated report, not a per-order product filter)
-- Charts/graphs (table only for now)
-
-```text
-[Date: Last 30d ▾] [Products: 20kg GP Cement × +Add ▾] [Type: All ▾]  [Reset] [Apply]   [⬇ Export CSV]
-
-┌──────────────────┬───────┬──────┬───────────┬──────────┬─────────────┬──────────┐
-│ Customer         │ Type  │ Bags │ 20kg GP   │ Orders   │ Last order  │ Spend    │
-├──────────────────┼───────┼──────┼───────────┼──────────┼─────────────┼──────────┤
-│ Dennis Yan       │ Trade │  95  │   95      │   4      │ 14/05/2026  │ $...     │
-│ Michael Yuan     │ Trade │  70  │   70      │   3      │ 11/05/2026  │ $...     │
-│ ...                                                                              │
-└──────────────────┴───────┴──────┴───────────┴──────────┴─────────────┴──────────┘
-                                Totals: 850 bags · 47 orders · $...
-```
+## Out of scope
+- No changes to the Reports page chrome, filters, or product picker.
+- No changes to `OrderEditDialog` itself.
