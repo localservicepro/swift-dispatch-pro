@@ -19,6 +19,9 @@ export interface ProductSalesRow {
 export interface CustomerAggregate {
   customer_id: string | null;
   customer_name: string;
+  display_name: string;
+  business_name: string | null;
+  entity_type: string | null;
   customer_type: string | null;
   total_quantity: number;
   total_amount: number;
