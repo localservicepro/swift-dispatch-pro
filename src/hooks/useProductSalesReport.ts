@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 export interface ProductSalesRow {
   customer_id: string | null;
   customer_name: string | null;
+  business_name: string | null;
+  entity_type: string | null;
   customer_type: string | null;
   product_id: string;
   product_name: string;
