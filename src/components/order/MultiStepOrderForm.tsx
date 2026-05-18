@@ -329,6 +329,32 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         );
 
       case 4:
+        // Order Type — for BOTH delivery and pickup
+        return (
+          <OrderTypeSelectionStep
+            orderType={orderType}
+            onOrderTypeChange={setOrderType}
+            onBack={prevStep}
+            onNext={nextStep}
+          />
+        );
+
+      case 5:
+        // Logistics — branches by method + type
+        if (orderType === "split") {
+          return (
+            <SplitOrderConfigurationStep
+              cart={cart}
+              splits={splits}
+              customer={selectedCustomer}
+              isPickup={deliveryMethod === "pickup"}
+              onSplitsChange={setSplits}
+              onCartChange={setCart}
+              onBack={prevStep}
+              onNext={nextStep}
+            />
+          );
+        }
         if (deliveryMethod === "pickup") {
           return (
             <PickupSchedulingStep
@@ -342,120 +368,46 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
               onNext={nextStep}
             />
           );
-        } else {
-          return (
-            <OrderTypeSelectionStep
-              orderType={orderType}
-              onOrderTypeChange={setOrderType}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
         }
-
-      case 5:
-        if (deliveryMethod === "pickup") {
-          return (
-            <PaymentMethodStep
-              customer={selectedCustomer!}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else if (orderType === "split") {
-          return (
-            <SplitOrderConfigurationStep
-              cart={cart}
-              splits={splits}
-              customer={selectedCustomer}
-              onSplitsChange={setSplits}
-              onCartChange={setCart}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else {
-          return (
-            <DeliveryAddressStep
-              formData={{
-                full_address: deliveryAddress,
-                suburb_id: selectedSuburbId
-              }}
-              deliveryDate={deliveryDate}
-              deliveryTime={deliveryTime}
-              onFormDataChange={(updates) => {
-                if (updates.full_address !== undefined) {
-                  setDeliveryAddress(updates.full_address);
-                }
-                if (updates.suburb_id !== undefined) {
-                  setSelectedSuburbId(updates.suburb_id);
-                }
-              }}
-              onSuburbChange={(suburbId, suburb) => handleSuburbChange(suburbId, suburb)}
-              onDeliveryDateChange={setDeliveryDate}
-              onDeliveryTimeChange={setDeliveryTime}
-              onBack={prevStep}
-              onNext={nextStep}
-              selectedCustomer={selectedCustomer}
-              isUsingCustomerAddress={isUsingCustomerAddress}
-              onClearAddress={clearDeliveryAddress}
-              onResetToCustomerAddress={resetToCustomerAddress}
-            />
-          );
-        }
+        return (
+          <DeliveryAddressStep
+            formData={{
+              full_address: deliveryAddress,
+              suburb_id: selectedSuburbId
+            }}
+            deliveryDate={deliveryDate}
+            deliveryTime={deliveryTime}
+            onFormDataChange={(updates) => {
+              if (updates.full_address !== undefined) {
+                setDeliveryAddress(updates.full_address);
+              }
+              if (updates.suburb_id !== undefined) {
+                setSelectedSuburbId(updates.suburb_id);
+              }
+            }}
+            onSuburbChange={(suburbId, suburb) => handleSuburbChange(suburbId, suburb)}
+            onDeliveryDateChange={setDeliveryDate}
+            onDeliveryTimeChange={setDeliveryTime}
+            onBack={prevStep}
+            onNext={nextStep}
+            selectedCustomer={selectedCustomer}
+            isUsingCustomerAddress={isUsingCustomerAddress}
+            onClearAddress={clearDeliveryAddress}
+            onResetToCustomerAddress={resetToCustomerAddress}
+          />
+        );
 
       case 6:
-        if (deliveryMethod === "pickup") {
-          return (
-            <OrderReviewStep
-              customer={selectedCustomer!}
-              selectedContact={selectedContact}
-              cart={cart}
-              subtotal={subtotal}
-              adjustments={adjustments}
-              deliveryFee={deliveryFee}
-              deliveryMethod="pickup"
-              deliveryDate={deliveryDate}
-              deliveryTime={deliveryTime}
-              specialInstructions={specialInstructions}
-              paymentMethod={paymentMethod}
-              orderNotes={orderNotes}
-              deliveryNotes={deliveryNotes}
-              purchaseOrder={purchaseOrder}
-              deliveryAddress={deliveryAddress}
-              sameAsBilling={sameAsBilling}
-              onBack={prevStep}
-              onConfirm={handleOrderCreation}
-              isCreating={isCreatingOrder}
-              onDeliveryFeeChange={setManualDeliveryFee}
-              onOrderNotesChange={setOrderNotes}
-              onDeliveryNotesChange={setDeliveryNotes}
-              onPurchaseOrderChange={setPurchaseOrder}
-            />
-          );
-        } else if (orderType === "split") {
-          return (
-            <PaymentMethodStep
-              customer={selectedCustomer!}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        } else {
-          return (
-            <PaymentMethodStep
-              customer={selectedCustomer!}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
-              onBack={prevStep}
-              onNext={nextStep}
-            />
-          );
-        }
+        // Payment — unified for all paths
+        return (
+          <PaymentMethodStep
+            customer={selectedCustomer!}
+            paymentMethod={paymentMethod}
+            onPaymentMethodChange={setPaymentMethod}
+            onBack={prevStep}
+            onNext={nextStep}
+          />
+        );
 
       case 7:
         return (
