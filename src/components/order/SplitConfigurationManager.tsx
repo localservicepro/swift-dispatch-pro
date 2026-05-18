@@ -17,6 +17,7 @@ interface SplitConfigurationManagerProps {
   onSplitsChange: (splits: SplitConfig[]) => void;
   onCartChange?: (cart: CartItem[]) => void;
   customer?: Customer;
+  isPickup?: boolean;
 }
 
 export function SplitConfigurationManager({
@@ -24,7 +25,8 @@ export function SplitConfigurationManager({
   splits,
   onSplitsChange,
   onCartChange,
-  customer
+  customer,
+  isPickup = false
 }: SplitConfigurationManagerProps) {
   const { toast } = useToast();
   const [numberOfSplits, setNumberOfSplits] = useState(splits.length || 2);
@@ -323,6 +325,7 @@ export function SplitConfigurationManager({
             onSplitsChange={onSplitsChange}
             isCommonDateMode={useSameDateForAll}
             customer={customer}
+            isPickup={isPickup}
           />
         </TabsContent>
       </Tabs>

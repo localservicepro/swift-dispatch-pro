@@ -18,6 +18,12 @@ export function DeliveryMethodSelectionStep({
   onBack,
   onNext
 }: DeliveryMethodSelectionStepProps) {
+  const handleSelect = (method: DeliveryMethod) => {
+    onDeliveryMethodChange(method);
+    // Defer to allow state commit before navigating (getTotalSteps reads deliveryMethod)
+    setTimeout(onNext, 0);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -35,7 +41,7 @@ export function DeliveryMethodSelectionStep({
                 ? "border-blue-500 bg-blue-50"
                 : "border-gray-200 hover:border-gray-300"
             }`}
-            onClick={() => onDeliveryMethodChange("delivery")}
+            onClick={() => handleSelect("delivery")}
           >
             <div className="flex flex-col items-center text-center space-y-3">
               <Truck className="w-12 h-12 text-blue-600" />
@@ -52,7 +58,7 @@ export function DeliveryMethodSelectionStep({
                 ? "border-green-500 bg-green-50"
                 : "border-gray-200 hover:border-gray-300"
             }`}
-            onClick={() => onDeliveryMethodChange("pickup")}
+            onClick={() => handleSelect("pickup")}
           >
             <div className="flex flex-col items-center text-center space-y-3">
               <Store className="w-12 h-12 text-green-600" />
@@ -64,16 +70,9 @@ export function DeliveryMethodSelectionStep({
           </div>
         </div>
 
-        <div className="flex gap-2 pt-4">
+        <div className="flex pt-4">
           <Button variant="outline" onClick={onBack}>
             Back
-          </Button>
-          <Button 
-            onClick={onNext}
-            disabled={!deliveryMethod}
-            className="ml-auto"
-          >
-            Continue
           </Button>
         </div>
       </CardContent>

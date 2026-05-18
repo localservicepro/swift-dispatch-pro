@@ -11,6 +11,7 @@ interface SplitOrderConfigurationStepProps {
   cart: CartItem[];
   splits: SplitConfig[];
   customer?: Customer;
+  isPickup?: boolean;
   onSplitsChange: (splits: SplitConfig[]) => void;
   onCartChange?: (cart: CartItem[]) => void;
   onBack: () => void;
@@ -21,6 +22,7 @@ export function SplitOrderConfigurationStep({
   cart,
   splits,
   customer,
+  isPickup = false,
   onSplitsChange,
   onCartChange,
   onBack,
@@ -63,15 +65,19 @@ export function SplitOrderConfigurationStep({
     // Check if all splits have at least one product
     const allSplitsHaveProducts = splits.every(split => split.products.length > 0);
     
-    // Check if all splits have delivery details including address and suburb
+    // Check if all splits have delivery details — address only required for delivery
     const allSplitsHaveDeliveryDetails = splits.every(split => {
       const hasDateAndTime = split.deliveryDate && split.deliveryTime;
-      
+
+      if (isPickup) {
+        return hasDateAndTime;
+      }
+
       // Address validation: either same as billing (and customer has address) OR custom address with suburb
-      const hasAddressInfo = (split.sameAsBilling && customer?.full_address) || 
-        (split.deliveryAddress && split.deliveryAddress.trim() !== "" && 
+      const hasAddressInfo = (split.sameAsBilling && customer?.full_address) ||
+        (split.deliveryAddress && split.deliveryAddress.trim() !== "" &&
          (split.suburbId || split.deliverySuburbId));
-      
+
       return hasDateAndTime && hasAddressInfo;
     });
 
@@ -118,16 +124,18 @@ export function SplitOrderConfigurationStep({
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Split className="w-4 h-4" />
-          Step 4: Configure Order Splits
+          Step 5: Configure Order Splits
         </CardTitle>
         <p className="text-xs text-gray-600">
-          Split this order for different delivery addresses or dates. Each split can be delivered to a unique address.
+          {isPickup
+            ? "Split this order into multiple pickups. Each split can have its own pickup date and time."
+            : "Split this order for different delivery addresses or dates. Each split can be delivered to a unique address."}
         </p>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
-        {/* Address Configuration Alert */}
-        {(!customer?.full_address && splits.some(s => s.sameAsBilling)) && (
+        {/* Address Configuration Alert — only for delivery */}
+        {!isPickup && (!customer?.full_address && splits.some(s => s.sameAsBilling)) && (
           <Alert className="border-orange-200 bg-orange-50">
             <AlertCircle className="h-4 w-4 text-orange-600" />
             <AlertDescription className="text-orange-700 text-xs">
@@ -135,13 +143,14 @@ export function SplitOrderConfigurationStep({
             </AlertDescription>
           </Alert>
         )}
-        
+
         <SplitConfigurationManager
           cart={cart}
           splits={splits}
           onSplitsChange={onSplitsChange}
           onCartChange={onCartChange}
           customer={customer}
+          isPickup={isPickup}
         />
 
         {/* Action Buttons */}
