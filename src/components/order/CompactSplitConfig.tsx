@@ -135,7 +135,7 @@ export function CompactSplitConfig({
               <div className="flex items-center justify-between w-full mr-4">
                 <div className="flex items-center gap-3">
                   <span className="font-medium">{split.name}</span>
-                  {!split.sameAsBilling && split.deliveryAddress && (
+                  {!isPickup && !split.sameAsBilling && split.deliveryAddress && (
                     <Badge variant="default" className="text-xs">
                       <MapPin className="w-3 h-3 mr-1" />
                       Custom Address
@@ -237,8 +237,8 @@ export function CompactSplitConfig({
                   </div>
                 )}
 
-                {/* Delivery Address */}
-                {customer && (
+                {/* Delivery Address — hidden for pickup */}
+                {!isPickup && customer && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium flex items-center gap-2">
@@ -298,8 +298,8 @@ export function CompactSplitConfig({
                   </div>
                 )}
 
-                {/* Delivery Fee Display */}
-                {(split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id)) && (
+                {/* Delivery Fee Display — hidden for pickup */}
+                {!isPickup && (split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id)) && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <div className="flex justify-between items-center">
                       <Label className="text-xs font-medium flex items-center gap-1">
