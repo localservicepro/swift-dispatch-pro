@@ -156,19 +156,14 @@ export function useOrderFormState() {
   ]);
 
 
-  // Dynamic step calculation based on delivery method
-  const getTotalSteps = () => {
-    if (deliveryMethod === "pickup") {
-      return 6; // Customer → Products → Method → Pickup Scheduling → Payment → Review
-    }
-    return 7; // Customer → Products → Method → Order Type → Address → Payment → Review
-  };
+  // Unified 7-step flow for both delivery and pickup
+  // Customer → Products → Method → Order Type → Logistics → Payment → Review
+  const getTotalSteps = () => 7;
 
-  // Enhanced delivery method setter to auto-set order type
+  // Enhanced delivery method setter — clears delivery-specific fields when switching to pickup
   const handleDeliveryMethodChange = (method: "delivery" | "pickup") => {
     setDeliveryMethod(method);
     if (method === "pickup") {
-      setOrderType("single"); // Auto-set to single for pickup orders
       setManualDeliveryFee(0); // Clear delivery fee for pickup
       setSelectedSuburbId(""); // Clear suburb for pickup
       setSameAsBilling(true); // Force same as billing for pickup

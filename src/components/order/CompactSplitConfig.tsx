@@ -28,15 +28,17 @@ interface CompactSplitConfigProps {
   onUpdateSplit: (splitIndex: number, updates: Partial<SplitConfig>) => void;
   onSplitsChange?: (splits: SplitConfig[]) => void;
   isCommonDateMode?: boolean;
+  isPickup?: boolean;
 }
 
-export function CompactSplitConfig({ 
-  splits, 
-  cart, 
+export function CompactSplitConfig({
+  splits,
+  cart,
   customer,
   onUpdateSplit,
   onSplitsChange,
-  isCommonDateMode = false
+  isCommonDateMode = false,
+  isPickup = false
 }: CompactSplitConfigProps) {
   const timeSlots = generateTimeSlots();
   const { handleAutoSuburbSelection } = useSuburbManagement();
@@ -55,6 +57,7 @@ export function CompactSplitConfig({
 
   const isSplitConfigComplete = (split: SplitConfig) => {
     const hasDeliveryInfo = split.deliveryDate && split.deliveryTime && split.products.length > 0;
+    if (isPickup) return hasDeliveryInfo;
     const hasAddressInfo = split.sameAsBilling || (split.deliveryAddress && (split.suburbId || split.deliverySuburbId));
     return hasDeliveryInfo && hasAddressInfo;
   };
