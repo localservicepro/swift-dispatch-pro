@@ -123,7 +123,7 @@ export function ProductSalesByCustomer() {
     setExpanded(new Set());
   };
 
-  const colSpan = 8 + productsMeta.length;
+  const colSpan = 9 + productsMeta.length;
 
   return (
     <div className="space-y-6">
