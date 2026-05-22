@@ -23,6 +23,7 @@ export interface CustomerAggregate {
   business_name: string | null;
   entity_type: string | null;
   customer_type: string | null;
+  phones: string[];
   total_quantity: number;
   total_amount: number;
   order_count: number;
@@ -38,6 +39,7 @@ interface DetailRow {
   business_name: string | null;
   entity_type: string | null;
   customer_type: string | null;
+  customer_phone: string | null;
   order_id: string;
   order_number: string;
   order_date: string;
