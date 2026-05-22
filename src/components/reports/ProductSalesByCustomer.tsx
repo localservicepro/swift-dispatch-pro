@@ -327,7 +327,7 @@ export function ProductSalesByCustomer() {
                 <tfoot className="bg-muted/30 font-semibold">
                   <tr>
                     <td />
-                    <td className="px-3 py-2" colSpan={2}>Totals</td>
+                    <td className="px-3 py-2" colSpan={3}>Totals</td>
                     <td className="px-3 py-2 text-right">{formatNumber(totals.qty)}</td>
                     {productsMeta.map((p) => {
                       const sum = rows.reduce((s, r) => s + (r.perProduct[p.id] ?? 0), 0);
