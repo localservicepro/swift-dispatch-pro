@@ -13,6 +13,7 @@ export interface OrderSummary {
   order_number: string;
   order_date: string;
   total: number;
+  customer_phone: string | null;
   items: OrderItemSummary[];
 }
 
