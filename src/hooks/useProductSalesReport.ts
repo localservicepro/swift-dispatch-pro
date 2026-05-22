@@ -88,6 +88,7 @@ export function useProductSalesReport({ productIds, start, end, customerType, en
             business_name: r.business_name,
             entity_type: r.entity_type,
             customer_type: r.customer_type,
+            phones: [],
             total_quantity: 0,
             total_amount: 0,
             order_count: 0,
@@ -98,6 +99,9 @@ export function useProductSalesReport({ productIds, start, end, customerType, en
           };
           map.set(key, agg);
         }
+
+        const phone = (r.customer_phone ?? "").trim();
+        if (phone && !agg.phones.includes(phone)) agg.phones.push(phone);
 
         agg.total_quantity += qty;
         agg.total_amount += amt;
