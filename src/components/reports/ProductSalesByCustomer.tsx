@@ -301,19 +301,6 @@ export function ProductSalesByCustomer() {
                                       <td className="px-2 py-1.5 align-top whitespace-nowrap tabular-nums text-xs">
                                         {o.customer_phone || <span className="text-muted-foreground">—</span>}
                                       </td>
-                                    <tr key={o.order_id} className="border-t border-border/50">
-                                      <td className="px-2 py-1.5 align-top">
-                                        <button
-                                          type="button"
-                                          onClick={() => setSelectedOrderId(o.order_id)}
-                                          className="text-primary hover:underline font-medium"
-                                        >
-                                          {o.order_number}
-                                        </button>
-                                      </td>
-                                      <td className="px-2 py-1.5 align-top whitespace-nowrap">
-                                        {formatDate(o.order_date)}
-                                      </td>
                                       <td className="px-2 py-1.5 align-top">
                                         <div className="flex flex-wrap gap-1">
                                           {o.items.map((it, idx) => (
