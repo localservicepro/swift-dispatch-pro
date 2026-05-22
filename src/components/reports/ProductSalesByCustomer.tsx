@@ -278,12 +278,29 @@ export function ProductSalesByCustomer() {
                                   <tr>
                                     <th className="px-2 py-1 font-medium">Order #</th>
                                     <th className="px-2 py-1 font-medium">Date</th>
+                                    <th className="px-2 py-1 font-medium whitespace-nowrap">Phone</th>
                                     <th className="px-2 py-1 font-medium">Items (selected products)</th>
                                     <th className="px-2 py-1 font-medium text-right">Subtotal</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {r.orders.map((o) => (
+                                    <tr key={o.order_id} className="border-t border-border/50">
+                                      <td className="px-2 py-1.5 align-top">
+                                        <button
+                                          type="button"
+                                          onClick={() => setSelectedOrderId(o.order_id)}
+                                          className="text-primary hover:underline font-medium"
+                                        >
+                                          {o.order_number}
+                                        </button>
+                                      </td>
+                                      <td className="px-2 py-1.5 align-top whitespace-nowrap">
+                                        {formatDate(o.order_date)}
+                                      </td>
+                                      <td className="px-2 py-1.5 align-top whitespace-nowrap tabular-nums text-xs">
+                                        {o.customer_phone || <span className="text-muted-foreground">—</span>}
+                                      </td>
                                     <tr key={o.order_id} className="border-t border-border/50">
                                       <td className="px-2 py-1.5 align-top">
                                         <button
