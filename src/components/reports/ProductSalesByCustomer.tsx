@@ -211,6 +211,7 @@ export function ProductSalesByCustomer() {
                   <tr>
                     <th className="px-2 py-2 w-8" />
                     <th className="px-3 py-2 font-medium">Customer</th>
+                    <th className="px-3 py-2 font-medium whitespace-nowrap">Phone</th>
                     <th className="px-3 py-2 font-medium">Type</th>
                     <th className="px-3 py-2 font-medium text-right">Total Qty</th>
                     {productsMeta.map((p) => (
