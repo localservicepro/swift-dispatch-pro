@@ -13,6 +13,7 @@ export interface OrderSummary {
   order_number: string;
   order_date: string;
   total: number;
+  customer_phone: string | null;
   items: OrderItemSummary[];
 }
 
@@ -116,6 +117,7 @@ export function useProductSalesReport({ productIds, start, end, customerType, en
             order_number: r.order_number,
             order_date: r.order_date,
             total: 0,
+            customer_phone: phone || null,
             items: [],
           };
           agg.orders.push(order);

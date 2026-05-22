@@ -278,6 +278,7 @@ export function ProductSalesByCustomer() {
                                   <tr>
                                     <th className="px-2 py-1 font-medium">Order #</th>
                                     <th className="px-2 py-1 font-medium">Date</th>
+                                    <th className="px-2 py-1 font-medium whitespace-nowrap">Phone</th>
                                     <th className="px-2 py-1 font-medium">Items (selected products)</th>
                                     <th className="px-2 py-1 font-medium text-right">Subtotal</th>
                                   </tr>
@@ -296,6 +297,9 @@ export function ProductSalesByCustomer() {
                                       </td>
                                       <td className="px-2 py-1.5 align-top whitespace-nowrap">
                                         {formatDate(o.order_date)}
+                                      </td>
+                                      <td className="px-2 py-1.5 align-top whitespace-nowrap tabular-nums text-xs">
+                                        {o.customer_phone || <span className="text-muted-foreground">—</span>}
                                       </td>
                                       <td className="px-2 py-1.5 align-top">
                                         <div className="flex flex-wrap gap-1">
