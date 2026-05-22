@@ -249,6 +249,9 @@ export function ProductSalesByCustomer() {
                               <div className="text-xs text-muted-foreground font-normal">{r.customer_name}</div>
                             )}
                           </td>
+                          <td className="px-3 py-2 whitespace-nowrap tabular-nums text-xs">
+                            {r.phones.length > 0 ? r.phones.join(", ") : <span className="text-muted-foreground">—</span>}
+                          </td>
                           <td className="px-3 py-2">
                             <Badge variant="secondary">{getCustomerTypeLabel(r.customer_type)}</Badge>
                           </td>
