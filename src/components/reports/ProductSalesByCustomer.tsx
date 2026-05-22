@@ -77,6 +77,7 @@ export function ProductSalesByCustomer() {
     const headers = [
       "Customer",
       "Business Name",
+      "Phone",
       "Type",
       "Total Qty",
       ...productsMeta.map((p) => p.name),
@@ -92,6 +93,7 @@ export function ProductSalesByCustomer() {
       const cells = [
         `"${(r.customer_name ?? "").replace(/"/g, '""')}"`,
         `"${(r.business_name ?? "").replace(/"/g, '""')}"`,
+        `"${r.phones.join("; ")}"`,
         getCustomerTypeLabel(r.customer_type),
         formatNumber(r.total_quantity),
         ...productsMeta.map((p) => formatNumber(r.perProduct[p.id] ?? 0)),
@@ -121,7 +123,7 @@ export function ProductSalesByCustomer() {
     setExpanded(new Set());
   };
 
-  const colSpan = 8 + productsMeta.length;
+  const colSpan = 9 + productsMeta.length;
 
   return (
     <div className="space-y-6">
@@ -209,6 +211,7 @@ export function ProductSalesByCustomer() {
                   <tr>
                     <th className="px-2 py-2 w-8" />
                     <th className="px-3 py-2 font-medium">Customer</th>
+                    <th className="px-3 py-2 font-medium whitespace-nowrap">Phone</th>
                     <th className="px-3 py-2 font-medium">Type</th>
                     <th className="px-3 py-2 font-medium text-right">Total Qty</th>
                     {productsMeta.map((p) => (
@@ -245,6 +248,9 @@ export function ProductSalesByCustomer() {
                             {r.entity_type === "business" && r.business_name && r.customer_name && r.customer_name !== r.business_name && (
                               <div className="text-xs text-muted-foreground font-normal">{r.customer_name}</div>
                             )}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap tabular-nums text-xs">
+                            {r.phones.length > 0 ? r.phones.join(", ") : <span className="text-muted-foreground">—</span>}
                           </td>
                           <td className="px-3 py-2">
                             <Badge variant="secondary">{getCustomerTypeLabel(r.customer_type)}</Badge>
@@ -321,7 +327,7 @@ export function ProductSalesByCustomer() {
                 <tfoot className="bg-muted/30 font-semibold">
                   <tr>
                     <td />
-                    <td className="px-3 py-2" colSpan={2}>Totals</td>
+                    <td className="px-3 py-2" colSpan={3}>Totals</td>
                     <td className="px-3 py-2 text-right">{formatNumber(totals.qty)}</td>
                     {productsMeta.map((p) => {
                       const sum = rows.reduce((s, r) => s + (r.perProduct[p.id] ?? 0), 0);
