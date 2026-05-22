@@ -77,6 +77,7 @@ export function ProductSalesByCustomer() {
     const headers = [
       "Customer",
       "Business Name",
+      "Phone",
       "Type",
       "Total Qty",
       ...productsMeta.map((p) => p.name),
@@ -92,6 +93,7 @@ export function ProductSalesByCustomer() {
       const cells = [
         `"${(r.customer_name ?? "").replace(/"/g, '""')}"`,
         `"${(r.business_name ?? "").replace(/"/g, '""')}"`,
+        `"${r.phones.join("; ")}"`,
         getCustomerTypeLabel(r.customer_type),
         formatNumber(r.total_quantity),
         ...productsMeta.map((p) => formatNumber(r.perProduct[p.id] ?? 0)),
