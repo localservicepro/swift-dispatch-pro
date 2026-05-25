@@ -1,39 +1,33 @@
-# Fix Split Order Allocation UX
+## Root cause
 
-The split allocation controls treat zero as invalid because `roundToValidQuantity` bumps any value below the product minimum (0.001 for bulk, 1 for others) up to that minimum. This causes:
-- Pressing − on a split with quantity 1 → goes to 0.001 instead of clearing the split.
-- Typing `0` in a split input → rejected/bumped to 0.001.
-- Trash icon refuses to delete a product when anything is allocated, forcing the user to manually zero out every split first (and they can't easily reach zero — see above).
+The per-split delivery fee is auto-fetched inside `CompactSplitConfig.tsx` (the "Delivery Details" tab of the Split Order Configuration step). The effect that calls `fetchSuburbData` → `parseDeliveryRate` → `onUpdateSplit({ deliveryFee })` only runs while that component is mounted.
 
-The cart-level quantity rules (a product in the cart must respect its minimum) are correct and should stay. The fix is to treat split allocations as independent: 0 is a valid split value meaning "not allocated to this split".
+When the user allocates products and clicks forward to the Review step without visiting the "Delivery Details" tab, `split.deliveryFee` stays `undefined`/`0`. The Review summary then shows AU$0.00. Going back and opening the delivery tab mounts `CompactSplitConfig`, the effect fires, fees populate, and Review then shows the correct values.
 
-## Changes
+`MultiStepOrderForm` also has an effect that sums `split.deliveryFee` into the global `deliveryFee` — but it sums zeros until the splits actually carry a fee.
 
-**`src/components/order/CompactProductTable.tsx`**
+## Fix
 
-1. `handleSplitQuantityChange` (− / + buttons):
-   - When decreasing, do not call `roundToValidQuantity` on the result. Compute `rawNewQuantity = max(0, current - 1)` and pass it through directly so it can reach exactly 0. `SplitConfigurationManager.handleUpdateSplitQuantity` already removes the product from the split when quantity ≤ 0.
-   - When increasing, keep current rounding behavior but only for bulk products if the result exceeds 0.
+Move the auto-fee-calculation effect out of `CompactSplitConfig` and into a parent that is mounted regardless of which step/tab is active, so split fees are populated as soon as splits exist and have a resolvable suburb (either `deliverySuburbId` or `sameAsBilling` + `customer.suburb_id`).
 
-2. `handleSplitQuantitySubmit` (typed input):
-   - Allow `newQuantity === 0` to pass through unchanged (clears the split).
-   - Only apply `roundToValidQuantity` when `newQuantity > 0`.
-   - Change input `min` attribute reference accordingly (already `"0"`, fine).
+### Changes
 
-3. `handleDeleteProduct`:
-   - Remove the "Cannot delete product" block. Instead, when allocations exist, clear all splits for that product first (call `onUpdateSplitQuantity` with 0 for each split or extend the API), then remove from cart.
-   - Simpler approach: add a new optional prop `onRemoveProductCompletely(productId)` that the parent implements to (a) strip the product from every split and (b) remove from cart. `SplitConfigurationManager.handleRemoveFromCart` already does both — just wire the trash button to it directly and drop the guard.
+1. **`src/components/order/MultiStepOrderForm.tsx`**
+   - Add a `useEffect` (next to the existing split-sum effect at lines 127–138) that, when `orderType === 'split'` and `deliveryMethod === 'delivery'`, iterates `splits`, resolves a `suburbId` per split (`split.deliverySuburbId ?? (split.sameAsBilling ? selectedCustomer?.suburb_id : null)`), fetches suburb data via `useDeliveryFeeCalculation().fetchSuburbData`, parses the rate via `parseDeliveryRate`, and calls `setSplits` once with all updated `deliveryFee` values when any split currently has `deliveryFee === undefined || 0`.
+   - Dependency key: `splits.map(s => `${s.deliverySuburbId ?? ''}|${s.sameAsBilling}`).join(',')`, `selectedCustomer?.suburb_id`, `orderType`, `deliveryMethod`.
+   - Use a local `cancelled` flag to ignore stale async results on unmount/re-run.
 
-**`src/components/order/ProductAllocationCard.tsx`** (legacy card view, same bug)
+2. **`src/components/order/CompactSplitConfig.tsx`**
+   - Remove the `useEffect` at lines 92–127 (now handled by the parent). Keep `handleSuburbChange` (lines 80–89) so manual suburb edits still update the fee immediately.
 
-Apply the same three changes for consistency: allow 0 on −, allow typed 0, and let delete cascade through to `onRemoveFromCart` which already clears splits in the parent.
+### Out of scope
 
-## Out of scope
+- No change to `parseDeliveryRate`, `applyMarkup`, or the existing "delivery markup" behavior (matches what `CompactSplitConfig` does today — applies base rate without markup; preserving current behavior).
+- No change to Review UI, the split-sum aggregation effect, or order creation services.
+- No backend or RPC changes.
 
-- Cart-level minimum quantity rules (unchanged).
-- `roundToValidQuantity` utility (unchanged — still used for cart quantities and for non-zero split values).
-- Backend / RPC logic.
+## Validation
 
-## Technical notes
-
-`SplitConfigurationManager.handleUpdateSplitQuantity` (lines ~210-240) already handles `fixedQuantity <= 0` by filtering the product out of `split.products`, and `handleRemoveFromCart` already strips the product from every split before removing it from the cart. So the parent contract is correct; only the child component's over-eager validation needs to relax.
+- Open a split order with 3 splits all using billing-address suburb (rate 50). Go straight from Product Allocation → Review. Each split should show AU$50.00 immediately and the totals should include 3 × 50.
+- Change one split's suburb via "Use Different Address" → confirm fee updates immediately on the delivery tab and persists on Review.
+- Single-order flow (`orderType === 'single'`) should be unaffected.

@@ -88,43 +88,9 @@ export function CompactSplitConfig({
     }
   };
 
-  // Auto-calculate delivery fees for all splits in a single batch to avoid stale closure issues
-  useEffect(() => {
-    const updateAllFees = async () => {
-      // Check if any split needs a fee update
-      const needsUpdate = splits.some(split => {
-        const suburbId = split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id ? customer.suburb_id : null);
-        return suburbId && (split.deliveryFee === undefined || split.deliveryFee === 0);
-      });
-      if (!needsUpdate) return;
+  // Auto-calculation of split delivery fees is handled in MultiStepOrderForm
+  // so fees populate even before the user visits the Delivery Details tab.
 
-      // Fetch fees for all splits sequentially and collect updates
-      const updatedSplits = [...splits];
-      let hasChanges = false;
-
-      for (let index = 0; index < splits.length; index++) {
-        const split = splits[index];
-        const suburbId = split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id ? customer.suburb_id : null);
-        if (suburbId && (split.deliveryFee === undefined || split.deliveryFee === 0)) {
-          const suburbData = await fetchSuburbData(suburbId);
-          if (suburbData) {
-            const deliveryFee = parseDeliveryRate(suburbData.delivery_rate);
-            if (deliveryFee > 0) {
-              updatedSplits[index] = { ...updatedSplits[index], deliveryFee };
-              hasChanges = true;
-            }
-          }
-        }
-      }
-
-      // Apply all fee updates in one batch call to avoid stale state overwrites
-      if (hasChanges && onSplitsChange) {
-        onSplitsChange(updatedSplits);
-      }
-    };
-
-    updateAllFees();
-  }, [splits.map(s => s.deliverySuburbId || s.sameAsBilling).join(','), customer?.suburb_id]);
 
   return (
     <div className="space-y-3">
