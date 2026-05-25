@@ -24,7 +24,6 @@ import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals } from "./utils/paymentCalculations";
 import {
   EditAddressPopover,
-  EditScheduleopover,
   EditSchedulePopover,
   EditInstructionsPopover,
   SplitAddressBadge,
