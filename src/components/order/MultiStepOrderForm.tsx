@@ -126,6 +126,45 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     dismissResumedDraft();
   };
 
+  // Auto-populate per-split delivery fees from suburb data so the Review step
+  // shows correct amounts even before the user opens the Delivery Details tab.
+  const { fetchSuburbData, parseDeliveryRate } = useDeliveryFeeCalculation();
+  useEffect(() => {
+    if (orderType !== 'split' || deliveryMethod !== 'delivery' || splits.length === 0) return;
+
+    const needsUpdate = splits.some(s => {
+      const suburbId = s.deliverySuburbId || (s.sameAsBilling && (selectedCustomer as any)?.suburb_id ? (selectedCustomer as any).suburb_id : null);
+      return suburbId && (s.deliveryFee === undefined || s.deliveryFee === 0);
+    });
+    if (!needsUpdate) return;
+
+    let cancelled = false;
+    (async () => {
+      const updated = [...splits];
+      let hasChanges = false;
+      for (let i = 0; i < splits.length; i++) {
+        const s = splits[i];
+        const suburbId = s.deliverySuburbId || (s.sameAsBilling && (selectedCustomer as any)?.suburb_id ? (selectedCustomer as any).suburb_id : null);
+        if (suburbId && (s.deliveryFee === undefined || s.deliveryFee === 0)) {
+          const data = await fetchSuburbData(suburbId);
+          if (cancelled) return;
+          if (data) {
+            const fee = parseDeliveryRate(data.delivery_rate);
+            if (fee > 0) {
+              updated[i] = { ...updated[i], deliveryFee: fee };
+              hasChanges = true;
+            }
+          }
+        }
+      }
+      if (!cancelled && hasChanges) {
+        setSplits(updated);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [splits.map(s => `${s.deliverySuburbId ?? ''}|${s.sameAsBilling}|${s.deliveryFee ?? ''}`).join(','), (selectedCustomer as any)?.suburb_id, orderType, deliveryMethod]);
+
   // Calculate total delivery fee from all splits for split orders
   useEffect(() => {
     if (orderType === 'split' && splits.length > 0 && deliveryMethod === 'delivery') {
@@ -138,6 +177,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       }
     }
   }, [splits, orderType, deliveryMethod]);
+
 
   const handleOrderCreation = async () => {
     if (!selectedCustomer) {
