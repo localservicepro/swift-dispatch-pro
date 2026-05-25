@@ -481,6 +481,9 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
             onPurchaseOrderChange={setPurchaseOrder}
             isDeliveryFeeManuallySet={isDeliveryFeeManuallySet}
             deliveryFeeInfo={getDeliveryFeeInfo()}
+            onUpdateSplit={(splitIndex, updates) => {
+              setSplits(splits.map((s, i) => (i === splitIndex ? { ...s, ...updates } : s)));
+            }}
           />
         );
 
