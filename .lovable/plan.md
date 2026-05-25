@@ -1,32 +1,39 @@
-# Add Phone Numbers to Product Sales Report
+# Fix Split Order Allocation UX
 
-Show the phone number tied to each customer's orders in the Product Sales by Customer report (table + CSV export).
+The split allocation controls treat zero as invalid because `roundToValidQuantity` bumps any value below the product minimum (0.001 for bulk, 1 for others) up to that minimum. This causes:
+- Pressing − on a split with quantity 1 → goes to 0.001 instead of clearing the split.
+- Typing `0` in a split input → rejected/bumped to 0.001.
+- Trash icon refuses to delete a product when anything is allocated, forcing the user to manually zero out every split first (and they can't easily reach zero — see above).
 
-## Phone source
-
-For each order row, use `orders.customer_phone` (the number captured on that order). Fall back to `customers.phone` if the order has none. When a customer used multiple distinct phones across their orders, show all of them (comma-separated), so the user sees what was "used or registered from that order".
+The cart-level quantity rules (a product in the cart must respect its minimum) are correct and should stay. The fix is to treat split allocations as independent: 0 is a valid split value meaning "not allocated to this split".
 
 ## Changes
 
-### 1. DB — extend RPC `get_product_orders_by_customer`
-Add `customer_phone text` to the returned columns:
-```sql
-COALESCE(NULLIF(o.customer_phone, ''), c.phone) AS customer_phone
-```
-Everything else unchanged. Migration via `supabase--migration`.
+**`src/components/order/CompactProductTable.tsx`**
 
-### 2. `src/hooks/useProductSalesReport.ts`
-- Add `customer_phone: string | null` to `DetailRow`.
-- Add `phones: string[]` to `CustomerAggregate`.
-- While aggregating, collect unique non-empty phones per customer into a Set, then materialize as sorted array.
+1. `handleSplitQuantityChange` (− / + buttons):
+   - When decreasing, do not call `roundToValidQuantity` on the result. Compute `rawNewQuantity = max(0, current - 1)` and pass it through directly so it can reach exactly 0. `SplitConfigurationManager.handleUpdateSplitQuantity` already removes the product from the split when quantity ≤ 0.
+   - When increasing, keep current rounding behavior but only for bulk products if the result exceeds 0.
 
-### 3. `src/components/reports/ProductSalesByCustomer.tsx`
-- Add a "Phone" column header right after "Customer" (before "Type").
-- Render `r.phones.join(", ")` or `—` if empty. Use `tabular-nums whitespace-nowrap`.
-- Update `colSpan` (currently `8 + productsMeta.length` → `9 + productsMeta.length`).
-- Update `tfoot` "Totals" colSpan from 2 → 3 so totals still align.
-- Add "Phone" to CSV `headers` and emit `"${r.phones.join("; ")}"` per row.
+2. `handleSplitQuantitySubmit` (typed input):
+   - Allow `newQuantity === 0` to pass through unchanged (clears the split).
+   - Only apply `roundToValidQuantity` when `newQuantity > 0`.
+   - Change input `min` attribute reference accordingly (already `"0"`, fine).
+
+3. `handleDeleteProduct`:
+   - Remove the "Cannot delete product" block. Instead, when allocations exist, clear all splits for that product first (call `onUpdateSplitQuantity` with 0 for each split or extend the API), then remove from cart.
+   - Simpler approach: add a new optional prop `onRemoveProductCompletely(productId)` that the parent implements to (a) strip the product from every split and (b) remove from cart. `SplitConfigurationManager.handleRemoveFromCart` already does both — just wire the trash button to it directly and drop the guard.
+
+**`src/components/order/ProductAllocationCard.tsx`** (legacy card view, same bug)
+
+Apply the same three changes for consistency: allow 0 on −, allow typed 0, and let delete cascade through to `onRemoveFromCart` which already clears splits in the parent.
 
 ## Out of scope
-- No changes to order creation flow, customer table, or other reports.
-- No per-order phone display inside the expanded "Matching orders" sub-table (phones are aggregated at the customer level). Can add later if needed.
+
+- Cart-level minimum quantity rules (unchanged).
+- `roundToValidQuantity` utility (unchanged — still used for cart quantities and for non-zero split values).
+- Backend / RPC logic.
+
+## Technical notes
+
+`SplitConfigurationManager.handleUpdateSplitQuantity` (lines ~210-240) already handles `fixedQuantity <= 0` by filtering the product out of `split.products`, and `handleRemoveFromCart` already strips the product from every split before removing it from the cart. So the parent contract is correct; only the child component's over-eager validation needs to relax.

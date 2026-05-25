@@ -101,14 +101,6 @@ export function ProductAllocationCard({
   };
 
   const handleDeleteProduct = () => {
-    if (totalAllocated > 0) {
-      toast({
-        title: "Cannot delete product",
-        description: "Remove all allocations from splits before deleting this product.",
-        variant: "destructive",
-      });
-      return;
-    }
     onRemoveFromCart?.(cartItem.product.id);
     toast({
       title: "Product removed",

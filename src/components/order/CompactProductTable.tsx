@@ -124,20 +124,21 @@ export function CompactProductTable({
   const handleSplitQuantityChange = (splitIndex: number, productId: string, direction: 'increase' | 'decrease') => {
     const cartItem = cart.find(item => item.product.id === productId);
     if (!cartItem) return;
-    
-    const increment = 1; // Always use whole number increments for buttons
-    const change = direction === 'increase' ? increment : -increment;
-    
+
     const split = splits[splitIndex];
     const splitProduct = split.products.find(p => p.productId === productId);
     const currentQuantity = splitProduct?.quantity || 0;
-    const rawNewQuantity = Math.max(0, currentQuantity + change);
-    const newQuantity = roundToValidQuantity(rawNewQuantity, cartItem.product);
-    
     const totalAllocated = getTotalAllocated(productId);
     const remainingQuantity = fixPrecision((cartItem?.quantity || 0) - totalAllocated + currentQuantity);
-    
-    if (change > 0 && isEffectivelyZero(remainingQuantity)) {
+
+    if (direction === 'decrease') {
+      // Allow going to exactly 0 to clear this split's allocation
+      const newQuantity = fixPrecision(Math.max(0, currentQuantity - 1));
+      onUpdateSplitQuantity?.(splitIndex, productId, newQuantity);
+      return;
+    }
+
+    if (isEffectivelyZero(remainingQuantity)) {
       toast({
         title: "Cannot allocate more",
         description: "No remaining quantity to allocate",
@@ -146,6 +147,8 @@ export function CompactProductTable({
       return;
     }
 
+    const rawNewQuantity = currentQuantity + 1;
+    const newQuantity = roundToValidQuantity(rawNewQuantity, cartItem.product);
     onUpdateSplitQuantity?.(splitIndex, productId, newQuantity);
   };
 
@@ -184,8 +187,11 @@ export function CompactProductTable({
       return;
     }
 
-    const roundedQuantity = roundToValidQuantity(newQuantity, cartItem.product);
-    onUpdateSplitQuantity?.(splitIndex, productId, roundedQuantity);
+    // Allow exactly 0 to clear the split's allocation
+    const finalQuantity = newQuantity === 0
+      ? 0
+      : roundToValidQuantity(newQuantity, cartItem.product);
+    onUpdateSplitQuantity?.(splitIndex, productId, finalQuantity);
     setEditingSplitQuantity(null);
     setSplitInputValue("");
   };
@@ -196,15 +202,7 @@ export function CompactProductTable({
   };
 
   const handleDeleteProduct = (productId: string) => {
-    const totalAllocated = getTotalAllocated(productId);
-    if (totalAllocated > 0) {
-      toast({
-        title: "Cannot delete product",
-        description: "Remove all allocations first",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Parent handler clears the product from every split and removes from cart
     onRemoveFromCart?.(productId);
   };
 
