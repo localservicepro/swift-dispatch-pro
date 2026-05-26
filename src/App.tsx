@@ -30,6 +30,7 @@ import { TruckManagement } from "@/components/TruckManagement";
 import { TeamManagement } from "@/components/TeamManagement";
 import { SuburbManagement } from "@/components/SuburbManagement";
 import { Settings } from "@/components/Settings";
+import { AIAssistant } from "@/components/AIAssistant";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -96,6 +97,7 @@ function AuthenticatedApp() {
         <Route path="suburbs" element={<SuburbManagement />} />
         <Route path="emails" element={<EmailManagement />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="ai-assistant" element={<AIAssistant />} />
         <Route path="guide" element={<SwiftDispatchGuide />} />
       </Route>
       <Route 
