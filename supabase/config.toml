@@ -54,3 +54,6 @@ verify_jwt = false
 
 [functions.google-sheets-auth]
 verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = true
