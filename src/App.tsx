@@ -30,6 +30,7 @@ import { TruckManagement } from "@/components/TruckManagement";
 import { TeamManagement } from "@/components/TeamManagement";
 import { SuburbManagement } from "@/components/SuburbManagement";
 import { Settings } from "@/components/Settings";
+import { AIAssistant } from "@/components/AIAssistant";
 
 const queryClient = new QueryClient({
   defaultOptions: {
