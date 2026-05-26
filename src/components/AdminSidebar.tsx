@@ -63,6 +63,11 @@ const menuItems = [{
   id: "emails",
   path: "/emails"
 }, {
+  title: "AI Assistant",
+  icon: Sparkles,
+  id: "ai-assistant",
+  path: "/ai-assistant"
+}, {
   title: "Help & Guides",
   icon: BookOpen,
   id: "knowledgebase",
