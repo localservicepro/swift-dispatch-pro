@@ -1,69 +1,88 @@
+# Review Step — Redesign + Inline Edit
 
-## Staff AI Assistant (Claude-powered)
+Apply the selected **Steel-edged split layout** direction to `OrderReviewStep.tsx`, surface per-split delivery addresses (currently hidden), and let the user edit per-split address, date/time, and special instructions directly on the Review step.
 
-A dedicated "AI Assistant" page in the admin sidebar where any authenticated staff member can chat with Claude. The assistant understands how the app works and can look up real business data on demand.
+## Scope
 
-### What gets built
+In scope (Review step only):
+- Visual redesign of `OrderReviewStep.tsx` to the sidebar-summary layout.
+- Per-split delivery address now displayed (with "Same as billing" or the custom suburb + street).
+- Inline edit for each split: delivery address (suburb + street), delivery date, delivery time, special instructions.
+- Auto-recalculate the split's delivery fee when its suburb changes (reuse existing `useDeliveryFeeCalculation` + `fetchSuburbData` + `parseDeliveryRate`).
+- Fully responsive (sidebar collapses below totals on mobile, splits stack, no horizontal scroll).
 
-**1. New sidebar page**
-- Add `AI Assistant` entry in `AdminSidebar.tsx` (icon: `Sparkles` or `Bot`).
-- New route `/dashboard` tab + component `src/components/AIAssistant.tsx` rendering a full-page chat (messages list + input + streaming responses).
-- Markdown rendering for assistant replies (`react-markdown`).
-- Conversation kept in component state for this iteration (no persistence). A "Clear chat" button resets it.
+Out of scope:
+- Other steps (`CompactSplitConfig`, delivery method, payment, etc.) — unchanged.
+- Data model (`SplitConfig`) — unchanged.
+- Order creation services, backend, RPCs, fee math — unchanged.
+- Single-order (non-split) flow keeps its existing editable delivery fee input.
 
-**2. Anthropic API key**
-- Request `ANTHROPIC_API_KEY` secret via the secrets tool.
-- Stored server-side only, used inside the edge function.
+## Files to change
 
-**3. Edge function `ai-assistant` (streaming)**
-- File: `supabase/functions/ai-assistant/index.ts`, `verify_jwt = true` in `supabase/config.toml`.
-- Validates JWT (any authenticated user — admin, super_admin, driver, account_customer all allowed).
-- Calls Claude (`claude-sonnet-4-5` or latest equivalent) with:
-  - **System prompt** baking in app knowledge: roles & permissions, order/split numbering (MO-, -A/-B), order types & colors, delivery fee logic (suburb-based + global markup), time-slot formats, customer name rules (business_name priority), payment methods (incl. COD), MYOB/Google Sheets sync behavior, receipt/statement rules, Australian DD/MM/YYYY dates. Sourced from `mem://` index + `SwiftDispatchGuide.tsx` + `Knowledgebase.tsx`.
-  - **Tool definitions** for live DB lookups (see below).
-  - Full conversation history forwarded each call.
-- Streams responses back using SSE; frontend renders tokens incrementally.
+1. **`src/components/order/OrderReviewStep.tsx`** — rewrite layout, wire new props.
+2. **`src/components/order/MultiStepOrderForm.tsx`** — pass `onUpdateSplit` and `fetchSuburbData`/`parseDeliveryRate` results so Review can persist split edits.
+3. **`src/components/order/review/SplitEditPopovers.tsx`** *(new, small)* — three small popover components (`EditAddressPopover`, `EditSchedulePopover`, `EditInstructionsPopover`) reused per split card, to keep `OrderReviewStep.tsx` readable.
 
-**4. Tool-calling for live business data**
-Claude can call these read-only tools (executed inside the edge function using the service role, scoped to safe SELECTs):
-- `search_orders(query, status?, limit)` — by order number, customer name, phone
-- `get_order(order_number)` — full order detail incl. split siblings
-- `search_customers(query)` — by name/business/phone/account number
-- `get_customer(id)` — profile, recent orders, outstanding balance
-- `search_products(query)` — name/SKU, stock, price
-- `get_suburb_fee(suburb_name)` — delivery rate + markup
-- `list_drivers_today()` — driver assignments for today
-- `get_business_settings()` — non-secret settings (hours, contact, MYOB/Sheets toggles)
+No new dependencies. Uses existing shadcn `Popover`, `Calendar`, `Select`, `Textarea`, `Input`, `Button`, `Badge`, `Card`, plus `EnhancedAddressInput` and `SuburbSelector` already used in `CompactSplitConfig`.
 
-Each tool runs a parameterized query, hard-caps results (≤25 rows), and never returns secrets. No write tools in this phase.
+## Layout (matches selected direction)
 
-**5. Access control**
-- All authenticated users in `auth.users` can call the function (JWT required).
-- No role check — drivers can also ask "where is order MO-1234?".
-- Rate limit: simple in-memory per-user limiter inside the edge function (e.g., 20 req/min) with friendly toast on 429.
+```
+┌─────────────────────────────────────────┬──────────────────┐
+│ Review Your Order                       │  Order Summary   │
+│                                         │  (sticky, slate) │
+│ ┌─Customer──────────┐ ┌─Billing──────┐  │  Subtotal        │
+│ │ name + contact    │ │ full_address │  │  Delivery fees   │
+│ └───────────────────┘ └──────────────┘  │  GST             │
+│                                         │  ──────────      │
+│ Split Shipments                  [3]    │  Total           │
+│ ┌─Split #1 — Suburb  • Fee $50 ──────┐  │                  │
+│ │ items list ...                     │  │  [ Confirm CTA ] │
+│ │ ─────                              │  │                  │
+│ │ Address ✎      Date & Time ✎       │  ┌────────────────┐│
+│ │ Special instructions ✎             │  │ Payment Method ││
+│ └────────────────────────────────────┘  │ Badge          ││
+│ ┌─Split #2 — ... ────────────────────┐  └────────────────┘│
+│ └────────────────────────────────────┘                    │
+│                                                            │
+│ Order Notes / Delivery Notes / PO (kept editable)         │
+└────────────────────────────────────────────────────────────┘
+```
 
-**6. Error handling**
-- 401 (missing/invalid API key), 429 (rate limit), 402-equivalent (Anthropic credits) all surfaced as toasts.
-- Network errors show a retryable inline error in the chat.
+Mobile (`<lg`): single column, summary card moves to the bottom (still contains the Confirm CTA).
 
-### Files
+## Inline edit behavior
 
-- `supabase/functions/ai-assistant/index.ts` (new) — Claude proxy + tools + streaming
-- `supabase/config.toml` — register function with `verify_jwt = true`
-- `src/components/AIAssistant.tsx` (new) — chat UI, streaming reader, markdown rendering
-- `src/components/AdminSidebar.tsx` — add nav entry
-- `src/pages/Index.tsx` (or wherever dashboard tabs are wired) — add tab case
-- Secret request: `ANTHROPIC_API_KEY`
+For each split card, three pencil-icon triggers open a Popover:
 
-### Out of scope (this phase)
-- Persisting chat history to DB
-- Write/mutation tools (creating orders, updating statuses)
-- Per-role tool restrictions
-- File/image uploads to the assistant
-- Voice input
+- **Address** — toggles "Same as billing" pill; when custom, shows `EnhancedAddressInput` + `SuburbSelector`. On suburb change, calls `fetchSuburbData` → `parseDeliveryRate` and updates `deliveryFee` on that split (same logic as `CompactSplitConfig.handleSuburbChange`). Saves via `onUpdateSplit(index, {...})`.
+- **Date & Time** — `Calendar` + `Select` (reuses `generateTimeSlots`, `isDateBeforeToday`).
+- **Special Instructions** — `Textarea` with Save/Cancel.
 
-### Validation
-- Ask "How do I create a split order?" → returns workflow guidance.
-- Ask "What's the status of order MO-XXXX?" → tool call + accurate answer.
-- Ask "Show me customers in Burwood" → returns matches from DB.
-- Verify drivers can access and that no secrets leak in responses.
+The Save button in each popover calls the parent's `onUpdateSplit` (added as a new prop). No optimistic state needed — the parent already drives `splits`.
+
+## New props on `OrderReviewStep`
+
+```ts
+onUpdateSplit?: (splitIndex: number, updates: Partial<SplitConfig>) => void;
+```
+
+`MultiStepOrderForm` already has `updateSplit` / `setSplits` in scope — wire the existing updater through.
+
+## Visual tokens
+
+The locked Slate & Steel palette + Space Grotesk/DM Sans are mapped to existing semantic tokens in `index.css` / `tailwind.config.ts` (no inline hex per project rules):
+- Headings: `font-display` class (Space Grotesk) — add if missing.
+- Body: existing default (DM Sans) — add if missing.
+- Surfaces: `bg-card`, `border-border`, `bg-muted` for split header strip.
+- Summary rail: `bg-foreground text-background` (slate-700-like) with `bg-primary` confirm button.
+
+If `font-display` / DM Sans aren't already configured, add them in `tailwind.config.ts` `fontFamily` and import via the existing Google Fonts link in `index.html`. (Token additions only — no hex literals in components.)
+
+## Validation
+
+- Run dev preview at desktop 1234px and mobile 390px to confirm responsive behavior.
+- Verify editing a split's suburb on Review immediately updates its delivery fee chip and the sidebar total.
+- Verify editing a split's date/time and special instructions persists when navigating back to a previous step and forward again.
+- Verify single-order (non-split) Review still renders correctly with its existing editable delivery fee.
+
