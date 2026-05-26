@@ -97,6 +97,7 @@ function AuthenticatedApp() {
         <Route path="suburbs" element={<SuburbManagement />} />
         <Route path="emails" element={<EmailManagement />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="ai-assistant" element={<AIAssistant />} />
         <Route path="guide" element={<SwiftDispatchGuide />} />
       </Route>
       <Route 
