@@ -368,6 +368,15 @@ export function SplitConfigurationManager({
           commonDeliveryTime={commonDeliveryTime}
           onDateSelect={handleCommonDateSelect}
           onTimeChange={handleCommonTimeChange}
+          customer={customer}
+          isPickup={isPickup}
+          commonSameAsBilling={commonSameAsBilling}
+          commonDeliveryAddress={commonDeliveryAddress}
+          commonDeliverySuburbId={commonDeliverySuburbId}
+          onSameAsBillingToggle={handleCommonSameAsBillingToggle}
+          onAddressChange={handleCommonAddressChange}
+          onAddressSelect={handleCommonAddressSelect}
+          onSuburbChange={handleCommonSuburbChange}
         />
       )}
 
