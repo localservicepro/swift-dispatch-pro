@@ -1,63 +1,73 @@
 ## Goal
-Refresh `DashboardOverview` with a modern Slate & Steel look (matching the Review redesign), more accurate data scoped to a selectable window, and richer operational widgets.
 
-## Data accuracy fixes
-- All headline KPIs scope to the selected window (Today / 7d / 30d) using `created_at`.
-- Exclude `cancelled` orders from totals (count, revenue, AOV).
-- Revenue uses `total_amount` of orders within window, excluding cancelled. Add a separate "Delivered revenue" sub-stat that filters `status = 'delivered'`.
-- Replace lifetime "Total Orders" with windowed Orders count; show delta % vs previous equivalent window.
-- Use Australian DD/MM/YYYY for any displayed dates.
+Make split-order configuration faster and less error-prone when multiple splits share a destination, while guaranteeing each split's delivery fee remains the **full suburb rate** (never divided across splits).
 
-## New layout (Slate & Steel)
-Single page, responsive grid, sticky header.
+## Changes
 
-```text
-┌─ Header: title • Today/7d/30d toggle • Refresh ─────────────┐
-├─ KPI row (6 cards, dense, slate borders, neutral surfaces): │
-│   Orders | Revenue | AOV | Delivered | In Transit | Unpaid   │
-│   (each with delta % vs prior window)                        │
-├─ Today's Operations strip (3 stat tiles):                    │
-│   Scheduled today | Delivered today | Overdue (past delivery │
-│   date & not delivered/cancelled)                            │
-├─ 2-col main grid:                                            │
-│   Left: Revenue trend (area) + Status distribution (donut)   │
-│   Right: Customer-type mix (Account/Trade/Residential)       │
-│          - count, revenue, AOV per type                      │
-├─ 2-col secondary grid:                                       │
-│   Top customers (30d) | Top products (30d) - rank lists      │
-├─ 2-col tertiary grid:                                        │
-│   Recent orders | Stock alerts (unchanged data, new styling) │
-└─ Fleet/Driver utilization card:                              │
-    Active drivers today, trucks assigned vs idle, on-time %   │
-```
+### 1. Rename + extend the "Same date/time" toggle → "Same date, time & address"
 
-## Widgets
-- **Today's deliveries**: query orders where `delivery_date = today` for scheduled; delivered today via `status='delivered'` + `updated_at` today (or `delivery_status_updates` to 'delivered' today). Overdue = `delivery_date < today AND status NOT IN ('delivered','cancelled')`.
-- **By customer type**: join `customers.customer_type`, group orders in window into account/business/residential (aliased Trade for business). Show count, revenue, AOV.
-- **Top customers (30d)**: aggregate `orders.customer_id` by sum(total_amount), top 5, with display name logic (company → business → personal).
-- **Top products (30d)**: aggregate from `order_items` (qty, revenue), join `products.name`, top 5.
-- **Fleet utilization**: count distinct `driver_id` with orders today; `trucks` table — total vs assigned today via `truck_id` on today's orders.
+File: `src/components/order/SplitControlsHeader.tsx`
+- Update the checkbox label to **"Same date, time & address for all"**.
+- Keep prop name backwards compatible; just relabel.
 
-## Design tokens
-- Container: `bg-slate-50` page, cards `bg-white border-slate-200` with subtle `shadow-sm`, hover lift.
-- Accent: slate-800 headings (Space Grotesk), DM Sans body, single steel-blue accent `text-slate-700` numerals, semantic badges (emerald delivered, amber preparing, sky en_route, rose cancelled, red overdue/unpaid).
-- KPI card: small label + large tabular number + delta chip (▲ green / ▼ red / – muted).
-- Remove rainbow gradient cards. Use one consistent surface; color encoded only via small status dots/chips.
-- Charts use slate palette (slate-700 line, slate-300 grid), single accent for primary series.
+File: `src/components/order/SplitConfigurationManager.tsx`
+- When `useSameDateForAll` is toggled ON:
+  - Propagate `deliveryDate`, `deliveryTime` (existing behaviour).
+  - Also propagate `sameAsBilling`, `deliveryAddress`, `deliverySuburbId`, `suburbId` from a single "common" source to every split.
+- Add common address state alongside `commonDeliveryDate` / `commonDeliveryTime`:
+  - `commonSameAsBilling` (default true)
+  - `commonDeliveryAddress`, `commonDeliverySuburbId`
+- When user changes any common field while toggle is ON, fan it out to every split via `onSplitsChange`.
+- When toggle is turned OFF, splits keep their last values and become independently editable again (no reset).
 
-## Files
-- **Edit** `src/components/DashboardOverview.tsx`: rewrite UI + queries.
-- **New** `src/components/dashboard/useDashboardMetrics.ts`: encapsulate windowed queries (`window: 'today' | '7d' | '30d'`), returns KPIs + deltas.
-- **New** `src/components/dashboard/KpiCard.tsx`, `DashboardSection.tsx`, `RangeToggle.tsx`, `TypeMixCard.tsx`, `TopCustomersCard.tsx`, `TopProductsCard.tsx`, `TodayOpsCard.tsx`, `FleetUtilizationCard.tsx`.
-- Reuse existing recharts; recolor only.
-- No DB migrations — read-only against existing tables (`orders`, `order_items`, `customers`, `products`, `invoices`, `trucks`, `profiles`, `delivery_status_updates`).
+File: `src/components/order/CommonDateTimeSelector.tsx`
+- Rename internal usage to "Common Delivery Details".
+- Add an address row beneath the date/time grid:
+  - Toggle button "Use Billing Address" / "Use Different Address" (same pattern as `CompactSplitConfig`).
+  - When custom: render `EnhancedAddressInput` + `SuburbSelector`.
+- Emit new callbacks: `onSameAsBillingToggle`, `onAddressChange(addressData)`, `onSuburbChange(suburbId)`.
+- Accept `customer` prop to support billing address display.
+
+### 2. Hide per-split address/date/time editors when common mode is ON
+
+File: `src/components/order/CompactSplitConfig.tsx`
+- When `isCommonDateMode` is true:
+  - Hide the per-split Delivery Address block (already hides date/time).
+  - Show a small read-only summary chip: "Using common address: {address}".
+- Keep Special Instructions per-split (these are intentionally per-split per existing memory).
+
+### 3. Realtime per-split delivery fee — confirm "no division"
+
+Current behaviour (verified in `MultiStepOrderForm.tsx` lines 129–179 and `CompactSplitConfig.tsx` lines 80–89) already:
+- Fetches the suburb's `delivery_rate` per split.
+- Stores the **full** fee on each split (`split.deliveryFee = parseDeliveryRate(...)`).
+- Sums splits into the order's total delivery fee — never divides.
+
+Tightening to make this realtime and obvious:
+- In `SplitConfigurationManager.handleCommonSuburbChange`: when common-mode address/suburb changes, fetch the suburb once and write the **same full fee** to every split (e.g. $45 each → $45 × N total). Add a small helper note in `CommonDateTimeSelector`: *"Delivery fee applies per split (not divided)."*
+- In `CompactSplitConfig`'s fee display badge (lines 268–283), change the caption to:
+  *"Full suburb rate — charged per split"* so users understand each $45 stays $45.
+- Trigger fee recalculation when:
+  - Common suburb changes (fan-out).
+  - Individual split suburb changes (existing).
+  - `isCommonDateMode` is toggled ON (resync all splits to the common suburb's fee).
+
+### 4. Polish for a smoother split-order flow
+
+- `SplitControlsHeader`: group controls into two rows on small screens; keep one row on desktop. Add a subtle helper line under the toggle: *"Turn on to set one date, time and address for every split."*
+- Add a "Copy from Split 1" link in each subsequent split header (only visible when common-mode is OFF) that copies date, time, address, and suburb from Split 1 to that split — a faster path than enabling/disabling the common toggle.
+- Validation badge: in the accordion trigger, show an amber dot when a split is missing address/date/time so users see incomplete splits at a glance.
+- Ensure `SplitOrderConfigurationStep.canProceed()` still passes — no logic change needed; common-mode just writes the same values into each split.
 
 ## Out of scope
-- No changes to order/payment business logic, edge functions, or schema.
-- No new permissions/RLS changes (admin-only page already gated).
-- Real-time subscriptions kept as-is.
+
+- No DB schema changes.
+- No change to how the final order total is calculated (already sum of per-split fees).
+- No change to single-order (non-split) flow.
 
 ## Validation
-- Verify each KPI matches a manual SQL count for a sample window.
-- Responsive at 390 / 768 / 1234 px.
-- Dashboard loads under 1s with parallel queries; subscriptions still refresh on order/product/invoice changes.
+
+- Toggle "Same date, time & address" ON → set date, time, billing-address suburb with $45 rate across 3 splits → Review step shows 3 × $45 = $135 delivery fee.
+- Change common address to a $60 suburb → all 3 splits update to $60 (total $180) without page reload.
+- Toggle OFF → edit Split 2's address to a different suburb ($30) → totals = $60 + $30 + $60 = $150.
+- Pickup orders: address controls remain hidden (existing behaviour preserved).

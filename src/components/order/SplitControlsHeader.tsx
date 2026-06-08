@@ -47,14 +47,19 @@ export function SplitControlsHeader({
         </div>
       </div>
 
-      {/* Common Date Toggle */}
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="same-date"
-          checked={useSameDateForAll}
-          onCheckedChange={onSameDateToggle}
-        />
-        <Label htmlFor="same-date" className="text-sm">Same date/time for all</Label>
+      {/* Common Date/Address Toggle */}
+      <div className="flex flex-col items-start">
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="same-date"
+            checked={useSameDateForAll}
+            onCheckedChange={onSameDateToggle}
+          />
+          <Label htmlFor="same-date" className="text-sm">Same date, time &amp; address for all</Label>
+        </div>
+        <p className="text-[11px] text-muted-foreground ml-6">
+          Turn on to set one date, time and address for every split.
+        </p>
       </div>
 
       {/* Add Product Button */}
