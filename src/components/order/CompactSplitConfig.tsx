@@ -203,8 +203,8 @@ export function CompactSplitConfig({
                   </div>
                 )}
 
-                {/* Delivery Address — hidden for pickup */}
-                {!isPickup && customer && (
+                {/* Delivery Address — hidden for pickup or when common mode is on */}
+                {!isPickup && customer && !isCommonDateMode && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium flex items-center gap-2">
@@ -212,20 +212,50 @@ export function CompactSplitConfig({
                         Delivery Address
                       </Label>
                       
-                      <Button
-                        type="button"
-                        variant={split.sameAsBilling ? "outline" : "default"}
-                        size="sm"
-                        onClick={() => onUpdateSplit(index, { 
-                          sameAsBilling: !split.sameAsBilling,
-                          deliveryAddress: !split.sameAsBilling ? customer.full_address : split.deliveryAddress,
-                          deliverySuburbId: !split.sameAsBilling ? customer.suburb_id : split.deliverySuburbId
-                        })}
-                        className="h-8 text-xs"
-                      >
-                        <MapPin className="w-3 h-3 mr-1" />
-                        {split.sameAsBilling ? "Use Different Address" : "Use Billing Address"}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {index > 0 && onSplitsChange && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-xs"
+                            onClick={() => {
+                              const first = splits[0];
+                              const updated = splits.map((s, i) =>
+                                i === index
+                                  ? {
+                                      ...s,
+                                      deliveryDate: first.deliveryDate,
+                                      deliveryTime: first.deliveryTime,
+                                      sameAsBilling: first.sameAsBilling,
+                                      deliveryAddress: first.deliveryAddress,
+                                      deliverySuburbId: first.deliverySuburbId,
+                                      suburbId: first.suburbId,
+                                      deliveryFee: first.deliveryFee,
+                                    }
+                                  : s
+                              );
+                              onSplitsChange(updated);
+                            }}
+                          >
+                            Copy from {splits[0].name}
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant={split.sameAsBilling ? "outline" : "default"}
+                          size="sm"
+                          onClick={() => onUpdateSplit(index, { 
+                            sameAsBilling: !split.sameAsBilling,
+                            deliveryAddress: !split.sameAsBilling ? customer.full_address : split.deliveryAddress,
+                            deliverySuburbId: !split.sameAsBilling ? customer.suburb_id : split.deliverySuburbId
+                          })}
+                          className="h-8 text-xs"
+                        >
+                          <MapPin className="w-3 h-3 mr-1" />
+                          {split.sameAsBilling ? "Use Different Address" : "Use Billing Address"}
+                        </Button>
+                      </div>
                     </div>
                     
                     {split.sameAsBilling ? (
@@ -264,6 +294,17 @@ export function CompactSplitConfig({
                   </div>
                 )}
 
+                {/* Common-mode read-only address summary */}
+                {!isPickup && customer && isCommonDateMode && (
+                  <div className="p-2 bg-muted/40 rounded-md border border-dashed border-border text-xs text-muted-foreground flex items-center gap-2">
+                    <MapPin className="w-3 h-3" />
+                    Using common address:{" "}
+                    <span className="font-medium text-foreground truncate">
+                      {split.sameAsBilling ? (customer.full_address || "Billing address") : (split.deliveryAddress || "—")}
+                    </span>
+                  </div>
+                )}
+
                 {/* Delivery Fee Display — hidden for pickup */}
                 {!isPickup && (split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id)) && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -277,7 +318,7 @@ export function CompactSplitConfig({
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Auto-calculated from suburb delivery rate
+                      Full suburb rate — charged per split (not divided)
                     </p>
                   </div>
                 )}
