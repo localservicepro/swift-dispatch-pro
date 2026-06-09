@@ -18,6 +18,8 @@ interface CommonDateTimeSelectorProps {
   commonDeliveryTime: string;
   onDateSelect: (date: Date | undefined) => void;
   onTimeChange: (time: string) => void;
+  showDateTime?: boolean;
+  showAddress?: boolean;
   // Address (optional — only used for delivery, not pickup)
   customer?: Customer;
   isPickup?: boolean;
@@ -35,6 +37,8 @@ export function CommonDateTimeSelector({
   commonDeliveryTime,
   onDateSelect,
   onTimeChange,
+  showDateTime = true,
+  showAddress: showAddressProp,
   customer,
   isPickup = false,
   commonSameAsBilling = true,
@@ -46,10 +50,13 @@ export function CommonDateTimeSelector({
   onSuburbChange,
 }: CommonDateTimeSelectorProps) {
   const selectedCommonDate = commonDeliveryDate ? new Date(commonDeliveryDate) : undefined;
-  const showAddress = !isPickup && !!customer && !!onSameAsBillingToggle;
+  const showAddress = (showAddressProp ?? true) && !isPickup && !!customer && !!onSameAsBillingToggle;
+
+  if (!showDateTime && !showAddress) return null;
 
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-3">
+      {showDateTime && (
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs font-medium mb-1 block">Common Date</Label>
@@ -89,9 +96,10 @@ export function CommonDateTimeSelector({
           />
         </div>
       </div>
+      )}
 
       {showAddress && (
-        <div className="space-y-2 pt-2 border-t border-blue-200">
+        <div className={`space-y-2 ${showDateTime ? "pt-2 border-t border-blue-200" : ""}`}>
           <div className="flex items-center justify-between">
             <Label className="text-xs font-medium flex items-center gap-1">
               <MapPin className="w-3 h-3" />

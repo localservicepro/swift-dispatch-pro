@@ -34,7 +34,8 @@ export function SplitConfigurationManager({
   const { fetchSuburbData, parseDeliveryRate } = useDeliveryFeeCalculation();
   const { handleAutoSuburbSelection } = useSuburbManagement();
   const [numberOfSplits, setNumberOfSplits] = useState(splits.length || 2);
-  const [useSameDateForAll, setUseSameDateForAll] = useState(false);
+  const [useSameAddress, setUseSameAddress] = useState(false);
+  const [useSameDateTime, setUseSameDateTime] = useState(false);
   const [commonDeliveryDate, setCommonDeliveryDate] = useState("");
   const [commonDeliveryTime, setCommonDeliveryTime] = useState("");
   const [commonSameAsBilling, setCommonSameAsBilling] = useState(true);
@@ -43,8 +44,9 @@ export function SplitConfigurationManager({
   const [addProductDialog, setAddProductDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("allocation");
 
-  // Apply current common values to every split (date, time, and address when delivery)
+  // Apply common values to every split. `scope` controls which fields are written.
   const applyCommonToAllSplits = async (
+    scope: { dateTime?: boolean; address?: boolean },
     overrides?: Partial<{
       deliveryDate: string;
       deliveryTime: string;
@@ -61,7 +63,7 @@ export function SplitConfigurationManager({
 
     // Resolve fee from the chosen suburb (full rate per split — never divided)
     let fee: number | undefined;
-    const effectiveSuburbId = !isPickup
+    const effectiveSuburbId = !isPickup && scope.address
       ? (sameAsBilling ? customer?.suburb_id : suburbId)
       : undefined;
     if (effectiveSuburbId) {
@@ -70,12 +72,12 @@ export function SplitConfigurationManager({
     }
 
     const updated = splits.map(s => {
-      const next: SplitConfig = {
-        ...s,
-        deliveryDate: date || s.deliveryDate,
-        deliveryTime: time || s.deliveryTime,
-      };
-      if (!isPickup) {
+      const next: SplitConfig = { ...s };
+      if (scope.dateTime) {
+        if (date) next.deliveryDate = date;
+        if (time) next.deliveryTime = time;
+      }
+      if (scope.address && !isPickup) {
         next.sameAsBilling = sameAsBilling;
         if (sameAsBilling) {
           next.deliveryAddress = customer?.full_address || "";
@@ -115,10 +117,17 @@ export function SplitConfigurationManager({
     onSplitsChange(newSplits);
   };
 
-  const handleSameDateToggle = (checked: boolean) => {
-    setUseSameDateForAll(checked);
+  const handleSameAddressToggle = (checked: boolean) => {
+    setUseSameAddress(checked);
     if (checked) {
-      applyCommonToAllSplits();
+      applyCommonToAllSplits({ address: true });
+    }
+  };
+
+  const handleSameDateTimeToggle = (checked: boolean) => {
+    setUseSameDateTime(checked);
+    if (checked) {
+      applyCommonToAllSplits({ dateTime: true });
     }
   };
 
@@ -126,30 +135,30 @@ export function SplitConfigurationManager({
     if (date) {
       const dateString = format(date, 'yyyy-MM-dd');
       setCommonDeliveryDate(dateString);
-      if (useSameDateForAll) {
-        applyCommonToAllSplits({ deliveryDate: dateString });
+      if (useSameDateTime) {
+        applyCommonToAllSplits({ dateTime: true }, { deliveryDate: dateString });
       }
     }
   };
 
   const handleCommonTimeChange = (time: string) => {
     setCommonDeliveryTime(time);
-    if (useSameDateForAll) {
-      applyCommonToAllSplits({ deliveryTime: time });
+    if (useSameDateTime) {
+      applyCommonToAllSplits({ dateTime: true }, { deliveryTime: time });
     }
   };
 
   const handleCommonSameAsBillingToggle = (sameAsBilling: boolean) => {
     setCommonSameAsBilling(sameAsBilling);
-    if (useSameDateForAll) {
-      applyCommonToAllSplits({ sameAsBilling });
+    if (useSameAddress) {
+      applyCommonToAllSplits({ address: true }, { sameAsBilling });
     }
   };
 
   const handleCommonAddressChange = (address: string) => {
     setCommonDeliveryAddress(address);
-    if (useSameDateForAll && !commonSameAsBilling) {
-      applyCommonToAllSplits({ deliveryAddress: address });
+    if (useSameAddress && !commonSameAsBilling) {
+      applyCommonToAllSplits({ address: true }, { deliveryAddress: address });
     }
   };
 
@@ -158,21 +167,22 @@ export function SplitConfigurationManager({
     setCommonDeliveryAddress(addr);
     handleAutoSuburbSelection(addr, (suburbId: string) => {
       setCommonDeliverySuburbId(suburbId);
-      if (useSameDateForAll && !commonSameAsBilling) {
-        applyCommonToAllSplits({ deliveryAddress: addr, deliverySuburbId: suburbId });
+      if (useSameAddress && !commonSameAsBilling) {
+        applyCommonToAllSplits({ address: true }, { deliveryAddress: addr, deliverySuburbId: suburbId });
       }
     });
-    if (useSameDateForAll && !commonSameAsBilling) {
-      applyCommonToAllSplits({ deliveryAddress: addr });
+    if (useSameAddress && !commonSameAsBilling) {
+      applyCommonToAllSplits({ address: true }, { deliveryAddress: addr });
     }
   };
 
   const handleCommonSuburbChange = (suburbId: string) => {
     setCommonDeliverySuburbId(suburbId);
-    if (useSameDateForAll && !commonSameAsBilling) {
-      applyCommonToAllSplits({ deliverySuburbId: suburbId });
+    if (useSameAddress && !commonSameAsBilling) {
+      applyCommonToAllSplits({ address: true }, { deliverySuburbId: suburbId });
     }
   };
+
 
   const updateSplit = (splitIndex: number, updates: Partial<SplitConfig>) => {
     const updatedSplits = splits.map((split, index) => 
@@ -356,18 +366,22 @@ export function SplitConfigurationManager({
       <SplitControlsHeader
         numberOfSplits={numberOfSplits}
         onNumberOfSplitsChange={handleNumberOfSplitsChange}
-        useSameDateForAll={useSameDateForAll}
-        onSameDateToggle={handleSameDateToggle}
+        useSameAddress={useSameAddress}
+        onSameAddressToggle={handleSameAddressToggle}
+        useSameDateTime={useSameDateTime}
+        onSameDateTimeToggle={handleSameDateTimeToggle}
         onAddProduct={() => setAddProductDialog(true)}
       />
 
-      {/* Common Date/Time Controls */}
-      {useSameDateForAll && (
+      {/* Common Date/Time and/or Address Controls */}
+      {(useSameDateTime || useSameAddress) && (
         <CommonDateTimeSelector
           commonDeliveryDate={commonDeliveryDate}
           commonDeliveryTime={commonDeliveryTime}
           onDateSelect={handleCommonDateSelect}
           onTimeChange={handleCommonTimeChange}
+          showDateTime={useSameDateTime}
+          showAddress={useSameAddress}
           customer={customer}
           isPickup={isPickup}
           commonSameAsBilling={commonSameAsBilling}
@@ -379,6 +393,7 @@ export function SplitConfigurationManager({
           onSuburbChange={handleCommonSuburbChange}
         />
       )}
+
 
       {/* Main Content - Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -409,10 +424,12 @@ export function SplitConfigurationManager({
             cart={cart}
             onUpdateSplit={updateSplit}
             onSplitsChange={onSplitsChange}
-            isCommonDateMode={useSameDateForAll}
+            isCommonDateTimeMode={useSameDateTime}
+            isCommonAddressMode={useSameAddress}
             customer={customer}
             isPickup={isPickup}
           />
+
         </TabsContent>
       </Tabs>
 

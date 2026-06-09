@@ -1,22 +1,55 @@
-# Fix floating cart button position
+## Goal
+Make Step 5 (Configure Order Splits) more flexible: independently share **address** and/or **date & time** across all splits, and let users edit per-split date/time inline on the Product Allocation view when only the address is shared.
 
-## Problem
-The floating cart button in `StorefrontProductBrowser` uses `fixed bottom-6 right-6`, but it currently appears at the top of the products area overlapping the search bar instead of pinned to the bottom-right of the viewport.
+## Changes
 
-Cause: an ancestor element (likely the sticky/backdrop-blur header chain or a transformed parent above the storefront content) is creating a containing block for `position: fixed`, so `bottom-6` is measured against that ancestor rather than the viewport.
+### 1. `SplitControlsHeader.tsx`
+Replace the single `Same date, time & address for all` checkbox with **two independent toggles** stacked compactly:
+- `Same address for all`
+- `Same date & time for all`
 
-## Fix
-In `src/components/storefront/StorefrontProductBrowser.tsx`:
+Props change:
+- Remove: `useSameDateForAll`, `onSameDateToggle`
+- Add: `useSameAddress`, `onSameAddressToggle`, `useSameDateTime`, `onSameDateTimeToggle`
 
-1. Import `createPortal` from `react-dom`.
-2. Decouple the trigger from `SheetTrigger asChild` — render the `<Sheet>` with `open`/`onOpenChange` only, and render the floating button separately via `createPortal(..., document.body)` so no ancestor can become its containing block.
-3. Keep classes `fixed bottom-6 right-6 z-50` plus mobile safe-area padding (`pb-[env(safe-area-inset-bottom)]` wrapper) so it sits cleanly above the viewport bottom on iOS.
-4. Button `onClick` sets `setCartOpen(true)`; the Sheet still opens as before.
-5. Guard the portal with a `typeof document !== "undefined"` check to stay SSR-safe.
+Short helper text under each: "One address for every split" / "One date and time for every split".
 
-No other files change. Cart logic, drawer contents, styling, and behavior remain identical.
+### 2. `CommonDateTimeSelector.tsx`
+Split into conditional sections rendered based on which toggle is on:
+- Render the **Common Date + Common Time** block only when `showDateTime` is true.
+- Render the **Common Delivery Address** block only when `showAddress` is true.
+- If neither is true, the component returns null (and parent won't render it).
 
-## Acceptance
-- On `/storefront` (and inside any dialog/scroll context), the cart pill sits at the bottom-right of the browser viewport, not overlapping the search bar.
-- Clicking it still opens the cart Sheet.
-- Works on mobile without being clipped by the home indicator area.
+Add props: `showDateTime: boolean`, `showAddress: boolean` (replacing current implicit "all-or-nothing" behavior). Keep all existing date/time/address handlers.
+
+### 3. `SplitConfigurationManager.tsx`
+- Replace state `useSameDateForAll` with two booleans: `useSameAddress` and `useSameDateTime`.
+- `applyCommonToAllSplits` accepts a `scope: { dateTime?: boolean; address?: boolean }` so each handler only writes the fields its toggle controls. This prevents address handlers from overwriting per-split dates and vice versa.
+- Toggle handlers:
+  - `handleSameAddressToggle(checked)` → if on, apply only address fields to every split.
+  - `handleSameDateTimeToggle(checked)` → if on, apply only date + time to every split.
+- Date/time change handlers only propagate when `useSameDateTime` is true; address handlers only propagate when `useSameAddress` is true.
+- Pass `isCommonAddressMode={useSameAddress}` and `isCommonDateTimeMode={useSameDateTime}` to `CompactSplitConfig` (replacing the single `isCommonDateMode`).
+
+### 4. `CompactSplitConfig.tsx`
+- Replace prop `isCommonDateMode` with two props: `isCommonDateTimeMode` and `isCommonAddressMode`.
+- Hide per-split **date & time** inputs only when `isCommonDateTimeMode` is true (currently they hide whenever the combined toggle is on).
+- Hide per-split **address editor** only when `isCommonAddressMode` is true.
+- Show the existing "Using common address" summary row only when `isCommonAddressMode` is true.
+- This naturally enables the "same address, different date/time" workflow: each split card keeps its own date/time pickers while the address is locked to the common value.
+
+### 5. `SplitOrderConfigurationStep.tsx`
+No prop changes needed — it passes `splits` through unchanged. Validation logic already checks per-split `deliveryDate`/`deliveryTime`, which still works because they're populated either by the common toggle or by per-split editors.
+
+## UX result
+| Same address | Same date/time | Behavior |
+|---|---|---|
+| off | off | Fully independent splits (current default) |
+| on  | on  | Today's "all common" experience |
+| on  | off | **New** — one address, each split picks its own date/time inline |
+| off | on  | One date/time, each split picks its own address |
+
+## Out of scope
+- No changes to delivery fee logic — still full suburb rate per split.
+- No backend / schema changes.
+- No changes to validation rules in `SplitOrderConfigurationStep`.
