@@ -366,18 +366,22 @@ export function SplitConfigurationManager({
       <SplitControlsHeader
         numberOfSplits={numberOfSplits}
         onNumberOfSplitsChange={handleNumberOfSplitsChange}
-        useSameDateForAll={useSameDateForAll}
-        onSameDateToggle={handleSameDateToggle}
+        useSameAddress={useSameAddress}
+        onSameAddressToggle={handleSameAddressToggle}
+        useSameDateTime={useSameDateTime}
+        onSameDateTimeToggle={handleSameDateTimeToggle}
         onAddProduct={() => setAddProductDialog(true)}
       />
 
-      {/* Common Date/Time Controls */}
-      {useSameDateForAll && (
+      {/* Common Date/Time and/or Address Controls */}
+      {(useSameDateTime || useSameAddress) && (
         <CommonDateTimeSelector
           commonDeliveryDate={commonDeliveryDate}
           commonDeliveryTime={commonDeliveryTime}
           onDateSelect={handleCommonDateSelect}
           onTimeChange={handleCommonTimeChange}
+          showDateTime={useSameDateTime}
+          showAddress={useSameAddress}
           customer={customer}
           isPickup={isPickup}
           commonSameAsBilling={commonSameAsBilling}
@@ -389,6 +393,7 @@ export function SplitConfigurationManager({
           onSuburbChange={handleCommonSuburbChange}
         />
       )}
+
 
       {/* Main Content - Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -419,10 +424,12 @@ export function SplitConfigurationManager({
             cart={cart}
             onUpdateSplit={updateSplit}
             onSplitsChange={onSplitsChange}
-            isCommonDateMode={useSameDateForAll}
+            isCommonDateTimeMode={useSameDateTime}
+            isCommonAddressMode={useSameAddress}
             customer={customer}
             isPickup={isPickup}
           />
+
         </TabsContent>
       </Tabs>
 

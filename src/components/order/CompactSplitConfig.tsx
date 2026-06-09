@@ -27,7 +27,8 @@ interface CompactSplitConfigProps {
   customer?: Customer;
   onUpdateSplit: (splitIndex: number, updates: Partial<SplitConfig>) => void;
   onSplitsChange?: (splits: SplitConfig[]) => void;
-  isCommonDateMode?: boolean;
+  isCommonDateTimeMode?: boolean;
+  isCommonAddressMode?: boolean;
   isPickup?: boolean;
 }
 
@@ -37,7 +38,8 @@ export function CompactSplitConfig({
   customer,
   onUpdateSplit,
   onSplitsChange,
-  isCommonDateMode = false,
+  isCommonDateTimeMode = false,
+  isCommonAddressMode = false,
   isPickup = false
 }: CompactSplitConfigProps) {
   const timeSlots = generateTimeSlots();
