@@ -401,6 +401,17 @@ export function OpportunityPipeline() {
         updatedBy: profile?.full_name || 'Admin'
       });
 
+      // Persist COD auto-paid on delivered (status service only writes status)
+      if (patch.payment_status === 'paid' && patch.payment_date) {
+        await supabase
+          .from('orders')
+          .update({
+            payment_status: 'paid',
+            payment_date: patch.payment_date,
+          })
+          .eq('id', order.id);
+      }
+
       toast({
         title: "Order Moved",
         description: `Order ${order.order_number} moved to ${PIPELINE_STAGES.find(s => s.id === newStage)?.title}`,
