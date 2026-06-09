@@ -338,6 +338,7 @@ export function StorefrontProductBrowser({ cart, onCartChange, onNext }: Storefr
             </div>
           </SheetContent>
         </Sheet>
+        </>
       )}
     </div>
   );
