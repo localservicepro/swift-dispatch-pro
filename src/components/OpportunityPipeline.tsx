@@ -323,12 +323,14 @@ export function OpportunityPipeline() {
 
     try {
       const customerType = orderForAssignment.customers?.customer_type || orderForAssignment.customer_type;
+      const isCOD = orderForAssignment.payment_method === 'cod';
       const updateData: any = {
         truck_type: assignments.truckType,
         truck_id: assignments.truckId,
         driver_id: assignments.driverId === 'unassigned' ? null : assignments.driverId,
         status: 'preparing',
-        payment_status: customerType === 'account' ? 'pending' : 'paid',
+        // COD stays pending until delivered
+        payment_status: (customerType === 'account' || isCOD) ? 'pending' : 'paid',
         updated_at: new Date().toISOString()
       };
 
