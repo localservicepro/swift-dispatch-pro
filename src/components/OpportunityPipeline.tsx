@@ -227,6 +227,7 @@ export function OpportunityPipeline() {
   // Compute the optimistic patch for moving an order into a new stage.
   const buildStagePatch = (order: any, newStage: string) => {
     const customerType = order.customers?.customer_type || order.customer_type;
+    const isCOD = order.payment_method === 'cod';
     const patch: any = { updated_at: new Date().toISOString() };
     switch (newStage) {
       case 'on_hold':
@@ -237,7 +238,8 @@ export function OpportunityPipeline() {
         break;
       case 'preparing':
         patch.status = 'preparing';
-        patch.payment_status = customerType === 'account' ? 'pending' : 'paid';
+        // COD stays pending until delivered; account customers stay pending; others auto-paid
+        patch.payment_status = (customerType === 'account' || isCOD) ? 'pending' : 'paid';
         break;
       case 'loading':
         patch.status = 'loading';
@@ -247,6 +249,11 @@ export function OpportunityPipeline() {
         break;
       case 'delivered':
         patch.status = 'delivered';
+        // COD is collected on delivery — auto-mark paid
+        if (isCOD && order.payment_status !== 'paid') {
+          patch.payment_status = 'paid';
+          patch.payment_date = new Date().toISOString();
+        }
         break;
       default:
         patch.status = newStage;
@@ -281,9 +288,11 @@ export function OpportunityPipeline() {
       return;
     }
 
-    // Payment validation: prevent moving from requested if payment is pending (except for account customers)
+    // Payment validation: prevent moving from requested if payment is pending
+    // (except for account customers and COD orders — COD is collected on delivery)
     const customerType = order.customers?.customer_type || order.customer_type;
-    if (currentStage === 'requested' && order.payment_status === 'pending' && customerType !== 'account') {
+    const isCOD = order.payment_method === 'cod';
+    if (currentStage === 'requested' && order.payment_status === 'pending' && customerType !== 'account' && !isCOD) {
       toast({
         title: "Payment Required",
         description: `Order ${order.order_number} requires payment confirmation before it can be moved`,
@@ -314,12 +323,14 @@ export function OpportunityPipeline() {
 
     try {
       const customerType = orderForAssignment.customers?.customer_type || orderForAssignment.customer_type;
+      const isCOD = orderForAssignment.payment_method === 'cod';
       const updateData: any = {
         truck_type: assignments.truckType,
         truck_id: assignments.truckId,
         driver_id: assignments.driverId === 'unassigned' ? null : assignments.driverId,
         status: 'preparing',
-        payment_status: customerType === 'account' ? 'pending' : 'paid',
+        // COD stays pending until delivered
+        payment_status: (customerType === 'account' || isCOD) ? 'pending' : 'paid',
         updated_at: new Date().toISOString()
       };
 
@@ -389,6 +400,17 @@ export function OpportunityPipeline() {
         newStatus: patch.status || newStage,
         updatedBy: profile?.full_name || 'Admin'
       });
+
+      // Persist COD auto-paid on delivered (status service only writes status)
+      if (patch.payment_status === 'paid' && patch.payment_date) {
+        await supabase
+          .from('orders')
+          .update({
+            payment_status: 'paid',
+            payment_date: patch.payment_date,
+          })
+          .eq('id', order.id);
+      }
 
       toast({
         title: "Order Moved",
