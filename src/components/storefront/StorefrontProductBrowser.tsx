@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -241,18 +242,29 @@ export function StorefrontProductBrowser({ cart, onCartChange, onNext }: Storefr
 
       {/* Floating Cart Button & Drawer */}
       {cart.length > 0 && (
-        <Sheet open={cartOpen} onOpenChange={setCartOpen}>
-          <SheetTrigger asChild>
-            <button className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-primary text-primary-foreground pl-5 pr-6 py-3.5 rounded-full shadow-2xl hover:shadow-xl transition-all hover:scale-105 active:scale-95">
-              <div className="relative">
-                <ShoppingCart className="h-5 w-5" />
-                <span className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center">
-                  {cartCount}
-                </span>
-              </div>
-              <span className="font-semibold">${cartTotal.toFixed(2)}</span>
-            </button>
-          </SheetTrigger>
+        <>
+          {typeof document !== "undefined" &&
+            createPortal(
+              <div
+                className="fixed bottom-0 right-0 z-[60] p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none"
+              >
+                <button
+                  type="button"
+                  onClick={() => setCartOpen(true)}
+                  className="pointer-events-auto flex items-center gap-3 bg-primary text-primary-foreground pl-5 pr-6 py-3.5 rounded-full shadow-2xl hover:shadow-xl transition-all hover:scale-105 active:scale-95"
+                >
+                  <div className="relative">
+                    <ShoppingCart className="h-5 w-5" />
+                    <span className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center">
+                      {cartCount}
+                    </span>
+                  </div>
+                  <span className="font-semibold">${cartTotal.toFixed(2)}</span>
+                </button>
+              </div>,
+              document.body
+            )}
+          <Sheet open={cartOpen} onOpenChange={setCartOpen}>
           <SheetContent className="w-full sm:max-w-md flex flex-col">
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2">
@@ -326,6 +338,7 @@ export function StorefrontProductBrowser({ cart, onCartChange, onNext }: Storefr
             </div>
           </SheetContent>
         </Sheet>
+        </>
       )}
     </div>
   );
