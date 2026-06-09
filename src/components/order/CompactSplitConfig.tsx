@@ -307,20 +307,53 @@ export function CompactSplitConfig({
                   </div>
                 )}
 
-                {/* Delivery Fee Display — hidden for pickup */}
+                {/* Delivery Fee — editable; hidden for pickup */}
                 {!isPickup && (split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id)) && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center gap-2">
                       <Label className="text-xs font-medium flex items-center gap-1">
                         <Truck className="w-3 h-3" />
                         Delivery Fee
                       </Label>
-                      <Badge variant="default" className="text-sm">
-                        AU${(split.deliveryFee || 0).toFixed(2)}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">AU$</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={split.deliveryFee ?? 0}
+                          onChange={(e) => {
+                            const n = parseFloat(e.target.value);
+                            const parsed = isNaN(n) ? 0 : Math.max(0, n);
+                            onUpdateSplit(index, { deliveryFee: parsed, deliveryFeeManual: true });
+                          }}
+                          className="h-7 w-24 rounded-md border border-input bg-background px-2 text-xs text-right"
+                        />
+                        {split.deliveryFeeManual && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={async () => {
+                              const suburbId = split.deliverySuburbId || (split.sameAsBilling ? customer?.suburb_id : undefined);
+                              if (!suburbId) return;
+                              const data = await fetchSuburbData(suburbId);
+                              if (data) {
+                                onUpdateSplit(index, {
+                                  deliveryFee: parseDeliveryRate(data.delivery_rate),
+                                  deliveryFeeManual: false,
+                                });
+                              }
+                            }}
+                          >
+                            Reset
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Full suburb rate — charged per split (not divided)
+                      Auto-set from suburb rate — edit to override (use 0 for free delivery).
                     </p>
                   </div>
                 )}
