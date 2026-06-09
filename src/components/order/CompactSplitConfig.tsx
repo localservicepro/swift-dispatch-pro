@@ -147,7 +147,7 @@ export function CompactSplitConfig({
                 )}
 
                 {/* Delivery Details */}
-                {!isCommonDateMode && (
+                {!isCommonDateTimeMode && (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs font-medium mb-1 block flex items-center gap-1">
@@ -206,7 +206,7 @@ export function CompactSplitConfig({
                 )}
 
                 {/* Delivery Address — hidden for pickup or when common mode is on */}
-                {!isPickup && customer && !isCommonDateMode && (
+                {!isPickup && customer && !isCommonAddressMode && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium flex items-center gap-2">
@@ -297,7 +297,7 @@ export function CompactSplitConfig({
                 )}
 
                 {/* Common-mode read-only address summary */}
-                {!isPickup && customer && isCommonDateMode && (
+                {!isPickup && customer && isCommonAddressMode && (
                   <div className="p-2 bg-muted/40 rounded-md border border-dashed border-border text-xs text-muted-foreground flex items-center gap-2">
                     <MapPin className="w-3 h-3" />
                     Using common address:{" "}
