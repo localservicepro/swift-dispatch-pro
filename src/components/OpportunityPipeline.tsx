@@ -288,9 +288,11 @@ export function OpportunityPipeline() {
       return;
     }
 
-    // Payment validation: prevent moving from requested if payment is pending (except for account customers)
+    // Payment validation: prevent moving from requested if payment is pending
+    // (except for account customers and COD orders — COD is collected on delivery)
     const customerType = order.customers?.customer_type || order.customer_type;
-    if (currentStage === 'requested' && order.payment_status === 'pending' && customerType !== 'account') {
+    const isCOD = order.payment_method === 'cod';
+    if (currentStage === 'requested' && order.payment_status === 'pending' && customerType !== 'account' && !isCOD) {
       toast({
         title: "Payment Required",
         description: `Order ${order.order_number} requires payment confirmation before it can be moved`,
