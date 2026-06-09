@@ -227,6 +227,7 @@ export function OpportunityPipeline() {
   // Compute the optimistic patch for moving an order into a new stage.
   const buildStagePatch = (order: any, newStage: string) => {
     const customerType = order.customers?.customer_type || order.customer_type;
+    const isCOD = order.payment_method === 'cod';
     const patch: any = { updated_at: new Date().toISOString() };
     switch (newStage) {
       case 'on_hold':
@@ -237,7 +238,8 @@ export function OpportunityPipeline() {
         break;
       case 'preparing':
         patch.status = 'preparing';
-        patch.payment_status = customerType === 'account' ? 'pending' : 'paid';
+        // COD stays pending until delivered; account customers stay pending; others auto-paid
+        patch.payment_status = (customerType === 'account' || isCOD) ? 'pending' : 'paid';
         break;
       case 'loading':
         patch.status = 'loading';
@@ -247,6 +249,11 @@ export function OpportunityPipeline() {
         break;
       case 'delivered':
         patch.status = 'delivered';
+        // COD is collected on delivery — auto-mark paid
+        if (isCOD && order.payment_status !== 'paid') {
+          patch.payment_status = 'paid';
+          patch.payment_date = new Date().toISOString();
+        }
         break;
       default:
         patch.status = newStage;
