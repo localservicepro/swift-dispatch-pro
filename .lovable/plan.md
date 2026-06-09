@@ -1,55 +1,36 @@
 ## Goal
-Make Step 5 (Configure Order Splits) more flexible: independently share **address** and/or **date & time** across all splits, and let users edit per-split date/time inline on the Product Allocation view when only the address is shared.
+Let the order creator override the delivery fee for each split independently, including setting it to `$0` for free delivery, while keeping the auto-calculated suburb rate as the default.
 
-## Changes
+## Change (single file)
+`src/components/order/CompactSplitConfig.tsx` — the "Delivery Fee Display" block (lines ~310–326) becomes editable.
 
-### 1. `SplitControlsHeader.tsx`
-Replace the single `Same date, time & address for all` checkbox with **two independent toggles** stacked compactly:
-- `Same address for all`
-- `Same date & time for all`
+### New UI for that block
+- Keep the same blue card and "Delivery Fee" label.
+- Replace the read-only `Badge` with a small numeric input:
+  - `type="number"`, `min=0`, `step=0.01`, prefixed with `AU$`.
+  - Value bound to `split.deliveryFee ?? 0`.
+  - `onChange` calls `onUpdateSplit(index, { deliveryFee: parsed })` where `parsed = isNaN ? 0 : Math.max(0, Number(value))`.
+- Add a tiny "Reset to suburb rate" link button:
+  - Visible only when a suburb is resolved for the split.
+  - On click: re-fetch the suburb via `fetchSuburbData` and call `onUpdateSplit(index, { deliveryFee: parseDeliveryRate(data.delivery_rate) })`.
+- Replace the helper text with: `"Auto-set from suburb rate — edit to override (use 0 for free delivery)."`
 
-Props change:
-- Remove: `useSameDateForAll`, `onSameDateToggle`
-- Add: `useSameAddress`, `onSameAddressToggle`, `useSameDateTime`, `onSameDateTimeToggle`
+### Why this is enough
+- Split totals already read `split.deliveryFee` (see `MultiStepOrderForm` effect that sums `splits.reduce(... + (split.deliveryFee || 0) ...)` into the order's `deliveryFee`).
+- The auto-population effect in `MultiStepOrderForm` only fills a split when its `deliveryFee` is `undefined` or `0` and a suburb is set. To prevent it from overwriting an explicit `$0`, we track manual edits with a per-split flag.
 
-Short helper text under each: "One address for every split" / "One date and time for every split".
-
-### 2. `CommonDateTimeSelector.tsx`
-Split into conditional sections rendered based on which toggle is on:
-- Render the **Common Date + Common Time** block only when `showDateTime` is true.
-- Render the **Common Delivery Address** block only when `showAddress` is true.
-- If neither is true, the component returns null (and parent won't render it).
-
-Add props: `showDateTime: boolean`, `showAddress: boolean` (replacing current implicit "all-or-nothing" behavior). Keep all existing date/time/address handlers.
-
-### 3. `SplitConfigurationManager.tsx`
-- Replace state `useSameDateForAll` with two booleans: `useSameAddress` and `useSameDateTime`.
-- `applyCommonToAllSplits` accepts a `scope: { dateTime?: boolean; address?: boolean }` so each handler only writes the fields its toggle controls. This prevents address handlers from overwriting per-split dates and vice versa.
-- Toggle handlers:
-  - `handleSameAddressToggle(checked)` → if on, apply only address fields to every split.
-  - `handleSameDateTimeToggle(checked)` → if on, apply only date + time to every split.
-- Date/time change handlers only propagate when `useSameDateTime` is true; address handlers only propagate when `useSameAddress` is true.
-- Pass `isCommonAddressMode={useSameAddress}` and `isCommonDateTimeMode={useSameDateTime}` to `CompactSplitConfig` (replacing the single `isCommonDateMode`).
-
-### 4. `CompactSplitConfig.tsx`
-- Replace prop `isCommonDateMode` with two props: `isCommonDateTimeMode` and `isCommonAddressMode`.
-- Hide per-split **date & time** inputs only when `isCommonDateTimeMode` is true (currently they hide whenever the combined toggle is on).
-- Hide per-split **address editor** only when `isCommonAddressMode` is true.
-- Show the existing "Using common address" summary row only when `isCommonAddressMode` is true.
-- This naturally enables the "same address, different date/time" workflow: each split card keeps its own date/time pickers while the address is locked to the common value.
-
-### 5. `SplitOrderConfigurationStep.tsx`
-No prop changes needed — it passes `splits` through unchanged. Validation logic already checks per-split `deliveryDate`/`deliveryTime`, which still works because they're populated either by the common toggle or by per-split editors.
-
-## UX result
-| Same address | Same date/time | Behavior |
-|---|---|---|
-| off | off | Fully independent splits (current default) |
-| on  | on  | Today's "all common" experience |
-| on  | off | **New** — one address, each split picks its own date/time inline |
-| off | on  | One date/time, each split picks its own address |
+### Manual-override flag
+- Extend `SplitConfig` (in `src/components/order/types.ts`) with an optional `deliveryFeeManual?: boolean`.
+- In the new input's `onChange`, set `{ deliveryFee: parsed, deliveryFeeManual: true }`.
+- In "Reset to suburb rate", set `{ deliveryFee: suburbFee, deliveryFeeManual: false }`.
+- Update the auto-populate effect in `MultiStepOrderForm.tsx` to skip any split where `deliveryFeeManual === true` (one extra condition in the `needsUpdate` check and the loop).
 
 ## Out of scope
-- No changes to delivery fee logic — still full suburb rate per split.
-- No backend / schema changes.
-- No changes to validation rules in `SplitOrderConfigurationStep`.
+- No DB schema changes (per-split delivery fees already persist via the existing split-order creation path).
+- No changes to single-order delivery fee UI, common-mode toggles, or split totals math.
+- No changes to receipts/reports — they already read the stored fee.
+
+## Files touched
+1. `src/components/order/CompactSplitConfig.tsx` — editable fee input + reset button.
+2. `src/components/order/types.ts` — add `deliveryFeeManual?: boolean` to `SplitConfig`.
+3. `src/components/order/MultiStepOrderForm.tsx` — respect `deliveryFeeManual` in the auto-populate effect.

@@ -133,6 +133,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     if (orderType !== 'split' || deliveryMethod !== 'delivery' || splits.length === 0) return;
 
     const needsUpdate = splits.some(s => {
+      if (s.deliveryFeeManual) return false;
       const suburbId = s.deliverySuburbId || (s.sameAsBilling && (selectedCustomer as any)?.suburb_id ? (selectedCustomer as any).suburb_id : null);
       return suburbId && (s.deliveryFee === undefined || s.deliveryFee === 0);
     });
@@ -145,7 +146,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       for (let i = 0; i < splits.length; i++) {
         const s = splits[i];
         const suburbId = s.deliverySuburbId || (s.sameAsBilling && (selectedCustomer as any)?.suburb_id ? (selectedCustomer as any).suburb_id : null);
-        if (suburbId && (s.deliveryFee === undefined || s.deliveryFee === 0)) {
+        if (!s.deliveryFeeManual && suburbId && (s.deliveryFee === undefined || s.deliveryFee === 0)) {
           const data = await fetchSuburbData(suburbId);
           if (cancelled) return;
           if (data) {
