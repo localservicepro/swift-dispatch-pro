@@ -133,6 +133,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     if (orderType !== 'split' || deliveryMethod !== 'delivery' || splits.length === 0) return;
 
     const needsUpdate = splits.some(s => {
+      if (s.deliveryFeeManual) return false;
       const suburbId = s.deliverySuburbId || (s.sameAsBilling && (selectedCustomer as any)?.suburb_id ? (selectedCustomer as any).suburb_id : null);
       return suburbId && (s.deliveryFee === undefined || s.deliveryFee === 0);
     });
