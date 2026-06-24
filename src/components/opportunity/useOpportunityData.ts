@@ -125,10 +125,12 @@ function sortOrders(rows: any[]) {
   return [...rows].sort((a, b) => {
     const aT = getDeliveryDateTime(a);
     const bT = getDeliveryDateTime(b);
-    if (aT && bT) return aT - bT;
+    if (aT && bT && aT !== bT) return aT - bT;
     if (aT && !bT) return -1;
     if (!aT && bT) return 1;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    // Tie-breaker: oldest order first (orders placed earlier take priority
+    // over orders placed later for the same delivery date/time).
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
 }
 

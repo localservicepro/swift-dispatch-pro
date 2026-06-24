@@ -186,6 +186,16 @@ export function OpportunityCardInfo({ order, onOrderClick }: OpportunityCardInfo
             </div>
           </>
         )}
+
+        {/* Order Placed Timestamp - helps staff prioritise older orders */}
+        {order.created_at && (
+          <div className="flex items-center gap-2 text-slate-500">
+            <Clock className="w-3 h-3" />
+            <span>
+              Placed: {formatCreatedDate(order.created_at)} · {formatCreatedTime(order.created_at)}
+            </span>
+          </div>
+        )}
         
         {/* Products Information */}
         <div className="flex items-start gap-2">
