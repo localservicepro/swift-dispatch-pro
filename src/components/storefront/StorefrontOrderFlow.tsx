@@ -77,23 +77,35 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
   const [matchedSuburbName, setMatchedSuburbName] = useState<string | null>(null);
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [fuelSurcharge, setFuelSurcharge] = useState(0);
+  const [deliveryMarkupValue, setDeliveryMarkupValue] = useState(0);
+  const [deliveryMarkupType, setDeliveryMarkupType] = useState<string>("fixed");
+  const [allSuburbs, setAllSuburbs] = useState<Array<{ id: string; name: string; state: string; postcode: string; delivery_rate: string }>>([]);
 
-  // Fetch fuel surcharge from payment settings
+  // Fetch payment settings (fuel surcharge + delivery markup) and suburbs list
   useEffect(() => {
-    const fetchFuelSurcharge = async () => {
+    const fetchSettings = async () => {
       try {
         const { data } = await supabase
           .from("payment_settings")
-          .select("fuel_surcharge")
+          .select("fuel_surcharge, delivery_markup_value, delivery_markup_type")
           .single();
-        if (data?.fuel_surcharge != null) {
-          setFuelSurcharge(Number(data.fuel_surcharge) || 0);
-        }
+        if (data?.fuel_surcharge != null) setFuelSurcharge(Number(data.fuel_surcharge) || 0);
+        if (data?.delivery_markup_value != null) setDeliveryMarkupValue(Number(data.delivery_markup_value) || 0);
+        if (data?.delivery_markup_type) setDeliveryMarkupType(String(data.delivery_markup_type));
       } catch {
         setFuelSurcharge(5); // fallback default
       }
     };
-    fetchFuelSurcharge();
+    const fetchSuburbs = async () => {
+      const { data } = await supabase
+        .from("suburbs")
+        .select("id, name, state, postcode, delivery_rate")
+        .eq("is_active", true)
+        .order("name");
+      if (data) setAllSuburbs(data as any);
+    };
+    fetchSettings();
+    fetchSuburbs();
   }, []);
 
   // Collapsible sections
