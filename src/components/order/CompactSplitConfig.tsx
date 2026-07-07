@@ -44,7 +44,7 @@ export function CompactSplitConfig({
 }: CompactSplitConfigProps) {
   const timeSlots = generateTimeSlots();
   const { handleAutoSuburbSelection } = useSuburbManagement();
-  const { fetchSuburbData, parseDeliveryRate } = useDeliveryFeeCalculation();
+  const { fetchSuburbData, computeFeeFromRate } = useDeliveryFeeCalculation();
 
   const getSplitTotal = (split: SplitConfig) => {
     return split.products.reduce((sum, splitProduct) => {
