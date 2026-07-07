@@ -437,6 +437,26 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
                     showMapButton={true}
                     showValidation={false}
                   />
+
+                  {/* Manual suburb override — used when auto-match picks the
+                      wrong suburb from a street name, or when the address
+                      doesn't include a postcode. */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Delivery suburb</Label>
+                    <select
+                      value={matchedSuburbId || ""}
+                      onChange={(e) => handleManualSuburbSelect(e.target.value)}
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">Select delivery suburb…</option>
+                      {allSuburbs.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.postcode}) — {s.delivery_rate}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   {matchedSuburbName && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
                       <MapPin className="h-3.5 w-3.5" />
