@@ -141,6 +141,16 @@ export function useDeliveryFeeCalculation() {
     };
   }, [suburb, parseDeliveryRate, applyMarkup]);
 
+  /**
+   * Compute the final delivery fee (base rate + markup) from a raw
+   * delivery_rate string. Use this whenever the UI needs to display or
+   * store a fee derived from a suburb — it keeps client-side values in
+   * lock-step with the server's authoritative recompute.
+   */
+  const computeFeeFromRate = useCallback((deliveryRate: string): number => {
+    return applyMarkup(parseDeliveryRate(deliveryRate));
+  }, [applyMarkup, parseDeliveryRate]);
+
   return {
     suburb,
     isLoading,
@@ -148,6 +158,8 @@ export function useDeliveryFeeCalculation() {
     getAutoDeliveryFee,
     autoPopulateDeliveryFee,
     getDeliveryFeeInfo,
-    parseDeliveryRate
+    parseDeliveryRate,
+    applyMarkup,
+    computeFeeFromRate,
   };
 }
