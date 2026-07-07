@@ -344,7 +344,7 @@ export function CompactSplitConfig({
                               const data = await fetchSuburbData(suburbId);
                               if (data) {
                                 onUpdateSplit(index, {
-                                  deliveryFee: parseDeliveryRate(data.delivery_rate),
+                                  deliveryFee: computeFeeFromRate(data.delivery_rate),
                                   deliveryFeeManual: false,
                                 });
                               }
