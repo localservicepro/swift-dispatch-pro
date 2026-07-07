@@ -413,21 +413,33 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       if (params.deliveryMethod !== 'delivery') return 0;
       const suburbId = splitSuburbIdFor(split);
       const clientFee = Number(split.deliveryFee) || 0;
+      const manualOverride = !!split.deliveryFeeManual;
 
       if (suburbId) {
         const serverFee = serverFeeBySuburbId.get(suburbId);
+
+        // Explicit admin override wins — trust the client value verbatim.
+        if (manualOverride) {
+          console.log(`🚚 Split #${idx + 1} using manually set delivery fee`, {
+            suburb_id: suburbId,
+            manualDeliveryFee: clientFee,
+            suburbDefaultFee: serverFee,
+          });
+          return clientFee;
+        }
+
         if (typeof serverFee === 'number' && serverFee > 0) {
-          // Respect manual admin overrides: if the client supplied a non-zero
-          // fee that differs from the suburb default, trust the admin's value.
-          // Only fall back to the server fee when the client value is 0
-          // (which indicates a stale/empty state, not an intentional override).
-          if (clientFee > 0 && Math.abs(serverFee - clientFee) > 0.01) {
-            console.warn(`🚚 Split #${idx + 1} using manually set delivery fee (admin override)`, {
+          // No manual override: always use the server-computed fee (which
+          // includes the global delivery markup). This prevents the client's
+          // stale/un-marked value from being persisted as if it were an
+          // override — the root cause of the "$5 markup missing on splits"
+          // and "manual fee reverts on print" reports.
+          if (Math.abs(serverFee - clientFee) > 0.01) {
+            console.warn(`🚚 Split #${idx + 1} delivery fee mismatch — using server value`, {
               suburb_id: suburbId,
-              manualDeliveryFee: clientFee,
-              suburbDefaultFee: serverFee,
+              clientDeliveryFee: clientFee,
+              serverDeliveryFee: serverFee,
             });
-            return clientFee;
           }
           return serverFee;
         }
