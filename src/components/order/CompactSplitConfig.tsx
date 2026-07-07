@@ -44,7 +44,7 @@ export function CompactSplitConfig({
 }: CompactSplitConfigProps) {
   const timeSlots = generateTimeSlots();
   const { handleAutoSuburbSelection } = useSuburbManagement();
-  const { fetchSuburbData, parseDeliveryRate } = useDeliveryFeeCalculation();
+  const { fetchSuburbData, computeFeeFromRate } = useDeliveryFeeCalculation();
 
   const getSplitTotal = (split: SplitConfig) => {
     return split.products.reduce((sum, splitProduct) => {
@@ -81,12 +81,15 @@ export function CompactSplitConfig({
 
   const handleSuburbChange = async (splitIndex: number, suburbId: string) => {
     onUpdateSplit(splitIndex, { deliverySuburbId: suburbId });
-    
-    // Fetch suburb data and calculate delivery fee
+
+    // Fetch suburb data and calculate delivery fee (INCLUDING markup) so the
+    // value shown in the UI matches what the server persists. Without markup
+    // here, the client value drifts from the server's authoritative fee and
+    // gets misidentified as an "admin override".
     const suburbData = await fetchSuburbData(suburbId);
     if (suburbData) {
-      const deliveryFee = parseDeliveryRate(suburbData.delivery_rate);
-      onUpdateSplit(splitIndex, { deliveryFee });
+      const deliveryFee = computeFeeFromRate(suburbData.delivery_rate);
+      onUpdateSplit(splitIndex, { deliveryFee, deliveryFeeManual: false });
     }
   };
 
@@ -341,7 +344,7 @@ export function CompactSplitConfig({
                               const data = await fetchSuburbData(suburbId);
                               if (data) {
                                 onUpdateSplit(index, {
-                                  deliveryFee: parseDeliveryRate(data.delivery_rate),
+                                  deliveryFee: computeFeeFromRate(data.delivery_rate),
                                   deliveryFeeManual: false,
                                 });
                               }

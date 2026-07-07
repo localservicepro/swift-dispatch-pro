@@ -64,22 +64,53 @@ export function useSuburbManagement() {
 
   const findSuburbInAddress = (fullAddress: string): Suburb | null => {
     if (!fullAddress || suburbs.length === 0) return null;
-    
-    console.log('Searching for suburb in address:', fullAddress);
-    console.log('Available suburbs:', suburbs.map(s => s.name));
-    
-    // Sort suburbs by name length (descending) to prioritize longer, more specific matches
+
+    // Australian addresses look like:
+    //   "12 Smith St, HORNSBY NSW 2077, Australia"
+    // The suburb is (nearly) always in one of the trailing comma-separated
+    // segments — never in the street segment. Scanning the whole string
+    // (as the previous implementation did) matched suburb names inside
+    // street names (e.g. "Kingston Road" incorrectly picked "Kingston"),
+    // which produced the wrong delivery fee. We now:
+    //   1) Prefer an EXACT suburb-name match inside any non-street segment
+    //      (checked from the LAST segment backward to bias toward the real
+    //      suburb line).
+    //   2) Fall back to postcode match on those segments.
+    //   3) Only as a last resort do a whole-string word-boundary scan.
+    const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rawSegments = fullAddress.split(',').map(s => s.trim()).filter(Boolean);
+    // Skip the first segment (street/number) unless the address has only one
+    // segment; suburbs live in later segments.
+    const suburbSegments = rawSegments.length > 1 ? rawSegments.slice(1) : rawSegments;
+    const reversedSegments = [...suburbSegments].reverse();
+
+    // Sort by name length desc so multi-word suburbs match before shorter
+    // substrings ("Port Melbourne" beats "Port").
     const sortedSuburbs = [...suburbs].sort((a, b) => b.name.length - a.name.length);
-    
-    // Search for suburb names in the address using word boundaries
-    for (const suburb of sortedSuburbs) {
-      const pattern = new RegExp(`\\b${suburb.name}\\b`, 'i');
-      if (pattern.test(fullAddress)) {
-        console.log('Found matching suburb in address:', suburb.name);
-        return suburb;
+
+    // 1) Exact suburb-name match in a trailing segment.
+    for (const segment of reversedSegments) {
+      for (const suburb of sortedSuburbs) {
+        const pattern = new RegExp(`\\b${escapeRegex(suburb.name)}\\b`, 'i');
+        if (pattern.test(segment)) {
+          console.log('Suburb matched in address segment:', { segment, suburb: suburb.name });
+          return suburb;
+        }
       }
     }
-    
+
+    // 2) Postcode match in trailing segments (4-digit AU postcode).
+    for (const segment of reversedSegments) {
+      const pc = segment.match(/\b\d{4}\b/);
+      if (pc) {
+        const bySuburb = suburbs.find(s => s.postcode === pc[0]);
+        if (bySuburb) {
+          console.log('Suburb matched by postcode in segment:', { segment, suburb: bySuburb.name });
+          return bySuburb;
+        }
+      }
+    }
+
     console.log('No suburb found in address');
     return null;
   };

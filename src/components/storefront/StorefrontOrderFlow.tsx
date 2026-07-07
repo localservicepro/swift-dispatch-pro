@@ -77,23 +77,35 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
   const [matchedSuburbName, setMatchedSuburbName] = useState<string | null>(null);
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [fuelSurcharge, setFuelSurcharge] = useState(0);
+  const [deliveryMarkupValue, setDeliveryMarkupValue] = useState(0);
+  const [deliveryMarkupType, setDeliveryMarkupType] = useState<string>("fixed");
+  const [allSuburbs, setAllSuburbs] = useState<Array<{ id: string; name: string; state: string; postcode: string; delivery_rate: string }>>([]);
 
-  // Fetch fuel surcharge from payment settings
+  // Fetch payment settings (fuel surcharge + delivery markup) and suburbs list
   useEffect(() => {
-    const fetchFuelSurcharge = async () => {
+    const fetchSettings = async () => {
       try {
         const { data } = await supabase
           .from("payment_settings")
-          .select("fuel_surcharge")
+          .select("fuel_surcharge, delivery_markup_value, delivery_markup_type")
           .single();
-        if (data?.fuel_surcharge != null) {
-          setFuelSurcharge(Number(data.fuel_surcharge) || 0);
-        }
+        if (data?.fuel_surcharge != null) setFuelSurcharge(Number(data.fuel_surcharge) || 0);
+        if (data?.delivery_markup_value != null) setDeliveryMarkupValue(Number(data.delivery_markup_value) || 0);
+        if (data?.delivery_markup_type) setDeliveryMarkupType(String(data.delivery_markup_type));
       } catch {
         setFuelSurcharge(5); // fallback default
       }
     };
-    fetchFuelSurcharge();
+    const fetchSuburbs = async () => {
+      const { data } = await supabase
+        .from("suburbs")
+        .select("id, name, state, postcode, delivery_rate")
+        .eq("is_active", true)
+        .order("name");
+      if (data) setAllSuburbs(data as any);
+    };
+    fetchSettings();
+    fetchSuburbs();
   }, []);
 
   // Collapsible sections
@@ -121,35 +133,80 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
     return parseFloat(cleaned) || 0;
   };
 
-  // Auto-match suburb by postcode
-  const handleAddressSelect = useCallback(async (addressData: AddressData) => {
-    setDeliveryAddress(addressData.fullAddress);
-    if (addressData.postcode) {
-      try {
+  const applyMarkup = useCallback((baseFee: number): number => {
+    if (!deliveryMarkupValue || deliveryMarkupValue <= 0) return baseFee;
+    if (deliveryMarkupType === "fixed") return baseFee + deliveryMarkupValue;
+    return baseFee + (baseFee * deliveryMarkupValue) / 100;
+  }, [deliveryMarkupValue, deliveryMarkupType]);
+
+  const computeFeeFromRate = useCallback(
+    (rate: string): number => applyMarkup(parseDeliveryRate(rate)),
+    [applyMarkup]
+  );
+
+  // Manual suburb override: staff/users can pick the correct suburb when
+  // auto-matching gets it wrong (e.g. street name coincidentally contains
+  // another suburb's name).
+  const handleManualSuburbSelect = (suburbId: string) => {
+    const suburb = allSuburbs.find((s) => s.id === suburbId);
+    if (!suburb) return;
+    setMatchedSuburbId(suburb.id);
+    setMatchedSuburbName(suburb.name);
+    setDeliveryFee(computeFeeFromRate(suburb.delivery_rate));
+  };
+
+  // Auto-match suburb from selected address. The suburb lives in the LAST
+  // comma-separated segments — never in the street name — so we match names
+  // there first, then fall back to postcode.
+  const handleAddressSelect = useCallback(
+    async (addressData: AddressData) => {
+      setDeliveryAddress(addressData.fullAddress);
+
+      const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rawSegments = addressData.fullAddress.split(",").map((s) => s.trim()).filter(Boolean);
+      const suburbSegments = rawSegments.length > 1 ? rawSegments.slice(1) : rawSegments;
+      const reversedSegments = [...suburbSegments].reverse();
+
+      let matched: (typeof allSuburbs)[number] | null = null;
+
+      if (allSuburbs.length > 0) {
+        // 1) Exact suburb-name match in a trailing segment.
+        const sorted = [...allSuburbs].sort((a, b) => b.name.length - a.name.length);
+        outer: for (const segment of reversedSegments) {
+          for (const s of sorted) {
+            if (new RegExp(`\\b${escapeRegex(s.name)}\\b`, "i").test(segment)) {
+              matched = s;
+              break outer;
+            }
+          }
+        }
+        // 2) Postcode fallback.
+        if (!matched && addressData.postcode) {
+          matched = allSuburbs.find((s) => s.postcode === addressData.postcode) || null;
+        }
+      } else if (addressData.postcode) {
+        // Suburbs list not loaded yet — fall back to a targeted lookup.
         const { data: suburbs } = await supabase
           .from("suburbs")
-          .select("id, name, delivery_rate")
+          .select("id, name, state, postcode, delivery_rate")
           .eq("postcode", addressData.postcode)
           .eq("is_active", true)
           .limit(1);
+        if (suburbs && suburbs.length > 0) matched = suburbs[0] as any;
+      }
 
-        if (suburbs && suburbs.length > 0) {
-          const baseRate = parseDeliveryRate(suburbs[0].delivery_rate);
-          setMatchedSuburbId(suburbs[0].id);
-          setMatchedSuburbName(suburbs[0].name);
-          setDeliveryFee(baseRate);
-        } else {
-          setMatchedSuburbId(null);
-          setMatchedSuburbName(null);
-          setDeliveryFee(0);
-        }
-      } catch {
+      if (matched) {
+        setMatchedSuburbId(matched.id);
+        setMatchedSuburbName(matched.name);
+        setDeliveryFee(computeFeeFromRate(matched.delivery_rate));
+      } else {
         setMatchedSuburbId(null);
         setMatchedSuburbName(null);
         setDeliveryFee(0);
       }
-    }
-  }, []);
+    },
+    [allSuburbs, computeFeeFromRate]
+  );
 
   const handleSubmitOrder = async () => {
     if (!contactName.trim()) {
@@ -380,6 +437,26 @@ export function StorefrontOrderFlow({ customer, accountNumber, cart, onBack }: S
                     showMapButton={true}
                     showValidation={false}
                   />
+
+                  {/* Manual suburb override — used when auto-match picks the
+                      wrong suburb from a street name, or when the address
+                      doesn't include a postcode. */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Delivery suburb</Label>
+                    <select
+                      value={matchedSuburbId || ""}
+                      onChange={(e) => handleManualSuburbSelect(e.target.value)}
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">Select delivery suburb…</option>
+                      {allSuburbs.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.postcode}) — {s.delivery_rate}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   {matchedSuburbName && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
                       <MapPin className="h-3.5 w-3.5" />

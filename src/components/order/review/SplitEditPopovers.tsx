@@ -33,14 +33,17 @@ export function EditAddressPopover({
 }: CommonProps & { customer: Customer }) {
   const [open, setOpen] = useState(false);
   const { handleAutoSuburbSelection } = useSuburbManagement();
-  const { fetchSuburbData, parseDeliveryRate } = useDeliveryFeeCalculation();
+  const { fetchSuburbData, computeFeeFromRate } = useDeliveryFeeCalculation();
 
   const applySuburb = async (suburbId: string) => {
     onUpdateSplit(splitIndex, { deliverySuburbId: suburbId });
     const data = await fetchSuburbData(suburbId);
     if (data) {
-      const fee = parseDeliveryRate(data.delivery_rate);
-      onUpdateSplit(splitIndex, { deliveryFee: fee });
+      // Include markup so the client value matches the server's authoritative
+      // recompute; otherwise the $5 (or configured) delivery markup silently
+      // disappears from split orders.
+      const fee = computeFeeFromRate(data.delivery_rate);
+      onUpdateSplit(splitIndex, { deliveryFee: fee, deliveryFeeManual: false });
     }
   };
 
@@ -52,9 +55,9 @@ export function EditAddressPopover({
       deliverySuburbId: next ? customer.suburb_id : undefined,
     });
     if (next && customer.suburb_id) {
-      // recompute fee for billing suburb
+      // recompute fee for billing suburb (with markup)
       fetchSuburbData(customer.suburb_id).then((data) => {
-        if (data) onUpdateSplit(splitIndex, { deliveryFee: parseDeliveryRate(data.delivery_rate) });
+        if (data) onUpdateSplit(splitIndex, { deliveryFee: computeFeeFromRate(data.delivery_rate), deliveryFeeManual: false });
       });
     }
   };
