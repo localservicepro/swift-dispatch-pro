@@ -1,19 +1,28 @@
-## Bug
+## Plan
 
-The "Combined" total on split-order groups double-counts. Master `total_amount` already equals the sum of splits ($191 = $82 + $109), but `groupOrdersBySplit` adds master + splits, producing $382.
+Fix the `Combined` total so split groups show the actual split totals, not stale/raw stored totals.
 
-## Fix
+## What I’ll change
 
-In `src/components/order/utils/groupOrdersBySplit.ts`, change `combinedTotal` to be the sum of splits only (falling back to master total if splits sum is 0):
+1. Update the shared split grouping calculation used by both:
+   - Order Management
+   - Opportunities tab
 
-```ts
-const splitsSum = splits.reduce((s, x) => s + (Number(x.total_amount) || 0), 0);
-const combinedTotal = splitsSum > 0 ? splitsSum : (Number(o.total_amount) || 0);
+2. Calculate `combinedTotal` from the same display-total logic used by the order cards:
+   - Sum the displayed totals of split orders only.
+   - Fall back to the master order display total only when no split totals exist.
+
+3. Add a defensive recalculation at the split group display level if needed, so the toggle strip cannot show `$382` when the visible splits are `$82 + $109`.
+
+## Expected result
+
+For the shown order:
+
+```text
+Master: $191.00
+Split A: $109.00
+Split B: $82.00
+Combined: $191.00
 ```
 
-No other changes. This fixes both Order Management and Opportunities since both use the same utility.
-
-## Verification
-
-- MO with master $191 and splits $82 + $109 shows `Combined: $191.00`.
-- MO with no splits present falls back to master total.
+The same corrected total will apply in both Order Management and Opportunities.

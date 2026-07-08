@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { OpportunityCard } from "./OpportunityCard";
 import { DraggableOpportunityCard } from "./DraggableOpportunityCard";
 import { getCustomerTypeColors } from "@/utils/customerTypeColors";
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 
 interface SplitOpportunityGroupCardProps {
   master: any;
@@ -68,6 +69,8 @@ export function SplitOpportunityGroupCard({
   };
 
   const colors = getCustomerTypeColors(master.customer_type);
+  const splitTotals = splits.reduce((sum, split) => sum + calculateDisplayTotal(split), 0);
+  const displayedCombinedTotal = splitTotals > 0 ? splitTotals : calculateDisplayTotal(master);
 
   return (
     <div className="space-y-2">
@@ -104,7 +107,7 @@ export function SplitOpportunityGroupCard({
           </span>
         </div>
         <span className="text-xs font-semibold text-green-700 flex-shrink-0">
-          Combined: ${combinedTotal.toFixed(0)}
+          Combined: ${(displayedCombinedTotal || combinedTotal).toFixed(0)}
         </span>
       </button>
 

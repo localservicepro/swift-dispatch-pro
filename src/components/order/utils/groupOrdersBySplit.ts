@@ -1,3 +1,5 @@
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
+
 /**
  * Groups a flat list of orders into master/split groupings for display.
  *
@@ -16,7 +18,7 @@ export interface GroupedOrder<T> {
   kind: 'group';
   master: T;
   splits: T[];
-  /** Combined total across master + splits (falls back to sum of splits if master total is 0) */
+  /** Combined total across split orders, falling back to the master total if no split totals exist */
   combinedTotal: number;
 }
 
@@ -37,6 +39,20 @@ interface MinimalOrder {
   master_order_id?: string | null;
   is_split_order?: boolean | null;
   total_amount?: number | null;
+  subtotal?: number | null;
+  delivery_fee?: number | null;
+  adjustments?: number | null;
+  fuel_surcharge?: number | null;
+}
+
+function getDisplayTotal(order: MinimalOrder): number {
+  return calculateDisplayTotal({
+    total_amount: Number(order.total_amount) || 0,
+    subtotal: order.subtotal ?? undefined,
+    delivery_fee: order.delivery_fee ?? undefined,
+    adjustments: order.adjustments ?? undefined,
+    fuel_surcharge: order.fuel_surcharge ?? undefined,
+  });
 }
 
 export function groupOrdersBySplit<T extends MinimalOrder>(
@@ -67,8 +83,8 @@ export function groupOrdersBySplit<T extends MinimalOrder>(
     if (!o.master_order_id && o.is_split_order === false) {
       const splits = childrenByMaster.get(o.id);
       if (splits && splits.length > 0) {
-        const splitsSum = splits.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
-        const combinedTotal = splitsSum > 0 ? splitsSum : (Number(o.total_amount) || 0);
+        const splitsSum = splits.reduce((sum, s) => sum + getDisplayTotal(s), 0);
+        const combinedTotal = splitsSum > 0 ? splitsSum : getDisplayTotal(o);
         result.push({ kind: 'group', master: o, splits, combinedTotal });
         emitted.add(o.id);
         splits.forEach((s) => emitted.add(s.id));
