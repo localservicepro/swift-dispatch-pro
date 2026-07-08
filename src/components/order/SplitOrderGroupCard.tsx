@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Split } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OrderCard } from "./OrderCard";
 import { getCustomerTypeColors } from "@/utils/customerTypeColors";
+import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 import { Database } from "@/integrations/supabase/types";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -56,7 +57,6 @@ function setStoredExpanded(state: Record<string, boolean>) {
 export function SplitOrderGroupCard({
   master,
   splits,
-  combinedTotal,
   forceExpanded,
   onEdit,
   onDelete,
@@ -83,6 +83,8 @@ export function SplitOrderGroupCard({
   };
 
   const colors = getCustomerTypeColors(master.customer_type);
+  const splitTotals = splits.reduce((sum, split) => sum + calculateDisplayTotal(split), 0);
+  const displayedCombinedTotal = splitTotals > 0 ? splitTotals : calculateDisplayTotal(master);
 
   return (
     <div className="space-y-2">
@@ -121,7 +123,7 @@ export function SplitOrderGroupCard({
           </span>
         </div>
         <span className="text-sm font-semibold text-green-700 flex-shrink-0">
-          Combined: ${combinedTotal.toFixed(2)}
+          Combined: ${displayedCombinedTotal.toFixed(2)}
         </span>
       </button>
 
