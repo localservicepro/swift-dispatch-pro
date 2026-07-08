@@ -1,39 +1,45 @@
 ## Goal
 
-Make the collapsed split-group look like a real order card (not a slim header). Show the master order rendered as a normal card, with the splits count/expand affordance layered on top, and the child splits appearing nested below only when expanded.
+In both **Opportunities** and **Order Management**, the master (MO) order must render as a full, normal card — identical to any other order — with a compact toggle strip directly below it that expands/collapses the child splits.
+
+The current `SplitOpportunityGroupCard.tsx` and `SplitOrderGroupCard.tsx` files already implement this pattern, but your screenshots still show the old slim-header layout. This plan verifies the current implementation is reaching the screen and closes any remaining gap.
 
 ## Changes
 
-### 1. Opportunities pipeline — `SplitOpportunityGroupCard.tsx`
+### 1. Opportunities pipeline — `src/components/opportunity/SplitOpportunityGroupCard.tsx`
 
-Replace the current minimal header with:
+Confirm and (re)enforce:
 
-- Render the **master order** using the existing `OpportunityCard` (non-draggable) as the always-visible top card, so it looks identical to any other order card in the column (customer info, address, total, status colors, action button).
-- Overlay a compact "splits" strip directly under the master card:
-  - `Split` icon + `N splits` badge + combined total (e.g. `Combined: $382`)
-  - Chevron toggle (▶ / ▼) to expand
-- When expanded, render the child splits below the master, indented with the existing dashed left border, using `OpportunityCard` / `DraggableOpportunityCard` as today.
-- Keep the per-master + per-stage `sessionStorage` expanded state.
-- Master card itself is not draggable (children are), matching current split semantics.
+- The master renders as `<OpportunityCard order={master} .../>` — same visual as every other pipeline card (customer info, address, delivery schedule, products, total, action button, notes, click-to-open).
+- Directly below the master, render a compact strip:
+  - `Split` icon + `N splits` badge + "Show / Hide split orders" label
+  - Combined total (`Combined: $XYZ`) on the right
+  - Chevron toggle (▶ / ▼)
+- On expand: render child splits below the strip as `DraggableOpportunityCard` (in the draggable columns) or `OpportunityCard` (non-draggable contexts), inside a container with `pl-3 border-l-2 border-dashed border-slate-300 ml-2`.
+- Master card itself is NOT draggable; child splits remain individually draggable.
+- Expanded state persists per `masterId:stage` in `sessionStorage`.
 
-### 2. Order Management — `SplitOrderGroupCard.tsx`
+### 2. Order Management — `src/components/order/SplitOrderGroupCard.tsx`
 
-Same treatment:
+Confirm and (re)enforce:
 
-- Render the **master** using the existing `OrderCard` (default variant) as the visible card.
-- Below it, a compact bar: `Split` icon, `N splits` badge, combined total, mixed/all-same status pill, chevron toggle.
-- Expanded state renders child splits as `OrderCard variant="nested"` inside a dashed-border container (unchanged from today).
-- Keep sessionStorage expansion, `forceExpanded` behaviour for filter matches.
+- The master renders as `<OrderCard order={master} .../>` (default variant) — full order details: order number, status pill, payment status, customer block, products, driver, delivery suburb, action buttons (Edit / Print Receipt / Cancel / Delete).
+- Directly below the master, render the same compact strip:
+  - `Split` icon + `N splits` badge + "Show / Hide split orders" + `Combined: $XYZ` + chevron toggle.
+- On expand: child splits render as `<OrderCard variant="nested" .../>` inside a `pl-4 border-l-2 border-dashed border-slate-300 ml-2` container.
+- `forceExpanded` (when a filter/search is active) auto-opens the group.
+- Expanded state persists per masterId in `sessionStorage`.
 
-### 3. No other changes
+### 3. Verification (must be done before finishing)
 
-- No changes to data fetching, grouping utility (`groupOrdersBySplit.ts`), drag-and-drop, statuses, totals, or any business logic.
-- Regular (non-split) orders unchanged.
-- Orphan splits unchanged.
+- Reload Opportunities and Order Management with the split MO in view.
+- Confirm the master card visually matches a normal (non-split) card — same padding, header, customer block, total, and action row.
+- Confirm the splits strip sits directly under the master with combined total + toggle.
+- Toggling shows/hides child cards with the dashed left border indent.
+- Non-split orders look unchanged.
+- Drag-and-drop still works on child splits only (master is not draggable).
 
-## Verification
+### 4. Out of scope
 
-- 2-split MO renders as a full master card with a splits bar below; expanding reveals 2 nested split cards.
-- Combined total on the strip matches master + splits.
-- Non-split orders visually unchanged.
-- Drag still works on child splits only.
+- No changes to grouping utility (`groupOrdersBySplit.ts`), data fetching, statuses, totals, backend, or business logic.
+- Orphan splits (master missing) are unchanged.
