@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { OrderCard } from "./OrderCard";
+import { SplitOrderGroupCard } from "./SplitOrderGroupCard";
+import { groupOrdersBySplit } from "./utils/groupOrdersBySplit";
 import { Database } from "@/integrations/supabase/types";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -39,6 +41,8 @@ interface Order {
   delivery_suburb_name?: string;
   delivery_suburb_state?: string;
   delivery_suburb_postcode?: string;
+  master_order_id?: string | null;
+  is_split_order?: boolean | null;
 }
 
 interface OrderListProps {
@@ -96,19 +100,39 @@ export function OrderList({
     );
   }
 
+  const groupedItems = groupOrdersBySplit(orders);
+
   return (
     <div className="space-y-4">
-      {orders.map((order) => (
-        <OrderCard
-          key={order.id}
-          order={order}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onStatusUpdate={onStatusUpdate}
-          onNotesEdit={onNotesEdit}
-          onPaymentStatusUpdate={onPaymentStatusUpdate}
-        />
-      ))}
+      {groupedItems.map((item) => {
+        if (item.kind === 'group') {
+          return (
+            <SplitOrderGroupCard
+              key={`group-${item.master.id}`}
+              master={item.master as any}
+              splits={item.splits as any}
+              combinedTotal={item.combinedTotal}
+              forceExpanded={hasActiveFilters}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onStatusUpdate={onStatusUpdate}
+              onNotesEdit={onNotesEdit}
+              onPaymentStatusUpdate={onPaymentStatusUpdate}
+            />
+          );
+        }
+        return (
+          <OrderCard
+            key={item.order.id}
+            order={item.order}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onStatusUpdate={onStatusUpdate}
+            onNotesEdit={onNotesEdit}
+            onPaymentStatusUpdate={onPaymentStatusUpdate}
+          />
+        );
+      })}
       {hasNextPage && (
         <div className="flex justify-center pt-4">
           <Button
