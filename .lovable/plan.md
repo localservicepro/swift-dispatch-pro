@@ -1,45 +1,39 @@
 ## Goal
 
-Collapse split orders under their master in Order Management and the Opportunities pipeline so a 3-split order shows as **1 row** by default, not 4. Users can expand the master card to reveal the child splits inline.
+Make the collapsed split-group look like a real order card (not a slim header). Show the master order rendered as a normal card, with the splits count/expand affordance layered on top, and the child splits appearing nested below only when expanded.
 
-## Behavior
+## Changes
 
-- **Master orders** render as a single card with a badge `3 splits` and a chevron toggle. Combined totals (subtotal, delivery, total) shown on the collapsed card.
-- **Expanded state** reveals the child split cards inline (indented, compact variant of `OrderCard`) — each still fully actionable (edit, delete, status update, receipt, payment).
-- **Standalone splits** (child appearing without its master in the current page — e.g., filtered result) fall back to rendering individually with a small `Part of MO - ORD-xxx` link chip.
-- **Filter/search behavior**: if a filter matches only some splits, the master is included and auto-expanded so matching children are visible.
+### 1. Opportunities pipeline — `SplitOpportunityGroupCard.tsx`
+
+Replace the current minimal header with:
+
+- Render the **master order** using the existing `OpportunityCard` (non-draggable) as the always-visible top card, so it looks identical to any other order card in the column (customer info, address, total, status colors, action button).
+- Overlay a compact "splits" strip directly under the master card:
+  - `Split` icon + `N splits` badge + combined total (e.g. `Combined: $382`)
+  - Chevron toggle (▶ / ▼) to expand
+- When expanded, render the child splits below the master, indented with the existing dashed left border, using `OpportunityCard` / `DraggableOpportunityCard` as today.
+- Keep the per-master + per-stage `sessionStorage` expanded state.
+- Master card itself is not draggable (children are), matching current split semantics.
+
+### 2. Order Management — `SplitOrderGroupCard.tsx`
+
+Same treatment:
+
+- Render the **master** using the existing `OrderCard` (default variant) as the visible card.
+- Below it, a compact bar: `Split` icon, `N splits` badge, combined total, mixed/all-same status pill, chevron toggle.
+- Expanded state renders child splits as `OrderCard variant="nested"` inside a dashed-border container (unchanged from today).
+- Keep sessionStorage expansion, `forceExpanded` behaviour for filter matches.
+
+### 3. No other changes
+
+- No changes to data fetching, grouping utility (`groupOrdersBySplit.ts`), drag-and-drop, statuses, totals, or any business logic.
 - Regular (non-split) orders unchanged.
-- Same grouping model applied to the Opportunities pipeline cards.
-
-## Where it changes
-
-Frontend/presentation only — no schema, no query shape changes beyond ensuring master + children are both in the fetched dataset (already true).
-
-### Order Management
-- `src/components/order/OrderList.tsx` — group orders via a new `groupOrdersBySplit()` helper before rendering: emit one entry per master (with its splits) plus ungrouped orders. Render `SplitOrderGroupCard` for groups, existing `OrderCard` for singletons.
-- New `src/components/order/SplitOrderGroupCard.tsx` — collapsible wrapper: header row summarizes master (order number `MO - ORD-xxx`, customer, combined total, splits badge, aggregated status pill showing mixed statuses), body renders each child `OrderCard` in compact/indented mode when expanded. Auto-expand when any child matches active filter.
-- New `src/components/order/utils/groupOrdersBySplit.ts` — pure function: `(orders) => { groups: {master, splits}[], singles: order[] }`. Handles the "child present but master missing on this page" edge case by emitting the child as a single with an orphan indicator.
-- `src/components/order/OrderCard.tsx` — accept an optional `variant: 'default' | 'nested'` prop for the indented child rendering (smaller padding, subdued border, no duplicate customer block).
-
-### Opportunities pipeline
-- `src/components/opportunity/PipelineColumn.tsx` / `DroppablePipelineColumn.tsx` — apply the same `groupOrdersBySplit()` grouping so each column shows one card per master with expandable splits.
-- New `src/components/opportunity/SplitOpportunityGroupCard.tsx` — collapsible equivalent for the pipeline card style. Drag behavior: dragging the master moves all splits together; dragging an expanded child moves just that split (matches current per-split status handling).
-- `useOpportunityData` / `useOpportunitySearchData` — no changes to queries; grouping happens at render.
-
-### Shared
-- Persist expanded/collapsed state per master id in `sessionStorage` so navigating away and back keeps the view stable.
-- Reuse `formatOrderNumber` (already prefixes `MO - `) for the group header.
-
-## Out of scope
-
-- No changes to how splits are created, invoiced, delivery fees calculated, or synced to Sheets/MYOB.
-- No DB migrations.
-- Reports/exports keep listing splits individually as today.
+- Orphan splits unchanged.
 
 ## Verification
 
-1. Create a 3-split order → Order Management shows 1 collapsed card labeled `MO - ORD-xxx` with `3 splits` badge; expanding reveals 3 child cards.
-2. Filter by status matching only split B → master auto-expands, splits A and C hidden or dimmed, split B highlighted.
-3. Opportunities pipeline: same master appears once per column stage; if splits are in different stages, each appears once in its respective column (grouping only collapses within a column).
-4. Regular (non-split) orders render exactly as before.
-5. Actions on child splits (edit, status change, receipt, delete) still work from the expanded view.
+- 2-split MO renders as a full master card with a splits bar below; expanding reveals 2 nested split cards.
+- Combined total on the strip matches master + splits.
+- Non-split orders visually unchanged.
+- Drag still works on child splits only.
