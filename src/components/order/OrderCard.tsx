@@ -209,12 +209,14 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
 
   return (
     <div className={cn(
-      "border rounded-lg p-4 transition-colors",
+      "border rounded-lg transition-colors",
+      variant === 'nested' ? "p-3" : "p-4",
       customerColors.card,
       customerColors.border,
       customerColors.leftBorder,
       customerColors.hoverBorder
     )}>
+
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <h3 className="font-semibold text-slate-800 flex items-center gap-2">
