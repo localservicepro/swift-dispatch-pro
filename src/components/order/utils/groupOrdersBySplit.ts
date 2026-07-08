@@ -67,9 +67,8 @@ export function groupOrdersBySplit<T extends MinimalOrder>(
     if (!o.master_order_id && o.is_split_order === false) {
       const splits = childrenByMaster.get(o.id);
       if (splits && splits.length > 0) {
-        const combinedTotal =
-          (Number(o.total_amount) || 0) +
-          splits.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
+        const splitsSum = splits.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
+        const combinedTotal = splitsSum > 0 ? splitsSum : (Number(o.total_amount) || 0);
         result.push({ kind: 'group', master: o, splits, combinedTotal });
         emitted.add(o.id);
         splits.forEach((s) => emitted.add(s.id));
