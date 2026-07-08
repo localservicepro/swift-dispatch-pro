@@ -142,6 +142,8 @@ async function fetchOrdersPage(pageParam: number, filters: OrderFilters) {
       contact_email,
       contact_phone,
       admin_id,
+      master_order_id,
+      is_split_order,
       customers!orders_customer_id_fkey(
         id,
         suburb_id,
