@@ -128,7 +128,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
 
   // Auto-populate per-split delivery fees from suburb data so the Review step
   // shows correct amounts even before the user opens the Delivery Details tab.
-  const { fetchSuburbData, parseDeliveryRate } = useDeliveryFeeCalculation();
+  const { fetchSuburbData, computeFeeFromRate } = useDeliveryFeeCalculation();
   useEffect(() => {
     if (orderType !== 'split' || deliveryMethod !== 'delivery' || splits.length === 0) return;
 
@@ -150,7 +150,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           const data = await fetchSuburbData(suburbId);
           if (cancelled) return;
           if (data) {
-            const fee = parseDeliveryRate(data.delivery_rate);
+            const fee = computeFeeFromRate(data.delivery_rate);
             if (fee > 0) {
               updated[i] = { ...updated[i], deliveryFee: fee };
               hasChanges = true;

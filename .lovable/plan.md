@@ -1,40 +1,30 @@
-## Delivery Fee & Split Order Pricing Fix
+## Root cause
 
-### Problems
-1. **Wrong suburb match on delivery address** — Fee is being derived from street-name tokens instead of the suburb, producing incorrect pricing.
-2. **Manual suburb not selectable in storefront flow** — Staff/customers can't override the auto-match reliably.
-3. **Split orders lose manually adjusted delivery fees** — Adjusted fee reverts when the invoice/receipt is printed or the order is reloaded.
-4. **$5 delivery markup not consistently applied to splits** — The global markup skips some split legs.
+The remaining $5-markup bug on split orders lives in `src/components/order/MultiStepOrderForm.tsx`.
 
-### Fix Plan
+That file has a `useEffect` that auto-populates each split's `deliveryFee` from the suburb the moment the customer/suburb is set — *before* the user opens the Delivery Details tab. It uses `parseDeliveryRate(data.delivery_rate)` (line 153), which returns the raw suburb rate **without** the global delivery markup.
 
-**1. Fix suburb detection from address (shared logic)**
-- File: `src/hooks/useSuburbManagement.ts` (`findSuburbInAddress`, `handleAutoSuburbSelection`).
-- Split the address on commas, iterate from the LAST segment backward (Australian address order: `street, suburb STATE postcode`).
-- Match exact suburb name (case-insensitive) against `delivery_suburbs` first; fall back to postcode; never match arbitrary substrings inside the street segment.
-- Guard against false positives like a suburb name appearing in a street name.
+Result:
+- Split cards, Review step, and the master `deliveryFee` displayed to the operator all show `$50` instead of `$55`.
+- The server does recompute with markup on save, so the DB row is correct — but the totals shown/printed from client state on the review screen (and any pre-save receipt preview) drop the $5.
 
-**2. Manual suburb selector in storefront delivery flow**
-- File: `src/components/storefront/StorefrontOrderFlow.tsx`.
-- Render the existing `SuburbSelector` directly below the delivery address input (matching the staff order form pattern).
-- Selecting a suburb updates suburb id, name, and delivery fee immediately and overrides auto-match.
+Every other split entry point (`CompactSplitConfig.handleSuburbChange`, `SplitEditPopovers`) already uses `computeFeeFromRate` (base + markup). The auto-populate effect is the last remaining path still using the un-marked helper.
 
-**3. Persist manual delivery-fee overrides on split orders**
-- Files: split order creation/update path (`useSplitOrder*` / order edit hooks) and the receipt/invoice renderer.
-- Store the manually edited `delivery_fee` on each split's order row and stop recomputing it from the suburb on read/print.
-- Add an `is_delivery_fee_manual` (or reuse existing override flag if present) so the print path uses the stored value verbatim.
+## Fix
 
-**4. Apply the $5 markup consistently to splits**
-- File: delivery-fee calculation utility used by split creation (per memory: "Sequential calculation per split based on suburb").
-- Ensure the global markup from settings is added ONCE per split leg's base suburb fee at calculation time, and is included in what gets saved (so manual overrides in step 3 continue to win).
-- Verify totals recompute (subtotal + delivery + GST) after markup is applied on each split.
+Single-file change in `src/components/order/MultiStepOrderForm.tsx`:
 
-**5. Verification**
-- Create a delivery order where the street name coincidentally contains another suburb's name → correct suburb/fee picked.
-- Manually change suburb in storefront → fee updates.
-- Split an order, manually edit split B's delivery fee, save, reload, print receipt → edited fee persists.
-- Split an order across two suburbs → each split shows base suburb fee + $5 markup.
+1. Replace the destructure `const { fetchSuburbData, parseDeliveryRate } = useDeliveryFeeCalculation();` with `const { fetchSuburbData, computeFeeFromRate } = useDeliveryFeeCalculation();`.
+2. In the auto-populate effect, change `const fee = parseDeliveryRate(data.delivery_rate);` to `const fee = computeFeeFromRate(data.delivery_rate);` so the markup is applied at auto-population time, matching every other path.
 
-### Out of scope
-- No DB schema changes unless step 3 needs a new override flag; if so, a small migration adds `is_delivery_fee_manual boolean default false` to `orders` (with GRANTs unchanged).
-- No changes to storefront checkout business logic beyond suburb selection + fee wiring.
+No changes needed to the server (`orderCreationService.ts`) — its authoritative recompute is already correct. No DB schema changes.
+
+## Verification
+
+- Create a split order across two suburbs with a $5 fixed markup configured. Expect each split card to show `base + $5`, the Review step's per-split delivery lines and master delivery total to include the markup, and the saved `orders.delivery_fee` for each split row and the master to match what was shown.
+- Edit a split's suburb via the popover: fee still shows `base + $5` (already correct).
+- Manually override a split's fee: the typed value persists on save and on print (already correct, unchanged).
+
+## Out of scope
+
+No changes to receipt rendering, invoice printing, or split business logic. UI text and existing components untouched aside from the two lines above.
