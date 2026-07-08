@@ -64,6 +64,8 @@ export interface Order {
   contact_phone?: string;
   admin_initials?: string;
   fuel_surcharge?: number;
+  master_order_id?: string | null;
+  is_split_order?: boolean | null;
 }
 
 interface OrderFilters {
