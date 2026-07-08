@@ -80,9 +80,10 @@ interface OrderCardProps {
   onStatusUpdate: (orderId: string, newStatus: OrderStatus, currentOrder: Order) => void;
   onNotesEdit: (order: Order) => void;
   onPaymentStatusUpdate?: () => void;
+  variant?: 'default' | 'nested';
 }
 
-export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit, onPaymentStatusUpdate }: OrderCardProps) {
+export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit, onPaymentStatusUpdate, variant = 'default' }: OrderCardProps) {
   const [showReturnDialog, setShowReturnDialog] = useState(false);
   const { getReturnStats, invalidateReturns } = useOrderReturns();
   const getStatusColor = (status: OrderStatus) => {
