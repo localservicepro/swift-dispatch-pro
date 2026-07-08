@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, Split, Building, User } from "lucide-react";
+import { ChevronDown, ChevronRight, Split } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OrderCard } from "./OrderCard";
-import { formatOrderNumber } from "@/utils/orderNumberFormatter";
-import { cleanDisplayName } from "./services/orderFormattingService";
 import { getCustomerTypeColors } from "@/utils/customerTypeColors";
 import { Database } from "@/integrations/supabase/types";
 
@@ -56,22 +53,6 @@ function setStoredExpanded(state: Record<string, boolean>) {
   }
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  preparing: "Preparing",
-  loading: "Loading",
-  en_route: "En Route",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  preparing: "bg-yellow-100 text-yellow-800",
-  loading: "bg-orange-100 text-orange-800",
-  en_route: "bg-blue-100 text-blue-800",
-  delivered: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
-};
-
 export function SplitOrderGroupCard({
   master,
   splits,
@@ -103,97 +84,62 @@ export function SplitOrderGroupCard({
 
   const colors = getCustomerTypeColors(master.customer_type);
 
-  const displayName =
-    cleanDisplayName(master.company_name) ||
-    cleanDisplayName(master.business_name) ||
-    cleanDisplayName(master.customer_name) ||
-    "Customer";
-  const isCompany = !!(cleanDisplayName(master.company_name) || cleanDisplayName(master.business_name));
-
-  // Aggregate split statuses
-  const statusCounts = splits.reduce<Record<string, number>>((acc, s) => {
-    const k = String(s.status);
-    acc[k] = (acc[k] || 0) + 1;
-    return acc;
-  }, {});
-  const uniqueStatuses = Object.keys(statusCounts);
-  const allSameStatus = uniqueStatuses.length === 1;
-
   return (
-    <div
-      className={cn(
-        "border-2 rounded-lg transition-colors",
-        colors.card,
-        colors.border,
-        colors.leftBorder,
-      )}
-    >
-      {/* Master header */}
+    <div className="space-y-2">
+      {/* Master rendered as a full order card */}
+      <OrderCard
+        order={master as any}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onStatusUpdate={onStatusUpdate}
+        onNotesEdit={onNotesEdit}
+        onPaymentStatusUpdate={onPaymentStatusUpdate}
+      />
+
+      {/* Splits summary strip */}
       <button
         type="button"
         onClick={toggle}
-        className="w-full text-left p-4 flex items-center justify-between gap-3 hover:bg-black/[0.02]"
+        className={cn(
+          "w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-md border text-sm transition-colors hover:bg-black/[0.03]",
+          colors.card,
+          colors.border,
+        )}
       >
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
           {expanded ? (
             <ChevronDown className="w-4 h-4 text-slate-500 flex-shrink-0" />
           ) : (
             <ChevronRight className="w-4 h-4 text-slate-500 flex-shrink-0" />
           )}
-          <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-            <Split className="w-4 h-4 text-slate-500" />
-            {formatOrderNumber(master)}
-          </h3>
+          <Split className="w-4 h-4 text-slate-500 flex-shrink-0" />
           <Badge variant="outline" className="bg-white/70">
             {splits.length} {splits.length === 1 ? "split" : "splits"}
           </Badge>
-          <div className="flex items-center gap-1 text-sm text-slate-600">
-            {isCompany ? <Building className="w-3 h-3" /> : <User className="w-3 h-3" />}
-            <span className="font-medium">{displayName}</span>
-          </div>
-          {allSameStatus ? (
-            <Badge className={STATUS_COLOR[uniqueStatuses[0]] || "bg-gray-100 text-gray-800"}>
-              {STATUS_LABEL[uniqueStatuses[0]] || uniqueStatuses[0]}
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-slate-700">
-              Mixed status
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-lg font-bold text-green-600">
-            ${combinedTotal.toFixed(2)}
+          <span className="text-slate-600">
+            {expanded ? "Hide" : "Show"} split orders
           </span>
         </div>
+        <span className="text-sm font-semibold text-green-700 flex-shrink-0">
+          Combined: ${combinedTotal.toFixed(2)}
+        </span>
       </button>
 
-      {/* Expanded splits */}
+      {/* Expanded split children */}
       {expanded && (
-        <div className="border-t px-4 py-3 space-y-3 bg-white/50">
-          <div className="text-xs uppercase tracking-wide text-slate-500 font-medium">
-            Split orders
-          </div>
-          <div className="space-y-3 pl-2 border-l-2 border-dashed border-slate-200">
-            {splits.map((split) => (
-              <div key={split.id} className="pl-3">
-                <OrderCard
-                  order={split as any}
-                  variant="nested"
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onStatusUpdate={onStatusUpdate}
-                  onNotesEdit={onNotesEdit}
-                  onPaymentStatusUpdate={onPaymentStatusUpdate}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-end pt-2">
-            <Button size="sm" variant="ghost" onClick={() => onEdit(master as any)}>
-              View master order
-            </Button>
-          </div>
+        <div className="space-y-3 pl-4 border-l-2 border-dashed border-slate-300 ml-2">
+          {splits.map((split) => (
+            <OrderCard
+              key={split.id}
+              order={split as any}
+              variant="nested"
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onStatusUpdate={onStatusUpdate}
+              onNotesEdit={onNotesEdit}
+              onPaymentStatusUpdate={onPaymentStatusUpdate}
+            />
+          ))}
         </div>
       )}
     </div>
