@@ -40,7 +40,6 @@ function setStoredExpanded(state: Record<string, boolean>) {
 export function SplitOpportunityGroupCard({
   master,
   splits,
-  combinedTotal,
   currentStage,
   draggable = false,
   forceExpanded,
@@ -107,7 +106,7 @@ export function SplitOpportunityGroupCard({
           </span>
         </div>
         <span className="text-xs font-semibold text-green-700 flex-shrink-0">
-          Combined: ${(displayedCombinedTotal || combinedTotal).toFixed(0)}
+          Combined: ${displayedCombinedTotal.toFixed(0)}
         </span>
       </button>
 

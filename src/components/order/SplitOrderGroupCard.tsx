@@ -57,7 +57,6 @@ function setStoredExpanded(state: Record<string, boolean>) {
 export function SplitOrderGroupCard({
   master,
   splits,
-  combinedTotal,
   forceExpanded,
   onEdit,
   onDelete,
@@ -124,7 +123,7 @@ export function SplitOrderGroupCard({
           </span>
         </div>
         <span className="text-sm font-semibold text-green-700 flex-shrink-0">
-          Combined: ${(displayedCombinedTotal || combinedTotal).toFixed(2)}
+          Combined: ${displayedCombinedTotal.toFixed(2)}
         </span>
       </button>
 
