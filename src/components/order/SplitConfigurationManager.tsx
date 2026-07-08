@@ -31,7 +31,7 @@ export function SplitConfigurationManager({
   isPickup = false
 }: SplitConfigurationManagerProps) {
   const { toast } = useToast();
-  const { fetchSuburbData, parseDeliveryRate } = useDeliveryFeeCalculation();
+  const { fetchSuburbData, computeFeeFromRate } = useDeliveryFeeCalculation();
   const { handleAutoSuburbSelection } = useSuburbManagement();
   const [numberOfSplits, setNumberOfSplits] = useState(splits.length || 2);
   const [useSameAddress, setUseSameAddress] = useState(false);
@@ -68,7 +68,7 @@ export function SplitConfigurationManager({
       : undefined;
     if (effectiveSuburbId) {
       const data = await fetchSuburbData(effectiveSuburbId);
-      if (data) fee = parseDeliveryRate(data.delivery_rate);
+      if (data) fee = computeFeeFromRate(data.delivery_rate);
     }
 
     const updated = splits.map(s => {
@@ -86,7 +86,10 @@ export function SplitConfigurationManager({
           next.deliveryAddress = address;
           next.deliverySuburbId = suburbId;
         }
-        if (fee !== undefined) next.deliveryFee = fee;
+        if (fee !== undefined) {
+          next.deliveryFee = fee;
+          next.deliveryFeeManual = false;
+        }
       }
       return next;
     });
