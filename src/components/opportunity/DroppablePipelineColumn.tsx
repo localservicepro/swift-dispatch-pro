@@ -1,9 +1,11 @@
 
 import { useDroppable } from '@dnd-kit/core';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DraggableOpportunityCard } from "./DraggableOpportunityCard";
+import { SplitOpportunityGroupCard } from "./SplitOpportunityGroupCard";
+import { groupOrdersBySplit } from "../order/utils/groupOrdersBySplit";
 
 interface PipelineStage {
   id: string;
@@ -28,6 +30,7 @@ export function DroppablePipelineColumn({ stage, orders, onOrderMove, onOrderCli
   });
 
   const totalValue = orders.reduce((sum, order) => sum + order.total_amount, 0);
+  const items = groupOrdersBySplit(orders as any[]);
 
   return (
     <div className="flex flex-col h-full min-w-[320px] w-80 flex-shrink-0">
@@ -38,7 +41,7 @@ export function DroppablePipelineColumn({ stage, orders, onOrderMove, onOrderCli
               {stage.title}
             </CardTitle>
             <Badge variant="outline" className={stage.textColor}>
-              {orders.length}
+              {items.length}
             </Badge>
           </div>
           {totalValue > 0 && (
@@ -57,7 +60,7 @@ export function DroppablePipelineColumn({ stage, orders, onOrderMove, onOrderCli
       >
         <ScrollArea className="h-[500px]">
           <div className="space-y-3 pr-2 p-2">
-            {orders.length === 0 ? (
+            {items.length === 0 ? (
               <div className="text-center py-8 text-slate-400">
                 <p className="text-sm">No orders in this stage</p>
                 {isOver && (
@@ -65,15 +68,31 @@ export function DroppablePipelineColumn({ stage, orders, onOrderMove, onOrderCli
                 )}
               </div>
             ) : (
-              orders.map((order) => (
-                <DraggableOpportunityCard
-                  key={order.id}
-                  order={order}
-                  currentStage={stage.id}
-                  onOrderMove={onOrderMove}
-                  onOrderClick={onOrderClick}
-                />
-              ))
+              items.map((item) => {
+                if (item.kind === 'group') {
+                  return (
+                    <SplitOpportunityGroupCard
+                      key={`group-${item.master.id}`}
+                      master={item.master}
+                      splits={item.splits}
+                      combinedTotal={item.combinedTotal}
+                      currentStage={stage.id}
+                      draggable
+                      onOrderMove={onOrderMove}
+                      onOrderClick={onOrderClick}
+                    />
+                  );
+                }
+                return (
+                  <DraggableOpportunityCard
+                    key={item.order.id}
+                    order={item.order}
+                    currentStage={stage.id}
+                    onOrderMove={onOrderMove}
+                    onOrderClick={onOrderClick}
+                  />
+                );
+              })
             )}
           </div>
         </ScrollArea>
