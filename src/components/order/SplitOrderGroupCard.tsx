@@ -98,38 +98,62 @@ export function SplitOrderGroupCard({
         onPaymentStatusUpdate={onPaymentStatusUpdate}
       />
 
-      {/* Splits summary strip */}
+      {/* Splits summary banner */}
       <button
         type="button"
         onClick={toggle}
         className={cn(
-          "w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-md border text-sm transition-colors hover:bg-black/[0.03]",
-          colors.card,
-          colors.border,
+          "group relative w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-amber-300",
+          "bg-gradient-to-r from-amber-50 via-amber-100/70 to-orange-50",
+          "shadow-sm hover:shadow-md hover:from-amber-100 hover:to-orange-100 transition-all",
+          "focus:outline-none focus:ring-2 focus:ring-amber-400"
         )}
+        aria-expanded={expanded}
       >
-        <div className="flex items-center gap-2 min-w-0">
-          {expanded ? (
-            <ChevronDown className="w-4 h-4 text-slate-500 flex-shrink-0" />
-          ) : (
-            <ChevronRight className="w-4 h-4 text-slate-500 flex-shrink-0" />
-          )}
-          <Split className="w-4 h-4 text-slate-500 flex-shrink-0" />
-          <Badge variant="outline" className="bg-white/70">
-            {splits.length} {splits.length === 1 ? "split" : "splits"}
-          </Badge>
-          <span className="text-slate-600">
-            {expanded ? "Hide" : "Show"} split orders
-          </span>
+        {/* Connector notch to master card */}
+        <span className="absolute -top-[9px] left-6 w-3 h-3 rotate-45 bg-amber-50 border-l-2 border-t-2 border-dashed border-amber-300" />
+
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex-shrink-0 w-9 h-9 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-sm ring-2 ring-white">
+            <Split className="w-4.5 h-4.5" strokeWidth={2.5} />
+          </div>
+          <div className="flex flex-col items-start min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-amber-900 uppercase tracking-wide">
+                Split Order
+              </span>
+              <Badge className="bg-amber-500 hover:bg-amber-500 text-white border-0 px-2 py-0 text-xs font-semibold">
+                {splits.length} {splits.length === 1 ? "part" : "parts"}
+              </Badge>
+            </div>
+            <span className="text-xs text-amber-800/80 font-medium">
+              {expanded ? "Hide" : "Click to reveal"} split order details
+            </span>
+          </div>
         </div>
-        <span className="text-sm font-semibold text-green-700 flex-shrink-0">
-          Combined: ${displayedCombinedTotal.toFixed(2)}
-        </span>
+
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] uppercase tracking-wider text-amber-700/70 font-semibold leading-none">
+              Combined
+            </span>
+            <span className="text-base font-bold text-green-700 leading-tight">
+              ${displayedCombinedTotal.toFixed(2)}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-white/80 border border-amber-300 flex items-center justify-center group-hover:bg-white transition-colors">
+            {expanded ? (
+              <ChevronDown className="w-4 h-4 text-amber-700" strokeWidth={2.5} />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-amber-700" strokeWidth={2.5} />
+            )}
+          </div>
+        </div>
       </button>
 
       {/* Expanded split children */}
       {expanded && (
-        <div className="space-y-3 pl-4 border-l-2 border-dashed border-slate-300 ml-2">
+        <div className="space-y-3 pl-4 border-l-2 border-dashed border-amber-400 ml-4 pt-1">
           {splits.map((split) => (
             <OrderCard
               key={split.id}
