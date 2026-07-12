@@ -56,7 +56,6 @@ function setStoredExpanded(state: Record<string, boolean>) {
 export function SplitOrderGroupCard({
   master,
   splits,
-  forceExpanded,
   onEdit,
   onDelete,
   onStatusUpdate,
@@ -64,14 +63,9 @@ export function SplitOrderGroupCard({
   onPaymentStatusUpdate,
 }: SplitOrderGroupCardProps) {
   const [expanded, setExpanded] = useState<boolean>(() => {
-    if (forceExpanded) return true;
     const stored = getStoredExpanded();
     return stored[master.id] ?? false;
   });
-
-  useEffect(() => {
-    if (forceExpanded) setExpanded(true);
-  }, [forceExpanded]);
 
   const toggle = () => {
     const next = !expanded;
