@@ -112,7 +112,6 @@ export function OrderList({
               master={item.master as any}
               splits={item.splits as any}
               combinedTotal={item.combinedTotal}
-              forceExpanded={hasActiveFilters}
               onEdit={onEdit}
               onDelete={onDelete}
               onStatusUpdate={onStatusUpdate}

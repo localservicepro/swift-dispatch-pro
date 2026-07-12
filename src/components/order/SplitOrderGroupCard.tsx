@@ -27,7 +27,6 @@ interface SplitOrderGroupCardProps {
   master: Order;
   splits: Order[];
   combinedTotal: number;
-  forceExpanded?: boolean;
   onEdit: (order: any) => void;
   onDelete: (order: any) => void;
   onStatusUpdate: (orderId: string, newStatus: OrderStatus, currentOrder: any) => void;
