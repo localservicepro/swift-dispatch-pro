@@ -111,7 +111,6 @@ export function OrderList({
               key={`group-${item.master.id}`}
               master={item.master as any}
               splits={item.splits as any}
-              combinedTotal={item.combinedTotal}
               onEdit={onEdit}
               onDelete={onDelete}
               onStatusUpdate={onStatusUpdate}

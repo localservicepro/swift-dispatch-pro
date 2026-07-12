@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight, Split } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OrderCard } from "./OrderCard";
-import { getCustomerTypeColors } from "@/utils/customerTypeColors";
 import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 import { Database } from "@/integrations/supabase/types";
 
@@ -26,7 +25,6 @@ interface Order {
 interface SplitOrderGroupCardProps {
   master: Order;
   splits: Order[];
-  combinedTotal: number;
   onEdit: (order: any) => void;
   onDelete: (order: any) => void;
   onStatusUpdate: (orderId: string, newStatus: OrderStatus, currentOrder: any) => void;
@@ -75,7 +73,6 @@ export function SplitOrderGroupCard({
     setStoredExpanded(stored);
   };
 
-  const colors = getCustomerTypeColors(master.customer_type);
   const splitTotals = splits.reduce((sum, split) => sum + calculateDisplayTotal(split), 0);
   const displayedCombinedTotal = splitTotals > 0 ? splitTotals : calculateDisplayTotal(master);
 
