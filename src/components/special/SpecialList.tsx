@@ -168,7 +168,7 @@ export function SpecialList({
                       <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
                         <span>
-                          {format(new Date(special.start_date), 'MMM d, yyyy')} - {format(new Date(special.end_date), 'MMM d, yyyy')}
+                          {format(new Date(special.start_date), 'd MMM yyyy')} - {format(new Date(special.end_date), 'd MMM yyyy')}
                         </span>
                       </div>
 

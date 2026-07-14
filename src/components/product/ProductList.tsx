@@ -219,7 +219,7 @@ export function ProductList({ products, categories, loading, onDeleteSuccess, on
                           </div>
                           <div className="flex items-center gap-1 text-red-600">
                             <Clock className="w-3 h-3" />
-                            Ends: {format(new Date(productSpecial.end_date), 'MMM d, yyyy')}
+                            Ends: {format(new Date(productSpecial.end_date), 'd MMM yyyy')}
                           </div>
                         </div>
                       )}

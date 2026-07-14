@@ -489,7 +489,7 @@ export function ProductSelectionStep({
                       </div>
                       <div className="flex items-center gap-1 text-red-600">
                         <Clock className="w-3 h-3" />
-                        Ends: {format(new Date(productSpecial.end_date), 'MMM d')}
+                        Ends: {format(new Date(productSpecial.end_date), 'd MMM')}
                       </div>
                     </div>
                   )}
