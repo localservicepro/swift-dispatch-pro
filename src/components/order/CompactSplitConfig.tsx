@@ -167,7 +167,7 @@ export function CompactSplitConfig({
                             )}
                           >
                             <CalendarIcon className="mr-2 h-3 w-3" />
-                            {split.deliveryDate ? format(new Date(split.deliveryDate), 'MMM dd') : 'Select date'}
+                            {split.deliveryDate ? format(new Date(split.deliveryDate), 'dd MMM') : 'Select date'}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 bg-white" align="start">

@@ -142,10 +142,10 @@ export function CustomerCreditSelector({
                 )}
 
                 <div className="text-xs text-muted-foreground ml-6">
-                  Created: {new Date(credit.created_at).toLocaleDateString()}
+                  Created: {new Date(credit.created_at).toLocaleDateString('en-AU')}
                   {credit.expires_at && (
                     <span className="ml-2">
-                      • Expires: {new Date(credit.expires_at).toLocaleDateString()}
+                      • Expires: {new Date(credit.expires_at).toLocaleDateString('en-AU')}
                     </span>
                   )}
                 </div>

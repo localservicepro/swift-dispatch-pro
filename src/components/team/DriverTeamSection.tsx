@@ -149,7 +149,7 @@ export function DriverTeamSection({
                 </div>
                 <div>
                   <p className="text-slate-500">Joined</p>
-                  <p className="font-medium">{new Date(driver.created_at).toLocaleDateString()}</p>
+                  <p className="font-medium">{new Date(driver.created_at).toLocaleDateString('en-AU')}</p>
                 </div>
               </div>
               

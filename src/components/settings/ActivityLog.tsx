@@ -286,7 +286,7 @@ export function ActivityLog() {
                   return (
                     <TableRow key={log.id}>
                       <TableCell className="text-sm">
-                        {format(new Date(log.created_at), 'MMM dd, yyyy HH:mm:ss')}
+                        {format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss')}
                       </TableCell>
                       <TableCell className="font-medium">
                         {log.admin_name}

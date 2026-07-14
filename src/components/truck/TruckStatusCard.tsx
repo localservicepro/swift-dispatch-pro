@@ -126,7 +126,7 @@ export function TruckStatusCard({
             <div className="text-sm">
               <p className="font-medium text-yellow-800">Next Maintenance</p>
               <p className="text-yellow-600">
-                {new Date(truck.next_maintenance_due).toLocaleDateString()}
+                {new Date(truck.next_maintenance_due).toLocaleDateString('en-AU')}
               </p>
             </div>
           </div>

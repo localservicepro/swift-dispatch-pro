@@ -177,7 +177,7 @@ export function CustomerPortalDashboard() {
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Delivery Date</p>
                           <p className="text-sm text-foreground">
-                            {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : 'Not scheduled'}
+                            {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('en-AU') : 'Not scheduled'}
                           </p>
                         </div>
                         <div>

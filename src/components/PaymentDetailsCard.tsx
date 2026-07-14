@@ -35,12 +35,13 @@ export function PaymentDetailsCard({ invoice, order }: PaymentDetailsCardProps) 
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('en-AU', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
   };
+
 
   const getStatusBadge = (status: string) => {
     const statusColors: Record<string, string> = {

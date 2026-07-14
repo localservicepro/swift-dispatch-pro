@@ -110,7 +110,7 @@ export function ViewActivityDialog({ open, onOpenChange, admin }: ViewActivityDi
                     </div>
                     <div className="flex items-center gap-1 text-sm text-gray-500">
                       <Calendar className="w-4 h-4" />
-                      {new Date(activity.created_at).toLocaleDateString()}
+                      {new Date(activity.created_at).toLocaleDateString('en-AU')}
                     </div>
                   </div>
                   

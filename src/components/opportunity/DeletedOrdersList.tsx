@@ -102,7 +102,7 @@ export function DeletedOrdersList() {
     } else if (diffInHours < 168) { // 7 days
       return `${Math.floor(diffInHours / 24)} days ago`;
     } else {
-      return date.toLocaleDateString();
+      return date.toLocaleDateString('en-AU');
     }
   };
 
@@ -246,7 +246,7 @@ export function DeletedOrdersList() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4" />
-                        <span>{new Date(masterOrder.created_at).toLocaleDateString()}</span>
+                        <span>{new Date(masterOrder.created_at).toLocaleDateString('en-AU')}</span>
                       </div>
                     </div>
 
@@ -364,7 +364,7 @@ export function DeletedOrdersList() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
-                          <span>{new Date(order.created_at).toLocaleDateString()}</span>
+                          <span>{new Date(order.created_at).toLocaleDateString('en-AU')}</span>
                         </div>
                       </div>
                       

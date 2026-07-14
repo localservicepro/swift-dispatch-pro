@@ -370,7 +370,7 @@ export function CustomerOrderCreate({ customer, onClose, onSuccess }: CustomerOr
                     {deliveryDate && (
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">Requested Delivery</p>
-                        <p className="text-sm">{new Date(deliveryDate).toLocaleDateString()} {deliveryTime && `at ${deliveryTime}`}</p>
+                        <p className="text-sm">{new Date(deliveryDate).toLocaleDateString('en-AU')} {deliveryTime && `at ${deliveryTime}`}</p>
                       </div>
                     )}
                   </>
@@ -397,7 +397,7 @@ export function CustomerOrderCreate({ customer, onClose, onSuccess }: CustomerOr
                     {deliveryDate && (
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">Requested Pickup</p>
-                        <p className="text-sm">{new Date(deliveryDate).toLocaleDateString()} {deliveryTime && `at ${deliveryTime}`}</p>
+                        <p className="text-sm">{new Date(deliveryDate).toLocaleDateString('en-AU')} {deliveryTime && `at ${deliveryTime}`}</p>
                       </div>
                     )}
                   </>

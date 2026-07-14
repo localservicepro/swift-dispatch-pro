@@ -119,7 +119,7 @@ export function ViewDeliveriesDialog({ open, onOpenChange, driver }: ViewDeliver
                       <div>
                         <p className="text-gray-500">Created</p>
                         <p className="font-medium">
-                          {new Date(order.created_at).toLocaleDateString()}
+                          {new Date(order.created_at).toLocaleDateString('en-AU')}
                         </p>
                       </div>
                     </div>

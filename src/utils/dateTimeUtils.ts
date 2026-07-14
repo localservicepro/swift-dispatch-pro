@@ -73,7 +73,7 @@ export const formatCreatedDate = (dateString: string): string => {
 export const formatCreatedTime = (dateString: string): string => {
   try {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
+    return date.toLocaleTimeString('en-AU', { 
       hour: 'numeric', 
       minute: '2-digit',
       hour12: true 
@@ -99,12 +99,68 @@ export const getTimeBasedGreeting = (): string => {
 
 export const getCurrentTime = (): string => {
   const now = new Date();
-  return now.toLocaleTimeString('en-US', {
+  return now.toLocaleTimeString('en-AU', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true
   });
 };
+
+/**
+ * Australian numeric date format: DD/MM/YYYY
+ */
+export const formatAuDate = (input: string | Date | null | undefined): string => {
+  if (!input) return '';
+  try {
+    const date = typeof input === 'string' ? new Date(input) : input;
+    if (isNaN(date.getTime())) return '';
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * Australian long date format: e.g. 14 Jul 2026
+ */
+export const formatAuDateLong = (input: string | Date | null | undefined): string => {
+  if (!input) return '';
+  try {
+    const date = typeof input === 'string' ? new Date(input) : input;
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-AU', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * Australian date + time format: DD/MM/YYYY, h:mm AM/PM
+ */
+export const formatAuDateTime = (input: string | Date | null | undefined): string => {
+  if (!input) return '';
+  try {
+    const date = typeof input === 'string' ? new Date(input) : input;
+    if (isNaN(date.getTime())) return '';
+    const datePart = formatAuDate(date);
+    const timePart = date.toLocaleTimeString('en-AU', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+    return `${datePart}, ${timePart}`;
+  } catch {
+    return '';
+  }
+};
+
 
 export const extractFirstName = (fullName?: string, email?: string): string => {
   // First try to extract from full_name if available
