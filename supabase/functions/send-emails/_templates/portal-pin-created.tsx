@@ -22,7 +22,7 @@ export const PortalPinCreatedEmail = ({
   pin,
   expiresAt,
 }: PortalPinCreatedEmailProps) => {
-  const expiryDate = new Date(expiresAt).toLocaleDateString('en-US', {
+  const expiryDate = new Date(expiresAt).toLocaleDateString('en-AU', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

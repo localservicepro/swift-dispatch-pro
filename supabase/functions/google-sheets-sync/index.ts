@@ -23,7 +23,7 @@ function orderToRow(order: any): string[] {
   return [
     order.order_number || '',
     order.purchase_order || '',
-    order.created_at ? new Date(order.created_at).toLocaleDateString() : '',
+    order.created_at ? new Date(order.created_at).toLocaleDateString('en-AU') : '',
     order.customer_name || '',
     order.company_name || order.business_name || '',
     order.customer_phone || '',

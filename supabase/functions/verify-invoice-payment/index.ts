@@ -172,7 +172,7 @@ const handler = async (req: Request): Promise<Response> => {
                   transactionId: sessionId,
                   orderItems: orderData.products || [],
                   receiptDownloadUrl,
-                  paymentDate: new Date().toLocaleDateString()
+                  paymentDate: new Date().toLocaleDateString('en-AU')
                 }
               }
             });
