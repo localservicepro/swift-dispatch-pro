@@ -256,7 +256,7 @@ export default function MyProfile() {
                   </Badge>
                   {createdAt && (
                     <span className="text-sm text-muted-foreground">
-                      Member since {new Date(createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      Member since {new Date(createdAt).toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })}
                     </span>
                   )}
                 </div>
