@@ -45,7 +45,7 @@ export function SplitOrderGroupCard({ group, onInvoiceCreated }: SplitOrderGroup
               deliveryTime: order.delivery_time
             })),
             grandTotal: group.totalAmount,
-            dueDate: new Date(result.invoice.due_date).toLocaleDateString(),
+            dueDate: new Date(result.invoice.due_date).toLocaleDateString('en-AU'),
             paymentStatus: 'Pending',
             paymentUrl: result.paymentUrl
           }
@@ -119,7 +119,7 @@ export function SplitOrderGroupCard({ group, onInvoiceCreated }: SplitOrderGroup
           </div>
           <div>
             <p className="text-slate-500">Order Date</p>
-            <p className="font-medium">{new Date(group.masterOrder.created_at).toLocaleDateString()}</p>
+            <p className="font-medium">{new Date(group.masterOrder.created_at).toLocaleDateString('en-AU')}</p>
           </div>
         </div>
 

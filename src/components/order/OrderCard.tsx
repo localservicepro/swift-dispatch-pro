@@ -339,7 +339,7 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
       {/* Order Meta Information */}
       <div className="mt-3 text-xs text-slate-400">
         <p>Delivery Address: {order.delivery_address || order.customer_address}</p>
-        <p>Created: {new Date(order.created_at).toLocaleDateString()}</p>
+        <p>Created: {new Date(order.created_at).toLocaleDateString('en-AU')}</p>
         {order.delivery_date && (
           <p>Scheduled: {order.delivery_date} {order.delivery_time && `at ${order.delivery_time}`}</p>
         )}

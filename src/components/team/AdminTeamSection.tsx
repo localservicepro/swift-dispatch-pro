@@ -154,7 +154,7 @@ export function AdminTeamSection({
                 </div>
                 <div>
                   <p className="text-slate-500">Joined</p>
-                  <p className="font-medium">{new Date(admin.created_at).toLocaleDateString()}</p>
+                  <p className="font-medium">{new Date(admin.created_at).toLocaleDateString('en-AU')}</p>
                 </div>
               </div>
               

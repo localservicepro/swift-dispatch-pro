@@ -370,7 +370,7 @@ export function PaymentManagement() {
                     </div>
                     <div>
                       <p className="text-slate-500">Order Date</p>
-                      <p className="font-medium">{new Date(payment.created_at).toLocaleDateString()}</p>
+                      <p className="font-medium">{new Date(payment.created_at).toLocaleDateString('en-AU')}</p>
                     </div>
                   </div>
                   

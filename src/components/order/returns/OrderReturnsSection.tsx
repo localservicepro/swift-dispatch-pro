@@ -129,10 +129,10 @@ export function OrderReturnsSection({ orderId, onProcessReturn }: OrderReturnsSe
               )}
 
               <div className="text-xs text-muted-foreground">
-                Returned on {new Date(returnRecord.return_date).toLocaleDateString()}
+                Returned on {new Date(returnRecord.return_date).toLocaleDateString('en-AU')}
                 {returnRecord.processed_at && (
                   <span className="ml-2">
-                    • Processed on {new Date(returnRecord.processed_at).toLocaleDateString()}
+                    • Processed on {new Date(returnRecord.processed_at).toLocaleDateString('en-AU')}
                   </span>
                 )}
               </div>
