@@ -3,14 +3,17 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Search, Filter, X } from "lucide-react";
+import { PAYMENT_TYPES, PAYMENT_TYPE_LABELS } from "@/utils/paymentTypes";
 
 interface OrderSearchFiltersProps {
   searchQuery: string;
   statusFilter: string;
   paymentStatusFilter?: string;
+  paymentTypeFilter?: string;
   onSearchChange: (value: string) => void;
   onStatusFilterChange: (value: string) => void;
   onPaymentStatusFilterChange?: (value: string) => void;
+  onPaymentTypeFilterChange?: (value: string) => void;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
   ordersCount: number;
@@ -51,10 +54,12 @@ export function OrderSearchControls({
   searchQuery,
   statusFilter,
   paymentStatusFilter,
+  paymentTypeFilter,
   onSearchChange,
   onStatusFilterChange,
-  onPaymentStatusFilterChange
-}: Pick<OrderSearchFiltersProps, 'searchQuery' | 'statusFilter' | 'paymentStatusFilter' | 'onSearchChange' | 'onStatusFilterChange' | 'onPaymentStatusFilterChange'>) {
+  onPaymentStatusFilterChange,
+  onPaymentTypeFilterChange,
+}: Pick<OrderSearchFiltersProps, 'searchQuery' | 'statusFilter' | 'paymentStatusFilter' | 'paymentTypeFilter' | 'onSearchChange' | 'onStatusFilterChange' | 'onPaymentStatusFilterChange' | 'onPaymentTypeFilterChange'>) {
   return (
     <div className="flex flex-col sm:flex-row gap-4 mt-4">
       <div className="relative flex-1">
@@ -99,6 +104,21 @@ export function OrderSearchControls({
               <SelectItem value="invoiced">Invoiced</SelectItem>
               <SelectItem value="overdue">Overdue</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      {onPaymentTypeFilterChange && (
+        <div className="flex items-center gap-2 sm:w-48">
+          <Select value={paymentTypeFilter || "all"} onValueChange={onPaymentTypeFilterChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Payment type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Payment Types</SelectItem>
+              {PAYMENT_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>{PAYMENT_TYPE_LABELS[t]}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
