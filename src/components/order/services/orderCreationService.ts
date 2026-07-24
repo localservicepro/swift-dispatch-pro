@@ -91,6 +91,7 @@ interface CreateSingleOrderParams {
   deliveryTime: string;
   pickupTiming?: "now" | "scheduled";
   specialInstructions: string;
+  paymentType: string;
   paymentMethod: string;
   orderNotes: string;
   deliveryNotes: string;
@@ -113,6 +114,7 @@ interface CreateSplitOrderParams {
   deliveryMethod: "delivery" | "pickup";
   pickupTiming?: "now" | "scheduled";
   splits: any[];
+  paymentType: string;
   paymentMethod: string;
   specialInstructions: string;
   orderNotes: string;
@@ -285,6 +287,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       delivery_notes: params.deliveryNotes,
       purchase_order: params.purchaseOrder,
       payment_method: params.paymentMethod,
+      payment_type: params.paymentType,
       status: orderStatus,
       is_split_order: false,
       payment_status: 'pending'
@@ -485,6 +488,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         totalFuelSurcharge,
       delivery_method: params.deliveryMethod,
       payment_method: params.paymentMethod,
+      payment_type: params.paymentType,
       order_notes: params.orderNotes,
       delivery_notes: params.deliveryNotes,
       purchase_order: params.purchaseOrder,
@@ -617,6 +621,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         delivery_notes: params.deliveryNotes,
         purchase_order: params.purchaseOrder,
         payment_method: params.paymentMethod,
+        payment_type: params.paymentType,
         status: splitOrderStatus,
         is_split_order: true,
         master_order_id: masterOrder.id,
