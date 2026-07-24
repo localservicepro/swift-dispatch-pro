@@ -23,13 +23,18 @@ export function calculateSurcharge(amount: number, surchargeRate: number): numbe
 }
 
 export function getPaymentMethodSurcharge(paymentMethod: string): boolean {
+  // Card-based methods trigger the service surcharge. Legacy IDs are kept for
+  // safety in case any pre-migration values leak through.
   const surchargePaymentMethods = [
+    'pay_credit_card',
+    'credit_card',
+    // legacy
     'card_on_file',
-    '7_day_invoice', 
+    '7_day_invoice',
     'in_yard_card',
-    'account_card'
+    'account_card',
   ];
-  
+
   return surchargePaymentMethods.includes(paymentMethod);
 }
 

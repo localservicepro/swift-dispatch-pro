@@ -54,6 +54,8 @@ interface OrderManagementContextType {
   setStatusFilter: (filter: string) => void;
   paymentStatusFilter: string;
   setPaymentStatusFilter: (filter: string) => void;
+  paymentTypeFilter: string;
+  setPaymentTypeFilter: (filter: string) => void;
   deletingOrder: Order | null;
   setDeletingOrder: (order: Order | null) => void;
   isDeleting: boolean;
@@ -101,6 +103,7 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>("all");
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState<string>("all");
   const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingNotes, setEditingNotes] = useState<Order | null>(null);
@@ -113,6 +116,7 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
     searchQuery: debouncedSearch,
     statusFilter,
     paymentStatusFilter,
+    paymentTypeFilter,
   });
   const { updateOrderStatus, handleDeleteOrder: handleDeleteOrderAction } = useOrderActions(refetch);
   const filteredOrders = orders;
@@ -122,10 +126,11 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
     setSearchQuery("");
     setStatusFilter("all");
     setPaymentStatusFilter("all");
+    setPaymentTypeFilter("all");
   };
 
   // Check if any filters are active
-  const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all" || paymentStatusFilter !== "all";
+  const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all" || paymentStatusFilter !== "all" || paymentTypeFilter !== "all";
 
   // Enhanced delete handler that supports both single and group deletion
   const handleDeleteOrder = async (orderId: string, deleteType: 'single' | 'group') => {
@@ -224,6 +229,8 @@ export function OrderManagementProvider({ children }: OrderManagementProviderPro
     setStatusFilter,
     paymentStatusFilter,
     setPaymentStatusFilter,
+    paymentTypeFilter,
+    setPaymentTypeFilter,
     deletingOrder,
     setDeletingOrder,
     isDeleting,

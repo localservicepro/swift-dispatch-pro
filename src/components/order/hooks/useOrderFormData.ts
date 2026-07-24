@@ -26,6 +26,7 @@ export interface OrderFormData {
   delivery_suburb_id: string;
   truck_type: string;
   truck_id: string;
+  payment_type: string;
   payment_method: string;
   adjustments: string;
   contact_id: string | null;
@@ -60,6 +61,7 @@ export function useOrderFormData(order: Order) {
     delivery_suburb_id: order.delivery_suburb_id || '',
     truck_type: order.truck_type || 'none',
     truck_id: order.truck_id || 'none',
+    payment_type: (order as any).payment_type || 'residential',
     payment_method: order.payment_method || 'cash',
     adjustments: order.adjustments?.toString() || '0',
     contact_id: order.contact_id || null,
