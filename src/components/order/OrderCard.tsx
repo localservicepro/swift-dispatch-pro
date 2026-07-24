@@ -19,6 +19,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { calculateDisplayTotal } from "@/utils/totalCalculationUtils";
 import { formatOrderNumber } from "@/utils/orderNumberFormatter";
+import { labelForType } from "@/utils/paymentTypes";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -37,6 +38,8 @@ interface Order {
   total_amount: number;
   status: OrderStatus;
   payment_status?: string;
+  payment_type?: string;
+  payment_method?: string;
   payment_date?: string;
   driver_id?: string;
   created_at: string;
@@ -232,6 +235,11 @@ export function OrderCard({ order, onEdit, onDelete, onStatusUpdate, onNotesEdit
           <Badge className={getStatusColor(order.status)}>
             {getStatusLabel(order.status)}
           </Badge>
+          {order.payment_type && (
+            <Badge variant="outline" className="border-slate-300 text-slate-700 bg-slate-50">
+              {labelForType(order.payment_type)}
+            </Badge>
+          )}
           <PaymentStatusDropdown 
             order={order} 
             onStatusUpdate={() => onPaymentStatusUpdate?.()} 
