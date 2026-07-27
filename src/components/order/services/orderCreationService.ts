@@ -498,6 +498,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
       customer_address: masterCustomerAddress,
       delivery_address: masterDeliveryAddress,
       same_as_billing: masterSameAsBilling,
+      delivery_suburb_id: isPickup ? null : masterDeliverySuburbId,
       contact_id: params.selectedContact?.id || null,
       contact_name: params.selectedContact?.name || null,
       contact_email: params.selectedContact?.email || null,
