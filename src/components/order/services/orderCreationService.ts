@@ -375,23 +375,49 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
     const pickupAddress = import.meta.env.VITE_PICKUP_ADDRESS || 'Pickup from yard';
     const isPickup = params.deliveryMethod === 'pickup';
     
-    // Use fallback strategy for master order address to prevent null constraint violations
+    // Use fallback strategy for master order address to prevent null constraint violations.
+    // When every split shares a single address/suburb/sameAsBilling, mirror that
+    // onto the master so downstream displays (opportunity card, receipts) show
+    // the actual delivery destination rather than the customer's registered
+    // billing fragment. Otherwise fall back to the customer address.
     let masterCustomerAddress: string;
     let masterDeliveryAddress: string;
-    
+    let masterSameAsBilling = true;
+    let masterDeliverySuburbId: string | null = null;
+
     if (isPickup) {
       masterCustomerAddress = pickupAddress;
       masterDeliveryAddress = pickupAddress;
     } else {
-      // For delivery orders, use customer address as fallback, or first split's address
-      const fallbackAddress = params.customer.full_address || 
-                              (params.splits.length > 0 && !params.splits[0].sameAsBilling ? params.splits[0].deliveryAddress : null) ||
-                              'Address to be confirmed';
-      
-      masterCustomerAddress = fallbackAddress;
-      masterDeliveryAddress = fallbackAddress;
+      const first = params.splits[0];
+      const allSplitsAgree = params.splits.length > 0 && params.splits.every(s =>
+        !!s.sameAsBilling === !!first?.sameAsBilling &&
+        (s.deliveryAddress || '') === (first?.deliveryAddress || '') &&
+        (s.deliverySuburbId || s.suburbId || '') === (first?.deliverySuburbId || first?.suburbId || '')
+      );
+
+      if (allSplitsAgree && first) {
+        masterSameAsBilling = !!first.sameAsBilling;
+        if (first.sameAsBilling) {
+          const billing = params.customer.full_address || 'Address to be confirmed';
+          masterCustomerAddress = billing;
+          masterDeliveryAddress = billing;
+          masterDeliverySuburbId = params.customer.suburb_id || null;
+        } else {
+          const custom = first.deliveryAddress || params.customer.full_address || 'Address to be confirmed';
+          masterCustomerAddress = custom;
+          masterDeliveryAddress = custom;
+          masterDeliverySuburbId = first.deliverySuburbId || first.suburbId || null;
+        }
+      } else {
+        const fallbackAddress = params.customer.full_address ||
+                                (params.splits.length > 0 && !params.splits[0].sameAsBilling ? params.splits[0].deliveryAddress : null) ||
+                                'Address to be confirmed';
+        masterCustomerAddress = fallbackAddress;
+        masterDeliveryAddress = fallbackAddress;
+        masterDeliverySuburbId = params.customer.suburb_id || null;
+      }
     }
-    const masterSameAsBilling = true;
 
     // SERVER-SIDE AUTHORITATIVE PER-SPLIT DELIVERY FEE
     // For each delivery split, look up the suburb in the database and recompute
