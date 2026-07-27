@@ -120,8 +120,14 @@ export function EnhancedAddressInput({
       });
   }, []);
 
-  // Fetch predictions when user types (but not when initializing)
+  // Fetch predictions when user types (but not when initializing or when a
+  // place selection is currently locking the field).
   useEffect(() => {
+    // If the current value matches the last selected place, do not fetch —
+    // the user has not started editing again.
+    if (selectedPlaceRef.current !== null && selectedPlaceRef.current === debouncedValue) {
+      return;
+    }
     if (debouncedValue && debouncedValue.length > 2 && isUserTyping && isInitialized) {
       console.log('EnhancedAddressInput: User is typing, fetching predictions for:', debouncedValue);
       fetchPredictions(debouncedValue);
