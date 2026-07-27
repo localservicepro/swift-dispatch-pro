@@ -296,16 +296,20 @@ export function EnhancedAddressInput({
   };
 
   const handlePredictionSelect = async (prediction: PlacePrediction) => {
+    // Immediately lock the field to the description string so any stale
+    // debounced onChange from the previous keystroke can no longer overwrite
+    // it. The lock is upgraded to the formatted address once details resolve.
+    selectedPlaceRef.current = prediction.description;
     onChange(prediction.description);
     setShowDropdown(false);
     setPredictions([]);
     setValidationStatus('validating');
     setIsUserTyping(false); // User has selected, not typing anymore
-    
+
     // Get detailed address information
     try {
       console.log('Getting details for prediction:', prediction);
-      
+
       // Try edge function first
       const { data, error } = await supabase.functions.invoke('google-places-details', {
         body: { placeId: prediction.place_id, sessionToken }
@@ -331,7 +335,11 @@ export function EnhancedAddressInput({
           lng: data.parsedAddress.lng,
           name: data.parsedAddress.name
         };
-        
+
+        // Commit the FORMATTED address to the parent as the canonical value
+        // and lock the input to it so no later stale write can revert it.
+        selectedPlaceRef.current = addressData.fullAddress;
+        onChange(addressData.fullAddress);
         onAddressSelect(addressData);
         setValidationStatus('valid');
         onValidationChange?.(true);
