@@ -425,6 +425,7 @@ export function EnhancedAddressInput({
 
   const handleMapAddressSelect = (addressData: AddressData) => {
     console.log('Address selected from map:', addressData);
+    selectedPlaceRef.current = addressData.fullAddress;
     onChange(addressData.fullAddress);
     onAddressSelect?.(addressData);
     setValidationStatus('valid');
