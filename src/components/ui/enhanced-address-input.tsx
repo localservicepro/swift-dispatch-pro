@@ -71,9 +71,14 @@ export function EnhancedAddressInput({
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   const [isUserTyping, setIsUserTyping] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  
+
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // Locks the input to the last selected place. While set, raw onChange
+  // writes that match this value are ignored (parent already has it) and
+  // the debounced prediction fetch is suppressed. Cleared only when the
+  // user actively edits the field (see handleInputChange).
+  const selectedPlaceRef = useRef<string | null>(null);
   
   const debouncedValue = useDebounce(value, 500);
 
