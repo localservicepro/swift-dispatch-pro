@@ -255,15 +255,28 @@ export function EnhancedAddressInput({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
+
+    // If a place was previously selected and the user is now editing away
+    // from that formatted address, release the lock so the debounced fetch
+    // can run again. If the incoming value equals the locked value, this is
+    // a spurious re-render / stale onChange — ignore it entirely so the
+    // formatted address isn't clobbered.
+    if (selectedPlaceRef.current !== null) {
+      if (newValue === selectedPlaceRef.current) {
+        return;
+      }
+      selectedPlaceRef.current = null;
+    }
+
     onChange(newValue);
-    
+
     // Mark as user typing only if component is initialized or user is actively changing
     if (!isInitialized || newValue !== value) {
       console.log('EnhancedAddressInput: User input detected, setting isUserTyping to true');
       setIsUserTyping(true);
       setIsInitialized(true);
     }
-    
+
     if (newValue.length <= 2) {
       setShowDropdown(false);
       setPredictions([]);
