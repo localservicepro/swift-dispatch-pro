@@ -410,6 +410,8 @@ export function EnhancedAddressInput({
           }
         });
 
+        selectedPlaceRef.current = parsedAddress.fullAddress;
+        onChange(parsedAddress.fullAddress);
         onAddressSelect(parsedAddress);
         setValidationStatus('valid');
         onValidationChange?.(true);
