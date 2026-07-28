@@ -134,15 +134,18 @@ export function useOrderFormData(order: Order) {
 
         console.log('Initial subtotal calculated:', initialSubtotal);
 
-        // Update form data with corrected products and subtotal
+        // Update form data with corrected products and subtotal — skip if nothing changed
+        // (avoids a redundant render burst when the DB prices already match the order).
         setFormData(prev => {
-          const updated = {
-            ...prev,
-            products: updatedProducts,
-            subtotal: initialSubtotal
-          };
-          console.log('Form data updated with products and subtotal:', updated);
-          return updated;
+          const sameSubtotal = Math.abs((prev.subtotal || 0) - initialSubtotal) < 0.005;
+          const sameProducts =
+            prev.products.length === updatedProducts.length &&
+            prev.products.every((p: any, i: number) => {
+              const u = updatedProducts[i];
+              return Number(p.price) === Number(u.price) && Number(p.quantity) === Number(u.quantity);
+            });
+          if (sameSubtotal && sameProducts) return prev;
+          return { ...prev, products: updatedProducts, subtotal: initialSubtotal };
         });
 
       } catch (error) {
