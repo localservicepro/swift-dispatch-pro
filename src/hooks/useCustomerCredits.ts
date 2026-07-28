@@ -39,6 +39,9 @@ export function useCustomerCredits(customerId?: string) {
       return data as CustomerCredit[];
     },
     enabled: !!customerId,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const applyCredit = useMutation({
