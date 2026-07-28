@@ -186,66 +186,43 @@ export function useOrderFormData(order: Order) {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    // Handle pricing fields that need recalculation
+    // Handle pricing fields that need recalculation — fold total into a single setState.
     if (field === 'delivery_fee') {
-      // Parse delivery fee as number
       let numValue = 0;
       if (value !== '' && value !== '-') {
         const parsed = parseFloat(value);
         numValue = isNaN(parsed) ? 0 : parsed;
       }
-      
-      const updatedData = { delivery_fee: numValue };
-      const newTotal = calculateTotals(updatedData);
-      
       setFormData(prev => ({
         ...prev,
         delivery_fee: numValue,
-        total_amount: newTotal
+        total_amount: calculateTotals({ delivery_fee: numValue }),
       }));
     } else if (field === 'adjustments') {
-      // Store adjustments as string to allow typing negative values
-      const updatedData = { adjustments: value };
-      const newTotal = calculateTotals(updatedData);
-      
       setFormData(prev => ({
         ...prev,
         adjustments: value,
-        total_amount: newTotal
+        total_amount: calculateTotals({ adjustments: value }),
       }));
     } else if (field === 'payment_method') {
-      // Recalculate when payment method changes (affects surcharges)
-      const updatedData = { payment_method: value };
-      const newTotal = calculateTotals(updatedData);
-      
       setFormData(prev => ({
         ...prev,
         payment_method: value,
-        total_amount: newTotal
+        total_amount: calculateTotals({ payment_method: value }),
       }));
     } else if (field === 'delivery_method') {
-      // When switching to pickup, strip any fuel surcharge and delivery fee carried over from delivery.
       if (value === 'pickup') {
-        const updatedData = {
-          delivery_method: value,
-          fuel_surcharge: 0,
-          delivery_fee: 0,
-        };
-        const newTotal = calculateTotals(updatedData);
+        const updates = { delivery_method: value, fuel_surcharge: 0, delivery_fee: 0 };
         setFormData(prev => ({
           ...prev,
-          delivery_method: value,
-          fuel_surcharge: 0,
-          delivery_fee: 0,
-          total_amount: newTotal,
+          ...updates,
+          total_amount: calculateTotals(updates),
         }));
       } else {
-        const updatedData = { delivery_method: value };
-        const newTotal = calculateTotals(updatedData);
         setFormData(prev => ({
           ...prev,
           delivery_method: value,
-          total_amount: newTotal,
+          total_amount: calculateTotals({ delivery_method: value }),
         }));
       }
     } else {
