@@ -134,15 +134,18 @@ export function useOrderFormData(order: Order) {
 
         console.log('Initial subtotal calculated:', initialSubtotal);
 
-        // Update form data with corrected products and subtotal
+        // Update form data with corrected products and subtotal — skip if nothing changed
+        // (avoids a redundant render burst when the DB prices already match the order).
         setFormData(prev => {
-          const updated = {
-            ...prev,
-            products: updatedProducts,
-            subtotal: initialSubtotal
-          };
-          console.log('Form data updated with products and subtotal:', updated);
-          return updated;
+          const sameSubtotal = Math.abs((prev.subtotal || 0) - initialSubtotal) < 0.005;
+          const sameProducts =
+            prev.products.length === updatedProducts.length &&
+            prev.products.every((p: any, i: number) => {
+              const u = updatedProducts[i];
+              return Number(p.price) === Number(u.price) && Number(p.quantity) === Number(u.quantity);
+            });
+          if (sameSubtotal && sameProducts) return prev;
+          return { ...prev, products: updatedProducts, subtotal: initialSubtotal };
         });
 
       } catch (error) {
@@ -186,66 +189,43 @@ export function useOrderFormData(order: Order) {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    // Handle pricing fields that need recalculation
+    // Handle pricing fields that need recalculation — fold total into a single setState.
     if (field === 'delivery_fee') {
-      // Parse delivery fee as number
       let numValue = 0;
       if (value !== '' && value !== '-') {
         const parsed = parseFloat(value);
         numValue = isNaN(parsed) ? 0 : parsed;
       }
-      
-      const updatedData = { delivery_fee: numValue };
-      const newTotal = calculateTotals(updatedData);
-      
       setFormData(prev => ({
         ...prev,
         delivery_fee: numValue,
-        total_amount: newTotal
+        total_amount: calculateTotals({ delivery_fee: numValue }),
       }));
     } else if (field === 'adjustments') {
-      // Store adjustments as string to allow typing negative values
-      const updatedData = { adjustments: value };
-      const newTotal = calculateTotals(updatedData);
-      
       setFormData(prev => ({
         ...prev,
         adjustments: value,
-        total_amount: newTotal
+        total_amount: calculateTotals({ adjustments: value }),
       }));
     } else if (field === 'payment_method') {
-      // Recalculate when payment method changes (affects surcharges)
-      const updatedData = { payment_method: value };
-      const newTotal = calculateTotals(updatedData);
-      
       setFormData(prev => ({
         ...prev,
         payment_method: value,
-        total_amount: newTotal
+        total_amount: calculateTotals({ payment_method: value }),
       }));
     } else if (field === 'delivery_method') {
-      // When switching to pickup, strip any fuel surcharge and delivery fee carried over from delivery.
       if (value === 'pickup') {
-        const updatedData = {
-          delivery_method: value,
-          fuel_surcharge: 0,
-          delivery_fee: 0,
-        };
-        const newTotal = calculateTotals(updatedData);
+        const updates = { delivery_method: value, fuel_surcharge: 0, delivery_fee: 0 };
         setFormData(prev => ({
           ...prev,
-          delivery_method: value,
-          fuel_surcharge: 0,
-          delivery_fee: 0,
-          total_amount: newTotal,
+          ...updates,
+          total_amount: calculateTotals(updates),
         }));
       } else {
-        const updatedData = { delivery_method: value };
-        const newTotal = calculateTotals(updatedData);
         setFormData(prev => ({
           ...prev,
           delivery_method: value,
-          total_amount: newTotal,
+          total_amount: calculateTotals({ delivery_method: value }),
         }));
       }
     } else {
@@ -336,16 +316,21 @@ export function useOrderFormData(order: Order) {
     }));
   };
 
-  // Recalculate totals when payment settings are loaded
+  // Recalculate totals when payment settings *values* change (not object identity).
+  // Depending on the query object caused a re-render + setState every time react-query
+  // returned a new reference (refetch, focus, cache tick), which made the dialog feel
+  // like it was recalculating every half-second.
+  const settingsSignature = paymentSettings
+    ? `${paymentSettings.gst_rate}|${paymentSettings.service_charge_rate}|${paymentSettings.fuel_surcharge}|${paymentSettings.gst_enabled}|${paymentSettings.include_gst_in_prices}`
+    : '';
   useEffect(() => {
-    if (paymentSettings) {
-      const newTotal = calculateTotals({});
-      setFormData(prev => ({
-        ...prev,
-        total_amount: newTotal
-      }));
-    }
-  }, [paymentSettings]);
+    if (!paymentSettings) return;
+    const newTotal = calculateTotals({});
+    setFormData(prev => (
+      prev.total_amount === newTotal ? prev : { ...prev, total_amount: newTotal }
+    ));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsSignature]);
 
   const getFormDataForSubmission = () => {
     // Format time for database submission (ensure HH:MM:SS format)
