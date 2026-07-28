@@ -336,16 +336,21 @@ export function useOrderFormData(order: Order) {
     }));
   };
 
-  // Recalculate totals when payment settings are loaded
+  // Recalculate totals when payment settings *values* change (not object identity).
+  // Depending on the query object caused a re-render + setState every time react-query
+  // returned a new reference (refetch, focus, cache tick), which made the dialog feel
+  // like it was recalculating every half-second.
+  const settingsSignature = paymentSettings
+    ? `${paymentSettings.gst_rate}|${paymentSettings.service_charge_rate}|${paymentSettings.fuel_surcharge}|${paymentSettings.gst_enabled}|${paymentSettings.include_gst_in_prices}`
+    : '';
   useEffect(() => {
-    if (paymentSettings) {
-      const newTotal = calculateTotals({});
-      setFormData(prev => ({
-        ...prev,
-        total_amount: newTotal
-      }));
-    }
-  }, [paymentSettings]);
+    if (!paymentSettings) return;
+    const newTotal = calculateTotals({});
+    setFormData(prev => (
+      prev.total_amount === newTotal ? prev : { ...prev, total_amount: newTotal }
+    ));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsSignature]);
 
   const getFormDataForSubmission = () => {
     // Format time for database submission (ensure HH:MM:SS format)
