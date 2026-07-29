@@ -56,7 +56,7 @@ export function useConflictDetection(
     };
 
     // Debounce the conflict checking to avoid too many API calls
-    const timeoutId = setTimeout(checkConflicts, 600);
+    const timeoutId = setTimeout(checkConflicts, 300);
     return () => clearTimeout(timeoutId);
   }, [deliveryDate, deliveryTime, driverId, truckId, excludeOrderId]);
 

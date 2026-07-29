@@ -39,9 +39,6 @@ export function useOrderReturns(orderId?: string) {
       return data as OrderReturn[];
     },
     enabled: !!orderId,
-    staleTime: 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
   });
 
   const processReturn = async (returnId: string) => {
