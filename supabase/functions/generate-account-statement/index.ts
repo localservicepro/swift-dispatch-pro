@@ -203,12 +203,23 @@ function generateStatementHTML(data: any): string {
     addressGroups[addr].push(order);
   });
 
+  const PAYMENT_TYPE_LABELS: Record<string, string> = {
+    "30_day_account": "30 Day Account",
+    "7_day_account": "7 Day Account",
+    trade: "Trade",
+    card_on_file: "Card on File",
+    residential: "Residential",
+    cod: "Cash on Delivery",
+  };
+
   let runningBalance = 0;
   const addressSections = Object.entries(addressGroups).map(([address, groupOrders]) => {
     const rows = groupOrders.map((order: any) => {
-      const fulfillmentDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
+      const primary = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
+      const fulfillmentDate = primary ?? order.delivery_date ?? order.pickup_date ?? order.created_at;
       const dateStr = fulfillmentDate ? formatDateAU(fulfillmentDate) : formatDateAU(order.created_at);
       const invoiceNo = order.myob_invoice_number || (order.order_number || "").replace(/^ORD-/i, "");
+      const typeLabel = order.payment_type ? (PAYMENT_TYPE_LABELS[order.payment_type] ?? order.payment_type) : "";
       const amount = Number(order.total_amount || 0);
       const isPaid = order.payment_status === "paid";
 
@@ -227,6 +238,7 @@ function generateStatementHTML(data: any): string {
       return `<tr>
         <td>${dateStr}</td>
         <td>${invoiceNo}</td>
+        <td>${typeLabel}</td>
         <td class="text-right">${chargesCol}</td>
         <td class="text-right">${paymentsCol}</td>
         <td class="text-right">$${runningBalance.toFixed(2)}</td>
@@ -240,6 +252,7 @@ function generateStatementHTML(data: any): string {
           <tr>
             <th>Date</th>
             <th>Invoice No.</th>
+            <th>Type</th>
             <th class="text-right">Charges</th>
             <th class="text-right">Payments</th>
             <th class="text-right">Balance Due</th>
