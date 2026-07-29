@@ -80,10 +80,10 @@ const handler = async (req: Request): Promise<Response> => {
       .from("orders")
       .select(`
         id, order_number, myob_invoice_number, created_at, delivery_date, pickup_date,
-        delivery_method, status, total_amount, payment_status, delivery_address
+        delivery_method, status, total_amount, payment_status, payment_type, delivery_address
       `)
       .eq("customer_id", customerId)
-      .eq("status", "delivered")
+      .in("status", ["delivered", "pickup_complete"])
       .is("deleted_at", null)
       .order("delivery_date", { ascending: true });
 
@@ -91,9 +91,14 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Failed to fetch orders");
     }
 
-    // Filter by date range
+    const resolveOrderDate = (order: any): string | null => {
+      const primary = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
+      return primary ?? order.delivery_date ?? order.pickup_date ?? order.created_at ?? null;
+    };
+
+    // Filter by date range (fallback across pickup_date/delivery_date/created_at)
     const orders = (allOrders || []).filter((order: any) => {
-      const orderDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
+      const orderDate = resolveOrderDate(order);
       return orderDate && orderDate >= startDate && orderDate <= endDate;
     });
 
