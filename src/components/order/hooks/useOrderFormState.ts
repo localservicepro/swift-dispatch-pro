@@ -49,7 +49,6 @@ export function useOrderFormState() {
   const [deliveryTime, setDeliveryTime] = useState<string>(draft?.deliveryTime ?? "");
   const [pickupTiming, setPickupTiming] = useState<"now" | "scheduled">(draft?.pickupTiming ?? "scheduled");
   const [specialInstructions, setSpecialInstructions] = useState<string>(draft?.specialInstructions ?? "");
-  const [paymentType, setPaymentType] = useState<string>(draft?.paymentType ?? "residential");
   const [paymentMethod, setPaymentMethod] = useState<string>(draft?.paymentMethod ?? "");
   
   // New notes state
@@ -129,7 +128,6 @@ export function useOrderFormState() {
           deliveryTime,
           pickupTiming,
           specialInstructions,
-          paymentType,
           paymentMethod,
           orderNotes,
           deliveryNotes,
@@ -152,7 +150,7 @@ export function useOrderFormState() {
   }, [
     currentStep, maxReachedStep, selectedCustomer, selectedContact, cart, adjustments,
     deliveryMethod, orderType, splits, deliveryDate, deliveryTime, pickupTiming,
-    specialInstructions, paymentType, paymentMethod, orderNotes, deliveryNotes, purchaseOrder,
+    specialInstructions, paymentMethod, orderNotes, deliveryNotes, purchaseOrder,
     deliveryAddress, sameAsBilling, useGlobalDeliveryAddress, selectedSuburbId,
     manualDeliveryFee, isDeliveryFeeManuallySet, isUsingCustomerAddress,
   ]);
@@ -320,7 +318,6 @@ export function useOrderFormState() {
     deliveryTime,
     pickupTiming,
     specialInstructions,
-    paymentType,
     paymentMethod,
     orderNotes,
     deliveryNotes,
@@ -352,7 +349,6 @@ export function useOrderFormState() {
     setDeliveryTime,
     setPickupTiming,
     setSpecialInstructions,
-    setPaymentType,
     setPaymentMethod,
     setOrderNotes,
     setDeliveryNotes,

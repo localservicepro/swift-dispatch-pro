@@ -18,8 +18,6 @@ function OrderManagementContent() {
     setStatusFilter,
     paymentStatusFilter,
     setPaymentStatusFilter,
-    paymentTypeFilter,
-    setPaymentTypeFilter,
     hasActiveFilters,
     clearFilters,
     setIsCreating,
@@ -67,11 +65,9 @@ function OrderManagementContent() {
             searchQuery={searchQuery}
             statusFilter={statusFilter}
             paymentStatusFilter={paymentStatusFilter}
-            paymentTypeFilter={paymentTypeFilter}
             onSearchChange={setSearchQuery}
             onStatusFilterChange={setStatusFilter}
             onPaymentStatusFilterChange={setPaymentStatusFilter}
-            onPaymentTypeFilterChange={setPaymentTypeFilter}
             onClearFilters={clearFilters}
             hasActiveFilters={hasActiveFilters}
             ordersCount={filteredOrders.length}
@@ -82,11 +78,9 @@ function OrderManagementContent() {
             searchQuery={searchQuery}
             statusFilter={statusFilter}
             paymentStatusFilter={paymentStatusFilter}
-            paymentTypeFilter={paymentTypeFilter}
             onSearchChange={setSearchQuery}
             onStatusFilterChange={setStatusFilter}
             onPaymentStatusFilterChange={setPaymentStatusFilter}
-            onPaymentTypeFilterChange={setPaymentTypeFilter}
           />
         </CardHeader>
         <CardContent>

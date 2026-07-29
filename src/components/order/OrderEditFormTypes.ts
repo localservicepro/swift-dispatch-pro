@@ -30,7 +30,6 @@ export interface Order {
   business_name?: string;
   customer_type?: string;
   payment_method?: string;
-  payment_type?: string;
   payment_status?: string;
   adjustments?: number;
   contact_id?: string | null;

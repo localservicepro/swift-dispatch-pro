@@ -43,7 +43,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     deliveryTime,
     pickupTiming,
     specialInstructions,
-    paymentType,
     paymentMethod,
     orderNotes,
     deliveryNotes,
@@ -72,7 +71,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setDeliveryTime,
     setPickupTiming,
     setSpecialInstructions,
-    setPaymentType,
     setPaymentMethod,
     setOrderNotes,
     setDeliveryNotes,
@@ -116,7 +114,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
     setDeliveryTime("");
     setPickupTiming("scheduled");
     setSpecialInstructions("");
-    setPaymentType("residential");
     setPaymentMethod("");
     setOrderNotes("");
     setDeliveryNotes("");
@@ -218,7 +215,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           deliveryTime,
           pickupTiming,
           specialInstructions,
-          paymentType,
           paymentMethod,
           orderNotes,
           deliveryNotes,
@@ -238,7 +234,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
           deliveryMethod: deliveryMethod as "delivery" | "pickup",
           pickupTiming,
           splits,
-          paymentType,
           paymentMethod,
           specialInstructions,
           orderNotes,
@@ -290,7 +285,6 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
       setDeliveryTime("");
       setPickupTiming("scheduled");
       setSpecialInstructions("");
-      setPaymentType("residential");
       setPaymentMethod("");
       setOrderNotes("");
       setDeliveryNotes("");
@@ -451,9 +445,7 @@ export function MultiStepOrderForm({ onOrderCreated, onClose }: MultiStepOrderFo
         return (
           <PaymentMethodStep
             customer={selectedCustomer!}
-            paymentType={paymentType}
             paymentMethod={paymentMethod}
-            onPaymentTypeChange={setPaymentType}
             onPaymentMethodChange={setPaymentMethod}
             onBack={prevStep}
             onNext={nextStep}

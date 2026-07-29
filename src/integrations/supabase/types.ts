@@ -1171,7 +1171,6 @@ export type Database = {
           payment_date: string | null
           payment_method: string | null
           payment_status: string | null
-          payment_type: string | null
           pickup_contact_name: string | null
           pickup_contact_phone: string | null
           pickup_date: string | null
@@ -1234,7 +1233,6 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string | null
           payment_status?: string | null
-          payment_type?: string | null
           pickup_contact_name?: string | null
           pickup_contact_phone?: string | null
           pickup_date?: string | null
@@ -1297,7 +1295,6 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string | null
           payment_status?: string | null
-          payment_type?: string | null
           pickup_contact_name?: string | null
           pickup_contact_phone?: string | null
           pickup_date?: string | null

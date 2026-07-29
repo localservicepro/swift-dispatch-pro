@@ -80,10 +80,10 @@ const handler = async (req: Request): Promise<Response> => {
       .from("orders")
       .select(`
         id, order_number, myob_invoice_number, created_at, delivery_date, pickup_date,
-        delivery_method, status, total_amount, payment_status, payment_type, delivery_address
+        delivery_method, status, total_amount, payment_status, delivery_address
       `)
       .eq("customer_id", customerId)
-      .in("status", ["delivered", "pickup_complete"])
+      .eq("status", "delivered")
       .is("deleted_at", null)
       .order("delivery_date", { ascending: true });
 
@@ -91,14 +91,9 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Failed to fetch orders");
     }
 
-    const resolveOrderDate = (order: any): string | null => {
-      const primary = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
-      return primary ?? order.delivery_date ?? order.pickup_date ?? order.created_at ?? null;
-    };
-
-    // Filter by date range (fallback across pickup_date/delivery_date/created_at)
+    // Filter by date range
     const orders = (allOrders || []).filter((order: any) => {
-      const orderDate = resolveOrderDate(order);
+      const orderDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
       return orderDate && orderDate >= startDate && orderDate <= endDate;
     });
 
@@ -107,9 +102,9 @@ const handler = async (req: Request): Promise<Response> => {
     // Fetch unpaid delivered orders for aging
     const { data: allUnpaidOrders } = await supabase
       .from("orders")
-      .select("id, total_amount, delivery_date, pickup_date, delivery_method, payment_status, status, created_at")
+      .select("id, total_amount, delivery_date, pickup_date, delivery_method, payment_status, status")
       .eq("customer_id", customerId)
-      .in("status", ["delivered", "pickup_complete"])
+      .eq("status", "delivered")
       .eq("payment_status", "pending")
       .is("deleted_at", null);
 
@@ -117,7 +112,7 @@ const handler = async (req: Request): Promise<Response> => {
     const agingBuckets = { current: 0, over30: 0, over60: 0, over90: 0 };
 
     (allUnpaidOrders || []).forEach((order: any) => {
-      const orderDate = resolveOrderDate(order);
+      const orderDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
       if (!orderDate) return;
       const daysOld = Math.floor((today.getTime() - new Date(orderDate).getTime()) / (1000 * 60 * 60 * 24));
       const amount = Number(order.total_amount || 0);
@@ -203,23 +198,12 @@ function generateStatementHTML(data: any): string {
     addressGroups[addr].push(order);
   });
 
-  const PAYMENT_TYPE_LABELS: Record<string, string> = {
-    "30_day_account": "30 Day Account",
-    "7_day_account": "7 Day Account",
-    trade: "Trade",
-    card_on_file: "Card on File",
-    residential: "Residential",
-    cod: "Cash on Delivery",
-  };
-
   let runningBalance = 0;
   const addressSections = Object.entries(addressGroups).map(([address, groupOrders]) => {
     const rows = groupOrders.map((order: any) => {
-      const primary = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
-      const fulfillmentDate = primary ?? order.delivery_date ?? order.pickup_date ?? order.created_at;
+      const fulfillmentDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
       const dateStr = fulfillmentDate ? formatDateAU(fulfillmentDate) : formatDateAU(order.created_at);
       const invoiceNo = order.myob_invoice_number || (order.order_number || "").replace(/^ORD-/i, "");
-      const typeLabel = order.payment_type ? (PAYMENT_TYPE_LABELS[order.payment_type] ?? order.payment_type) : "";
       const amount = Number(order.total_amount || 0);
       const isPaid = order.payment_status === "paid";
 
@@ -238,7 +222,6 @@ function generateStatementHTML(data: any): string {
       return `<tr>
         <td>${dateStr}</td>
         <td>${invoiceNo}</td>
-        <td>${typeLabel}</td>
         <td class="text-right">${chargesCol}</td>
         <td class="text-right">${paymentsCol}</td>
         <td class="text-right">$${runningBalance.toFixed(2)}</td>
@@ -252,7 +235,6 @@ function generateStatementHTML(data: any): string {
           <tr>
             <th>Date</th>
             <th>Invoice No.</th>
-            <th>Type</th>
             <th class="text-right">Charges</th>
             <th class="text-right">Payments</th>
             <th class="text-right">Balance Due</th>

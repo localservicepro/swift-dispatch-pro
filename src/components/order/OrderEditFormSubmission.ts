@@ -112,11 +112,10 @@ export function useOrderFormSubmission() {
         contact_name: submissionData.contact_name || null,
         contact_email: submissionData.contact_email || null,
         contact_phone: submissionData.contact_phone || null,
-        // Add payment fields (payment_type + payment_method)
-        payment_type: submissionData.payment_type || null,
+        // Add payment method field
         payment_method: submissionData.payment_method || null,
         updated_at: new Date().toISOString(),
-      } as any;
+      };
 
       // Handle payment status adjustments when total changes
       if (totalAmountChanged && order.payment_status === 'paid') {

@@ -9,7 +9,6 @@ import { OrderFormData } from "./hooks/useOrderFormData";
 import { useOrderReturns } from "@/hooks/useOrderReturns";
 import { useCustomerCredits } from "@/hooks/useCustomerCredits";
 import { formatCurrency } from "./utils/paymentCalculations";
-import { PAYMENT_TYPES, PAYMENT_TYPE_LABELS, PAYMENT_METHOD_LABELS, getAllowedMethods } from "@/utils/paymentTypes";
 
 interface OrderPricingFormProps {
   formData: OrderFormData;
@@ -116,41 +115,25 @@ export function OrderPricingForm({
         <p className="text-xs text-amber-600 mt-1">Use negative values for discounts</p>
       </div>
 
-      {/* Payment Type + Payment Method (dependent) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="payment_type" className="text-gray-700 font-medium">Payment Type</Label>
-          <select
-            id="payment_type"
-            value={formData.payment_type || 'residential'}
-            onChange={(e) => {
-              const newType = e.target.value;
-              onInputChange('payment_type', newType);
-              const allowed = getAllowedMethods(newType);
-              if (allowed.length > 0 && !allowed.includes(formData.payment_method as any)) {
-                onInputChange('payment_method', allowed[0]);
-              }
-            }}
-            className="w-full px-3 py-2 border border-amber-200 rounded-md focus:border-amber-400 focus:ring-amber-200"
-          >
-            {PAYMENT_TYPES.map((t) => (
-              <option key={t} value={t}>{PAYMENT_TYPE_LABELS[t]}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <Label htmlFor="payment_method" className="text-gray-700 font-medium">Payment Method</Label>
-          <select
-            id="payment_method"
-            value={formData.payment_method}
-            onChange={(e) => onInputChange('payment_method', e.target.value)}
-            className="w-full px-3 py-2 border border-amber-200 rounded-md focus:border-amber-400 focus:ring-amber-200"
-          >
-            {getAllowedMethods(formData.payment_type || 'residential').map((m) => (
-              <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>
-            ))}
-          </select>
-        </div>
+      {/* Payment Method Selection for Surcharge Calculation */}
+      <div>
+        <Label htmlFor="payment_method" className="text-gray-700 font-medium">Payment Method</Label>
+        <select
+          id="payment_method"
+          value={formData.payment_method}
+          onChange={(e) => onInputChange('payment_method', e.target.value)}
+          className="w-full px-3 py-2 border border-amber-200 rounded-md focus:border-amber-400 focus:ring-amber-200"
+        >
+          <option value="cash">Cash</option>
+          <option value="cod">COD - Cash on Delivery</option>
+          <option value="card_on_file">Card on File</option>
+          <option value="invoice">Invoice</option>
+          <option value="7_day_invoice">7 Day Invoice</option>
+          <option value="in_yard_cash">In Yard - Cash</option>
+          <option value="in_yard_card">In Yard - Card</option>
+          <option value="account_cash">Account - Cash</option>
+          <option value="account_card">Account - Card</option>
+        </select>
       </div>
 
       {/* Calculation Breakdown */}

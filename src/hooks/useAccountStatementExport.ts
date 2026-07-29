@@ -28,17 +28,18 @@ export function useAccountStatementExport({ customerId }: UseAccountStatementExp
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, total_amount, payment_status, delivery_date, pickup_date, delivery_method, status, created_at")
+        .select("id, total_amount, payment_status, delivery_date, pickup_date, delivery_method, status")
         .eq("customer_id", customerId)
-        .in("status", ["delivered", "back_order", "pickup_complete"])
+        .in("status", ["delivered", "back_order"])
         .is("deleted_at", null);
 
       if (error) throw error;
 
-      // Filter by fulfilment date with fallback across pickup/delivery/created_at
+      // Filter by delivery_date or pickup_date based on delivery_method
       const filteredData = data?.filter(order => {
-        const primary = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
-        const orderDate = primary ?? order.delivery_date ?? order.pickup_date ?? order.created_at;
+        const orderDate = order.delivery_method === 'pickup' 
+          ? order.pickup_date 
+          : order.delivery_date;
         return orderDate && orderDate >= dateRange.startDate && orderDate <= dateRange.endDate;
       }) || [];
 

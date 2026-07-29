@@ -31,7 +31,6 @@ export interface Order {
   payment_status?: string;
   payment_date?: string;
   payment_method?: string;
-  payment_type?: string;
   driver_id?: string;
   created_at: string;
   delivery_date?: string;
@@ -73,7 +72,6 @@ interface OrderFilters {
   searchQuery?: string;
   statusFilter?: string;
   paymentStatusFilter?: string;
-  paymentTypeFilter?: string;
 }
 
 async function fetchMatchingCustomerIds(searchTerm: string): Promise<string[]> {
@@ -119,7 +117,6 @@ async function fetchOrdersPage(pageParam: number, filters: OrderFilters) {
       payment_status,
       payment_date,
       payment_method,
-      payment_type,
       driver_id,
       created_at,
       delivery_date,
@@ -176,11 +173,6 @@ async function fetchOrdersPage(pageParam: number, filters: OrderFilters) {
   // Apply server-side payment status filter
   if (filters.paymentStatusFilter && filters.paymentStatusFilter !== 'all') {
     query = query.eq('payment_status', filters.paymentStatusFilter);
-  }
-
-  // Apply server-side payment type filter
-  if (filters.paymentTypeFilter && filters.paymentTypeFilter !== 'all') {
-    query = (query as any).eq('payment_type', filters.paymentTypeFilter);
   }
 
   // Apply server-side search filter — also searches customer company/business names
@@ -277,7 +269,7 @@ export function useOrderData(filters: OrderFilters = {}) {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['orders', filters.searchQuery || '', filters.statusFilter || 'all', filters.paymentStatusFilter || 'all', filters.paymentTypeFilter || 'all'],
+    queryKey: ['orders', filters.searchQuery || '', filters.statusFilter || 'all', filters.paymentStatusFilter || 'all'],
     queryFn: ({ pageParam }) => fetchOrdersPage(pageParam, filters),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _allPages, lastPageParam) => {

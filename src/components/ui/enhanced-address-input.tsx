@@ -71,14 +71,9 @@ export function EnhancedAddressInput({
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   const [isUserTyping, setIsUserTyping] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-
+  
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  // Locks the input to the last selected place. While set, raw onChange
-  // writes that match this value are ignored (parent already has it) and
-  // the debounced prediction fetch is suppressed. Cleared only when the
-  // user actively edits the field (see handleInputChange).
-  const selectedPlaceRef = useRef<string | null>(null);
   
   const debouncedValue = useDebounce(value, 500);
 
@@ -120,14 +115,8 @@ export function EnhancedAddressInput({
       });
   }, []);
 
-  // Fetch predictions when user types (but not when initializing or when a
-  // place selection is currently locking the field).
+  // Fetch predictions when user types (but not when initializing)
   useEffect(() => {
-    // If the current value matches the last selected place, do not fetch —
-    // the user has not started editing again.
-    if (selectedPlaceRef.current !== null && selectedPlaceRef.current === debouncedValue) {
-      return;
-    }
     if (debouncedValue && debouncedValue.length > 2 && isUserTyping && isInitialized) {
       console.log('EnhancedAddressInput: User is typing, fetching predictions for:', debouncedValue);
       fetchPredictions(debouncedValue);
@@ -255,28 +244,15 @@ export function EnhancedAddressInput({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
-
-    // If a place was previously selected and the user is now editing away
-    // from that formatted address, release the lock so the debounced fetch
-    // can run again. If the incoming value equals the locked value, this is
-    // a spurious re-render / stale onChange — ignore it entirely so the
-    // formatted address isn't clobbered.
-    if (selectedPlaceRef.current !== null) {
-      if (newValue === selectedPlaceRef.current) {
-        return;
-      }
-      selectedPlaceRef.current = null;
-    }
-
     onChange(newValue);
-
+    
     // Mark as user typing only if component is initialized or user is actively changing
     if (!isInitialized || newValue !== value) {
       console.log('EnhancedAddressInput: User input detected, setting isUserTyping to true');
       setIsUserTyping(true);
       setIsInitialized(true);
     }
-
+    
     if (newValue.length <= 2) {
       setShowDropdown(false);
       setPredictions([]);
@@ -296,20 +272,16 @@ export function EnhancedAddressInput({
   };
 
   const handlePredictionSelect = async (prediction: PlacePrediction) => {
-    // Immediately lock the field to the description string so any stale
-    // debounced onChange from the previous keystroke can no longer overwrite
-    // it. The lock is upgraded to the formatted address once details resolve.
-    selectedPlaceRef.current = prediction.description;
     onChange(prediction.description);
     setShowDropdown(false);
     setPredictions([]);
     setValidationStatus('validating');
     setIsUserTyping(false); // User has selected, not typing anymore
-
+    
     // Get detailed address information
     try {
       console.log('Getting details for prediction:', prediction);
-
+      
       // Try edge function first
       const { data, error } = await supabase.functions.invoke('google-places-details', {
         body: { placeId: prediction.place_id, sessionToken }
@@ -335,11 +307,7 @@ export function EnhancedAddressInput({
           lng: data.parsedAddress.lng,
           name: data.parsedAddress.name
         };
-
-        // Commit the FORMATTED address to the parent as the canonical value
-        // and lock the input to it so no later stale write can revert it.
-        selectedPlaceRef.current = addressData.fullAddress;
-        onChange(addressData.fullAddress);
+        
         onAddressSelect(addressData);
         setValidationStatus('valid');
         onValidationChange?.(true);
@@ -410,8 +378,6 @@ export function EnhancedAddressInput({
           }
         });
 
-        selectedPlaceRef.current = parsedAddress.fullAddress;
-        onChange(parsedAddress.fullAddress);
         onAddressSelect(parsedAddress);
         setValidationStatus('valid');
         onValidationChange?.(true);
@@ -425,7 +391,6 @@ export function EnhancedAddressInput({
 
   const handleMapAddressSelect = (addressData: AddressData) => {
     console.log('Address selected from map:', addressData);
-    selectedPlaceRef.current = addressData.fullAddress;
     onChange(addressData.fullAddress);
     onAddressSelect?.(addressData);
     setValidationStatus('valid');

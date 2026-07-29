@@ -159,32 +159,23 @@ export function SplitConfigurationManager({
   };
 
   const handleCommonAddressChange = (address: string) => {
-    // Update local common state only. Do NOT propagate raw keystrokes to
-    // splits — the debounced/streaming writes from an autocomplete field
-    // would otherwise race with the final formatted address (BUG 1/3).
     setCommonDeliveryAddress(address);
+    if (useSameAddress && !commonSameAsBilling) {
+      applyCommonToAllSplits({ address: true }, { deliveryAddress: address });
+    }
   };
 
   const handleCommonAddressSelect = (addressData: any) => {
-    // Called ONLY when the user picks a Google Places prediction. At this
-    // point we have the canonical formatted address AND can synchronously
-    // resolve the suburb from the cached suburb list. Do a single atomic
-    // write to all splits so no interleaved keystroke can revert either
-    // the address or the suburb.
     const addr = addressData?.fullAddress || "";
     setCommonDeliveryAddress(addr);
-
-    let resolvedSuburbId = commonDeliverySuburbId;
     handleAutoSuburbSelection(addr, (suburbId: string) => {
-      resolvedSuburbId = suburbId;
       setCommonDeliverySuburbId(suburbId);
+      if (useSameAddress && !commonSameAsBilling) {
+        applyCommonToAllSplits({ address: true }, { deliveryAddress: addr, deliverySuburbId: suburbId });
+      }
     });
-
     if (useSameAddress && !commonSameAsBilling) {
-      applyCommonToAllSplits(
-        { address: true },
-        { deliveryAddress: addr, deliverySuburbId: resolvedSuburbId }
-      );
+      applyCommonToAllSplits({ address: true }, { deliveryAddress: addr });
     }
   };
 

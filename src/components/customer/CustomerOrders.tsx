@@ -27,7 +27,6 @@ export function CustomerOrders({ customer, onBack }: CustomerOrdersProps) {
         .from("orders")
         .select("*")
         .eq("customer_id", customer.id)
-        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
