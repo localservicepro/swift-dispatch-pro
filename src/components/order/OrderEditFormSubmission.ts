@@ -38,16 +38,6 @@ export function useOrderFormSubmission() {
       const productsChanged = JSON.stringify(submissionData.products) !== JSON.stringify(order.products);
       const statusChanged = submissionData.status !== order.status;
       
-      console.log('Order update analysis:', {
-        deliveryAddressChanged,
-        totalAmountChanged,
-        productsChanged,
-        statusChanged,
-        oldTotal: order.total_amount,
-        newTotal: parseFloat(submissionData.total_amount),
-        oldStatus: order.status,
-        newStatus: submissionData.status
-      });
       
       // If truck assignment changed, update the old truck status and new truck status
       if (submissionData.truck_id !== order.truck_id) {
@@ -235,11 +225,6 @@ export function useOrderFormSubmission() {
       await invalidateOrderCaches(deliveryAddressChanged ? 'delivery address changed' : 'comprehensive order update');
 
       // Display success toast with defensive error handling
-      console.log('✅ ORDER UPDATED SUCCESSFULLY:', order.order_number, {
-        totalAmountChanged,
-        finalTotal: finalTotalAmount
-      });
-      
       try {
         toast({
           title: "Success",
