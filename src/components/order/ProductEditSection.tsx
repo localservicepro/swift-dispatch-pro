@@ -109,7 +109,7 @@ export function ProductEditSection({
       }));
       setCurrentProductDetails(productsWithImages);
     }
-  }, [currentProducts]);
+  }, [currentProductIdsKey]);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
