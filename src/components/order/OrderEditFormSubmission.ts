@@ -12,7 +12,6 @@ export function useOrderFormSubmission() {
 
   // Enhanced cache invalidation function for order updates
   const invalidateOrderCaches = async (reason?: string) => {
-    console.log(`Invalidating order caches after edit: ${reason || 'order update'}`);
     
     // Force invalidate all order-related queries
     await Promise.all([
@@ -24,7 +23,6 @@ export function useOrderFormSubmission() {
     // Force immediate refetch for opportunity pipeline
     await queryClient.refetchQueries({ queryKey: ['opportunity-orders'] });
     
-    console.log('Order caches invalidated and refetched');
   };
 
   const handleOrderSubmission = async (
@@ -40,16 +38,6 @@ export function useOrderFormSubmission() {
       const productsChanged = JSON.stringify(submissionData.products) !== JSON.stringify(order.products);
       const statusChanged = submissionData.status !== order.status;
       
-      console.log('Order update analysis:', {
-        deliveryAddressChanged,
-        totalAmountChanged,
-        productsChanged,
-        statusChanged,
-        oldTotal: order.total_amount,
-        newTotal: parseFloat(submissionData.total_amount),
-        oldStatus: order.status,
-        newStatus: submissionData.status
-      });
       
       // If truck assignment changed, update the old truck status and new truck status
       if (submissionData.truck_id !== order.truck_id) {
@@ -124,11 +112,9 @@ export function useOrderFormSubmission() {
           (updateData as any).payment_status = 'pending_adjustment';
         } else if (finalTotalAmount < order.total_amount) {
           // Amount decreased - keep as paid but log the credit
-          console.log(`Order ${order.order_number}: Total decreased from ${order.total_amount} to ${finalTotalAmount}. Credit difference: ${order.total_amount - finalTotalAmount}`);
         }
       }
 
-      console.log('Updating order with data:', updateData);
 
       const { error: orderError } = await supabase
         .from('orders')
@@ -210,7 +196,6 @@ export function useOrderFormSubmission() {
           statusChanged && `status: ${order.status} → ${submissionData.status}`
         ].filter(Boolean).join(', ')}`;
 
-        console.log('Order edit activity:', logDescription);
 
         // Insert activity log directly - get current user
         const { data: { user } } = await supabase.auth.getUser();
@@ -240,22 +225,14 @@ export function useOrderFormSubmission() {
       await invalidateOrderCaches(deliveryAddressChanged ? 'delivery address changed' : 'comprehensive order update');
 
       // Display success toast with defensive error handling
-      console.log('✅ ORDER UPDATED SUCCESSFULLY:', order.order_number, {
-        totalAmountChanged,
-        finalTotal: finalTotalAmount
-      });
-      
       try {
-        console.log('📢 Displaying success toast for order:', order.order_number);
         toast({
           title: "Success",
           description: `Order updated successfully! ${totalAmountChanged ? 'Total amount and payments have been adjusted.' : ''}`,
         });
-        console.log('✅ Toast displayed successfully');
       } catch (toastError) {
         console.error('❌ Toast failed to display:', toastError);
         // Fallback: at least show in console
-        console.log('%c✅ ORDER UPDATED SUCCESSFULLY', 'color: green; font-size: 16px; font-weight: bold', order.order_number);
       }
 
       onOrderUpdated();

@@ -42,16 +42,6 @@ export function calculateOrderTotals(
   deliveryMethod: string = 'delivery',
   splitCount: number = 1
 ) {
-  console.log('Calculating order totals:', {
-    subtotal,
-    adjustments,
-    deliveryFee,
-    paymentMethod,
-    settings,
-    deliveryMethod,
-    splitCount
-  });
-
   // Fuel surcharge: only for delivery orders, applied per split
   const fuelSurchargePerUnit = settings.fuel_surcharge || 0;
   const fuelSurcharge = deliveryMethod === 'delivery' ? fuelSurchargePerUnit * splitCount : 0;
@@ -88,8 +78,8 @@ export function calculateOrderTotals(
     gstIncluded: settings.include_gst_in_prices
   };
 
-  console.log('Calculation result:', result);
   return result;
+
 }
 
 export function formatCurrency(amount: number, currency: string = 'AUD'): string {

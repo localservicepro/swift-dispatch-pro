@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,10 +53,17 @@ export function ProductEditSection({
     return currentProducts.reduce((sum, item) => sum + ((item.price || 0) * parseFloat(item.quantity || 0)), 0);
   }, [currentProducts]);
 
-  // Update parent when subtotal changes
+  // Update parent when the subtotal VALUE changes.
+  // Deliberately keyed on the numeric subtotal only: `onSubtotalChange` used to
+  // be part of the dependency list, and because the parent recreated it on
+  // every render this effect re-fired on every render, pushing state up and
+  // re-rendering forever. The latest callback is read from a ref instead.
+  const onSubtotalChangeRef = useRef(onSubtotalChange);
+  onSubtotalChangeRef.current = onSubtotalChange;
+
   useEffect(() => {
-    onSubtotalChange(subtotal);
-  }, [subtotal, onSubtotalChange]);
+    onSubtotalChangeRef.current(subtotal);
+  }, [subtotal]);
 
   const loadCategories = useCallback(async () => {
     const { data, error } = await supabase
@@ -70,14 +77,22 @@ export function ProductEditSection({
     }
   }, []);
 
+  // Stable identity key for the set of products in the order, so the detail
+  // fetch below re-runs when the products actually change rather than whenever
+  // the parent hands down a new array instance.
+  const currentProductIdsKey = useMemo(
+    () => currentProducts.map(item => item.id).filter(Boolean).sort().join(','),
+    [currentProducts]
+  );
+
   // Load product details for current products in the order
   const loadCurrentProductDetails = useCallback(async () => {
-    if (currentProducts.length === 0) {
+    if (!currentProductIdsKey) {
       setCurrentProductDetails([]);
       return;
     }
 
-    const productIds = currentProducts.map(item => item.id);
+    const productIds = currentProductIdsKey.split(',');
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -86,6 +101,7 @@ export function ProductEditSection({
       `)
       .in('id', productIds);
 
+
     if (!error && data) {
       const productsWithImages = data.map(product => ({
         ...product,
@@ -93,7 +109,7 @@ export function ProductEditSection({
       }));
       setCurrentProductDetails(productsWithImages);
     }
-  }, [currentProducts]);
+  }, [currentProductIdsKey]);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
