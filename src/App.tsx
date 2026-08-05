@@ -140,6 +140,8 @@ function AppRoutes() {
         <Route path="/storefront" element={<Storefront />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
+        <Route path="/__perf" element={<PerfHarness />} />
+
         
         {/* All other routes require authentication */}
         <Route path="/*" element={<AuthenticatedApp />} />
