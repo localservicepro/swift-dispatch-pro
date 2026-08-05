@@ -33,6 +33,9 @@ export default function PerfHarness() {
   const logic = useOrderEditFormLogic(mockOrder);
   (window as any).__perfTotal = logic.formData.total_amount;
   (window as any).__perfBreakdown = logic.calculationBreakdown;
+  (window as any).__perfSet = (field: string, value: string) => logic.handleInputChange(field, value);
+  (window as any).__perfSetSubtotal = (v: number) => logic.handleSubtotalChange(v);
+  (window as any).__perfSettings = logic.paymentSettings;
 
   return (
     <div style={{ padding: 24 }}>
