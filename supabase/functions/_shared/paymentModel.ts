@@ -31,3 +31,18 @@ export function isStatementEligible(args: {
 
   return !isExplicitNonAccountPaymentType(paymentType);
 }
+
+/** Shared resolver — mirror of src/utils/paymentModel.ts resolvePaymentType. */
+export function resolvePaymentType(args: {
+  customerType?: string | null;
+  paymentMethod?: string | null;
+  explicitPaymentType?: string | null;
+}): string {
+  const { customerType, paymentMethod, explicitPaymentType } = args;
+  if (explicitPaymentType) return explicitPaymentType;
+  if (paymentMethod === "cod") return "cod";
+  if (paymentMethod === "card_on_file") return "card_on_file";
+  if (paymentMethod === "7_day_invoice") return "7_day_account";
+  if (customerType === "account") return "30_day_account";
+  return "prepaid";
+}

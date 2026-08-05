@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolvePaymentType } from "../_shared/paymentModel.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,7 +55,7 @@ Deno.serve(async (req) => {
     // Re-validate account number server-side
     const { data: customer, error: custError } = await supabase
       .from("customers")
-      .select("id, first_name, last_name, company_name, business_name, full_address, phone, email, stop_credit")
+      .select("id, first_name, last_name, company_name, business_name, full_address, phone, email, stop_credit, customer_type")
       .eq("account_number", account_number.trim())
       .eq("is_active", true)
       .maybeSingle();
