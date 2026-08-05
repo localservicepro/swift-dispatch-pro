@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Order } from "../OrderEditFormTypes";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { calculateOrderTotals } from "../utils/paymentCalculations";
@@ -73,16 +73,20 @@ export function useOrderFormData(order: Order) {
     fuel_surcharge: Number(order.fuel_surcharge) || 0
   });
 
+  // Always-current snapshot of formData for the calculation helpers.
+  // Keeping this in a ref means calculateTotals does NOT need formData as a
+  // dependency, so the handlers stay referentially stable across renders and
+  // child effects that depend on them no longer re-fire every render.
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
+
   // Initialize products with current prices from database
   useEffect(() => {
     const initializeProductsWithPrices = async () => {
       if (!order.products || !Array.isArray(order.products) || order.products.length === 0) {
-        console.log('No products to initialize for order:', order.id);
         return;
       }
 
-      console.log('Initializing products with current prices for order:', order.id, order.products);
-      
       try {
         // Get unique product IDs from the order
         const productIds = order.products
@@ -91,7 +95,6 @@ export function useOrderFormData(order: Order) {
           .filter((id, index, arr) => arr.indexOf(id) === index); // Remove duplicates
 
         if (productIds.length === 0) {
-          console.log('No valid product IDs found in order products');
           return;
         }
 
@@ -106,26 +109,16 @@ export function useOrderFormData(order: Order) {
           return;
         }
 
-        console.log('Fetched current product prices:', currentProducts);
-
         // Update order products with current prices
         const updatedProducts = order.products.map(orderProduct => {
           const currentProduct = currentProducts?.find(p => p.id === orderProduct.product_id);
-          const updatedProduct = {
+          return {
             ...orderProduct,
             // Use current database price if available, fallback to order price, then 0
             price: currentProduct?.price || Number(orderProduct.unit_price) || Number(orderProduct.price) || 0,
             // Ensure quantity is a number
             quantity: Number(orderProduct.quantity) || 0
           };
-          
-          console.log('Updated product:', {
-            original: orderProduct,
-            current: currentProduct,
-            updated: updatedProduct
-          });
-          
-          return updatedProduct;
         });
 
         // Calculate initial subtotal
@@ -133,18 +126,12 @@ export function useOrderFormData(order: Order) {
           return sum + (Number(product.price) * Number(product.quantity));
         }, 0);
 
-        console.log('Initial subtotal calculated:', initialSubtotal);
-
         // Update form data with corrected products and subtotal
-        setFormData(prev => {
-          const updated = {
-            ...prev,
-            products: updatedProducts,
-            subtotal: initialSubtotal
-          };
-          console.log('Form data updated with products and subtotal:', updated);
-          return updated;
-        });
+        setFormData(prev => ({
+          ...prev,
+          products: updatedProducts,
+          subtotal: initialSubtotal
+        }));
 
       } catch (error) {
         console.error('Error initializing products with prices:', error);
@@ -158,8 +145,8 @@ export function useOrderFormData(order: Order) {
   // IMPORTANT: We use the order's STORED fuel_surcharge (formData.fuel_surcharge),
   // not paymentSettings.fuel_surcharge, so the edit dialog total always matches
   // what is persisted in the database.
-  const calculateTotals = (updatedData: Partial<OrderFormData>) => {
-    const currentData = { ...formData, ...updatedData };
+  const calculateTotals = useCallback((updatedData: Partial<OrderFormData>) => {
+    const currentData = { ...formDataRef.current, ...updatedData };
 
     const adjustmentsNum = parseFloat(currentData.adjustments) || 0;
     // Pickup orders never carry a fuel surcharge — gate authoritatively here.
@@ -184,9 +171,9 @@ export function useOrderFormData(order: Order) {
     );
 
     return (orderTotals.totalAmount + fuelSurcharge).toFixed(2);
-  };
+  }, [paymentSettings]);
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = useCallback((field: string, value: string) => {
     // Handle pricing fields that need recalculation
     if (field === 'delivery_fee') {
       // Parse delivery fee as number
@@ -252,14 +239,13 @@ export function useOrderFormData(order: Order) {
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
-  };
+  }, [calculateTotals]);
 
-  const handleDriverChange = (driverId: string) => {
+  const handleDriverChange = useCallback((driverId: string) => {
     setFormData(prev => ({ ...prev, driver_id: driverId }));
-  };
+  }, []);
 
-  const handleSuburbChange = (suburbId: string, suburb?: any) => {
-    console.log('Suburb change - suburbId:', suburbId, 'suburb:', suburb);
+  const handleSuburbChange = useCallback((suburbId: string, suburb?: any) => {
     setFormData(prev => ({ ...prev, suburb_id: suburbId }));
     
     // Auto-populate delivery fee if not manually set and we have suburb data
@@ -276,10 +262,9 @@ export function useOrderFormData(order: Order) {
         setIsDeliveryFeeManuallySet(!isAutoPopulated);
       });
     }
-  };
+  }, [isDeliveryFeeManuallySet, autoPopulateDeliveryFee, calculateTotals]);
 
-  const handleDeliverySuburbChange = (suburbId: string, suburb?: any) => {
-    console.log('Delivery suburb change - suburbId:', suburbId, 'suburb:', suburb);
+  const handleDeliverySuburbChange = useCallback((suburbId: string, suburb?: any) => {
     setFormData(prev => ({ ...prev, delivery_suburb_id: suburbId }));
     
     // Auto-populate delivery fee for delivery suburb if not manually set and we have suburb data
@@ -296,10 +281,9 @@ export function useOrderFormData(order: Order) {
         setIsDeliveryFeeManuallySet(!isAutoPopulated);
       });
     }
-  };
+  }, [isDeliveryFeeManuallySet, autoPopulateDeliveryFee, calculateTotals]);
 
-  const handleFormDataChange = (updates: Partial<OrderFormData>) => {
-    console.log('Form data change:', updates);
+  const handleFormDataChange = useCallback((updates: Partial<OrderFormData>) => {
     // Apply pickup-method gating so toggling via this path also strips surcharge/fee.
     if (updates.delivery_method === 'pickup') {
       const merged = { ...updates, fuel_surcharge: 0, delivery_fee: 0 };
@@ -308,24 +292,32 @@ export function useOrderFormData(order: Order) {
       return;
     }
     setFormData(prev => ({ ...prev, ...updates }));
-  };
+  }, [calculateTotals]);
 
-  const handleProductsChange = (products: any[]) => {
-    setFormData(prev => ({ ...prev, products }));
-  };
+  const handleProductsChange = useCallback((products: any[]) => {
+    setFormData(prev => (prev.products === products ? prev : { ...prev, products }));
+  }, []);
 
-  const handleSubtotalChange = (subtotal: number) => {
+  const handleSubtotalChange = useCallback((subtotal: number) => {
     const updatedData = { subtotal };
     const newTotal = calculateTotals(updatedData);
     
-    setFormData(prev => ({
-      ...prev,
-      subtotal,
-      total_amount: newTotal
-    }));
-  };
+    setFormData(prev => {
+      // Bail out when nothing actually changed. Returning the identical state
+      // object lets React skip the re-render, which breaks the
+      // render -> recalculate -> setState -> render feedback loop.
+      if (prev.subtotal === subtotal && prev.total_amount === newTotal) {
+        return prev;
+      }
+      return {
+        ...prev,
+        subtotal,
+        total_amount: newTotal
+      };
+    });
+  }, [calculateTotals]);
 
-  const handleContactChange = (contactData: {
+  const handleContactChange = useCallback((contactData: {
     contact_id: string | null;
     contact_name: string | null;
     contact_email: string | null;
@@ -335,20 +327,20 @@ export function useOrderFormData(order: Order) {
       ...prev,
       ...contactData
     }));
-  };
+  }, []);
 
   // Recalculate totals when payment settings are loaded
   useEffect(() => {
     if (paymentSettings) {
       const newTotal = calculateTotals({});
-      setFormData(prev => ({
+      setFormData(prev => (prev.total_amount === newTotal ? prev : {
         ...prev,
         total_amount: newTotal
       }));
     }
-  }, [paymentSettings]);
+  }, [paymentSettings, calculateTotals]);
 
-  const getFormDataForSubmission = () => {
+  const getFormDataForSubmission = useCallback(() => {
     // Format time for database submission (ensure HH:MM:SS format)
     const formatTimeForDB = (timeString: string) => {
       if (!timeString) return null;
@@ -372,16 +364,19 @@ export function useOrderFormData(order: Order) {
       return timeString;
     };
 
+    const current = formDataRef.current;
     return {
-      ...formData,
-      delivery_time: formatTimeForDB(formData.delivery_time),
-      total_amount: parseFloat(formData.total_amount) || 0
+      ...current,
+      delivery_time: formatTimeForDB(current.delivery_time),
+      total_amount: parseFloat(current.total_amount) || 0
     };
-  };
+  }, []);
 
-  // Get calculation breakdown for display.
-  // Uses the order's stored fuel_surcharge so the breakdown matches the saved record.
-  const getCalculationBreakdown = () => {
+  // Calculation breakdown for display.
+  // Uses the order's stored fuel_surcharge so the breakdown matches the saved
+  // record. Memoised on the exact inputs it reads, so it is computed once per
+  // meaningful change instead of on every render.
+  const calculationBreakdown = useMemo(() => {
     const adjustmentsNum = parseFloat(formData.adjustments) || 0;
     const isPickup = formData.delivery_method === 'pickup';
     const fuelSurcharge = isPickup ? 0 : (Number(formData.fuel_surcharge) || 0);
@@ -415,19 +410,30 @@ export function useOrderFormData(order: Order) {
       fuelSurcharge,
       totalAmount: base.totalAmount + fuelSurcharge,
     };
-  };
+  }, [
+    formData.subtotal,
+    formData.adjustments,
+    formData.delivery_fee,
+    formData.payment_method,
+    formData.delivery_method,
+    formData.fuel_surcharge,
+    formData.total_amount,
+    paymentSettings,
+  ]);
+
+  const getCalculationBreakdown = useCallback(() => calculationBreakdown, [calculationBreakdown]);
 
   // Detect a missing fuel surcharge so the UI can offer to apply it.
-  const missingFuelSurchargeAmount = (() => {
+  const missingFuelSurchargeAmount = useMemo(() => {
     const settingsFuel = Number(paymentSettings?.fuel_surcharge) || 0;
     const stored = Number(formData.fuel_surcharge) || 0;
     if (formData.delivery_method === 'delivery' && stored === 0 && settingsFuel > 0) {
       return settingsFuel;
     }
     return 0;
-  })();
+  }, [paymentSettings?.fuel_surcharge, formData.fuel_surcharge, formData.delivery_method]);
 
-  const applyMissingFuelSurcharge = () => {
+  const applyMissingFuelSurcharge = useCallback(() => {
     if (missingFuelSurchargeAmount <= 0) return;
     const newTotal = calculateTotals({ fuel_surcharge: missingFuelSurchargeAmount });
     setFormData(prev => ({
@@ -435,7 +441,7 @@ export function useOrderFormData(order: Order) {
       fuel_surcharge: missingFuelSurchargeAmount,
       total_amount: newTotal,
     }));
-  };
+  }, [missingFuelSurchargeAmount, calculateTotals]);
 
   return {
     formData,
@@ -450,6 +456,7 @@ export function useOrderFormData(order: Order) {
     handleContactChange,
     getFormDataForSubmission,
     getCalculationBreakdown,
+    calculationBreakdown,
     paymentSettings,
     isDeliveryFeeManuallySet,
     getDeliveryFeeInfo,
