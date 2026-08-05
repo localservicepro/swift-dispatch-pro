@@ -82,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from("orders")
       .select(`
         id, order_number, myob_invoice_number, created_at, delivery_date, pickup_date,
-        delivery_method, status, total_amount, payment_status, delivery_address
+        delivery_method, status, total_amount, payment_status, delivery_address, payment_type
       `)
       .eq("customer_id", customerId)
       .eq("status", "delivered")
@@ -93,11 +93,15 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Failed to fetch orders");
     }
 
-    // Filter by date range
+    // Filter by date range + statement eligibility (payment_type, keyed off account standing)
     const orders = (allOrders || []).filter((order: any) => {
+      if (!isStatementEligible({ customerType: customer.customer_type, paymentType: order.payment_type })) {
+        return false;
+      }
       const orderDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
       return orderDate && orderDate >= startDate && orderDate <= endDate;
     });
+
 
     logStep("Fetched orders", { total: allOrders?.length || 0, filtered: orders.length, requestId });
 
