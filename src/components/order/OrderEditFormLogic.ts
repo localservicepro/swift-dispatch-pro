@@ -51,11 +51,12 @@ export function useOrderEditFormLogic(order: Order) {
     handleSubtotalChange,
     handleContactChange,
     getFormDataForSubmission,
-    getCalculationBreakdown,
+    calculationBreakdown,
     paymentSettings,
     missingFuelSurchargeAmount,
     applyMissingFuelSurcharge,
   } = useOrderFormData(order);
+
 
   // Use conflict detection hook
   const {
