@@ -18,7 +18,6 @@ import NotFound from "./pages/NotFound";
 import Storefront from "./pages/Storefront";
 import MyProfile from "./pages/MyProfile";
 import Reports from "./pages/Reports";
-import PerfHarness from "./pages/__PerfHarness";
 
 import { useUserRole } from "./hooks/useUserRole";
 import { DashboardOverview } from "@/components/DashboardOverview";
@@ -142,7 +141,6 @@ function AppRoutes() {
         <Route path="/storefront" element={<Storefront />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
-        <Route path="/__perf" element={<PerfHarness />} />
 
         
         {/* All other routes require authentication */}

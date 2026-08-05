@@ -42,8 +42,6 @@ export function calculateOrderTotals(
   deliveryMethod: string = 'delivery',
   splitCount: number = 1
 ) {
-  (globalThis as any).__calcCount = ((globalThis as any).__calcCount || 0) + 1; // TEMP-PERF-COUNTER
-
 
 
 
