@@ -125,6 +125,10 @@ Deno.serve(async (req) => {
         status: "requested",
         payment_status: "unpaid",
         payment_method: payment_method || "account",
+        payment_type: resolvePaymentType({
+          customerType: (customer as any).customer_type,
+          paymentMethod: payment_method,
+        }),
         delivery_method: delivery_method || "delivery",
         delivery_date: delivery_date || null,
         delivery_time: delivery_time || null,

@@ -147,6 +147,7 @@ export function CustomerOrderCreate({ customer, onClose, onSuccess }: CustomerOr
         status: 'requested',
         payment_status: 'pending',
         payment_method: 'invoice',
+        payment_type: '30_day_account',
         order_notes: orderNotes || null,
         order_number: '' // Will be set by trigger
       } as any]);
