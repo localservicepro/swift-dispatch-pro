@@ -1463,6 +1463,47 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_type_repair_backup: {
+        Row: {
+          batch_tag: string
+          created_at: string
+          id: string
+          new_payment_type: string
+          old_payment_type: string | null
+          order_id: string
+          payment_method: string | null
+          reason: string
+        }
+        Insert: {
+          batch_tag?: string
+          created_at?: string
+          id?: string
+          new_payment_type: string
+          old_payment_type?: string | null
+          order_id: string
+          payment_method?: string | null
+          reason: string
+        }
+        Update: {
+          batch_tag?: string
+          created_at?: string
+          id?: string
+          new_payment_type?: string
+          old_payment_type?: string | null
+          order_id?: string
+          payment_method?: string | null
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_type_repair_backup_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_login_attempts: {
         Row: {
           attempt_type: string
