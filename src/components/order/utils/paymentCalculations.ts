@@ -42,15 +42,7 @@ export function calculateOrderTotals(
   deliveryMethod: string = 'delivery',
   splitCount: number = 1
 ) {
-  console.log('Calculating order totals:', {
-    subtotal,
-    adjustments,
-    deliveryFee,
-    paymentMethod,
-    settings,
-    deliveryMethod,
-    splitCount
-  });
+
 
   // Fuel surcharge: only for delivery orders, applied per split
   const fuelSurchargePerUnit = settings.fuel_surcharge || 0;
