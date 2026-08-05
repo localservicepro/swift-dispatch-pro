@@ -42,9 +42,6 @@ export function calculateOrderTotals(
   deliveryMethod: string = 'delivery',
   splitCount: number = 1
 ) {
-
-
-
   // Fuel surcharge: only for delivery orders, applied per split
   const fuelSurchargePerUnit = settings.fuel_surcharge || 0;
   const fuelSurcharge = deliveryMethod === 'delivery' ? fuelSurchargePerUnit * splitCount : 0;
