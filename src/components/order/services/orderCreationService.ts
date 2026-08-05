@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Customer, CartItem, SelectedContact } from "../types";
 import { serializeCartItemsWithFormatting } from "./orderFormattingService";
+import { resolvePaymentType } from "@/utils/paymentModel";
 
 // Parse a delivery_rate string like "AU$45" / "$45.00" / "45" to a number.
 function parseSuburbDeliveryRate(raw: string | null | undefined): number {
@@ -285,6 +286,7 @@ export async function createSingleOrder(params: CreateSingleOrderParams) {
       delivery_notes: params.deliveryNotes,
       purchase_order: params.purchaseOrder,
       payment_method: params.paymentMethod,
+      payment_type: resolvePaymentType({ customerType: params.customer.customer_type, paymentMethod: params.paymentMethod }),
       status: orderStatus,
       is_split_order: false,
       payment_status: 'pending'
@@ -485,6 +487,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         totalFuelSurcharge,
       delivery_method: params.deliveryMethod,
       payment_method: params.paymentMethod,
+      payment_type: resolvePaymentType({ customerType: params.customer.customer_type, paymentMethod: params.paymentMethod }),
       order_notes: params.orderNotes,
       delivery_notes: params.deliveryNotes,
       purchase_order: params.purchaseOrder,
@@ -617,6 +620,7 @@ export async function createSplitOrder(params: CreateSplitOrderParams) {
         delivery_notes: params.deliveryNotes,
         purchase_order: params.purchaseOrder,
         payment_method: params.paymentMethod,
+        payment_type: resolvePaymentType({ customerType: params.customer.customer_type, paymentMethod: params.paymentMethod }),
         status: splitOrderStatus,
         is_split_order: true,
         master_order_id: masterOrder.id,
