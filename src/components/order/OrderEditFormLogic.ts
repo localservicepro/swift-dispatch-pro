@@ -102,8 +102,7 @@ export function useOrderEditFormLogic(order: Order) {
     }
   }, [formData.truck_type, order.truck_type, setFormData]);
 
-  const handleFormDataChange = (updates: any) => {
-    console.log('OrderEditFormLogic - handleFormDataChange called with:', updates);
+  const handleFormDataChange = useCallback((updates: any) => {
     if (updates.full_address !== undefined) {
       handleInputChange('customer_address', updates.full_address);
     }
@@ -114,10 +113,9 @@ export function useOrderEditFormLogic(order: Order) {
     if (updates.delivery_suburb_id !== undefined) {
       handleFormDataChangeHook({ delivery_suburb_id: updates.delivery_suburb_id });
     }
-  };
+  }, [handleInputChange, handleSuburbChange, handleFormDataChangeHook]);
 
-  // Get calculation breakdown for UI display
-  const calculationBreakdown = getCalculationBreakdown();
+
 
   return {
     formData,
