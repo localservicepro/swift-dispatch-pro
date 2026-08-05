@@ -80,8 +80,8 @@ export function calculateOrderTotals(
     gstIncluded: settings.include_gst_in_prices
   };
 
-  console.log('Calculation result:', result);
   return result;
+
 }
 
 export function formatCurrency(amount: number, currency: string = 'AUD'): string {
