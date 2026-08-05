@@ -6,6 +6,8 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, FileText, Calculator } from "lucide-react";
 import { OrderFormData } from "./hooks/useOrderFormData";
+import { PAYMENT_METHOD_OPTIONS, isKnownPaymentMethod } from "@/utils/paymentModel";
+
 import { useOrderReturns } from "@/hooks/useOrderReturns";
 import { useCustomerCredits } from "@/hooks/useCustomerCredits";
 import { formatCurrency } from "./utils/paymentCalculations";
@@ -120,21 +122,22 @@ export function OrderPricingForm({
         <Label htmlFor="payment_method" className="text-gray-700 font-medium">Payment Method</Label>
         <select
           id="payment_method"
-          value={formData.payment_method}
+          value={formData.payment_method || ''}
           onChange={(e) => onInputChange('payment_method', e.target.value)}
           className="w-full px-3 py-2 border border-amber-200 rounded-md focus:border-amber-400 focus:ring-amber-200"
         >
-          <option value="cash">Cash</option>
-          <option value="cod">COD - Cash on Delivery</option>
-          <option value="card_on_file">Card on File</option>
-          <option value="invoice">Invoice</option>
-          <option value="7_day_invoice">7 Day Invoice</option>
-          <option value="in_yard_cash">In Yard - Cash</option>
-          <option value="in_yard_card">In Yard - Card</option>
-          <option value="account_cash">Account - Cash</option>
-          <option value="account_card">Account - Card</option>
+          <option value="">Not set</option>
+          {!isKnownPaymentMethod(formData.payment_method) && formData.payment_method ? (
+            <option value={formData.payment_method}>
+              {formData.payment_method} (current)
+            </option>
+          ) : null}
+          {PAYMENT_METHOD_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
         </select>
       </div>
+
 
       {/* Calculation Breakdown */}
       <div className="bg-white border border-amber-200 rounded-lg p-3">

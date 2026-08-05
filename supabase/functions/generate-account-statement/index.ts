@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { isStatementEligible } from "../_shared/paymentModel.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -80,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from("orders")
       .select(`
         id, order_number, myob_invoice_number, created_at, delivery_date, pickup_date,
-        delivery_method, status, total_amount, payment_status, delivery_address
+        delivery_method, status, total_amount, payment_status, delivery_address, payment_type
       `)
       .eq("customer_id", customerId)
       .eq("status", "delivered")
@@ -91,18 +93,22 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Failed to fetch orders");
     }
 
-    // Filter by date range
+    // Filter by date range + statement eligibility (payment_type, keyed off account standing)
     const orders = (allOrders || []).filter((order: any) => {
+      if (!isStatementEligible({ customerType: customer.customer_type, paymentType: order.payment_type })) {
+        return false;
+      }
       const orderDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
       return orderDate && orderDate >= startDate && orderDate <= endDate;
     });
+
 
     logStep("Fetched orders", { total: allOrders?.length || 0, filtered: orders.length, requestId });
 
     // Fetch unpaid delivered orders for aging
     const { data: allUnpaidOrders } = await supabase
       .from("orders")
-      .select("id, total_amount, delivery_date, pickup_date, delivery_method, payment_status, status")
+      .select("id, total_amount, delivery_date, pickup_date, delivery_method, payment_status, status, payment_type")
       .eq("customer_id", customerId)
       .eq("status", "delivered")
       .eq("payment_status", "pending")
@@ -112,8 +118,10 @@ const handler = async (req: Request): Promise<Response> => {
     const agingBuckets = { current: 0, over30: 0, over60: 0, over90: 0 };
 
     (allUnpaidOrders || []).forEach((order: any) => {
+      if (!isStatementEligible({ customerType: customer.customer_type, paymentType: order.payment_type })) return;
       const orderDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
       if (!orderDate) return;
+
       const daysOld = Math.floor((today.getTime() - new Date(orderDate).getTime()) / (1000 * 60 * 60 * 24));
       const amount = Number(order.total_amount || 0);
       if (daysOld > 90) agingBuckets.over90 += amount;

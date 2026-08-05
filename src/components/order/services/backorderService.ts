@@ -117,6 +117,8 @@ export async function moveItemsToBackorder(
       delivery_notes: originalOrder.delivery_notes,
       purchase_order: originalOrder.purchase_order,
       payment_method: originalOrder.payment_method,
+      // Inherit billing terms so the backorder stays on the same statement
+      payment_type: (originalOrder as any).payment_type ?? null,
       status: "back_order" as const,
       is_split_order: true,
       master_order_id: orderId,

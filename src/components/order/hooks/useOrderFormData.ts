@@ -60,7 +60,10 @@ export function useOrderFormData(order: Order) {
     delivery_suburb_id: order.delivery_suburb_id || '',
     truck_type: order.truck_type || 'none',
     truck_id: order.truck_id || 'none',
-    payment_method: order.payment_method || 'cash',
+    // Preserve the stored settlement method verbatim — never silently default to
+    // 'cash', which used to overwrite the real value when an order was reopened.
+    payment_method: order.payment_method || '',
+
     adjustments: order.adjustments?.toString() || '0',
     contact_id: order.contact_id || null,
     contact_name: order.contact_name || null,

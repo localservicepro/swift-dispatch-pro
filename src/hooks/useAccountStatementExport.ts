@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
+import { isStatementEligible } from "@/utils/paymentModel";
+
 
 interface UseAccountStatementExportProps {
   customerId: string;
@@ -26,22 +28,33 @@ export function useAccountStatementExport({ customerId }: UseAccountStatementExp
   const { data: previewData, isLoading: isLoadingPreview } = useQuery({
     queryKey: ["account-statement-preview", customerId, dateRange.startDate, dateRange.endDate],
     queryFn: async () => {
+      const { data: customer } = await supabase
+        .from("customers")
+        .select("customer_type")
+        .eq("id", customerId)
+        .maybeSingle();
+
       const { data, error } = await supabase
         .from("orders")
-        .select("id, total_amount, payment_status, delivery_date, pickup_date, delivery_method, status")
+        .select("id, total_amount, payment_status, delivery_date, pickup_date, delivery_method, status, payment_type")
         .eq("customer_id", customerId)
         .in("status", ["delivered", "back_order"])
         .is("deleted_at", null);
 
       if (error) throw error;
 
-      // Filter by delivery_date or pickup_date based on delivery_method
+      // Same predicate as the printed statement: eligibility by payment_type,
+      // keyed off the customer's account standing.
       const filteredData = data?.filter(order => {
+        if (!isStatementEligible({ customerType: customer?.customer_type, paymentType: order.payment_type })) {
+          return false;
+        }
         const orderDate = order.delivery_method === 'pickup' 
           ? order.pickup_date 
           : order.delivery_date;
         return orderDate && orderDate >= dateRange.startDate && orderDate <= dateRange.endDate;
       }) || [];
+
 
       const orderCount = filteredData.length;
       
