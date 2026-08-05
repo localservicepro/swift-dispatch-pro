@@ -6,6 +6,8 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, FileText, Calculator } from "lucide-react";
 import { OrderFormData } from "./hooks/useOrderFormData";
+import { PAYMENT_METHOD_OPTIONS, isKnownPaymentMethod } from "@/utils/paymentModel";
+
 import { useOrderReturns } from "@/hooks/useOrderReturns";
 import { useCustomerCredits } from "@/hooks/useCustomerCredits";
 import { formatCurrency } from "./utils/paymentCalculations";
