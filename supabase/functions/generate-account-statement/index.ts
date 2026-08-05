@@ -108,7 +108,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Fetch unpaid delivered orders for aging
     const { data: allUnpaidOrders } = await supabase
       .from("orders")
-      .select("id, total_amount, delivery_date, pickup_date, delivery_method, payment_status, status")
+      .select("id, total_amount, delivery_date, pickup_date, delivery_method, payment_status, status, payment_type")
       .eq("customer_id", customerId)
       .eq("status", "delivered")
       .eq("payment_status", "pending")
@@ -118,8 +118,10 @@ const handler = async (req: Request): Promise<Response> => {
     const agingBuckets = { current: 0, over30: 0, over60: 0, over90: 0 };
 
     (allUnpaidOrders || []).forEach((order: any) => {
+      if (!isStatementEligible({ customerType: customer.customer_type, paymentType: order.payment_type })) return;
       const orderDate = order.delivery_method === 'pickup' ? order.pickup_date : order.delivery_date;
       if (!orderDate) return;
+
       const daysOld = Math.floor((today.getTime() - new Date(orderDate).getTime()) / (1000 * 60 * 60 * 24));
       const amount = Number(order.total_amount || 0);
       if (daysOld > 90) agingBuckets.over90 += amount;
