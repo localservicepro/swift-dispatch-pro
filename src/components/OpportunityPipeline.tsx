@@ -20,6 +20,7 @@ import { OrderEditDialog } from "./order/OrderEditDialog";
 import { TruckDriverAssignmentDialog } from "./order/TruckDriverAssignmentDialog";
 import { Database } from "@/integrations/supabase/types";
 import { OpportunityCardColorLegend } from "./opportunity/OpportunityCardColorLegend";
+import { AssignmentRequestProvider } from "./opportunity/AssignmentRequestContext";
 import { isPhoneNumber, phoneSearchMatch } from "@/utils/phoneUtils";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
@@ -301,8 +302,8 @@ export function OpportunityPipeline() {
       return;
     }
 
-    // Truck/driver assignment dialog when moving to preparing without truck
-    if (newStage === 'preparing' && (!order.truck_id || !order.truck_type)) {
+    // Truck/driver assignment dialog when moving to loading without truck
+    if (newStage === 'loading' && (!order.truck_id || !order.truck_type)) {
       setOrderForAssignment(order);
       setShowAssignmentDialog(true);
       return;
@@ -328,7 +329,7 @@ export function OpportunityPipeline() {
         truck_type: assignments.truckType,
         truck_id: assignments.truckId,
         driver_id: assignments.driverId === 'unassigned' ? null : assignments.driverId,
-        status: 'preparing',
+        status: 'loading',
         // COD stays pending until delivered
         payment_status: (customerType === 'account' || isCOD) ? 'pending' : 'paid',
         updated_at: new Date().toISOString()
@@ -356,15 +357,15 @@ export function OpportunityPipeline() {
           orderForAssignment.id,
           orderForAssignment.order_number,
           orderForAssignment.customer_name,
-          'requested',
           'preparing',
+          'loading',
           profile.full_name
         );
       }
 
       toast({
         title: "Assignment Complete",
-        description: `Order ${orderForAssignment.order_number} assigned and moved to preparing stage`,
+        description: `Order ${orderForAssignment.order_number} assigned and moved to loading stage`,
       });
     } catch (error: any) {
       console.error('Error completing assignment:', error);
@@ -499,7 +500,12 @@ export function OpportunityPipeline() {
   }
 
   return (
-    <>
+    <AssignmentRequestProvider
+      onRequestAssignment={(order) => {
+        setOrderForAssignment(order);
+        setShowAssignmentDialog(true);
+      }}
+    >
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -636,6 +642,6 @@ export function OpportunityPipeline() {
         order={orderForAssignment}
         onAssignmentComplete={handleAssignmentComplete}
       />
-    </>
+    </AssignmentRequestProvider>
   );
 }
