@@ -44,7 +44,12 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
     const nextStage = getNextStage(currentStage);
     if (!nextStage || isMoving) return;
 
-    // No restrictions - allow progression to any stage
+    // Moving into Loading requires a truck — open the assignment dialog instead
+    if (nextStage === 'loading' && (!order.truck_id || !order.truck_type) && requestAssignment) {
+      requestAssignment(order);
+      return;
+    }
+
 
     setIsMoving(true);
     try {
