@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Pencil, Calendar as CalendarIcon, MapPin, FileText } from "lucide-react";
+import { Pencil, Calendar as CalendarIcon, MapPin, FileText, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -37,6 +38,7 @@ export function EditAddressPopover({
 
   const applySuburb = async (suburbId: string) => {
     onUpdateSplit(splitIndex, { deliverySuburbId: suburbId });
+    if (split.deliveryFeeManual) return; // keep an explicit custom/$0 fee
     const data = await fetchSuburbData(suburbId);
     if (data) {
       // Include markup so the client value matches the server's authoritative
@@ -54,7 +56,7 @@ export function EditAddressPopover({
       deliveryAddress: next ? customer.full_address : "",
       deliverySuburbId: next ? customer.suburb_id : undefined,
     });
-    if (next && customer.suburb_id) {
+    if (next && customer.suburb_id && !split.deliveryFeeManual) {
       // recompute fee for billing suburb (with markup)
       fetchSuburbData(customer.suburb_id).then((data) => {
         if (data) onUpdateSplit(splitIndex, { deliveryFee: computeFeeFromRate(data.delivery_rate), deliveryFeeManual: false });
@@ -267,5 +269,108 @@ export function SplitAddressBadge({
     <Badge variant="secondary" className="text-[10px] font-medium">
       Custom address
     </Badge>
+  );
+}
+
+export function EditDeliveryFeePopover({
+  split,
+  splitIndex,
+  onUpdateSplit,
+  customer,
+  disabled,
+}: CommonProps & { customer?: Customer }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(String(split.deliveryFee ?? 0));
+  const { fetchSuburbData, computeFeeFromRate } = useDeliveryFeeCalculation();
+
+  const suburbId = split.deliverySuburbId || (split.sameAsBilling ? customer?.suburb_id : undefined);
+
+  const save = () => {
+    const n = parseFloat(draft);
+    const parsed = isNaN(n) ? 0 : Math.max(0, n);
+    onUpdateSplit(splitIndex, { deliveryFee: parsed, deliveryFeeManual: true });
+    setOpen(false);
+  };
+
+  const reset = async () => {
+    if (!suburbId) return;
+    const data = await fetchSuburbData(suburbId);
+    if (data) {
+      const fee = computeFeeFromRate(data.delivery_rate);
+      onUpdateSplit(splitIndex, { deliveryFee: fee, deliveryFeeManual: false });
+      setDraft(String(fee));
+    }
+    setOpen(false);
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) setDraft(String(split.deliveryFee ?? 0));
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          className="h-7 px-2 gap-1.5 text-xs font-semibold whitespace-nowrap"
+          aria-label="Edit delivery fee"
+        >
+          <Truck className="h-3.5 w-3.5" />
+          Delivery: AU${(split.deliveryFee || 0).toFixed(2)}
+          {split.deliveryFeeManual && (
+            <span className="text-[10px] font-medium text-muted-foreground">(Custom)</span>
+          )}
+          <Pencil className="h-3 w-3 text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[280px] p-4 bg-popover" align="end">
+        <div className="space-y-3">
+          <Label className="text-xs font-semibold flex items-center gap-1">
+            <Truck className="h-3.5 w-3.5" /> Delivery Fee — {split.name}
+          </Label>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">AU$</span>
+            <Input
+              type="number"
+              min={0}
+              step={0.01}
+              value={draft}
+              autoFocus
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  save();
+                }
+              }}
+              className="h-8 text-sm text-right"
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {suburbId
+              ? "Overrides the suburb rate for this split. Use 0 for free delivery."
+              : "No suburb rate available — the amount you enter is used as-is. Use 0 for free delivery."}
+          </p>
+          <div className="flex justify-between gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={reset}
+              disabled={!suburbId}
+              className="h-7 text-xs"
+            >
+              Reset to suburb rate
+            </Button>
+            <Button size="sm" onClick={save} className="h-7 text-xs">
+              Save
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
