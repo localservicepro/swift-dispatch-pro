@@ -17,6 +17,10 @@ interface Suburb {
 
 export function useSuburbManagement() {
   const [suburbs, setSuburbs] = useState<Suburb[]>([]);
+  // Consumers must not run address→suburb matching before the list has
+  // arrived; matching against an empty list always "fails" and produced a
+  // bogus "No Matching Suburb" toast when the edit dialog opened.
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   // Fetch all suburbs (not just active ones for management)
@@ -26,6 +30,7 @@ export function useSuburbManagement() {
 
   const fetchSuburbs = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('suburbs')
         .select('*')
@@ -35,8 +40,11 @@ export function useSuburbManagement() {
       setSuburbs(data || []);
     } catch (error) {
       console.error('Error fetching suburbs:', error);
+    } finally {
+      setLoading(false);
     }
   };
+
 
   // Refresh function for external use
   const refreshSuburbs = () => {
@@ -160,10 +168,12 @@ export function useSuburbManagement() {
 
   return {
     suburbs,
+    suburbsLoading: loading,
     refreshSuburbs,
     findSuburbByPostcode,
     findSuburbByNameOnly,
     findSuburbInAddress,
     handleAutoSuburbSelection
   };
+
 }
