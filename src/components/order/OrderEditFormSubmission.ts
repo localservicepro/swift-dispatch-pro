@@ -29,8 +29,12 @@ export function useOrderFormSubmission() {
     order: Order,
     submissionData: any,
     onOrderUpdated: () => void,
-    onClose: () => void
+    onClose: () => void,
+    // When saving several orders at once (split groups) the caller shows a
+    // single toast at the end instead of one per order.
+    options?: { silent?: boolean }
   ) => {
+
     try {
       // Enhanced order change detection for comprehensive logging
       const deliveryAddressChanged = submissionData.customer_address !== (order.delivery_address || order.customer_address);
