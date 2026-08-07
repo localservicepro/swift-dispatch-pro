@@ -20,6 +20,7 @@ import { OrderEditDialog } from "./order/OrderEditDialog";
 import { TruckDriverAssignmentDialog } from "./order/TruckDriverAssignmentDialog";
 import { Database } from "@/integrations/supabase/types";
 import { OpportunityCardColorLegend } from "./opportunity/OpportunityCardColorLegend";
+import { AssignmentRequestProvider } from "./opportunity/AssignmentRequestContext";
 import { isPhoneNumber, phoneSearchMatch } from "@/utils/phoneUtils";
 
 type TruckType = Database["public"]["Enums"]["truck_type"];
