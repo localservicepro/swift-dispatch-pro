@@ -27,6 +27,7 @@ import {
   EditSchedulePopover,
   EditInstructionsPopover,
   SplitAddressBadge,
+  EditDeliveryFeePopover,
 } from "./review/SplitEditPopovers";
 
 interface OrderReviewStepProps {
@@ -268,9 +269,12 @@ export function OrderReviewStep({
                       {deliveryMethod === "delivery" && <SplitAddressBadge split={split} customer={customer} />}
                     </div>
                     {deliveryMethod === "delivery" && (
-                      <Badge variant="outline" className="text-xs font-semibold whitespace-nowrap">
-                        Delivery: AU${(split.deliveryFee || 0).toFixed(2)}
-                      </Badge>
+                      <EditDeliveryFeePopover
+                        split={split}
+                        splitIndex={splitIndex}
+                        onUpdateSplit={onUpdateSplit}
+                        customer={customer}
+                      />
                     )}
                   </div>
 
