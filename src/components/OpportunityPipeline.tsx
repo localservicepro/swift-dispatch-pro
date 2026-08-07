@@ -641,6 +641,6 @@ export function OpportunityPipeline() {
         order={orderForAssignment}
         onAssignmentComplete={handleAssignmentComplete}
       />
-    </>
+    </AssignmentRequestProvider>
   );
 }
