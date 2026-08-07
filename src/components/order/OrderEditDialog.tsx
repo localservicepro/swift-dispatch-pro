@@ -44,6 +44,36 @@ interface OrderEditDialogProps {
 }
 
 export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDialogProps) {
+  const [splits, setSplits] = useState<any[] | null>(null);
+
+  // A master order in a split group is edited through per-split tabs.
+  useEffect(() => {
+    let cancelled = false;
+    const loadSplits = async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('master_order_id', order.id)
+        .is('deleted_at', null)
+        .order('split_number', { ascending: true });
+
+      if (!cancelled) {
+        if (error) {
+          console.error('Failed to load split orders:', error);
+          setSplits([]);
+        } else {
+          setSplits(data || []);
+        }
+      }
+    };
+    loadSplits();
+    return () => {
+      cancelled = true;
+    };
+  }, [order.id]);
+
+  const hasSplits = !!splits && splits.length > 0;
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -54,12 +84,24 @@ export function OrderEditDialog({ order, onOrderUpdated, onClose }: OrderEditDia
           customerType={order.customer_type}
           companyName={order.company_name}
         />
-        <OrderEditForm 
-          order={order}
-          onOrderUpdated={onOrderUpdated}
-          onClose={onClose}
-        />
+        {splits === null ? (
+          <div className="py-8 text-sm text-muted-foreground text-center">Loading order…</div>
+        ) : hasSplits ? (
+          <SplitOrderEditTabs
+            masterOrder={order as any}
+            splits={splits as any}
+            onOrderUpdated={onOrderUpdated}
+            onClose={onClose}
+          />
+        ) : (
+          <OrderEditForm 
+            order={order}
+            onOrderUpdated={onOrderUpdated}
+            onClose={onClose}
+          />
+        )}
       </DialogContent>
+
     </Dialog>
   );
 }
