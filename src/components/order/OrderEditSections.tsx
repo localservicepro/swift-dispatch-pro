@@ -45,6 +45,8 @@ interface OrderEditSectionsProps {
   paymentSettings?: any;
   missingFuelSurchargeAmount?: number;
   applyMissingFuelSurcharge?: () => void;
+  /** Master orders in a split group derive their items from the splits. */
+  productsReadOnly?: boolean;
 }
 
 export function OrderEditSections({
@@ -64,16 +66,40 @@ export function OrderEditSections({
   paymentSettings,
   missingFuelSurchargeAmount,
   applyMissingFuelSurcharge,
+  productsReadOnly = false,
 }: OrderEditSectionsProps) {
   const [backorderDialogOpen, setBackorderDialogOpen] = useState(false);
 
   return (
     <div className="space-y-6">
-      <ProductEditSection
-        currentProducts={formData.products}
-        onProductsChange={onProductsChange}
-        onSubtotalChange={onSubtotalChange}
-      />
+      {productsReadOnly ? (
+        <div className="bg-muted/40 border rounded-lg p-4 space-y-2">
+          <h3 className="font-semibold text-foreground">Items (from splits)</h3>
+          <p className="text-xs text-muted-foreground">
+            This is the master order — edit items on each split tab. Totals here are rebuilt from the splits when you save.
+          </p>
+          <ul className="text-sm space-y-1 mt-2">
+            {(formData.products || []).map((item: any, i: number) => (
+              <li key={item.id || item.product_id || i} className="flex justify-between gap-4">
+                <span className="truncate">{item.name || item.product_name || 'Item'}</span>
+                <span className="text-muted-foreground shrink-0">
+                  {item.quantity} × ${Number(item.price || item.unit_price || 0).toFixed(2)}
+                </span>
+              </li>
+            ))}
+            {(formData.products || []).length === 0 && (
+              <li className="text-muted-foreground">No items on the master record.</li>
+            )}
+          </ul>
+        </div>
+      ) : (
+        <ProductEditSection
+          currentProducts={formData.products}
+          onProductsChange={onProductsChange}
+          onSubtotalChange={onSubtotalChange}
+        />
+      )}
+
 
       {/* Returns Section */}
       <OrderReturnsSection 
