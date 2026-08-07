@@ -268,7 +268,7 @@ export function OrderReviewStep({
                       </span>
                       {deliveryMethod === "delivery" && <SplitAddressBadge split={split} customer={customer} />}
                     </div>
-                    {deliveryMethod === "delivery" && (
+                    {deliveryMethod === "delivery" && onUpdateSplit && (
                       <EditDeliveryFeePopover
                         split={split}
                         splitIndex={splitIndex}

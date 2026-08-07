@@ -311,7 +311,7 @@ export function CompactSplitConfig({
                 )}
 
                 {/* Delivery Fee — editable; hidden for pickup */}
-                {!isPickup && (split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id)) && (
+                {!isPickup && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <div className="flex justify-between items-center gap-2">
                       <Label className="text-xs font-medium flex items-center gap-1">
@@ -356,7 +356,9 @@ export function CompactSplitConfig({
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Auto-set from suburb rate — edit to override (use 0 for free delivery).
+                      {(split.deliverySuburbId || (split.sameAsBilling && customer?.suburb_id))
+                        ? "Auto-set from suburb rate — edit to override (use 0 for free delivery)."
+                        : "No suburb rate available — the amount entered is used as-is (use 0 for free delivery)."}
                     </p>
                   </div>
                 )}
