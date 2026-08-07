@@ -96,7 +96,7 @@ export function TruckDriverAssignmentDialog({
       
       toast({
         title: "Assignment Complete",
-        description: `Order ${order?.order_number} assigned and moved to preparing stage`,
+        description: `Order ${order?.order_number} assigned and moved to loading stage`,
       });
       
       handleClose();

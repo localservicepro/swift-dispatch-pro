@@ -328,7 +328,7 @@ export function OpportunityPipeline() {
         truck_type: assignments.truckType,
         truck_id: assignments.truckId,
         driver_id: assignments.driverId === 'unassigned' ? null : assignments.driverId,
-        status: 'preparing',
+        status: 'loading',
         // COD stays pending until delivered
         payment_status: (customerType === 'account' || isCOD) ? 'pending' : 'paid',
         updated_at: new Date().toISOString()
@@ -356,15 +356,15 @@ export function OpportunityPipeline() {
           orderForAssignment.id,
           orderForAssignment.order_number,
           orderForAssignment.customer_name,
-          'requested',
           'preparing',
+          'loading',
           profile.full_name
         );
       }
 
       toast({
         title: "Assignment Complete",
-        description: `Order ${orderForAssignment.order_number} assigned and moved to preparing stage`,
+        description: `Order ${orderForAssignment.order_number} assigned and moved to loading stage`,
       });
     } catch (error: any) {
       console.error('Error completing assignment:', error);

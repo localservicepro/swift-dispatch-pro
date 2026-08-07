@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowRight, Clock, CheckCircle } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import { updateOrderStatus } from "@/utils/orderStatusService";
+import { useAssignmentRequest } from "./AssignmentRequestContext";
 
 interface OpportunityCardActionButtonProps {
   order: any;
@@ -16,6 +17,7 @@ export function OpportunityCardActionButton({ order, currentStage, onOrderMove }
   const [isMoving, setIsMoving] = useState(false);
   const { toast } = useToast();
   const { profile } = useAuth();
+  const requestAssignment = useAssignmentRequest();
 
   const getNextStage = (current: string) => {
     const stages = ['on_hold', 'requested', 'preparing', 'loading', 'en_route', 'delivered'];
