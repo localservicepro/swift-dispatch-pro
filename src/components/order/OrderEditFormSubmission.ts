@@ -29,8 +29,12 @@ export function useOrderFormSubmission() {
     order: Order,
     submissionData: any,
     onOrderUpdated: () => void,
-    onClose: () => void
+    onClose: () => void,
+    // When saving several orders at once (split groups) the caller shows a
+    // single toast at the end instead of one per order.
+    options?: { silent?: boolean }
   ) => {
+
     try {
       // Enhanced order change detection for comprehensive logging
       const deliveryAddressChanged = submissionData.customer_address !== (order.delivery_address || order.customer_address);
@@ -225,18 +229,21 @@ export function useOrderFormSubmission() {
       await invalidateOrderCaches(deliveryAddressChanged ? 'delivery address changed' : 'comprehensive order update');
 
       // Display success toast with defensive error handling
-      try {
-        toast({
-          title: "Success",
-          description: `Order updated successfully! ${totalAmountChanged ? 'Total amount and payments have been adjusted.' : ''}`,
-        });
-      } catch (toastError) {
-        console.error('❌ Toast failed to display:', toastError);
-        // Fallback: at least show in console
+      if (!options?.silent) {
+        try {
+          toast({
+            title: "Success",
+            description: `Order updated successfully! ${totalAmountChanged ? 'Total amount and payments have been adjusted.' : ''}`,
+          });
+        } catch (toastError) {
+          console.error('❌ Toast failed to display:', toastError);
+          // Fallback: at least show in console
+        }
       }
 
       onOrderUpdated();
       onClose();
+
     } catch (error: any) {
       console.error('❌ ORDER UPDATE FAILED:', error);
       

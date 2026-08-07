@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { OrderAddressForm } from './OrderAddressForm';
 import { MapPin } from 'lucide-react';
 import { useSuburbManagement } from '@/hooks/useSuburbManagement';
@@ -21,15 +21,21 @@ export function OrderDeliveryForm({
   onFormDataChange, 
   onSuburbChange 
 }: OrderDeliveryFormProps) {
-  const { handleAutoSuburbSelection } = useSuburbManagement();
+  const { handleAutoSuburbSelection, suburbsLoading } = useSuburbManagement();
+  // Guard so the legacy auto-detect runs at most once per address, and never
+  // before the suburb list has loaded (which used to always report "no match").
+  const attemptedForAddress = useRef<string | null>(null);
 
-  // Auto-detect suburb for legacy orders with missing delivery_suburb_id
   useEffect(() => {
-    if (!formData.delivery_suburb_id && formData.full_address) {
-      console.log('Auto-detecting suburb for legacy order with address:', formData.full_address);
-      handleAutoSuburbSelection(formData.full_address, handleDeliverySuburbChange);
-    }
-  }, [formData.full_address, formData.delivery_suburb_id]);
+    if (suburbsLoading) return;
+    if (!formData.full_address) return;
+    if (formData.delivery_suburb_id) return;
+    if (attemptedForAddress.current === formData.full_address) return;
+
+    attemptedForAddress.current = formData.full_address;
+    handleAutoSuburbSelection(formData.full_address, handleDeliverySuburbChange);
+  }, [formData.full_address, formData.delivery_suburb_id, suburbsLoading]);
+
 
   const handleDeliverySuburbChange = (suburbId: string, suburb?: any) => {
     console.log('OrderDeliveryForm - delivery suburb change:', suburbId, suburb);
