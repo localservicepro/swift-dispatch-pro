@@ -1,29 +1,28 @@
-# Per-split delivery price (including $0)
+# Editable delivery fee per split (including $0)
 
-## Current state (verified)
+## What the screenshot shows
 
-Per-split delivery fee editing already ships in the split configuration step:
+On the Review step, each split's delivery fee is a read-only badge ("Delivery: AU$55.00"). Addresses, date/time and instructions each have a pencil edit control, but the fee does not — so there is no way to set a custom or free ($0) delivery price for a split from this screen, unlike a normal single order.
 
-- `CompactSplitConfig.tsx` renders an editable "Delivery Fee" number input per split, marks it `deliveryFeeManual: true` on edit, and offers a "Reset" button to fall back to the suburb rate.
-- `MultiStepOrderForm.tsx` auto-calculation skips any split flagged `deliveryFeeManual`, so a typed value (including `0`) is not overwritten.
+## What already exists (verified)
+
+- `CompactSplitConfig.tsx` (the split configuration step) already has an editable fee input per split with a "Reset to suburb rate" button, flagging `deliveryFeeManual`.
+- `MultiStepOrderForm.tsx` auto-calculation skips splits flagged manual, so a typed value including `0` survives.
 - `orderCreationService.ts` trusts a manual override verbatim on save, so `$0` persists as free delivery.
 
-Two real gaps remain.
+So the save path works; the Review step just doesn't expose the control, and the earlier-step control is hidden when no suburb is resolved.
 
-## Gap 1 — the fee editor is hidden until a suburb is set
+## Changes
 
-The input only renders when the split has a delivery suburb (or uses the billing suburb). If staff want to set a fee (or $0) before/without a suburb match, there is no field at all.
+1. **Review step — make the fee badge editable.** Turn each split's "Delivery: AU$xx.xx" badge into a pencil-edit control matching the existing address / date-time / instructions pattern. It opens a small popover with an amount input (min 0, step 0.01) plus a "Reset to suburb rate" action, writing `deliveryFee` and `deliveryFeeManual: true` through the existing `onUpdateSplit`. Manual fees show a small "Custom" marker so staff can see the fee is overridden.
 
-Fix: always render the fee row for delivery splits. When no suburb is resolved, show it with a hint that no suburb rate is available and the typed value will be used as-is.
+2. **Keep manual fees when the address changes.** `SplitEditPopovers.tsx` currently recalculates the fee from the suburb on every address change. It will only do so when the split is not flagged manual, so a $0/custom fee is not silently overwritten.
 
-## Gap 2 — the Review step can't override the fee
+3. **Always show the fee field in the split configuration step.** Today it renders only when a suburb is resolved. It will render for every delivery split, with a hint when no suburb rate is available that the typed value is used as-is.
 
-`SplitEditPopovers.tsx` recalculates the fee from the suburb whenever the address changes, but offers no manual amount field. Editing an address on the final step silently discards a $0/custom fee set earlier.
-
-Fix: add the same amount input + Reset control to the split edit popover on the Review step, writing `deliveryFee` / `deliveryFeeManual` through the existing `onUpdateSplit`. When a split is already flagged manual, changing its address updates the address but leaves the manual fee intact.
+4. **Order Summary reflects it immediately.** The per-split lines and the Delivery Fees total already sum from split values, so a $0 split drops the total the moment it is set.
 
 ## Technical notes
 
-- No schema or pricing-logic changes. Only the two presentation components change; the save path in `orderCreationService.ts` already handles overrides correctly.
-- `0` must be treated as a valid value everywhere (no `|| suburbFee` fallbacks) — guards use `deliveryFeeManual`, not truthiness of the amount.
-- Split totals continue to sum through the existing `MultiStepOrderForm` aggregation, so the order total reflects a $0 split immediately.
+- Presentation-layer only: `SplitReviewCard` / `SplitEditPopovers` on the review step and `CompactSplitConfig` on the configuration step. No schema changes, no changes to the pricing/total calculation path or the split save logic.
+- `0` is a valid value everywhere — guards key off `deliveryFeeManual`, never truthiness of the amount.
