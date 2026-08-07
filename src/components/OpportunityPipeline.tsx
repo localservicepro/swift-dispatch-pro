@@ -499,7 +499,12 @@ export function OpportunityPipeline() {
   }
 
   return (
-    <>
+    <AssignmentRequestProvider
+      onRequestAssignment={(order) => {
+        setOrderForAssignment(order);
+        setShowAssignmentDialog(true);
+      }}
+    >
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
