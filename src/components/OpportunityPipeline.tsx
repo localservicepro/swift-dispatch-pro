@@ -301,8 +301,8 @@ export function OpportunityPipeline() {
       return;
     }
 
-    // Truck/driver assignment dialog when moving to preparing without truck
-    if (newStage === 'preparing' && (!order.truck_id || !order.truck_type)) {
+    // Truck/driver assignment dialog when moving to loading without truck
+    if (newStage === 'loading' && (!order.truck_id || !order.truck_type)) {
       setOrderForAssignment(order);
       setShowAssignmentDialog(true);
       return;
